@@ -36,9 +36,13 @@ export const HomeScreen: React.FC = () => {
     isRefreshing,
   } = usePortfolio();
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (symbol.trim()) {
-      analyze(symbol.trim().toUpperCase());
+      const sym = symbol.trim().toUpperCase();
+      await analyze(sym);
+      if (isInPortfolio(sym)) {
+        refreshPrices();
+      }
     }
   };
 
