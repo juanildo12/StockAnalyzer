@@ -1,3 +1,4 @@
+import YahooFinance from 'yahoo-finance2';
 import type {
   StockQuote,
   StockSummary,
@@ -5,8 +6,7 @@ import type {
   AnalystPriceTarget,
 } from '../types';
 
-const ALPHA_VANTAGE_KEY = 'X1ZRC7915KT6TOHF';
-const ALPHA_VANTAGE_BASE = 'https://www.alphavantage.co/query';
+const yf = new YahooFinance();
 
 const SYMBOL_MAP: Record<string, string> = {
   AAPL: 'Apple Inc',
@@ -16,69 +16,43 @@ const SYMBOL_MAP: Record<string, string> = {
   NVDA: 'NVIDIA Corporation',
   META: 'Meta Platforms Inc',
   TSLA: 'Tesla Inc',
+  JPM: 'JPMorgan Chase',
+  V: 'Visa Inc',
+  JNJ: 'Johnson & Johnson',
+  WMT: 'Walmart Inc',
+  PG: 'Procter & Gamble',
 };
-
-async function fetchWithTimeout(
-  url: string,
-  options: RequestInit = {},
-  timeout = 15000,
-): Promise<Response> {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    clearTimeout(id);
-    return response;
-  } catch (error) {
-    clearTimeout(id);
-    throw error;
-  }
-}
 
 export async function getStockQuote(symbol: string): Promise<StockQuote> {
   const sym = symbol.toUpperCase();
 
   try {
-    const url = `${ALPHA_VANTAGE_BASE}?function=GLOBAL_QUOTE&symbol=${sym}&apikey=${ALPHA_VANTAGE_KEY}`;
-    const response = await fetchWithTimeout(url);
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    const quote = data['Global Quote'];
-
-    if (!quote || !quote['05. price']) {
-      throw new Error(`Ticker "${sym}" no encontrado`);
-    }
+    const quote: any = await yf.quote(sym);
 
     return {
-      symbol: quote['01. symbol'] || sym,
-      shortName: SYMBOL_MAP[sym] || sym,
-      longName: SYMBOL_MAP[sym] || sym,
-      currency: quote['08. currency'] || 'USD',
-      regularMarketPrice: parseFloat(quote['05. price']) || 0,
-      regularMarketChange: parseFloat(quote['09. change']) || 0,
-      regularMarketChangePercent: parseFloat(quote['10. change percent']?.replace('%', '')) || 0,
-      regularMarketDayHigh: parseFloat(quote['03. high']) || 0,
-      regularMarketDayLow: parseFloat(quote['04. low']) || 0,
-      regularMarketVolume: parseInt(quote['06. volume']) || 0,
-      regularMarketOpen: parseFloat(quote['02. open']) || 0,
-      regularMarketPreviousClose: parseFloat(quote['08. previous close']) || 0,
-      fiftyTwoWeekHigh: parseFloat(quote['52. high']) || 0,
-      fiftyTwoWeekLow: parseFloat(quote['52. low']) || 0,
-      targetMeanPrice: 0,
-      targetHighPrice: 0,
-      targetLowPrice: 0,
-      recommendationKey: 'none',
-      numberOfAnalystOpinions: 0,
-      marketCap: 0,
-      peRatio: 0,
+      symbol: quote.symbol,
+      shortName: quote.shortName || SYMBOL_MAP[sym] || sym,
+      longName: quote.longName || quote.shortName || SYMBOL_MAP[sym] || sym,
+      currency: quote.currency || 'USD',
+      regularMarketPrice: quote.regularMarketPrice || 0,
+      regularMarketChange: quote.regularMarketChange || 0,
+      regularMarketChangePercent: quote.regularMarketChangePercent || 0,
+      regularMarketDayHigh: quote.regularMarketDayHigh || 0,
+      regularMarketDayLow: quote.regularMarketDayLow || 0,
+      regularMarketVolume: quote.regularMarketVolume || 0,
+      regularMarketOpen: quote.regularMarketOpen || 0,
+      regularMarketPreviousClose: quote.previousClose || quote.regularMarketPreviousClose || 0,
+      postMarketPrice: quote.postMarketPrice || 0,
+      postMarketChange: quote.postMarketChange || 0,
+      fiftyTwoWeekHigh: quote.fiftyTwoWeekHigh || 0,
+      fiftyTwoWeekLow: quote.fiftyTwoWeekLow || 0,
+      targetMeanPrice: quote.targetMeanPrice || 0,
+      targetHighPrice: quote.targetHighPrice || 0,
+      targetLowPrice: quote.targetLowPrice || 0,
+      recommendationKey: quote.recommendationKey || 'none',
+      numberOfAnalystOpinions: quote.numberOfAnalystOpinions || 0,
+      marketCap: quote.marketCap || 0,
+      peRatio: quote.trailingPE || 0,
     };
   } catch (e: any) {
     throw new Error(`Error: ${e.message}`);
@@ -91,46 +65,35 @@ export async function getStockSummary(
   const sym = symbol.toUpperCase();
 
   try {
-    const url = `${ALPHA_VANTAGE_BASE}?function=OVERVIEW&symbol=${sym}&apikey=${ALPHA_VANTAGE_KEY}`;
-    const response = await fetchWithTimeout(url);
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-
-    if (!data || data.Note || data.Information) {
-      return null;
-    }
+    const quote: any = await yf.quote(sym);
 
     return {
-      marketCap: parseInt(data.MarketCapitalization) * 1000000 || 0,
-      peRatio: parseFloat(data.PERatio) || 0,
-      pegRatio: parseFloat(data.PEGRatio) || 0,
-      epsTrailingTwelveMonths: parseFloat(data.EPSTTM) || 0,
-      epsForward: parseFloat(data.ForwardEPS) || 0,
-      beta: parseFloat(data.Beta) || 0,
-      dividendYield: parseFloat(data.DividendYield) || 0,
-      dividendRate: parseFloat(data.DividendRate) || 0,
-      bookValue: parseFloat(data.BookValue) || 0,
-      priceToBook: parseFloat(data.PriceToBookRatio) || 0,
-      priceToSalesTrailingTwelveMonths: parseFloat(data.PriceToSalesRatioTTM) || 0,
-      trailingAnnualDividendYield: parseFloat(data.DividendYield) || 0,
-      exDividendDate: data.ExDividendDate || '',
-      profitMargins: parseFloat(data.ProfitMargin) || 0,
-      operatingMargins: parseFloat(data.OperatingMargin) || 0,
-      returnOnAssets: parseFloat(data.ReturnOnAssets) || 0,
-      returnOnEquity: parseFloat(data.ReturnOnEquity) || 0,
-      grossProfits: parseFloat(data.GrossProfitTTM) || 0,
+      marketCap: quote.marketCap || 0,
+      peRatio: quote.trailingPE || 0,
+      pegRatio: 0,
+      epsTrailingTwelveMonths: 0,
+      epsForward: 0,
+      beta: 0,
+      dividendYield: (quote.dividendYield || 0) * 100,
+      dividendRate: quote.dividendRate || 0,
+      bookValue: 0,
+      priceToBook: 0,
+      priceToSalesTrailingTwelveMonths: 0,
+      trailingAnnualDividendYield: (quote.dividendYield || 0) * 100,
+      exDividendDate: '',
+      profitMargins: quote.profitMargins || 0,
+      operatingMargins: quote.operatingMargins || 0,
+      returnOnAssets: quote.returnOnAssets || 0,
+      returnOnEquity: quote.returnOnEquity || 0,
+      grossProfits: 0,
       totalCash: 0,
       totalDebt: 0,
-      totalRevenue: parseFloat(data.RevenueTTM) || 0,
-      revenuePerShare: parseFloat(data.RevenuePerShareTTM) || 0,
-      revenueGrowth: parseFloat(data.RevenueGrowth) || 0,
-      earningsGrowth: parseFloat(data.EarningsGrowth) || 0,
-      grossMargins: parseFloat(data.GrossProfitTTM) || 0,
-      ebitdaMargins: 0,
+      totalRevenue: quote.revenueTTM || 0,
+      revenuePerShare: quote.revenuePerShare || 0,
+      revenueGrowth: quote.revenueGrowth || 0,
+      earningsGrowth: quote.earningsGrowth || 0,
+      grossMargins: quote.grossMargins || 0,
+      ebitdaMargins: quote.ebitdaMargins || 0,
       operatingCashflow: 0,
       freeCashflow: 0,
     };
@@ -145,33 +108,20 @@ export async function getHistoricalData(
   const sym = symbol.toUpperCase();
 
   try {
-    const url = `${ALPHA_VANTAGE_BASE}?function=TIME_SERIES_DAILY&symbol=${sym}&outputsize=full&apikey=${ALPHA_VANTAGE_KEY}`;
-    const response = await fetchWithTimeout(url);
-
-    if (!response.ok) {
-      return [];
-    }
-
-    const data = await response.json();
-    const timeSeries = data['Time Series (Daily)'];
-
-    if (!timeSeries) {
-      return [];
-    }
-
-    const dates = Object.keys(timeSeries).slice(0, 365).reverse();
-
-    return dates.map((date) => {
-      const day = timeSeries[date];
-      return {
-        date,
-        close: parseFloat(day['4. close']),
-        high: parseFloat(day['2. high']),
-        low: parseFloat(day['3. low']),
-        open: parseFloat(day['1. open']),
-        volume: parseInt(day['5. volume']),
-      };
+    const result: any = await yf.historical(sym, {
+      period1: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000),
+      period2: new Date(),
+      interval: '1d',
     });
+
+    return result.map((item: any) => ({
+      date: item.date.toISOString().split('T')[0],
+      close: item.close,
+      high: item.high,
+      low: item.low,
+      open: item.open,
+      volume: item.volume,
+    }));
   } catch (e) {
     return [];
   }
@@ -180,7 +130,26 @@ export async function getHistoricalData(
 export async function getAnalystPriceTargets(
   symbol: string,
 ): Promise<AnalystPriceTarget | null> {
-  return null;
+  const sym = symbol.toUpperCase();
+
+  try {
+    const quote: any = await yf.quote(sym);
+    
+    if (!quote.targetMeanPrice) {
+      return null;
+    }
+
+    return {
+      symbol: sym,
+      targetMean: quote.targetMeanPrice || 0,
+      targetHigh: quote.targetHighPrice || 0,
+      targetLow: quote.targetLowPrice || 0,
+      targetMedian: quote.targetMedianPrice || 0,
+      numberOfAnalysts: quote.numberOfAnalystOpinions || 0,
+    };
+  } catch (e) {
+    return null;
+  }
 }
 
 export async function getStockData(symbol: string) {
