@@ -5,80 +5,73 @@ import type {
   AnalystPriceTarget,
 } from '../types';
 
-const ALPHA_VANTAGE_KEY = '68GKXL4N6LO9KJHW';
-const FINNHUB_API_KEY = 'ctq07hr01qns0f36u8hgctq07hr01qns0f36u8i0';
-const ALPHA_BASE = 'https://www.alphavantage.co/query';
-const FINNHUB_BASE = 'https://finnhub.io/api/v1';
+const ALPHA_VANTAGE_KEY = 'X1ZRC7915KT6TOHF';
+const ALPHA_VANTAGE_BASE = 'https://www.alphavantage.co/query';
 
-let lastCallTime = 0;
-const MIN_DELAY_MS = 15000;
+const SYMBOL_MAP: Record<string, string> = {
+  AAPL: 'Apple Inc',
+  MSFT: 'Microsoft Corporation',
+  GOOGL: 'Alphabet Inc Class A',
+  AMZN: 'Amazon.com Inc',
+  NVDA: 'NVIDIA Corporation',
+  META: 'Meta Platforms Inc',
+  TSLA: 'Tesla Inc',
+};
 
-async function rateLimitDelay() {
-  const now = Date.now();
-  const timeSinceLastCall = now - lastCallTime;
-  if (timeSinceLastCall < MIN_DELAY_MS) {
-    const waitTime = MIN_DELAY_MS - timeSinceLastCall;
-    await new Promise(resolve => setTimeout(resolve, waitTime));
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit = {},
+  timeout = 15000,
+): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
   }
-  lastCallTime = Date.now();
-}
-
-async function fetchAV(
-  functionName: string,
-  symbol: string,
-  extraParams: string = '',
-): Promise<any> {
-  await rateLimitDelay();
-
-  let url = `${ALPHA_BASE}?function=${functionName}&symbol=${symbol}&apikey=${ALPHA_VANTAGE_KEY}`;
-  console.log(url);
-  if (extraParams) url += `&${extraParams}`;
-
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-  const data = await response.json();
-
-  if (data['Note'] || data['Information']) {
-    throw new Error(
-      'Límite de API alcanzado. Espera 15 segundos entre búsquedas.',
-    );
-  }
-
-  if (data['Error Message']) {
-    throw new Error(`Ticker "${symbol}" no encontrado`);
-  }
-
-  return data;
 }
 
 export async function getStockQuote(symbol: string): Promise<StockQuote> {
   const sym = symbol.toUpperCase();
 
   try {
-    const data = await fetchAV('GLOBAL_QUOTE', sym);
-    const q = data['Global Quote'];
+    const url = `${ALPHA_VANTAGE_BASE}?function=GLOBAL_QUOTE&symbol=${sym}&apikey=${ALPHA_VANTAGE_KEY}`;
+    const response = await fetchWithTimeout(url);
 
-    if (!q || !q['05. price']) {
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const quote = data['Global Quote'];
+
+    if (!quote || !quote['05. price']) {
       throw new Error(`Ticker "${sym}" no encontrado`);
     }
 
     return {
-      symbol: q['01. symbol'] || sym,
-      shortName: sym,
-      longName: sym,
-      currency: 'USD',
-      regularMarketPrice: parseFloat(q['05. price']) || 0,
-      regularMarketChange: parseFloat(q['09. change']) || 0,
-      regularMarketChangePercent:
-        parseFloat(q['10. change percent']?.replace('%', '')) || 0,
-      regularMarketDayHigh: parseFloat(q['03. high']) || 0,
-      regularMarketDayLow: parseFloat(q['04. low']) || 0,
-      regularMarketVolume: parseInt(q['06. volume']) || 0,
-      regularMarketOpen: parseFloat(q['02. open']) || 0,
-      regularMarketPreviousClose: parseFloat(q['08. previous close']) || 0,
-      fiftyTwoWeekHigh: 0,
-      fiftyTwoWeekLow: 0,
+      symbol: quote['01. symbol'] || sym,
+      shortName: SYMBOL_MAP[sym] || sym,
+      longName: SYMBOL_MAP[sym] || sym,
+      currency: quote['08. currency'] || 'USD',
+      regularMarketPrice: parseFloat(quote['05. price']) || 0,
+      regularMarketChange: parseFloat(quote['09. change']) || 0,
+      regularMarketChangePercent: parseFloat(quote['10. change percent']?.replace('%', '')) || 0,
+      regularMarketDayHigh: parseFloat(quote['03. high']) || 0,
+      regularMarketDayLow: parseFloat(quote['04. low']) || 0,
+      regularMarketVolume: parseInt(quote['06. volume']) || 0,
+      regularMarketOpen: parseFloat(quote['02. open']) || 0,
+      regularMarketPreviousClose: parseFloat(quote['08. previous close']) || 0,
+      fiftyTwoWeekHigh: parseFloat(quote['52. high']) || 0,
+      fiftyTwoWeekLow: parseFloat(quote['52. low']) || 0,
       targetMeanPrice: 0,
       targetHighPrice: 0,
       targetLowPrice: 0,
@@ -98,43 +91,45 @@ export async function getStockSummary(
   const sym = symbol.toUpperCase();
 
   try {
-    const data = await fetchAV('OVERVIEW', sym);
+    const url = `${ALPHA_VANTAGE_BASE}?function=OVERVIEW&symbol=${sym}&apikey=${ALPHA_VANTAGE_KEY}`;
+    const response = await fetchWithTimeout(url);
 
-    if (!data || !data['Symbol']) {
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+
+    if (!data || data.Note || data.Information) {
       return null;
     }
 
     return {
-      marketCap: parseInt(data['MarketCapitalization'] || '0') * 1000000,
-      peRatio: parseFloat(data['PERatio'] || '0'),
-      pegRatio: parseFloat(data['PEGRatio'] || '0'),
-      epsTrailingTwelveMonths: parseFloat(data['EPS'] || '0'),
-      epsForward: 0,
-      beta: parseFloat(data['Beta'] || '0'),
-      dividendYield: parseFloat(data['DividendYield'] || '0') / 100,
-      dividendRate: parseFloat(data['DividendPerShare'] || '0'),
-      bookValue: parseFloat(data['BookValue'] || '0'),
-      priceToBook: parseFloat(data['PriceToBookRatio'] || '0'),
-      priceToSalesTrailingTwelveMonths: parseFloat(
-        data['PriceToSalesRatioTTM'] || '0',
-      ),
-      trailingAnnualDividendYield:
-        parseFloat(data['DividendYield'] || '0') / 100,
-      exDividendDate: data['ExDividendDate'] || '',
-      profitMargins: parseFloat(data['ProfitMargin'] || '0') / 100,
-      operatingMargins: parseFloat(data['OperatingMargin'] || '0') / 100,
-      returnOnAssets: parseFloat(data['ReturnOnAssets'] || '0') / 100,
-      returnOnEquity: parseFloat(data['ReturnOnEquity'] || '0') / 100,
-      grossProfits: parseFloat(data['GrossProfitTTM'] || '0'),
+      marketCap: parseInt(data.MarketCapitalization) * 1000000 || 0,
+      peRatio: parseFloat(data.PERatio) || 0,
+      pegRatio: parseFloat(data.PEGRatio) || 0,
+      epsTrailingTwelveMonths: parseFloat(data.EPSTTM) || 0,
+      epsForward: parseFloat(data.ForwardEPS) || 0,
+      beta: parseFloat(data.Beta) || 0,
+      dividendYield: parseFloat(data.DividendYield) || 0,
+      dividendRate: parseFloat(data.DividendRate) || 0,
+      bookValue: parseFloat(data.BookValue) || 0,
+      priceToBook: parseFloat(data.PriceToBookRatio) || 0,
+      priceToSalesTrailingTwelveMonths: parseFloat(data.PriceToSalesRatioTTM) || 0,
+      trailingAnnualDividendYield: parseFloat(data.DividendYield) || 0,
+      exDividendDate: data.ExDividendDate || '',
+      profitMargins: parseFloat(data.ProfitMargin) || 0,
+      operatingMargins: parseFloat(data.OperatingMargin) || 0,
+      returnOnAssets: parseFloat(data.ReturnOnAssets) || 0,
+      returnOnEquity: parseFloat(data.ReturnOnEquity) || 0,
+      grossProfits: parseFloat(data.GrossProfitTTM) || 0,
       totalCash: 0,
-      totalDebt: parseFloat(data['EVToDebt'] || '0') * 1000000,
-      totalRevenue: parseFloat(data['RevenueTTM'] || '0') * 1000000,
-      revenuePerShare: parseFloat(data['RevenuePerShareTTM'] || '0'),
-      revenueGrowth: parseFloat(data['RevenueGrowth'] || '0') / 100,
-      earningsGrowth: parseFloat(data['EPSGrowth'] || '0') / 100,
-      grossMargins:
-        parseFloat(data['GrossProfitTTM'] || '0') /
-        parseFloat(data['RevenueTTM'] || '1'),
+      totalDebt: 0,
+      totalRevenue: parseFloat(data.RevenueTTM) || 0,
+      revenuePerShare: parseFloat(data.RevenuePerShareTTM) || 0,
+      revenueGrowth: parseFloat(data.RevenueGrowth) || 0,
+      earningsGrowth: parseFloat(data.EarningsGrowth) || 0,
+      grossMargins: parseFloat(data.GrossProfitTTM) || 0,
       ebitdaMargins: 0,
       operatingCashflow: 0,
       freeCashflow: 0,
@@ -150,26 +145,33 @@ export async function getHistoricalData(
   const sym = symbol.toUpperCase();
 
   try {
-    const data = await fetchAV('TIME_SERIES_DAILY', sym, 'outputsize=compact');
+    const url = `${ALPHA_VANTAGE_BASE}?function=TIME_SERIES_DAILY&symbol=${sym}&outputsize=full&apikey=${ALPHA_VANTAGE_KEY}`;
+    const response = await fetchWithTimeout(url);
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = await response.json();
     const timeSeries = data['Time Series (Daily)'];
 
-    if (!timeSeries) return [];
+    if (!timeSeries) {
+      return [];
+    }
 
-    const dates = Object.keys(timeSeries).slice(0, 100).reverse();
+    const dates = Object.keys(timeSeries).slice(0, 365).reverse();
 
-    return dates
-      .map(date => {
-        const day = timeSeries[date];
-        return {
-          date,
-          close: parseFloat(day['4. close']) || 0,
-          high: parseFloat(day['2. high']) || 0,
-          low: parseFloat(day['3. low']) || 0,
-          open: parseFloat(day['1. open']) || 0,
-          volume: parseInt(day['5. volume']) || 0,
-        };
-      })
-      .filter(d => d.close > 0);
+    return dates.map((date) => {
+      const day = timeSeries[date];
+      return {
+        date,
+        close: parseFloat(day['4. close']),
+        high: parseFloat(day['2. high']),
+        low: parseFloat(day['3. low']),
+        open: parseFloat(day['1. open']),
+        volume: parseInt(day['5. volume']),
+      };
+    });
   } catch (e) {
     return [];
   }
@@ -178,33 +180,7 @@ export async function getHistoricalData(
 export async function getAnalystPriceTargets(
   symbol: string,
 ): Promise<AnalystPriceTarget | null> {
-  const sym = symbol.toUpperCase();
-
-  try {
-    const url = `${FINNHUB_BASE}/stock/price-target?symbol=${sym}&token=${FINNHUB_API_KEY}`;
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-
-    if (!data || !data.symbol || !data.targetMean) {
-      return null;
-    }
-
-    return {
-      symbol: data.symbol || sym,
-      targetMean: data.targetMean || 0,
-      targetHigh: data.targetHigh || 0,
-      targetLow: data.targetLow || 0,
-      targetMedian: data.targetMedian || 0,
-      numberOfAnalysts: data.numberOfAnalysts || 0,
-    };
-  } catch (e) {
-    return null;
-  }
+  return null;
 }
 
 export async function getStockData(symbol: string) {

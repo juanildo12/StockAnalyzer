@@ -1,0 +1,15 @@
+node_modules
+.git
+.venv
+__tests__
+android
+ios
+.vscode
+.idea
+*.log
+.env
+.env.local
+.DS_Store
+coverage
+.next
+.vercel
