@@ -20,6 +20,8 @@ export interface StockQuote {
   numberOfAnalystOpinions: number;
   marketCap: number;
   peRatio: number;
+  postMarketPrice?: number;
+  postMarketChange?: number;
 }
 
 export interface StockSummary {

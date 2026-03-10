@@ -16,43 +16,20 @@ export default function Home() {
 
     try {
       const sym = symbol.toUpperCase();
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=5d`;
-
-      const res = await fetch(url, {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          Accept: 'application/json',
-        },
-      });
+      const res = await fetch(`/api/stock?symbol=${sym}`);
 
       if (!res.ok) {
-        throw new Error('Error fetching data');
+        const err = await res.json();
+        throw new Error(err.error || 'Error fetching data');
       }
 
       const json = await res.json();
-      const result = json?.chart?.result?.[0];
 
-      if (!result) {
+      if (!json.quote) {
         throw new Error('Symbol not found');
       }
 
-      const meta = result.meta || {};
-
-      setData({
-        quote: {
-          symbol: meta.symbol || sym,
-          shortName: meta.shortName || sym,
-          longName: meta.longName || sym,
-          regularMarketPrice: meta.regularMarketPrice || 0,
-          regularMarketChange: meta.regularMarketChange || 0,
-          regularMarketChangePercent: meta.regularMarketChangePercent || 0,
-          regularMarketDayHigh: meta.regularMarketDayHigh || 0,
-          regularMarketDayLow: meta.regularMarketDayLow || 0,
-          fiftyTwoWeekHigh: meta.fiftyTwoWeekHigh || 0,
-          fiftyTwoWeekLow: meta.fiftyTwoWeekLow || 0,
-        },
-      });
+      setData(json);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -340,6 +317,60 @@ export default function Home() {
                   {quote.regularMarketVolume
                     ? `${(quote.regularMarketVolume / 1e6).toFixed(1)}M`
                     : 'N/A'}
+                </p>
+              </div>
+              <div
+                style={{
+                  background: '#0d1117',
+                  padding: '12px',
+                  borderRadius: '8px',
+                }}
+              >
+                <p
+                  style={{
+                    margin: '0 0 4px',
+                    fontSize: '12px',
+                    color: '#8b949e',
+                  }}
+                >
+                  Post Market
+                </p>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#f0f6fc',
+                  }}
+                >
+                  {quote.postMarketPrice ? `$${quote.postMarketPrice.toFixed(2)}` : 'N/A'}
+                </p>
+              </div>
+              <div
+                style={{
+                  background: '#0d1117',
+                  padding: '12px',
+                  borderRadius: '8px',
+                }}
+              >
+                <p
+                  style={{
+                    margin: '0 0 4px',
+                    fontSize: '12px',
+                    color: '#8b949e',
+                  }}
+                >
+                  Prev Close
+                </p>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#f0f6fc',
+                  }}
+                >
+                  ${quote.regularMarketPreviousClose?.toFixed(2) || 'N/A'}
                 </p>
               </div>
               <div
