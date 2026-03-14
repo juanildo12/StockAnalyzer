@@ -9,8 +9,8 @@ import type {
 
 const yf = new YahooFinance();
 
-const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || 'd6q9ts1r01qhcrmjerigd6q9ts1r01qhcrmjerj0';
-const ALPHA_VANTAGE_KEY = process.env.ALPHA_VANTAGE_KEY || 'H50P2K0ZWGXW6XW6';
+const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
+const ALPHA_VANTAGE_KEY = process.env.ALPHA_VANTAGE_KEY;
 
 const SYMBOL_MAP: Record<string, string> = {
   AAPL: 'Apple Inc',
