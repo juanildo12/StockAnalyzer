@@ -31,9 +31,14 @@ export const PortfolioList: React.FC<PortfolioListProps> = ({
   };
 
   const renderItem = ({ item }: { item: PortfolioItem }) => {
-    const price = item.analysis.quote.regularMarketPrice || 0;
-    const change = item.analysis.quote.regularMarketChangePercent || 0;
+    const price = item.analysis?.quote?.regularMarketPrice || item.purchasePrice || 0;
+    const change = item.analysis?.quote?.regularMarketChangePercent || 0;
     const isPositive = change >= 0;
+    
+    const invested = (item.purchasePrice || 0) * (item.shares || 1);
+    const currentValue = price * (item.shares || 1);
+    const profitLoss = currentValue - invested;
+    const profitLossPercent = invested > 0 ? (profitLoss / invested) * 100 : 0;
 
     return (
       <TouchableOpacity
@@ -43,24 +48,24 @@ export const PortfolioList: React.FC<PortfolioListProps> = ({
         <View style={styles.itemInfo}>
           <Text style={styles.symbol}>{item.symbol}</Text>
           <Text style={styles.name} numberOfLines={1}>
-            {item.analysis.quote.shortName ||
-              item.analysis.quote.longName ||
+            {item.analysis?.quote?.shortName ||
+              item.analysis?.quote?.longName ||
               item.symbol}
           </Text>
           <Text style={styles.date}>
-            Actualizado: {formatDate(item.lastPriceUpdate || item.addedAt)}
+            {item.shares} acciones @ ${item.purchasePrice?.toFixed(2) || '0.00'}
           </Text>
         </View>
         <View style={styles.priceInfo}>
-          <Text style={styles.price}>${price.toFixed(2)}</Text>
+          <Text style={styles.price}>${currentValue.toFixed(2)}</Text>
           <Text
             style={[
               styles.change,
-              { color: isPositive ? colors.accentGreen : colors.accentRed },
+              { color: profitLoss >= 0 ? colors.accentGreen : colors.accentRed },
             ]}
           >
-            {isPositive ? '+' : ''}
-            {change.toFixed(2)}%
+            {profitLoss >= 0 ? '+' : ''}
+            {profitLossPercent.toFixed(2)}% (${profitLoss.toFixed(2)})
           </Text>
         </View>
         <TouchableOpacity

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStockData } from '../../../src/services/yahooFinance';
 import { analyzeStock } from '../../../src/services/stockAnalysis';
 import { getAllSourceData, mergeWithYahooData } from '../../../src/services/dataSources';
+import { generateInformeDetail } from '../../../src/services/informeGenerator';
 
 export async function GET(request: NextRequest) {
   const symbol = request.nextUrl.searchParams.get('symbol');
@@ -33,16 +34,18 @@ export async function GET(request: NextRequest) {
     const summary = enhancedData.summary;
     const quote = enhancedData.quote;
 
+    // Debug: log summary keys if available
+    console.log('Summary keys:', summary ? Object.keys(summary) : 'null');
+    console.log('Profit margins in summary:', summary?.profitMargins);
+
     const totalCash = summary?.totalCash || 0;
     const totalDebt = summary?.totalDebt || 0;
-    const profitMargins = summary?.profitMargins || 0;
-    const revenueGrowth = summary?.revenueGrowth || 0;
+    const profitMargins = (summary?.profitMargins && summary.profitMargins > 0) ? summary.profitMargins : (quote?.profitMargins || 0.25);
+    const revenueGrowth = (summary?.revenueGrowth && summary.revenueGrowth > 0) ? summary.revenueGrowth : 0.15;
     const peRatio = quote.peRatio || summary?.peRatio || 0;
 
-    // Calculate avgProfitMargin - use Yahoo data directly
-    const avgProfitMargin = summary?.avgProfitMargin 
-      ? summary.avgProfitMargin * 100 
-      : profitMargins * 100 || 25; // Default to 25% if no data
+    // Calculate avgProfitMargin - use Yahoo data directly (already in percentage)
+    const avgProfitMargin = summary?.avgProfitMargin || profitMargins * 100 || 25;
 
     // Calculate revenueGrowth manually if it's 0 - use growth from Yahoo data
     const calculatedRevenueGrowth = revenueGrowth > 0 
@@ -68,6 +71,21 @@ export async function GET(request: NextRequest) {
     const stopLoss = currentPrice * 0.85;
 
     const technical = enhancedData.technical;
+
+    let informeDetail = null;
+    try {
+      informeDetail = generateInformeDetail({
+        ticker: sym,
+        quote: enhancedData.quote,
+        summary: enhancedData.summary,
+        priceTarget: enhancedData.priceTarget,
+        recommendation: analysis.recommendation,
+        multiSourceData: multiSourceData,
+      });
+    } catch (error) {
+      console.error('Error generating informeDetail:', error);
+      informeDetail = null;
+    }
 
     return NextResponse.json({
       quote,
@@ -100,6 +118,7 @@ export async function GET(request: NextRequest) {
         peClassification: analysis.fundamentals.principle1.description,
         cashClassification: analysis.fundamentals.principle2.description,
         debtClassification: analysis.fundamentals.principle2.description,
+        totalRevenue: summary?.totalRevenue || 0,
       },
       priceTarget: enhancedData.priceTarget,
       technical,
@@ -107,6 +126,7 @@ export async function GET(request: NextRequest) {
       recommendation: analysis.recommendation,
       discountScore: analysis.discountScore,
       multiSource: multiSourceData,
+      informeDetail,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
