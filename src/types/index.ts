@@ -1,3 +1,63 @@
+export interface TechnicalAnalysis {
+  rsi: number;
+  sma50: number;
+  sma200: number;
+  currentPrice: number;
+  trend: 'alcista' | 'bajista' | 'lateral';
+  support: number;
+  resistance: number;
+  signal: 'comprar' | 'vender' | 'neutral';
+}
+
+export interface HistoricalData {
+  date: string;
+  close: number;
+  high: number;
+  low: number;
+  open: number;
+  volume: number;
+}
+
+export interface AnalystPriceTarget {
+  symbol: string;
+  targetMean: number;
+  targetHigh: number;
+  targetLow: number;
+  targetMedian: number;
+  numberOfAnalysts: number;
+}
+
+export interface PortfolioTransaction {
+  id?: number;
+  symbol: string;
+  type: 'compra' | 'venta';
+  shares: number;
+  pricePerShare: number;
+  totalValue: number;
+  date: string;
+  notes?: string;
+}
+
+export interface PortfolioPosition {
+  id?: number;
+  symbol: string;
+  purchasePrice: number;
+  shares: number;
+  purchaseDate: string;
+  currentPrice?: number;
+  currentValue?: number;
+  profitLoss?: number;
+  profitLossPercent?: number;
+}
+
+export interface PortfolioSummary {
+  totalInvested: number;
+  currentValue: number;
+  totalProfitLoss: number;
+  totalProfitLossPercent: number;
+  positions: PortfolioPosition[];
+}
+
 export interface StockQuote {
   symbol: string;
   shortName: string;
@@ -39,6 +99,7 @@ export interface StockSummary {
   trailingAnnualDividendYield: number;
   exDividendDate: string;
   profitMargins: number;
+  avgProfitMargin?: number;
   operatingMargins: number;
   returnOnAssets: number;
   returnOnEquity: number;
@@ -55,30 +116,13 @@ export interface StockSummary {
   freeCashflow: number;
 }
 
-export interface HistoricalData {
-  date: string;
-  close: number;
-  high: number;
-  low: number;
-  open: number;
-  volume: number;
-}
-
-export interface AnalystPriceTarget {
-  symbol: string;
-  targetMean: number;
-  targetHigh: number;
-  targetLow: number;
-  targetMedian: number;
-  numberOfAnalysts: number;
-}
-
 export interface StockAnalysis {
   quote: StockQuote;
   summary: StockSummary | null;
   historical: HistoricalData[];
   priceTarget: AnalystPriceTarget | null;
   fundamentals: FundamentalsAnalysis;
+  technical: TechnicalAnalysis | null;
   discountScore: number;
   recommendation: Recommendation;
 }
@@ -120,6 +164,79 @@ export interface PortfolioItem {
   addedAt: string;
   lastPriceUpdate?: string;
   analysis: StockAnalysis;
+  purchasePrice?: number;
+  shares?: number;
 }
 
 export type LoadingState = 'idle' | 'loading' | 'success' | 'error';
+
+export interface TipRanksData {
+  symbol: string;
+  companyName: string;
+  analystConsensus: string;
+  priceTarget: number;
+  highTarget: number;
+  lowTarget: number;
+  numberOfAnalysts: number;
+  smartScore: number;
+  buyCount: number;
+  holdCount: number;
+  sellCount: number;
+  upside: number;
+  lastUpdated: string;
+}
+
+export interface MacrotrendsData {
+  symbol: string;
+  profitMargins: {
+    year: number;
+    value: number;
+  }[];
+  peRatioHistory: {
+    date: string;
+    value: number;
+  }[];
+}
+
+export interface MarketBeatData {
+  symbol: string;
+  consensusRating: string;
+  averagePriceTarget: number;
+  highPriceTarget: number;
+  lowPriceTarget: number;
+  numberOfAnalysts: number;
+  buyRatings: number;
+  holdRatings: number;
+  sellRatings: number;
+  lastUpdated: string;
+}
+
+export interface CircleUSDCData {
+  symbol: string;
+  totalCirculation: number;
+  lastUpdated: string;
+}
+
+export interface GuruFocusData {
+  symbol: string;
+  peRatio: number;
+  pegRatio: number;
+  profitMargin: number;
+  operatingMargin: number;
+  returnOnEquity: number;
+  returnOnAssets: number;
+  debtToEquity: number;
+  priceToBook: number;
+  priceToSales: number;
+  grahamNumber: number;
+  dividendYield: number;
+}
+
+export interface MultiSourceData {
+  tipranks?: TipRanksData;
+  macrotrends?: MacrotrendsData;
+  marketbeat?: MarketBeatData;
+  circle?: CircleUSDCData;
+  gurufocus?: GuruFocusData;
+  sources: string[];
+}
