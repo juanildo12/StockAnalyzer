@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getStockData } from '../../../src/services/yahooFinance';
+import { analyzeStock } from '../../../src/services/stockAnalysis';
+import { getAllSourceData, mergeWithYahooData } from '../../../src/services/dataSources';
 
 export async function GET(request: NextRequest) {
   const symbol = request.nextUrl.searchParams.get('symbol');
@@ -17,76 +19,94 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: `Ticker "${sym}" no encontrado` }, { status: 404 });
     }
 
-    const currentPrice = data.quote.regularMarketPrice;
-    const marketCap = data.quote.marketCap || 0;
-    const peRatio = data.quote.peRatio || data.summary?.peRatio || 0;
-    const totalCash = data.summary?.totalCash || 0;
-    const totalDebt = data.summary?.totalDebt || 0;
-    const profitMargin = data.summary?.profitMargins || 0;
-    const revenueGrowth = data.summary?.revenueGrowth || 0;
+    const multiSourceData = await getAllSourceData(sym);
+    const enhancedData = mergeWithYahooData(data, multiSourceData);
 
-    const sharesOutstanding = marketCap / currentPrice;
-    const avgPe6Months = peRatio * (0.85 + Math.random() * 0.3);
-    const revenue2024 = 300000000000 + Math.random() * 200000000000;
-    const revenue2025 = revenue2024 * (1 + revenueGrowth);
-    const earnings2024 = revenue2024 * profitMargin;
-    const projectedMarketCap = earnings2024 * avgPe6Months;
-    const projectedPrice = projectedMarketCap / sharesOutstanding;
-    const potentialReturn = ((projectedPrice - currentPrice) / currentPrice) * 100;
+    const analysis = analyzeStock(
+      enhancedData.quote,
+      enhancedData.summary,
+      enhancedData.historical,
+      enhancedData.priceTarget,
+      enhancedData.technical
+    );
 
-    const buyZoneLow = currentPrice * 0.85;
-    const buyZoneHigh = currentPrice * 0.95;
-    const target1 = currentPrice * 1.15;
-    const target2 = currentPrice * 1.3;
-    const stopLoss = currentPrice * 0.8;
+    const summary = enhancedData.summary;
+    const quote = enhancedData.quote;
 
-    let peClassification = 'Conservative';
-    if (peRatio >= 20 && peRatio < 40) peClassification = 'Crecimiento Medio';
-    if (peRatio >= 40) peClassification = 'Alto Crecimiento';
+    const totalCash = summary?.totalCash || 0;
+    const totalDebt = summary?.totalDebt || 0;
+    const profitMargins = summary?.profitMargins || 0;
+    const revenueGrowth = summary?.revenueGrowth || 0;
+    const peRatio = quote.peRatio || summary?.peRatio || 0;
 
-    let cashClassification = 'Excelente';
-    const debtToCash = totalDebt / totalCash;
-    if (debtToCash > 2) cashClassification = 'Malo';
-    else if (debtToCash > 1) cashClassification = 'Adecuado';
+    // Calculate avgProfitMargin - use Yahoo data directly
+    const avgProfitMargin = summary?.avgProfitMargin 
+      ? summary.avgProfitMargin * 100 
+      : profitMargins * 100 || 25; // Default to 25% if no data
 
-    let debtClassification = 'Excelente';
-    if (totalDebt > totalCash * 2) debtClassification = 'Malo';
-    else if (totalDebt > totalCash) debtClassification = 'Adecuado';
+    // Calculate revenueGrowth manually if it's 0 - use growth from Yahoo data
+    const calculatedRevenueGrowth = revenueGrowth > 0 
+      ? revenueGrowth * 100 
+      : 15; // Default to 15% if no data
+    const debtToCash = totalCash > 0 ? totalDebt / totalCash : 0;
+    const avgPe6Months = peRatio > 0 ? peRatio * 0.95 : 20;
+    
+    const marketCap = quote.marketCap || 0;
+    const currentPrice = quote.regularMarketPrice || 0;
+    const sharesOutstanding = marketCap > 0 && currentPrice > 0 ? marketCap / currentPrice : 0;
+    
+    const revenueLastYear = summary?.totalRevenue || marketCap * 0.3;
+    const earningsLastYear = revenueLastYear * profitMargins;
+    const projectedMarketCap = earningsLastYear * avgPe6Months;
+    const projectedPrice = sharesOutstanding > 0 ? projectedMarketCap / sharesOutstanding : currentPrice * 1.15;
+    const potentialReturn = currentPrice > 0 ? ((projectedPrice - currentPrice) / currentPrice) * 100 : 0;
 
-    let verdict = 'MANTENER';
-    if (potentialReturn > 20) verdict = 'COMPRAR';
-    else if (potentialReturn < -10) verdict = 'VENDER';
+    const buyZoneLow = currentPrice * 0.9;
+    const buyZoneHigh = currentPrice * 0.97;
+    const target1 = enhancedData.priceTarget?.targetMean || projectedPrice * 1.15;
+    const target2 = target1 * 1.25;
+    const stopLoss = currentPrice * 0.85;
+
+    const technical = enhancedData.technical;
 
     return NextResponse.json({
-      quote: data.quote,
-      historical: data.historical,
+      quote,
+      historical: enhancedData.historical,
       summary: {
         totalCash,
         totalDebt,
         debtToCash,
-        profitMargin,
+        profitMargins,
+        profitMarginsPercent: profitMargins * 100 || 25,
+        avgProfitMargin,
         revenueGrowth,
-        revenuePerShare: data.summary?.revenuePerShare || 0,
+        revenueGrowthPercent: calculatedRevenueGrowth,
+        revenuePerShare: summary?.revenuePerShare || 0,
+        revenueLastYear,
         sharesOutstanding,
         peRatio,
         avgPe6Months,
-        avgProfitMargin: profitMargin,
-        revenue2024,
-        revenue2025,
         projectedPrice,
         potentialReturn,
-        targetMeanPrice: data.quote.targetMeanPrice,
+        targetMeanPrice: quote.targetMeanPrice,
+        targetHighPrice: quote.targetHighPrice,
+        targetLowPrice: quote.targetLowPrice,
         buyZoneLow,
         buyZoneHigh,
         target1,
         target2,
         stopLoss,
-        verdict,
-        peClassification,
-        cashClassification,
-        debtClassification,
+        verdict: analysis.recommendation.action,
+        peClassification: analysis.fundamentals.principle1.description,
+        cashClassification: analysis.fundamentals.principle2.description,
+        debtClassification: analysis.fundamentals.principle2.description,
       },
-      priceTarget: data.priceTarget,
+      priceTarget: enhancedData.priceTarget,
+      technical,
+      fundamentals: analysis.fundamentals,
+      recommendation: analysis.recommendation,
+      discountScore: analysis.discountScore,
+      multiSource: multiSourceData,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
