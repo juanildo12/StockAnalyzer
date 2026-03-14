@@ -63,13 +63,13 @@ export function usePortfolio() {
     }
   }, [portfolio]);
 
-  const addToPortfolio = useCallback((analysis: StockAnalysis) => {
+  const addToPortfolio = useCallback((analysis: StockAnalysis, purchasePrice?: number, shares?: number) => {
     const symbol = analysis.quote.symbol;
     setPortfolio(prev => {
       if (prev.some(item => item.symbol === symbol)) {
         return prev.map(item =>
           item.symbol === symbol
-            ? { ...item, analysis, addedAt: new Date().toISOString() }
+            ? { ...item, analysis, addedAt: new Date().toISOString(), purchasePrice, shares }
             : item,
         );
       }
@@ -79,6 +79,8 @@ export function usePortfolio() {
           symbol,
           addedAt: new Date().toISOString(),
           analysis,
+          purchasePrice,
+          shares,
         },
       ];
     });

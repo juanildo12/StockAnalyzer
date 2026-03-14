@@ -4,6 +4,7 @@ export const colors = {
   accentGreen: '#2ECC71',
   accentRed: '#E74C3C',
   accentYellow: '#F39C12',
+  accentBlue: '#3498DB',
   textPrimary: '#FFFFFF',
   textSecondary: '#8892B0',
   border: '#2D3A4F',

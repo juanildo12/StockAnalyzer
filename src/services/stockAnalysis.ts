@@ -7,6 +7,7 @@ import type {
   FundamentalsAnalysis,
   PrincipleResult,
   Recommendation,
+  TechnicalAnalysis,
 } from '../types';
 
 const SP500_DIVIDEND_YIELD = 0.014;
@@ -572,6 +573,7 @@ export function analyzeStock(
   summary: StockSummary | null,
   historical: HistoricalData[],
   priceTarget: AnalystPriceTarget | null,
+  technical: TechnicalAnalysis | null,
 ): StockAnalysis {
   const fundamentals: FundamentalsAnalysis = {
     principle1: analyzePrinciple1(quote, summary),
@@ -599,6 +601,7 @@ export function analyzeStock(
     historical,
     priceTarget,
     fundamentals,
+    technical,
     discountScore,
     recommendation,
   };

@@ -80,6 +80,9 @@ export interface StockQuote {
   numberOfAnalystOpinions: number;
   marketCap: number;
   peRatio: number;
+  sector?: string;
+  industry?: string;
+  businessSummary?: string;
   postMarketPrice?: number;
   postMarketChange?: number;
 }
