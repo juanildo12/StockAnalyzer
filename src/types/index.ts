@@ -171,6 +171,19 @@ export interface PortfolioItem {
   shares?: number;
 }
 
+export interface WatchlistItem {
+  symbol: string;
+  addedAt: string;
+  lastPriceUpdate?: string;
+  notes?: string;
+  alertPrice?: number;
+  alertType?: 'above' | 'below';
+  alertEnabled: boolean;
+  analysis?: StockAnalysis;
+  currentPrice?: number;
+  changePercent?: number;
+}
+
 export type LoadingState = 'idle' | 'loading' | 'success' | 'error';
 
 export interface TipRanksData {

@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../utils/theme';
 import { useStockAnalysis } from '../hooks/useStockAnalysis';
 import { usePortfolio } from '../hooks/usePortfolio';
+import { useWatchlist } from '../hooks/useWatchlist';
 import { StockHeader } from '../components/StockHeader';
 import { MetricsGrid } from '../components/MetricsGrid';
 import { AnalysisTable } from '../components/AnalysisTable';
@@ -23,9 +24,10 @@ import { RecommendationCard } from '../components/RecommendationCard';
 import { PriceChart } from '../components/PriceChart';
 import { DiscountScore } from '../components/DiscountScore';
 import { PortfolioList } from '../components/PortfolioList';
+import { WatchlistCard } from '../components/WatchlistCard';
 import { InformeView } from '../components/InformeView';
 
-type ViewMode = 'analyzer' | 'portfolio' | 'informe';
+type ViewMode = 'analyzer' | 'portfolio' | 'watchlist' | 'informe';
 
 export const HomeScreen: React.FC = () => {
   const [view, setView] = useState<ViewMode>('analyzer');
@@ -42,6 +44,16 @@ export const HomeScreen: React.FC = () => {
     refreshPrices,
     isRefreshing,
   } = usePortfolio();
+  const {
+    watchlist,
+    addToWatchlist,
+    removeFromWatchlist,
+    updateNotes,
+    setAlert,
+    isInWatchlist,
+    refreshPrices: refreshWatchlistPrices,
+    isRefreshing: isWatchlistRefreshing,
+  } = useWatchlist();
 
   const handleSearch = async () => {
     if (symbol.trim()) {
@@ -74,6 +86,9 @@ export const HomeScreen: React.FC = () => {
     setView(newView);
     if (newView === 'portfolio' && portfolio.length > 0) {
       refreshPrices();
+    }
+    if (newView === 'watchlist' && watchlist.length > 0) {
+      refreshWatchlistPrices();
     }
   };
 
@@ -127,6 +142,19 @@ export const HomeScreen: React.FC = () => {
               ]}
             >
               Portafolio ({portfolio.length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.navBtn, view === 'watchlist' && styles.navBtnActive]}
+            onPress={() => handleViewChange('watchlist')}
+          >
+            <Text
+              style={[
+                styles.navText,
+                view === 'watchlist' && styles.navTextActive,
+              ]}
+            >
+              Watchlist ({watchlist.length})
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -216,6 +244,25 @@ export const HomeScreen: React.FC = () => {
                     {isInPortfolio(analysis.quote.symbol)
                       ? '✓ Ya está en el portafolio'
                       : '+ Agregar al portafolio'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.watchlistBtn,
+                    isInWatchlist(analysis.quote.symbol) &&
+                      styles.addBtnDisabled,
+                  ]}
+                  onPress={() => {
+                    if (!isInWatchlist(analysis.quote.symbol)) {
+                      addToWatchlist(analysis);
+                    }
+                  }}
+                  disabled={isInWatchlist(analysis.quote.symbol)}
+                >
+                  <Text style={styles.watchlistBtnText}>
+                    {isInWatchlist(analysis.quote.symbol)
+                      ? '✓ Ya está en watchlist'
+                      : '⭐ Agregar al Watchlist'}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -434,6 +481,44 @@ export const HomeScreen: React.FC = () => {
             </View>
           )}
         </ScrollView>
+      ) : view === 'watchlist' ? (
+        <View style={styles.portfolioContainer}>
+          <Text style={styles.title}>⭐ Mi Watchlist</Text>
+          <Text style={styles.subtitle}>Acciones en seguimiento sin inversión</Text>
+          
+          {isWatchlistRefreshing && (
+            <View style={styles.refreshing}>
+              <ActivityIndicator size="small" color={colors.accentGreen} />
+              <Text style={styles.refreshingText}>Actualizando precios...</Text>
+            </View>
+          )}
+          
+          {watchlist.length === 0 ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyIcon}>⭐</Text>
+              <Text style={styles.emptyText}>
+                No tienes acciones en tu watchlist
+              </Text>
+              <Text style={styles.emptyHint}>Analiza una acción y agrégala al watchlist</Text>
+            </View>
+          ) : (
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {watchlist.map(item => (
+                <WatchlistCard
+                  key={item.symbol}
+                  item={item}
+                  onSelect={(symbol) => {
+                    analyze(symbol);
+                    setView('analyzer');
+                  }}
+                  onRemove={removeFromWatchlist}
+                  onUpdateNotes={updateNotes}
+                  onSetAlert={setAlert}
+                />
+              ))}
+            </ScrollView>
+          )}
+        </View>
       ) : (
         <View style={styles.portfolioContainer}>
           <Text style={styles.title}>Mi Portafolio</Text>
@@ -655,6 +740,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
+  watchlistBtn: {
+    backgroundColor: colors.accentBlue + '20',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: colors.accentBlue,
+  },
+  watchlistBtnText: {
+    color: colors.accentBlue,
+    fontWeight: '600',
+    fontSize: 14,
+  },
   scoreSection: {
     marginBottom: 32,
   },
@@ -666,8 +765,28 @@ const styles = StyleSheet.create({
     fontSize: 64,
     marginBottom: 16,
   },
-  emptyText: {
+emptyText: {
     fontSize: 16,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  emptyHint: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 8,
+  },
+  refreshing: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    backgroundColor: colors.secondary,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  refreshingText: {
+    marginLeft: 8,
+    fontSize: 14,
     color: colors.textSecondary,
   },
   portfolioContainer: {

@@ -84,3 +84,57 @@ export async function removePortfolioItem(userId: string, symbol: string): Promi
   await savePortfolioToFirestore(userId, filtered);
   return filtered;
 }
+
+export interface WatchlistItem {
+  symbol: string;
+  addedAt: string;
+  notes?: string;
+  alertPrice?: number;
+  alertType?: 'above' | 'below';
+  alertEnabled: boolean;
+}
+
+export async function saveWatchlistToFirestore(userId: string, watchlist: WatchlistItem[]): Promise<void> {
+  const userDocRef = doc(db, "watchlists", userId);
+  await setDoc(userDocRef, { watchlist, updatedAt: new Date().toISOString() });
+}
+
+export async function getWatchlistFromFirestore(userId: string): Promise<WatchlistItem[]> {
+  const userDocRef = doc(db, "watchlists", userId);
+  const docSnap = await getDoc(userDocRef);
+  
+  if (docSnap.exists()) {
+    return docSnap.data().watchlist || [];
+  }
+  return [];
+}
+
+export async function addWatchlistItem(userId: string, item: WatchlistItem): Promise<WatchlistItem[]> {
+  const watchlist = await getWatchlistFromFirestore(userId);
+  
+  if (!watchlist.some(w => w.symbol === item.symbol)) {
+    watchlist.push(item);
+    await saveWatchlistToFirestore(userId, watchlist);
+  }
+  
+  return watchlist;
+}
+
+export async function updateWatchlistItem(userId: string, symbol: string, updates: Partial<WatchlistItem>): Promise<WatchlistItem[]> {
+  const watchlist = await getWatchlistFromFirestore(userId);
+  const index = watchlist.findIndex(w => w.symbol === symbol);
+  
+  if (index >= 0) {
+    watchlist[index] = { ...watchlist[index], ...updates };
+    await saveWatchlistToFirestore(userId, watchlist);
+  }
+  
+  return watchlist;
+}
+
+export async function removeWatchlistItem(userId: string, symbol: string): Promise<WatchlistItem[]> {
+  const watchlist = await getWatchlistFromFirestore(userId);
+  const filtered = watchlist.filter(w => w.symbol !== symbol);
+  await saveWatchlistToFirestore(userId, filtered);
+  return filtered;
+}
