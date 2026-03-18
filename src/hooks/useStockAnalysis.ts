@@ -26,7 +26,8 @@ export function useStockAnalysis() {
         data.summary,
         data.historical,
         data.priceTarget,
-        data.technical
+        data.technical,
+        data.fcfHistory || []
       );
       setAnalysis(stockAnalysis);
       setLoading('success');

@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
       enhancedData.summary,
       enhancedData.historical,
       enhancedData.priceTarget,
-      enhancedData.technical
+      enhancedData.technical,
+      data.fcfHistory || []
     );
 
     const summary = enhancedData.summary;
@@ -119,6 +120,8 @@ export async function GET(request: NextRequest) {
         cashClassification: analysis.fundamentals.principle2.description,
         debtClassification: analysis.fundamentals.principle2.description,
         totalRevenue: summary?.totalRevenue || 0,
+        freeCashflow: summary?.freeCashflow || 0,
+        marketCap,
       },
       priceTarget: enhancedData.priceTarget,
       technical,

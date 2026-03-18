@@ -25,6 +25,7 @@ export interface AnalystPriceTarget {
   targetLow: number;
   targetMedian: number;
   numberOfAnalysts: number;
+  targetCount?: number;
 }
 
 export interface PortfolioTransaction {
@@ -130,6 +131,11 @@ export interface StockAnalysis {
   recommendation: Recommendation;
 }
 
+export interface FCFHistoryData {
+  year: number;
+  freeCashFlow: number;
+}
+
 export interface FundamentalsAnalysis {
   principle1: PrincipleResult;
   principle2: PrincipleResult;
@@ -140,6 +146,7 @@ export interface FundamentalsAnalysis {
   principle7: PrincipleResult;
   principle8: PrincipleResult;
   principle9: PrincipleResult;
+  principle10: PrincipleResult;
 }
 
 export interface PrincipleResult {

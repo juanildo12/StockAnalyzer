@@ -8,6 +8,7 @@ import type {
   PrincipleResult,
   Recommendation,
   TechnicalAnalysis,
+  FCFHistoryData,
 } from '../types';
 
 const SP500_DIVIDEND_YIELD = 0.014;
@@ -466,6 +467,67 @@ function analyzePrinciple9(
   };
 }
 
+function analyzePrinciple10(
+  summary: StockSummary | null,
+  fcfHistory: FCFHistoryData[],
+): PrincipleResult {
+  const currentFCF = summary?.freeCashflow || 0;
+  const marketCap = summary?.marketCap || 1;
+  
+  const formatMoney = (value: number): string => {
+    if (Math.abs(value) >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
+    if (Math.abs(value) >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+    if (Math.abs(value) >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+    return `$${value.toLocaleString()}`;
+  };
+
+  let fcfYield = 0;
+  if (marketCap > 0 && currentFCF !== 0) {
+    fcfYield = (currentFCF / marketCap) * 100;
+  }
+
+  let fcfGrowthPercent = 0;
+  let growthClassification = 'Sin datos';
+  
+  if (fcfHistory.length >= 2) {
+    const oldestFCF = fcfHistory[0].freeCashFlow;
+    const latestFCF = fcfHistory[fcfHistory.length - 1].freeCashFlow;
+    
+    if (oldestFCF > 0) {
+      fcfGrowthPercent = ((latestFCF - oldestFCF) / oldestFCF) * 100;
+      
+      if (fcfGrowthPercent >= 15) {
+        growthClassification = 'Excelente';
+      } else if (fcfGrowthPercent >= 5) {
+        growthClassification = 'Adecuado';
+      } else if (fcfGrowthPercent > 0) {
+        growthClassification = 'Bajo';
+      } else {
+        growthClassification = 'Negativo';
+      }
+    }
+  }
+
+  const yearsAnalyzed = fcfHistory.length > 0 
+    ? `${fcfHistory[0]?.year || 'N/A'}-${fcfHistory[fcfHistory.length - 1]?.year || 'N/A'}`
+    : 'Sin datos';
+
+  const fcfHistoryStr = fcfHistory.length > 0
+    ? fcfHistory.map(d => `${d.year}: ${formatMoney(d.freeCashFlow)}`).join(' | ')
+    : 'Sin historial';
+
+  const isInDiscount = fcfYield >= 3 && fcfGrowthPercent >= 5;
+
+  return {
+    name: '🔟 Free Cash Flow',
+    description: `Yield: ${fcfYield.toFixed(1)}% | Crecimiento: ${growthClassification}`,
+    value: fcfYield,
+    threshold: 3,
+    isInDiscount,
+    details: `FCF Actual: ${formatMoney(currentFCF)} | Yield: ${fcfYield.toFixed(1)}% | Crec ${yearsAnalyzed}: ${fcfGrowthPercent > 0 ? '+' : ''}${fcfGrowthPercent.toFixed(1)}% | ${fcfHistoryStr}`,
+  };
+}
+
 function fundamentalsToScore(
   quote: StockQuote,
   summary: StockSummary | null,
@@ -533,21 +595,21 @@ function generateRecommendation(
   let reasoning: string;
   let summaryText: string;
 
-  if (score >= 5) {
+  if (score >= 6) {
     action = 'COMPRAR';
     confidence = Math.min(95, 60 + score * 5);
-    reasoning = `${score}/9 principios favorables. La acción tiene buenos fundamentos.`;
-    summaryText = `Score: ${score}/9 - Acción subvalorada.`;
-  } else if (score >= 3) {
+    reasoning = `${score}/10 principios favorables. La acción tiene buenos fundamentos.`;
+    summaryText = `Score: ${score}/10 - Acción subvalorada.`;
+  } else if (score >= 4) {
     action = 'MANTENER';
     confidence = Math.min(85, 50 + score * 5);
-    reasoning = `${score}/9 principios favorables. Análisis mixto.`;
-    summaryText = `Score: ${score}/9 - Acción valorada correctamente.`;
+    reasoning = `${score}/10 principios favorables. Análisis mixto.`;
+    summaryText = `Score: ${score}/10 - Acción valorada correctamente.`;
   } else {
     action = 'VENDER';
-    confidence = Math.min(90, 50 + (9 - score) * 5);
-    reasoning = `Solo ${score}/9 principios favorables. Fundamentos débiles.`;
-    summaryText = `Score: ${score}/9 - Acción sobrevalorada.`;
+    confidence = Math.min(90, 50 + (10 - score) * 5);
+    reasoning = `Solo ${score}/10 principios favorables. Fundamentos débiles.`;
+    summaryText = `Score: ${score}/10 - Acción sobrevalorada.`;
   }
 
   if (change < -5) {
@@ -574,6 +636,7 @@ export function analyzeStock(
   historical: HistoricalData[],
   priceTarget: AnalystPriceTarget | null,
   technical: TechnicalAnalysis | null,
+  fcfHistory: FCFHistoryData[] = [],
 ): StockAnalysis {
   const fundamentals: FundamentalsAnalysis = {
     principle1: analyzePrinciple1(quote, summary),
@@ -585,6 +648,7 @@ export function analyzeStock(
     principle7: analyzePrinciple7(quote, summary, priceTarget),
     principle8: analyzePrinciple8(quote, summary, priceTarget),
     principle9: analyzePrinciple9(quote, historical),
+    principle10: analyzePrinciple10(summary, fcfHistory),
   };
 
   const discountScore = calculateDiscountScore(fundamentals);

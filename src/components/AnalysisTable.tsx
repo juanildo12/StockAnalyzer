@@ -17,6 +17,8 @@ export const AnalysisTable: React.FC<AnalysisTableProps> = ({ fundamentals }) =>
     fundamentals.principle6,
     fundamentals.principle7,
     fundamentals.principle8,
+    fundamentals.principle9,
+    fundamentals.principle10,
   ];
 
   const formatValue = (value: number, label: string): string => {

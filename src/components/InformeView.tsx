@@ -247,6 +247,37 @@ export const InformeView: React.FC<InformeViewProps> = ({ analysis }) => {
         </Text>
       </View>
 
+      {/* 8. Free Cash Flow */}
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>8. Free Cash Flow (FCF)</Text>
+        <View style={styles.table}>
+          <View style={styles.tableRow}>
+            <Text style={styles.tableLabel}>FCF Actual</Text>
+            <Text style={[styles.tableValue, { color: (summary?.freeCashflow || 0) >= 0 ? colors.accentGreen : colors.accentRed }]}>
+              {formatNumber(summary?.freeCashflow || 0)}
+            </Text>
+          </View>
+          <View style={styles.tableRow}>
+            <Text style={styles.tableLabel}>FCF Yield</Text>
+            <Text style={styles.tableValue}>
+              {marketCap > 0 ? ((summary?.freeCashflow || 0) / marketCap * 100).toFixed(2) : '0.00'}%
+            </Text>
+          </View>
+          <View style={styles.tableRow}>
+            <Text style={styles.tableLabel}>Crecimiento Histórico</Text>
+            <Text style={[styles.tableValue, { color: fundamentals.principle10?.value >= 3 ? colors.accentGreen : colors.accentRed }]}>
+              {fundamentals.principle10?.description?.includes('Excelente') ? 'Excelente' : 
+               fundamentals.principle10?.description?.includes('Adecuado') ? 'Adecuado' :
+               fundamentals.principle10?.description?.includes('Bajo') ? 'Bajo' :
+               fundamentals.principle10?.description?.includes('Negativo') ? 'Negativo' : 'Sin datos'}
+            </Text>
+          </View>
+        </View>
+        <Text style={styles.detailsText}>
+          {fundamentals.principle10?.details || 'FCF = Cash operacional - inversiones de capital. Un FCF positivo y creciente indica buena salud financiera.'}
+        </Text>
+      </View>
+
       {/* Análisis Fundamental - Tabla Resumen */}
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>📊 Análisis Fundamental (Tabla Resumen)</Text>
@@ -286,6 +317,16 @@ export const InformeView: React.FC<InformeViewProps> = ({ analysis }) => {
           <View style={styles.tableRow}>
             <Text style={styles.tableLabel}>52W Low</Text>
             <Text style={styles.tableValue}>${(quote.fiftyTwoWeekLow || 0).toFixed(2)}</Text>
+          </View>
+          <View style={styles.tableRow}>
+            <Text style={styles.tableLabel}>Free Cash Flow</Text>
+            <Text style={styles.tableValue}>{formatNumber(summary?.freeCashflow || 0)}</Text>
+          </View>
+          <View style={styles.tableRow}>
+            <Text style={styles.tableLabel}>FCF Yield</Text>
+            <Text style={styles.tableValue}>
+              {marketCap > 0 ? ((summary?.freeCashflow || 0) / marketCap * 100).toFixed(2) : '0.00'}%
+            </Text>
           </View>
         </View>
       </View>

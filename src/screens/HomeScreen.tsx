@@ -325,6 +325,18 @@ export const HomeScreen: React.FC = () => {
                       <Text style={styles.tableLabel}>Retorno %</Text>
                       <Text style={[styles.tableValue, { color: 15 > 0 ? colors.accentGreen : colors.accentRed }]}>+15.00%</Text>
                     </View>
+                    <View style={styles.tableRow}>
+                      <Text style={styles.tableLabel}>Free Cash Flow</Text>
+                      <Text style={styles.tableValue}>{formatNumber(analysis.summary.freeCashflow || 0)}</Text>
+                    </View>
+                    <View style={styles.tableRow}>
+                      <Text style={styles.tableLabel}>FCF Yield</Text>
+                      <Text style={styles.tableValue}>
+                        {analysis.summary.marketCap > 0 
+                          ? ((analysis.summary.freeCashflow || 0) / analysis.summary.marketCap * 100).toFixed(2)
+                          : '0.00'}%
+                      </Text>
+                    </View>
                   </View>
                 )}
               </View>

@@ -18,6 +18,58 @@ const googleProvider = new GoogleAuthProvider();
 
 export { db, auth, googleProvider };
 
+export async function saveUserEmail(userId: string, email: string): Promise<void> {
+  const userDocRef = doc(db, "users", userId);
+  await setDoc(userDocRef, { email, updatedAt: new Date().toISOString() });
+}
+
+export async function getUserEmail(userId: string): Promise<string | null> {
+  const userDocRef = doc(db, "users", userId);
+  const docSnap = await getDoc(userDocRef);
+  if (docSnap.exists()) {
+    return docSnap.data().email || null;
+  }
+  return null;
+}
+
+export async function getAllWatchlistUsers(): Promise<{ userId: string; email: string }[]> {
+  const usersRef = collection(db, "users");
+  const snapshot = await getDocs(usersRef);
+  const users: { userId: string; email: string }[] = [];
+  snapshot.forEach((doc) => {
+    const data = doc.data();
+    if (data.email) {
+      users.push({ userId: doc.id, email: data.email });
+    }
+  });
+  return users;
+}
+
+export async function getAlertedSymbols(userId: string): Promise<string[]> {
+  const userDocRef = doc(db, "alerted", userId);
+  const docSnap = await getDoc(userDocRef);
+  if (docSnap.exists()) {
+    return docSnap.data().symbols || [];
+  }
+  return [];
+}
+
+export async function addAlertedSymbol(userId: string, symbol: string): Promise<void> {
+  const alerted = await getAlertedSymbols(userId);
+  if (!alerted.includes(symbol)) {
+    alerted.push(symbol);
+    const userDocRef = doc(db, "alerted", userId);
+    await setDoc(userDocRef, { symbols: alerted, updatedAt: new Date().toISOString() });
+  }
+}
+
+export async function clearAlertedSymbol(userId: string, symbol: string): Promise<void> {
+  const alerted = await getAlertedSymbols(userId);
+  const filtered = alerted.filter(s => s !== symbol);
+  const userDocRef = doc(db, "alerted", userId);
+  await setDoc(userDocRef, { symbols: filtered, updatedAt: new Date().toISOString() });
+}
+
 export interface PortfolioItem {
   symbol: string;
   purchasePrice: number;
@@ -91,7 +143,7 @@ export interface WatchlistItem {
   notes?: string;
   alertPrice?: number;
   alertType?: 'above' | 'below';
-  alertEnabled: boolean;
+  alertEnabled?: boolean;
 }
 
 export async function saveWatchlistToFirestore(userId: string, watchlist: WatchlistItem[]): Promise<void> {

@@ -177,7 +177,14 @@ interface ApiResponse {
   informeDetail?: InformeDetail;
 }
 
-function RenderInforme({ informe }: { informe: InformeDetail }) {
+function RenderInforme({ informe, data }: { informe: InformeDetail; data?: any }) {
+  const formatNumber = (num: number): string => {
+    if (num >= 1e12) return `$${(num / 1e12).toFixed(2)}T`;
+    if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
+    if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
+    return `$${num.toLocaleString()}`;
+  };
+
   const getActionColor = (action: string) => {
     if (action === 'COMPRAR') return '#3fb950';
     if (action === 'VENDER') return '#f85149';
@@ -376,6 +383,20 @@ function RenderInforme({ informe }: { informe: InformeDetail }) {
                 <td style={{ padding: '8px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{row.value}</td>
               </tr>
             ))}
+            {data?.summary?.freeCashflow && (
+              <>
+                <tr style={{ borderBottom: '1px solid #30363d' }}>
+                  <td style={{ padding: '8px 0', color: '#8b949e' }}>Free Cash Flow</td>
+                  <td style={{ padding: '8px 0', color: '#3fb950', textAlign: 'right', fontWeight: '600' }}>{formatNumber(data.summary.freeCashflow)}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '8px 0', color: '#8b949e' }}>FCF Yield</td>
+                  <td style={{ padding: '8px 0', color: ((data.summary.freeCashflow || 0) / (data.summary.marketCap || 1) * 100) >= 3 ? '#3fb950' : '#f85149', textAlign: 'right', fontWeight: '600' }}>
+                    {(((data.summary.freeCashflow || 0) / (data.summary.marketCap || 1) * 100)).toFixed(2)}%
+                  </td>
+                </tr>
+              </>
+            )}
           </tbody>
         </table>
       </div>
@@ -437,10 +458,12 @@ function RenderInformeLegacy({ data, formatNumber, getActionColor }: {
 
 export default function Home() {
   const [symbol, setSymbol] = useState('');
+  const [suggestions, setSuggestions] = useState<{symbol: string; name: string}[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [view, setView] = useState<'analyzer' | 'portfolio' | 'informe'>('analyzer');
+  const [view, setView] = useState<'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'framework'>('analyzer');
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -478,6 +501,20 @@ export default function Home() {
       await savePortfolioToFirestore(session.user.email, items);
     } catch (error) {
       console.error('Error saving portfolio:', error);
+    }
+  };
+
+  const fetchSuggestions = async (query: string) => {
+    if (query.length < 1) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/search?q=${query}`);
+      const json = await res.json();
+      setSuggestions(json.results || []);
+    } catch (e) {
+      setSuggestions([]);
     }
   };
 
@@ -659,6 +696,20 @@ export default function Home() {
               Portafolio ({portfolio.length})
             </button>
             <button
+              onClick={() => setView('watchlist')}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: '1px solid #30363d',
+                background: view === 'watchlist' ? '#238636' : 'transparent',
+                color: '#c9d1d9',
+                cursor: 'pointer',
+                fontWeight: '500',
+              }}
+            >
+              Watchlist
+            </button>
+            <button
               onClick={() => setView('informe')}
               style={{
                 padding: '8px 16px',
@@ -671,6 +722,20 @@ export default function Home() {
               }}
             >
               Informe
+            </button>
+            <button
+              onClick={() => setView('framework')}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: '1px solid #30363d',
+                background: view === 'framework' ? '#238636' : 'transparent',
+                color: '#c9d1d9',
+                cursor: 'pointer',
+                fontWeight: '500',
+              }}
+            >
+              🧠 Framework
             </button>
           </nav>
           {status === 'loading' ? (
@@ -728,13 +793,19 @@ export default function Home() {
               <p style={{ color: '#8b949e' }}>Ingresa el ticker para obtener un análisis profesional</p>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', maxWidth: '600px', margin: '0 auto 24px' }}>
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', maxWidth: '600px', margin: '0 auto 24px', position: 'relative' }}>
               <input
                 type="text"
                 value={symbol}
-                onChange={e => setSymbol(e.target.value)}
                 placeholder="Ej: AAPL, MSFT, GOOGL..."
                 onKeyDown={e => { if (e.key === 'Enter') searchStock(); }}
+                onChange={e => {
+                  setSymbol(e.target.value);
+                  setShowSuggestions(true);
+                  fetchSuggestions(e.target.value);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                 style={{
                   flex: 1,
                   padding: '14px 16px',
@@ -746,6 +817,16 @@ export default function Home() {
                   outline: 'none',
                 }}
               />
+              {showSuggestions && suggestions.length > 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#161b22', border: '1px solid #30363d', borderRadius: '8px', marginTop: '4px', zIndex: 100, maxHeight: '200px', overflow: 'auto' }}>
+                  {suggestions.map(s => (
+                    <div key={s.symbol} onClick={() => { setSymbol(s.symbol); setShowSuggestions(false); searchStock(); }} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #30363d' }} onMouseOver={e => (e.currentTarget.style.background = '#238636')} onMouseOut={e => (e.currentTarget.style.background = 'transparent')}>
+                      <span style={{ color: '#58a6ff', fontWeight: '600' }}>{s.symbol}</span>
+                      <span style={{ color: '#8b949e', marginLeft: '8px', fontSize: '13px' }}>{s.name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <button
                 onClick={searchStock}
                 disabled={loading}
@@ -1152,7 +1233,7 @@ export default function Home() {
       {view === 'informe' && (
         <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
           {data?.informeDetail ? (
-            <RenderInforme informe={data.informeDetail} />
+            <RenderInforme informe={data.informeDetail} data={data} />
           ) : data ? (
             <RenderInformeLegacy data={data} formatNumber={formatNumber} getActionColor={getActionColor} />
           ) : (
@@ -1162,6 +1243,33 @@ export default function Home() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Vista de Watchlist */}
+      {view === 'watchlist' && (
+        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+          {!session ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#8b949e' }}>
+              <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🔐</p>
+              <p style={{ color: '#f0f6fc', fontSize: '18px', marginBottom: '8px' }}>Inicia sesión para ver tu watchlist</p>
+              <p>Guarda las acciones que quieres vigilar</p>
+              <button onClick={() => signIn('google')} style={{ marginTop: '20px', padding: '12px 24px', borderRadius: '8px', border: 'none', background: '#58a6ff', color: 'white', cursor: 'pointer', fontWeight: '600', fontSize: '16px' }}>
+                Iniciar sesión con Google
+              </button>
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#8b949e' }}>
+              <p style={{ fontSize: '48px', margin: '0 0 16px' }}>👁️</p>
+              <p style={{ color: '#f0f6fc', fontSize: '18px' }}>Mi Watchlist</p>
+              <p>Próximamente disponible</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Vista de Framework PRO */}
+      {view === 'framework' && data && (
+        <FrameworkView data={data} />
       )}
 
       {/* Modal para agregar al portafolio */}
@@ -1474,6 +1582,106 @@ export default function Home() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function FrameworkView({ data }: { data: any }) {
+  const fcfYield = ((data.summary.freeCashflow || 0) / (data.summary.marketCap || 1)) * 100;
+  const pe = data.quote?.peRatio || 0;
+  const revGrowth = data.summary.revenueGrowthPercent || 0;
+  const margin = data.summary.profitMarginsPercent || 0;
+  const isFCFPositive = (data.summary.freeCashflow || 0) >= 0;
+
+  let score = 0;
+  if (isFCFPositive) score += 2;
+  if (fcfYield > 5) score += 2;
+  if (revGrowth > 15) score += 2;
+  if (margin > 15) score += 2;
+  if (pe < 25) score += 2;
+
+  const decision = score >= 8 ? '💎 FUERTE COMPRA' : score >= 5 ? '🤔 EVALUAR' : '❌ EVITAR';
+  const color = score >= 8 ? '#3fb950' : score >= 5 ? '#f0883e' : '#f85149';
+
+  const isJoyas = fcfYield > 8 && pe < 25 && revGrowth > 5 && margin > 10;
+  const isGrowth = fcfYield < 3 && pe > 25 && revGrowth > 20 && margin > 0;
+  const isValueTrap = fcfYield > 8 && pe < 15 && revGrowth < 5 && margin < 10;
+  const isBomba = fcfYield < 0 && pe > 25 && revGrowth < 0 && margin < 0;
+
+  return (
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', color: '#f0f6fc' }}>
+      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+        <h1 style={{ fontSize: '28px', marginBottom: '8px' }}>🧠 FRAMEWORK PRO</h1>
+        <h2 style={{ fontSize: '18px', color: '#8b949e', fontWeight: 'normal' }}>¿Barata o Trampa?</h2>
+        <p style={{ color: '#58a6ff', marginTop: '8px' }}>{data.quote?.shortName} ({data.quote?.symbol})</p>
+      </div>
+
+      {/* Filtro FCF */}
+      <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '16px', borderLeft: '4px solid #f0883e' }}>
+        <h4 style={{ margin: '0 0 8px', fontSize: '14px', color: '#8b949e' }}>🧩 Filtro Inicial</h4>
+        <p style={{ fontSize: '24px', fontWeight: 'bold', color: isFCFPositive ? '#3fb950' : '#f85149', margin: 0 }}>
+          {isFCFPositive ? '✅ FCF POSITIVO - Modo Valor' : '⚠️ FCF NEGATIVO - Modo Growth'}
+        </p>
+      </div>
+
+      {/* Métricas */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #58a6ff' }}>
+          <h4 style={{ margin: '0 0 8px', fontSize: '14px', color: '#8b949e' }}>💰 FCF Yield</h4>
+          <p style={{ fontSize: '28px', fontWeight: 'bold', color: fcfYield > 5 ? '#3fb950' : '#f85149', margin: 0 }}>{fcfYield.toFixed(1)}%</p>
+          <p style={{ fontSize: '12px', color: '#8b949e', margin: '4px 0 0' }}>{fcfYield > 10 ? '💎 Muy barata' : fcfYield > 5 ? '✅ Buena' : fcfYield > 3 ? '😐 Normal' : '⚠️ Cara'}</p>
+        </div>
+        <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #58a6ff' }}>
+          <h4 style={{ margin: '0 0 8px', fontSize: '14px', color: '#8b949e' }}>📊 PE Ratio</h4>
+          <p style={{ fontSize: '28px', fontWeight: 'bold', color: pe < 25 ? '#3fb950' : '#f85149', margin: 0 }}>{pe.toFixed(1)}</p>
+          <p style={{ fontSize: '12px', color: '#8b949e', margin: '4px 0 0' }}>{pe < 15 ? 'Value' : pe < 25 ? 'Balanceada' : pe < 40 ? 'Growth' : '🚨 Alta'}</p>
+        </div>
+        <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #58a6ff' }}>
+          <h4 style={{ margin: '0 0 8px', fontSize: '14px', color: '#8b949e' }}>📈 Revenue</h4>
+          <p style={{ fontSize: '28px', fontWeight: 'bold', color: revGrowth > 0 ? '#3fb950' : '#f85149', margin: 0 }}>{revGrowth > 0 ? '+' : ''}{revGrowth.toFixed(1)}%</p>
+          <p style={{ fontSize: '12px', color: '#8b949e', margin: '4px 0 0' }}>{revGrowth > 20 ? '🚀 Alto' : revGrowth > 10 ? '✅ Saludable' : revGrowth > 0 ? '🐢 Lento' : '🚨 Problema'}</p>
+        </div>
+        <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #58a6ff' }}>
+          <h4 style={{ margin: '0 0 8px', fontSize: '14px', color: '#8b949e' }}>🧾 Margen</h4>
+          <p style={{ fontSize: '28px', fontWeight: 'bold', color: margin > 10 ? '#3fb950' : '#f85149', margin: 0 }}>{margin.toFixed(1)}%</p>
+          <p style={{ fontSize: '12px', color: '#8b949e', margin: '4px 0 0' }}>{margin > 20 ? '💪 Excelente' : margin > 10 ? '✅ Bueno' : '⚠️ Débil'}</p>
+        </div>
+      </div>
+
+      {/* Score */}
+      <div style={{ background: '#161b22', borderRadius: '12px', padding: '24px', marginBottom: '24px', borderLeft: '4px solid ' + color }}>
+        <h3 style={{ margin: '0 0 16px', textAlign: 'center' }}>🧭 Score: {score}/10</h3>
+        <div style={{ padding: '20px', background: color + '20', borderRadius: '12px', textAlign: 'center' }}>
+          <p style={{ fontSize: '24px', fontWeight: 'bold', color: color, margin: 0 }}>{decision}</p>
+        </div>
+      </div>
+
+      {/* Escenarios */}
+      <div>
+        <h3 style={{ margin: '0 0 16px', fontSize: '18px' }}>🔥 AHORA LO IMPORTANTE: LA COMBINACIÓN</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+          <div style={{ padding: '16px', background: '#161b22', borderRadius: '12px', border: isJoyas ? '2px solid #3fb950' : '1px solid #30363d' }}>
+            <h4 style={{ margin: '0 0 8px', color: '#3fb950', fontSize: '15px' }}>💎 ESCENARIO 1: Joyas Ocultas</h4>
+            <p style={{ margin: 0, fontSize: '11px', color: '#8b949e' }}>FCF Yield &gt;8% + PE bajo + Revenue crece + Margen sólido</p>
+            {isJoyas && <p style={{ margin: '8px 0 0', fontSize: '13px', fontWeight: 'bold', color: '#3fb950' }}>✓ ACCIÓN BARATA + GENERA CASH + CRECE</p>}
+          </div>
+          <div style={{ padding: '16px', background: '#161b22', borderRadius: '12px', border: isGrowth ? '2px solid #58a6ff' : '1px solid #30363d' }}>
+            <h4 style={{ margin: '0 0 8px', color: '#58a6ff', fontSize: '15px' }}>🚀 ESCENARIO 2: Growth Caro</h4>
+            <p style={{ margin: 0, fontSize: '11px', color: '#8b949e' }}>FCF bajo/neg + PE alto + Revenue &gt;20% + Margen expandiéndose</p>
+            {isGrowth && <p style={{ margin: '8px 0 0', fontSize: '13px', fontWeight: 'bold', color: '#58a6ff' }}>✓ CARA HOY, PERO PUEDE SER GANADORA</p>}
+          </div>
+          <div style={{ padding: '16px', background: '#161b22', borderRadius: '12px', border: isValueTrap ? '2px solid #f85149' : '1px solid #30363d' }}>
+            <h4 style={{ margin: '0 0 8px', color: '#f85149', fontSize: '15px' }}>⚠️ ESCENARIO 3: Value Trap</h4>
+            <p style={{ margin: 0, fontSize: '11px', color: '#8b949e' }}>FCF Yield alto + PE bajo + Revenue estancado + Margen débil</p>
+            {isValueTrap && <p style={{ margin: '8px 0 0', fontSize: '13px', fontWeight: 'bold', color: '#f85149' }}>✗ PARECE BARATA... PERO ESTÁ MUERIENDO</p>}
+          </div>
+          <div style={{ padding: '16px', background: '#161b22', borderRadius: '12px', border: isBomba ? '2px solid #f85149' : '1px solid #30363d' }}>
+            <h4 style={{ margin: '0 0 8px', color: '#f85149', fontSize: '15px' }}>💣 ESCENARIO 4: Bomba de Tiempo</h4>
+            <p style={{ margin: 0, fontSize: '11px', color: '#8b949e' }}>FCF negativo + PE alto + No crece + Margen bajo</p>
+            {isBomba && <p style={{ margin: '8px 0 0', fontSize: '13px', fontWeight: 'bold', color: '#f85149' }}>✗ SOBREVALORADA + SIN FUNDAMENTOS</p>}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
