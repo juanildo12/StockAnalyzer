@@ -485,6 +485,13 @@ export default function Home() {
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [watchlistPrices, setWatchlistPrices] = useState<{ [key: string]: { price: number; change: number; changePercent: number } }>({});
+  const [showWatchlistModal, setShowWatchlistModal] = useState(false);
+  const [watchlistForm, setWatchlistForm] = useState({
+    symbol: '',
+    alertPrice: '',
+    alertType: 'above' as 'above' | 'below',
+    alertEnabled: true,
+  });
 
   const { data: session, status } = useSession();
 
@@ -538,17 +545,28 @@ export default function Home() {
     }
   };
 
-  const addToWatchlist = async (symbol: string) => {
-    if (!session?.user?.email) return;
+  const openWatchlistModal = (symbol: string, currentPrice?: number) => {
+    setWatchlistForm({
+      symbol: symbol.toUpperCase(),
+      alertPrice: currentPrice ? currentPrice.toString() : '',
+      alertType: 'above',
+      alertEnabled: true,
+    });
+    setShowWatchlistModal(true);
+  };
+
+  const handleAddToWatchlist = async () => {
+    if (!session?.user?.email || !watchlistForm.symbol) return;
     try {
       await addWatchlistItem(session.user.email, {
-        symbol: symbol.toUpperCase(),
+        symbol: watchlistForm.symbol.toUpperCase(),
         addedAt: new Date().toISOString(),
-        alertEnabled: false,
-        alertPrice: 0,
-        alertType: 'above'
+        alertEnabled: watchlistForm.alertEnabled,
+        alertPrice: parseFloat(watchlistForm.alertPrice) || 0,
+        alertType: watchlistForm.alertType,
       });
       await loadWatchlist();
+      setShowWatchlistModal(false);
     } catch (error) {
       console.error('Error adding to watchlist:', error);
     }
@@ -1140,7 +1158,7 @@ export default function Home() {
                   </button>
                   {session && (
                     <button
-                      onClick={() => addToWatchlist(data.quote.symbol)}
+                      onClick={() => openWatchlistModal(data.quote.symbol, data.quote.regularMarketPrice)}
                       style={{
                         display: 'block',
                         width: '100%',
@@ -1503,162 +1521,12 @@ export default function Home() {
               <p style={{ fontSize: '48px', margin: '0 0 16px' }}>📋</p>
               <p>Analiza una acción para ver el informe</p>
             </div>
-          )}
-        </div>
+)}
+      </div>
       )}
 
-      {/* Vista de Watchlist */}
-      {view === 'watchlist' && (
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-          {!session ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#8b949e' }}>
-              <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🔐</p>
-              <p style={{ color: '#f0f6fc', fontSize: '18px', marginBottom: '8px' }}>Inicia sesión para ver tu watchlist</p>
-              <p>Guarda las acciones que quieres vigilar</p>
-              <button onClick={() => signIn('google')} style={{ marginTop: '20px', padding: '12px 24px', borderRadius: '8px', border: 'none', background: '#58a6ff', color: 'white', cursor: 'pointer', fontWeight: '600', fontSize: '16px' }}>
-                Iniciar sesión con Google
-              </button>
-            </div>
-          ) : (
-            <div>
-              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                <h2 style={{ color: '#f0f6fc', marginBottom: '8px' }}>👁️ Mi Watchlist</h2>
-                <p style={{ color: '#8b949e' }}>Recibe alertas cuando las acciones alcancen tu precio objetivo</p>
-              </div>
-
-              {watchlist.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px 20px', background: '#161b22', borderRadius: '12px', border: '1px solid #30363d' }}>
-                  <p style={{ fontSize: '48px', margin: '0 0 16px' }}>📝</p>
-                  <p style={{ color: '#f0f6fc', fontSize: '18px', marginBottom: '8px' }}>Tu watchlist está vacía</p>
-                  <p style={{ color: '#8b949e' }}>Analiza una acción y agrégala a tu watchlist</p>
-                  <button 
-                    onClick={() => setView('analyzer')}
-                    style={{ marginTop: '20px', padding: '12px 24px', borderRadius: '8px', border: 'none', background: '#238636', color: 'white', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}
-                  >
-                    Ir al Analizador
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {watchlist.map(item => {
-                    const priceData = watchlistPrices[item.symbol];
-                    const currentPrice = priceData?.price || 0;
-                    const priceChange = priceData?.change || 0;
-                    const priceChangePercent = priceData?.changePercent || 0;
-                    const alertEnabled = item.alertEnabled ?? false;
-                    const alertPrice = item.alertPrice ?? 0;
-                    const alertType = item.alertType ?? 'above';
-                    const isAlertTriggered = alertEnabled && alertPrice > 0 && (
-                      (alertType === 'above' && currentPrice >= alertPrice) ||
-                      (alertType === 'below' && currentPrice <= alertPrice)
-                    );
-                    
-                    return (
-                      <div key={item.symbol} style={{ background: '#161b22', borderRadius: '12px', padding: '16px', border: isAlertTriggered ? '2px solid #2ecc71' : '1px solid #30363d' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-                          <div>
-                            <h3 style={{ margin: 0, color: '#58a6ff', fontSize: '20px' }}>{item.symbol}</h3>
-                            {priceData && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                                <span style={{ color: '#f0f6fc', fontSize: '18px', fontWeight: '600' }}>${currentPrice.toFixed(2)}</span>
-                                <span style={{ color: priceChange >= 0 ? '#2ecc71' : '#e74c3c', fontSize: '14px' }}>
-                                  {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)} ({priceChangePercent.toFixed(2)}%)
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => removeFromWatchlist(item.symbol)}
-                            style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #e74c3c', background: 'transparent', color: '#e74c3c', cursor: 'pointer', fontSize: '12px' }}
-                          >
-                            Eliminar
-                          </button>
-                        </div>
-
-                        <div style={{ background: '#0d1117', borderRadius: '8px', padding: '12px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                            <span style={{ color: '#8b949e', fontSize: '14px' }}>🔔 Alerta de precio</span>
-                            <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px' }}>
-                              <input
-                                type="checkbox"
-                                checked={alertEnabled}
-                                onChange={(e) => updateWatchlistAlert(item.symbol, item.alertPrice || 0, e.target.checked, item.alertType || 'above')}
-                                style={{ opacity: 0, width: 0, height: 0 }}
-                              />
-                              <span style={{
-                                position: 'absolute',
-                                cursor: 'pointer',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                background: alertEnabled ? '#238636' : '#30363d',
-                                borderRadius: '24px',
-                                transition: '0.3s'
-                              }}>
-                                <span style={{
-                                  position: 'absolute',
-                                  content: '',
-                                  height: '18px',
-                                  width: '18px',
-                                  left: alertEnabled ? '23px' : '3px',
-                                  bottom: '3px',
-                                  background: 'white',
-                                  borderRadius: '50%',
-                                  transition: '0.3s'
-                                }} />
-                              </span>
-                            </label>
-                          </div>
-                          
-                          {alertEnabled && (
-                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                              <select
-                                value={alertType}
-                                onChange={(e) => updateWatchlistAlert(item.symbol, alertPrice, alertEnabled, e.target.value as 'above' | 'below')}
-                                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #30363d', background: '#161b22', color: '#c9d1d9', fontSize: '14px' }}
-                              >
-                                <option value="above">Precio sube a</option>
-                                <option value="below">Precio baja a</option>
-                              </select>
-                              <input
-                                type="number"
-                                placeholder="Precio objetivo"
-                                value={alertPrice || ''}
-                                onChange={(e) => updateWatchlistAlert(item.symbol, parseFloat(e.target.value) || 0, alertEnabled, alertType)}
-                                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #30363d', background: '#161b22', color: '#c9d1d9', fontSize: '14px', width: '120px' }}
-                              />
-                              {alertPrice > 0 && (
-                                <span style={{ color: '#8b949e', fontSize: '13px' }}>
-                                  {alertType === 'above' ? 'Te avisa si sube a' : 'Te avisa si baja a'} ${alertPrice.toFixed(2)}
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          
-                          {isAlertTriggered && (
-                            <div style={{ marginTop: '12px', padding: '8px 12px', background: '#2ecc7120', borderRadius: '6px', color: '#2ecc71', fontSize: '14px' }}>
-                              ¡Alerta! El precio ha alcanzado tu objetivo
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Vista de Framework PRO */}
-      {view === 'framework' && data && (
-        <FrameworkView data={data} />
-      )}
-
-      {/* Modal para agregar al portafolio */}
-      {showAddModal && data && session && (
+      {/* Modal para agregar a Watchlist */}
+      {showWatchlistModal && (
         <div style={{
           position: 'fixed',
           top: 0,
@@ -1672,115 +1540,96 @@ export default function Home() {
           zIndex: 1000,
         }}>
           <div style={{ background: '#161b22', borderRadius: '12px', padding: '24px', width: '90%', maxWidth: '450px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h3 style={{ margin: '0 0 16px', color: '#f0f6fc' }}>Agregar {data.quote.symbol} al Portafolio</h3>
+            <h3 style={{ margin: '0 0 16px', color: '#f0f6fc' }}>Agregar {watchlistForm.symbol} a Watchlist</h3>
             
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Número de acciones *</label>
-              <input
-                type="number"
-                value={addForm.shares}
-                onChange={e => setAddForm({ ...addForm, shares: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: '#0d1117',
-                  color: '#c9d1d9',
-                  fontSize: '16px',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
-            
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Precio de compra por acción *</label>
-              <input
-                type="number"
-                value={addForm.price}
-                onChange={e => setAddForm({ ...addForm, price: e.target.value })}
-                defaultValue={data.quote.regularMarketPrice}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: '#0d1117',
-                  color: '#c9d1d9',
-                  fontSize: '16px',
-                  boxSizing: 'border-box',
-                }}
-              />
-              <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#58a6ff' }}>Precio actual: ${data.quote.regularMarketPrice.toFixed(2)}</p>
+              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>🔔 Configurar alerta de precio</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: '#0d1117', borderRadius: '8px' }}>
+                <span style={{ color: '#c9d1d9', fontSize: '14px' }}>Activar alerta</span>
+                <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', marginLeft: 'auto' }}>
+                  <input
+                    type="checkbox"
+                    checked={watchlistForm.alertEnabled}
+                    onChange={(e) => setWatchlistForm({ ...watchlistForm, alertEnabled: e.target.checked })}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: 'absolute',
+                    cursor: 'pointer',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: watchlistForm.alertEnabled ? '#238636' : '#30363d',
+                    borderRadius: '24px',
+                    transition: '0.3s'
+                  }}>
+                    <span style={{
+                      position: 'absolute',
+                      height: '18px',
+                      width: '18px',
+                      left: watchlistForm.alertEnabled ? '23px' : '3px',
+                      bottom: '3px',
+                      background: 'white',
+                      borderRadius: '50%',
+                      transition: '0.3s'
+                    }} />
+                  </span>
+                </label>
+              </div>
             </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Fecha de compra</label>
-              <input
-                type="date"
-                value={addForm.date}
-                onChange={e => setAddForm({ ...addForm, date: e.target.value })}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: '#0d1117',
-                  color: '#c9d1d9',
-                  fontSize: '16px',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
+            {watchlistForm.alertEnabled && (
+              <>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Tipo de alerta</label>
+                  <select
+                    value={watchlistForm.alertType}
+                    onChange={(e) => setWatchlistForm({ ...watchlistForm, alertType: e.target.value as 'above' | 'below' })}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: '1px solid #30363d',
+                      background: '#0d1117',
+                      color: '#c9d1d9',
+                      fontSize: '16px',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <option value="above">📈 Alerta cuando suba a...</option>
+                    <option value="below">📉 Alerta cuando baje a...</option>
+                  </select>
+                </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Precio objetivo (opcional)</label>
-              <input
-                type="number"
-                value={addForm.targetPrice}
-                onChange={e => setAddForm({ ...addForm, targetPrice: e.target.value })}
-                placeholder="Precio objetivo"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: '#0d1117',
-                  color: '#c9d1d9',
-                  fontSize: '16px',
-                  boxSizing: 'border-box',
-                }}
-              />
-            </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Precio objetivo</label>
+                  <input
+                    type="number"
+                    value={watchlistForm.alertPrice}
+                    onChange={(e) => setWatchlistForm({ ...watchlistForm, alertPrice: e.target.value })}
+                    placeholder="Ej: 150.00"
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: '1px solid #30363d',
+                      background: '#0d1117',
+                      color: '#c9d1d9',
+                      fontSize: '16px',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#58a6ff' }}>
+                    Recibirás un correo cuando {watchlistForm.symbol} {watchlistForm.alertType === 'above' ? 'suba' : 'baje'} a este precio
+                  </p>
+                </div>
+              </>
+            )}
 
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Notas (opcional)</label>
-              <textarea
-                value={addForm.notes}
-                onChange={e => setAddForm({ ...addForm, notes: e.target.value })}
-                placeholder="Notas sobre esta inversión..."
-                rows={3}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: '#0d1117',
-                  color: '#c9d1d9',
-                  fontSize: '14px',
-                  boxSizing: 'border-box',
-                  resize: 'vertical',
-                  fontFamily: 'inherit',
-                }}
-              />
-            </div>
-            
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
               <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setAddForm({ shares: '', price: '', date: new Date().toISOString().split('T')[0], notes: '', targetPrice: '' });
-                }}
+                onClick={() => setShowWatchlistModal(false)}
                 style={{
                   flex: 1,
                   padding: '12px',
@@ -1794,7 +1643,7 @@ export default function Home() {
                 Cancelar
               </button>
               <button
-                onClick={addToPortfolio}
+                onClick={handleAddToWatchlist}
                 style={{
                   flex: 1,
                   padding: '12px',
