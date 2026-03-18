@@ -517,6 +517,7 @@ export default function Home() {
     try {
       const items = await getWatchlistFromFirestore(session.user.email);
       setWatchlist(items);
+      setWatchlistError('');
       if (items.length > 0) {
         fetchWatchlistPrices(items.map(w => w.symbol));
       }
@@ -525,11 +526,21 @@ export default function Home() {
     }
   };
 
+  const [watchlistError, setWatchlistError] = useState('');
+
   const fetchWatchlistPrices = async (symbols: string[]) => {
+    if (symbols.length === 0) return;
+    
     try {
       const response = await fetch(`/api/stock?symbols=${symbols.join(',')}`);
+      
+      if (!response.ok) {
+        throw new Error('Error fetching prices');
+      }
+      
       const result = await response.json();
-      if (result.quotes) {
+      
+      if (result.quotes && result.quotes.length > 0) {
         const prices: { [key: string]: { price: number; change: number; changePercent: number } } = {};
         result.quotes.forEach((quote: any) => {
           prices[quote.symbol] = {
@@ -539,9 +550,13 @@ export default function Home() {
           };
         });
         setWatchlistPrices(prices);
+        setWatchlistError('');
+      } else if (result.error) {
+        setWatchlistError('Error al cargar precios');
       }
     } catch (error) {
       console.error('Error fetching watchlist prices:', error);
+      setWatchlistError('No se pudieron cargar los precios');
     }
   };
 
@@ -1642,10 +1657,28 @@ export default function Home() {
                                     {priceChange >= 0 ? '▲' : '▼'} {Math.abs(priceChangePercent).toFixed(2)}%
                                   </span>
                                 </div>
+                              ) : watchlistError ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ color: '#f85149', fontSize: '13px' }}>{watchlistError}</span>
+                                  <button
+                                    onClick={() => fetchWatchlistPrices([item.symbol])}
+                                    style={{
+                                      padding: '4px 8px',
+                                      borderRadius: '4px',
+                                      border: '1px solid #30363d',
+                                      background: 'transparent',
+                                      color: '#58a6ff',
+                                      cursor: 'pointer',
+                                      fontSize: '11px',
+                                    }}
+                                  >
+                                    Reintentar
+                                  </button>
+                                </div>
                               ) : (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: '2px solid #30363d', borderTopColor: '#58a6ff', animation: 'spin 1s linear infinite' }}></div>
-                                  <span style={{ color: '#8b949e', fontSize: '14px' }}>Cargando precio...</span>
+                                  <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '2px solid #30363d', borderTopColor: '#58a6ff', animation: 'spin 1s linear infinite' }}></div>
+                                  <span style={{ color: '#8b949e', fontSize: '14px' }}>Cargando...</span>
                                 </div>
                               )}
                             </div>
