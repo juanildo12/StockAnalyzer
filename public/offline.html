@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sin conexión - Stock Analyzer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+    }
+    .icon {
+      font-size: 64px;
+      margin-bottom: 24px;
+    }
+    h1 {
+      color: #f0f6fc;
+      font-size: 24px;
+      margin-bottom: 12px;
+    }
+    p {
+      color: #8b949e;
+      font-size: 16px;
+      margin-bottom: 24px;
+      max-width: 400px;
+    }
+    button {
+      padding: 12px 24px;
+      border-radius: 8px;
+      border: none;
+      background: #238636;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #2ea043;
+    }
+    .retry-icon {
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-right: 8px;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="icon">📡</div>
+  <h1>Sin conexión a internet</h1>
+  <p>No se puede cargar Stock Analyzer en este momento. Por favor, verifica tu conexión e intenta de nuevo.</p>
+  <button onclick="location.reload()">
+    <span class="retry-icon">↻</span> Reintentar
+  </button>
+</body>
+</html>
