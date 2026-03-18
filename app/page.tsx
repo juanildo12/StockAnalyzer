@@ -1534,7 +1534,7 @@ export default function Home() {
               <>
                 <div style={{ textAlign: 'center', marginBottom: '24px' }}>
                   <h2 style={{ color: '#f0f6fc', marginBottom: '8px' }}>👁️ Mi Watchlist</h2>
-                  <p style={{ color: '#8b949e' }}>Recibe alertas cuando las acciones alcancen tu precio objetivo</p>
+                  <p style={{ color: '#8b949e' }}>{watchlist.length} acción{watchlist.length !== 1 ? 'es' : ''} en vigilancia</p>
                 </div>
 
                 {watchlist.length === 0 ? (
@@ -1560,7 +1560,17 @@ export default function Home() {
                     </button>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ background: '#161b22', borderRadius: '12px', border: '1px solid #30363d', overflow: 'hidden' }}>
+                    {/* Header */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 80px 70px 90px 40px', gap: '8px', padding: '12px 16px', background: '#0d1117', borderBottom: '1px solid #30363d', fontSize: '11px', color: '#8b949e', fontWeight: '600', textTransform: 'uppercase' }}>
+                      <div>Símbolo</div>
+                      <div style={{ textAlign: 'right' }}>Precio</div>
+                      <div style={{ textAlign: 'right' }}>Cambio</div>
+                      <div style={{ textAlign: 'center' }}>Tipo</div>
+                      <div style={{ textAlign: 'right' }}>Objetivo</div>
+                      <div></div>
+                    </div>
+                    
                     {watchlist.map((item) => {
                       const priceData = watchlistPrices[item.symbol];
                       const currentPrice = priceData?.price || 0;
@@ -1575,89 +1585,102 @@ export default function Home() {
                       );
 
                       return (
-                        <div key={item.symbol} style={{ background: '#161b22', borderRadius: '12px', padding: '16px', border: isAlertTriggered ? '2px solid #2ecc71' : '1px solid #30363d' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-                            <div>
-                              <h3 style={{ margin: 0, color: '#58a6ff', fontSize: '20px', fontWeight: '600' }}>{item.symbol}</h3>
-                              {priceData ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                                  <span style={{ color: '#f0f6fc', fontSize: '18px', fontWeight: '600' }}>${currentPrice.toFixed(2)}</span>
-                                  <span style={{ color: priceChange >= 0 ? '#2ecc71' : '#e74c3c', fontSize: '14px' }}>
-                                    {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)} ({priceChangePercent.toFixed(2)}%)
-                                  </span>
-                                </div>
-                              ) : (
-                                <p style={{ margin: '4px 0 0', color: '#8b949e', fontSize: '12px' }}>Cargando precio...</p>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => removeFromWatchlist(item.symbol)}
-                              style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #e74c3c', background: 'transparent', color: '#e74c3c', cursor: 'pointer', fontSize: '12px' }}
-                            >
-                              🗑️ Eliminar
-                            </button>
+                        <div key={item.symbol} style={{ display: 'grid', gridTemplateColumns: '1fr 90px 80px 70px 90px 40px', gap: '8px', padding: '10px 16px', borderBottom: '1px solid #30363d', alignItems: 'center', background: isAlertTriggered ? '#2ecc7110' : 'transparent' }}>
+                          <div>
+                            <div style={{ color: '#58a6ff', fontWeight: '600', fontSize: '14px' }}>{item.symbol}</div>
+                            {isAlertTriggered && <div style={{ color: '#2ecc71', fontSize: '10px', marginTop: '2px' }}>🎉 Activa</div>}
                           </div>
-
-                          <div style={{ background: '#0d1117', borderRadius: '8px', padding: '16px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                              <span style={{ color: '#8b949e', fontSize: '14px' }}>🔔 Alerta de precio</span>
-                              <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={alertEnabled}
-                                  onChange={(e) => updateWatchlistAlert(item.symbol, alertPrice, e.target.checked, alertType)}
-                                  style={{ opacity: 0, width: 0, height: 0 }}
-                                />
+                          <div style={{ textAlign: 'right' }}>
+                            {priceData ? (
+                              <div style={{ color: '#f0f6fc', fontWeight: '500', fontSize: '13px' }}>${currentPrice.toFixed(2)}</div>
+                            ) : (
+                              <div style={{ color: '#8b949e', fontSize: '12px' }}>...</div>
+                            )}
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ color: priceChange >= 0 ? '#2ecc71' : '#e74c3c', fontSize: '12px' }}>
+                              {priceChange >= 0 ? '+' : ''}{priceChangePercent.toFixed(2)}%
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <select
+                              value={alertType}
+                              onChange={(e) => updateWatchlistAlert(item.symbol, alertPrice, alertEnabled, e.target.value as 'above' | 'below')}
+                              disabled={!alertEnabled}
+                              style={{ 
+                                padding: '4px', 
+                                borderRadius: '4px', 
+                                border: '1px solid #30363d', 
+                                background: alertEnabled ? '#161b22' : '#0d1117', 
+                                color: alertEnabled ? '#c9d1d9' : '#8b949e', 
+                                fontSize: '11px',
+                                width: '100%',
+                                cursor: alertEnabled ? 'pointer' : 'not-allowed',
+                                opacity: alertEnabled ? 1 : 0.5
+                              }}
+                            >
+                              <option value="above">📈</option>
+                              <option value="below">📉</option>
+                            </select>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <input
+                              type="number"
+                              placeholder="---"
+                              value={alertPrice || ''}
+                              disabled={!alertEnabled}
+                              onChange={(e) => updateWatchlistAlert(item.symbol, parseFloat(e.target.value) || 0, alertEnabled, alertType)}
+                              style={{ 
+                                width: '100%', 
+                                padding: '4px 6px', 
+                                borderRadius: '4px', 
+                                border: '1px solid #30363d', 
+                                background: alertEnabled ? '#161b22' : '#0d1117', 
+                                color: alertEnabled ? '#c9d1d9' : '#8b949e', 
+                                fontSize: '11px',
+                                textAlign: 'right',
+                                cursor: alertEnabled ? 'text' : 'not-allowed',
+                                opacity: alertEnabled ? 1 : 0.5
+                              }}
+                            />
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <label style={{ position: 'relative', display: 'inline-block', width: '32px', height: '18px', cursor: 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={alertEnabled}
+                                onChange={(e) => updateWatchlistAlert(item.symbol, alertPrice, e.target.checked, alertType)}
+                                style={{ opacity: 0, width: 0, height: 0 }}
+                              />
+                              <span style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: alertEnabled ? '#238636' : '#30363d',
+                                borderRadius: '18px',
+                                transition: '0.2s'
+                              }}>
                                 <span style={{
                                   position: 'absolute',
-                                  cursor: 'pointer',
-                                  top: 0,
-                                  left: 0,
-                                  right: 0,
-                                  bottom: 0,
-                                  background: alertEnabled ? '#238636' : '#30363d',
-                                  borderRadius: '24px',
-                                  transition: '0.3s'
-                                }}>
-                                  <span style={{
-                                    position: 'absolute',
-                                    height: '18px',
-                                    width: '18px',
-                                    left: alertEnabled ? '23px' : '3px',
-                                    bottom: '3px',
-                                    background: 'white',
-                                    borderRadius: '50%',
-                                    transition: '0.3s'
-                                  }} />
-                                </span>
-                              </label>
-                            </div>
-
-                            {alertEnabled && (
-                              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                <select
-                                  value={alertType}
-                                  onChange={(e) => updateWatchlistAlert(item.symbol, alertPrice, alertEnabled, e.target.value as 'above' | 'below')}
-                                  style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', background: '#161b22', color: '#c9d1d9', fontSize: '14px', flex: 1, minWidth: '140px' }}
-                                >
-                                  <option value="above">📈 Sube a</option>
-                                  <option value="below">📉 Baja a</option>
-                                </select>
-                                <input
-                                  type="number"
-                                  placeholder="Precio"
-                                  value={alertPrice || ''}
-                                  onChange={(e) => updateWatchlistAlert(item.symbol, parseFloat(e.target.value) || 0, alertEnabled, alertType)}
-                                  style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid #30363d', background: '#161b22', color: '#c9d1d9', fontSize: '14px', width: '120px' }}
-                                />
-                              </div>
-                            )}
-
-                            {isAlertTriggered && (
-                              <div style={{ marginTop: '12px', padding: '12px', background: '#2ecc7120', borderRadius: '8px', color: '#2ecc71', fontSize: '14px', fontWeight: '500', textAlign: 'center' }}>
-                                🎉 ¡Alerta! Precio alcanzado
-                              </div>
-                            )}
+                                  height: '12px',
+                                  width: '12px',
+                                  left: alertEnabled ? '17px' : '3px',
+                                  bottom: '3px',
+                                  background: 'white',
+                                  borderRadius: '50%',
+                                  transition: '0.2s'
+                                }} />
+                              </span>
+                            </label>
+                            <button
+                              onClick={() => removeFromWatchlist(item.symbol)}
+                              style={{ padding: '2px 6px', borderRadius: '4px', border: 'none', background: 'transparent', color: '#e74c3c', cursor: 'pointer', fontSize: '14px', fontWeight: 'bold' }}
+                              title="Eliminar"
+                            >
+                              ×
+                            </button>
                           </div>
                         </div>
                       );
@@ -1668,6 +1691,7 @@ export default function Home() {
             )}
           </>
         ) : null}
+      </div>
       </div>
 
       {/* Vista de Informe - Nuevo Formato Detallado */}
