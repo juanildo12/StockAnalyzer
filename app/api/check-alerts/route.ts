@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getWatchlistFromFirestore, WatchlistItem, getAllWatchlistUsers, addAlertedSymbol, getAlertedSymbols } from '@/src/services/firebase';
+import { getWatchlistFromFirestore, getAllWatchlistUsers, addAlertedSymbol, getAlertedSymbols } from '@/src/services/firebase';
 import { getStockQuote } from '@/src/services/yahooFinance';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
@@ -59,39 +59,61 @@ async function checkUserAlerts(userId: string, email: string): Promise<{ symbol:
   const results: { symbol: string; currentPrice: number; targetPrice: number; emailSent: boolean }[] = [];
   
   try {
-    // Get already alerted symbols for this user
     const alertedSymbols = await getAlertedSymbols(userId);
-    console.log(`User ${userId} has alerted symbols:`, alertedSymbols);
+    console.log(`[${userId}] Alerted symbols:`, alertedSymbols);
     
     const watchlist = await getWatchlistFromFirestore(userId);
+    console.log(`[${userId}] Watchlist items:`, JSON.stringify(watchlist, null, 2));
+    
+    if (watchlist.length === 0) {
+      console.log(`[${userId}] No items in watchlist`);
+      return results;
+    }
     
     for (const item of watchlist) {
-      // Skip if alert is not enabled or no target price set
-      if (!item.alertEnabled || !item.alertPrice || item.alertPrice <= 0) continue;
+      console.log(`[${userId}] Checking ${item.symbol}: alertEnabled=${item.alertEnabled}, alertPrice=${item.alertPrice}, alertType=${item.alertType}`);
+      
+      // Skip if alert is not enabled
+      if (!item.alertEnabled) {
+        console.log(`  -> Skipping ${item.symbol}: alert not enabled`);
+        continue;
+      }
+      
+      // Skip if no target price set
+      if (!item.alertPrice || item.alertPrice <= 0) {
+        console.log(`  -> Skipping ${item.symbol}: no valid alert price`);
+        continue;
+      }
       
       // Skip if this symbol was already alerted
       if (alertedSymbols.includes(item.symbol)) {
-        console.log(`Skipping ${item.symbol} - already alerted`);
+        console.log(`  -> Skipping ${item.symbol}: already alerted`);
         continue;
       }
       
       try {
         const quote = await getStockQuote(item.symbol);
         const currentPrice = quote.regularMarketPrice;
+        console.log(`  -> ${item.symbol}: current=${currentPrice}, target=${item.alertPrice}, type=${item.alertType}`);
         
         let shouldAlert = false;
         
         if (item.alertType === 'below' && currentPrice <= item.alertPrice) {
           shouldAlert = true;
+          console.log(`  -> Condition met: below`);
         } else if (item.alertType === 'above' && currentPrice >= item.alertPrice) {
           shouldAlert = true;
+          console.log(`  -> Condition met: above`);
         }
         
         if (shouldAlert) {
-          console.log(`Alert triggered for ${item.symbol}: current=${currentPrice}, target=${item.alertPrice}`);
+          console.log(`  -> ALERT TRIGGERED for ${item.symbol}! Sending email...`);
           const emailSent = await sendEmail(email, item.symbol, currentPrice, item.alertPrice, item.alertType || 'above');
           if (emailSent) {
             await addAlertedSymbol(userId, item.symbol);
+            console.log(`  -> Email sent and marked as alerted`);
+          } else {
+            console.log(`  -> Email FAILED to send`);
           }
           results.push({
             symbol: item.symbol,
@@ -99,9 +121,11 @@ async function checkUserAlerts(userId: string, email: string): Promise<{ symbol:
             targetPrice: item.alertPrice,
             emailSent
           });
+        } else {
+          console.log(`  -> No alert: price not in range`);
         }
       } catch (error) {
-        console.error(`Error checking price for ${item.symbol}:`, error);
+        console.error(`  -> Error checking price for ${item.symbol}:`, error);
       }
     }
   } catch (error) {
@@ -112,9 +136,10 @@ async function checkUserAlerts(userId: string, email: string): Promise<{ symbol:
 }
 
 export async function GET() {
-  console.log('Running price alert check...');
+  console.log('=== Running price alert check ===');
   
   if (!RESEND_API_KEY) {
+    console.log('RESEND_API_KEY not configured!');
     return NextResponse.json({ 
       error: 'RESEND_API_KEY not configured',
       message: 'Configure RESEND_API_KEY in Vercel to enable email alerts'
@@ -123,14 +148,18 @@ export async function GET() {
   
   try {
     const users = await getAllWatchlistUsers();
-    console.log(`Found ${users.length} users to check`);
+    console.log(`Found ${users.length} users:`, users);
     
     let totalAlerts = 0;
     
     for (const user of users) {
+      console.log(`\nChecking alerts for user: ${user.email} (${user.userId})`);
       const results = await checkUserAlerts(user.userId, user.email);
       totalAlerts += results.filter(r => r.emailSent).length;
+      console.log(`Results for ${user.email}:`, results);
     }
+    
+    console.log(`\n=== Alert check completed: ${totalAlerts} emails sent ===`);
     
     return NextResponse.json({ 
       message: 'Alert check completed',
