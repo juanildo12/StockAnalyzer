@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getWatchlistFromFirestore, WatchlistItem } from '@/src/services/firebase';
+import { getWatchlistFromFirestore, WatchlistItem, getAllWatchlistUsers, addAlertedSymbol, getAlertedSymbols } from '@/src/services/firebase';
 import { getStockQuote } from '@/src/services/yahooFinance';
-import { getAllWatchlistUsers, addAlertedSymbol, getUserEmail } from '@/src/services/firebase';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 
@@ -60,10 +59,21 @@ async function checkUserAlerts(userId: string, email: string): Promise<{ symbol:
   const results: { symbol: string; currentPrice: number; targetPrice: number; emailSent: boolean }[] = [];
   
   try {
+    // Get already alerted symbols for this user
+    const alertedSymbols = await getAlertedSymbols(userId);
+    console.log(`User ${userId} has alerted symbols:`, alertedSymbols);
+    
     const watchlist = await getWatchlistFromFirestore(userId);
     
     for (const item of watchlist) {
-      if (!item.alertEnabled || !item.alertPrice || !item.alertType) continue;
+      // Skip if alert is not enabled or no target price set
+      if (!item.alertEnabled || !item.alertPrice || item.alertPrice <= 0) continue;
+      
+      // Skip if this symbol was already alerted
+      if (alertedSymbols.includes(item.symbol)) {
+        console.log(`Skipping ${item.symbol} - already alerted`);
+        continue;
+      }
       
       try {
         const quote = await getStockQuote(item.symbol);
@@ -78,7 +88,8 @@ async function checkUserAlerts(userId: string, email: string): Promise<{ symbol:
         }
         
         if (shouldAlert) {
-          const emailSent = await sendEmail(email, item.symbol, currentPrice, item.alertPrice, item.alertType);
+          console.log(`Alert triggered for ${item.symbol}: current=${currentPrice}, target=${item.alertPrice}`);
+          const emailSent = await sendEmail(email, item.symbol, currentPrice, item.alertPrice, item.alertType || 'above');
           if (emailSent) {
             await addAlertedSymbol(userId, item.symbol);
           }
