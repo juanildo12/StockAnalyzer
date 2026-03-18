@@ -676,7 +676,7 @@ export default function Home() {
     : 0;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0d1117', color: '#c9d1d9', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#0d1117', color: '#c9d1d9', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative' }}>
       {isMobile && menuOpen && (
         <div 
           style={{
@@ -685,7 +685,7 @@ export default function Home() {
             left: 0,
             right: 0,
             bottom: 0,
-            zIndex: 999,
+            zIndex: 998,
           }}
           onClick={() => setMenuOpen(false)}
         />
@@ -697,7 +697,8 @@ export default function Home() {
         padding: '16px 20px', 
         borderBottom: '1px solid #30363d',
         position: 'relative',
-        flexWrap: 'wrap'
+        flexWrap: 'wrap',
+        zIndex: 1001
       }}>
         <h1 style={{ margin: 0, fontSize: '20px', color: '#58a6ff' }}>📈 Stock Analyzer</h1>
         
@@ -981,7 +982,7 @@ export default function Home() {
         )}
       </header>
 
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', position: 'relative', zIndex: 10 }}>
         {view === 'analyzer' ? (
           <>
             <div style={{ textAlign: 'center', marginBottom: '24px' }}>
@@ -989,7 +990,7 @@ export default function Home() {
               <p style={{ color: '#8b949e' }}>Ingresa el ticker para obtener un análisis profesional</p>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', maxWidth: '600px', margin: '0 auto 24px', position: 'relative', zIndex: 10 }}>
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', maxWidth: '600px', margin: '0 auto 24px', position: 'relative', zIndex: 9999 }}>
               <input
                 type="text"
                 className="search-input"
@@ -1017,6 +1018,9 @@ export default function Home() {
                   outline: 'none',
                   touchAction: 'manipulation',
                   WebkitAppearance: 'none',
+                  transform: 'translateZ(0)',
+                  position: 'relative',
+                  zIndex: 99999,
                 }}
               />
               {showSuggestions && suggestions.length > 0 && (
