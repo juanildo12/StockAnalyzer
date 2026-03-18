@@ -493,6 +493,9 @@ export default function Home() {
     alertType: 'above' as 'above' | 'below',
     alertEnabled: true,
   });
+  const [watchlistError, setWatchlistError] = useState('');
+  const [editingAlert, setEditingAlert] = useState<{[key: string]: { alertType: 'above' | 'below'; alertPrice: number; alertEnabled: boolean; alertPriceInput: number }}>({});
+  const [savingAlert, setSavingAlert] = useState<string | null>(null);
 
   const { data: session, status } = useSession();
 
@@ -527,8 +530,6 @@ export default function Home() {
       console.error('Error loading watchlist:', error);
     }
   };
-
-  const [watchlistError, setWatchlistError] = useState('');
 
   const fetchWatchlistPrices = async (symbols: string[]) => {
     if (symbols.length === 0) return;
@@ -1728,7 +1729,7 @@ export default function Home() {
                                 <input
                                   type="checkbox"
                                   checked={alertEnabled}
-                                  onChange={(e) => updateWatchlistAlert(item.symbol, alertPrice, e.target.checked, alertType)}
+                                  onChange={(e) => setEditingAlert(prev => ({ ...prev, [item.symbol]: { alertType, alertPrice, alertEnabled: e.target.checked, alertPriceInput: prev[item.symbol]?.alertPriceInput ?? alertPrice } }))}
                                   style={{ opacity: 0, width: 0, height: 0 }}
                                 />
                                 <span style={{
@@ -1758,43 +1759,98 @@ export default function Home() {
                             </div>
 
                             {alertEnabled && (
-                              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                <select
-                                  value={alertType}
-                                  onChange={(e) => updateWatchlistAlert(item.symbol, alertPrice, alertEnabled, e.target.value as 'above' | 'below')}
-                                  style={{ 
-                                    flex: 1,
-                                    padding: '12px 16px', 
-                                    borderRadius: '12px', 
-                                    border: '1px solid #30363d', 
-                                    background: '#0d1117', 
-                                    color: '#c9d1d9', 
-                                    fontSize: '14px',
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  <option value="above">📈Alertar cuando suba a</option>
-                                  <option value="below">📉Alertar cuando baje a</option>
-                                </select>
-                                <div style={{ position: 'relative', flex: '0 0 120px' }}>
-                                  <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#8b949e', fontSize: '14px' }}>$</span>
-                                  <input
-                                    type="number"
-                                    placeholder="0.00"
-                                    value={alertPrice || ''}
-                                    onChange={(e) => updateWatchlistAlert(item.symbol, parseFloat(e.target.value) || 0, alertEnabled, alertType)}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                                  <select
+                                    value={alertType}
+                                    onChange={(e) => setEditingAlert(prev => ({ ...prev, [item.symbol]: { alertType: e.target.value as 'above' | 'below', alertPrice, alertEnabled, alertPriceInput: prev[item.symbol]?.alertPriceInput ?? alertPrice } }))}
                                     style={{ 
-                                      width: '100%', 
-                                      padding: '12px 12px 12px 28px', 
+                                      flex: 1,
+                                      padding: '12px 16px', 
                                       borderRadius: '12px', 
                                       border: '1px solid #30363d', 
                                       background: '#0d1117', 
                                       color: '#c9d1d9', 
                                       fontSize: '14px',
-                                      textAlign: 'right',
+                                      cursor: 'pointer',
                                     }}
-                                  />
+                                  >
+                                    <option value="above">📈Alertar cuando suba a</option>
+                                    <option value="below">📉Alertar cuando baje a</option>
+                                  </select>
+                                  <div style={{ position: 'relative', flex: '0 0 120px' }}>
+                                    <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#8b949e', fontSize: '14px' }}>$</span>
+                                    <input
+                                      type="number"
+                                      placeholder="0.00"
+                                      value={editingAlert[item.symbol]?.alertPriceInput ?? (alertPrice || '')}
+                                      onChange={(e) => setEditingAlert(prev => ({ ...prev, [item.symbol]: { alertType, alertPrice, alertEnabled, alertPriceInput: parseFloat(e.target.value) || 0 } }))}
+                                      style={{ 
+                                        width: '100%', 
+                                        padding: '12px 12px 12px 28px', 
+                                        borderRadius: '12px', 
+                                        border: '1px solid #30363d', 
+                                        background: '#0d1117', 
+                                        color: '#c9d1d9', 
+                                        fontSize: '14px',
+                                        textAlign: 'right',
+                                      }}
+                                    />
+                                  </div>
                                 </div>
+                                
+                                {editingAlert[item.symbol] && (
+                                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                    <button
+                                      onClick={() => {
+                                        setEditingAlert(prev => {
+                                          const next = { ...prev };
+                                          delete next[item.symbol];
+                                          return next;
+                                        });
+                                      }}
+                                      style={{ 
+                                        padding: '8px 16px',
+                                        borderRadius: '8px', 
+                                        border: '1px solid #30363d', 
+                                        background: '#21262d', 
+                                        color: '#c9d1d9', 
+                                        fontSize: '14px',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      Cancelar
+                                    </button>
+                                    <button
+                                      onClick={async () => {
+                                        const edit = editingAlert[item.symbol];
+                                        if (edit) {
+                                          setSavingAlert(item.symbol);
+                                          await updateWatchlistAlert(item.symbol, edit.alertPriceInput ?? alertPrice, edit.alertEnabled, edit.alertType);
+                                          setEditingAlert(prev => {
+                                            const next = { ...prev };
+                                            delete next[item.symbol];
+                                            return next;
+                                          });
+                                          setSavingAlert(null);
+                                        }
+                                      }}
+                                      disabled={savingAlert === item.symbol}
+                                      style={{ 
+                                        padding: '8px 20px',
+                                        borderRadius: '8px', 
+                                        border: 'none', 
+                                        background: savingAlert === item.symbol ? '#30363d' : '#238636', 
+                                        color: 'white', 
+                                        fontSize: '14px',
+                                        fontWeight: '600',
+                                        cursor: savingAlert === item.symbol ? 'wait' : 'pointer',
+                                      }}
+                                    >
+                                      {savingAlert === item.symbol ? 'Guardando...' : 'Guardar'}
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             )}
 
