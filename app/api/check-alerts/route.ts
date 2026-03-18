@@ -27,7 +27,7 @@ async function sendEmail(to: string, symbol: string, currentPrice: number, targe
         subject: `${emoji} Alerta: ${symbol} ha ${direction} tu precio objetivo`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: ${color};">${emoji} Alerta de precio para ${symbol}!</h1>
+            <h1 style="color: ${color};">${emoji} Alerta: ${symbol} ha ${direction} tu precio objetivo!</h1>
             <p>${symbol} ha ${direction} tu precio objetivo.</p>
             <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
               <p style="margin: 5px 0;"><strong>Símbolo:</strong> ${symbol}</p>
@@ -55,123 +55,122 @@ async function sendEmail(to: string, symbol: string, currentPrice: number, targe
   }
 }
 
-async function checkUserAlerts(userId: string, email: string): Promise<{ symbol: string; currentPrice: number; targetPrice: number; emailSent: boolean }[]> {
-  const results: { symbol: string; currentPrice: number; targetPrice: number; emailSent: boolean }[] = [];
-  
-  try {
-    const alertedSymbols = await getAlertedSymbols(userId);
-    console.log(`[${userId}] Alerted symbols:`, alertedSymbols);
-    
-    const watchlist = await getWatchlistFromFirestore(userId);
-    console.log(`[${userId}] Watchlist items:`, JSON.stringify(watchlist, null, 2));
-    
-    if (watchlist.length === 0) {
-      console.log(`[${userId}] No items in watchlist`);
-      return results;
-    }
-    
-    for (const item of watchlist) {
-      console.log(`[${userId}] Checking ${item.symbol}: alertEnabled=${item.alertEnabled}, alertPrice=${item.alertPrice}, alertType=${item.alertType}`);
-      
-      // Skip if alert is not enabled
-      if (!item.alertEnabled) {
-        console.log(`  -> Skipping ${item.symbol}: alert not enabled`);
-        continue;
-      }
-      
-      // Skip if no target price set
-      if (!item.alertPrice || item.alertPrice <= 0) {
-        console.log(`  -> Skipping ${item.symbol}: no valid alert price`);
-        continue;
-      }
-      
-      // Skip if this symbol was already alerted
-      if (alertedSymbols.includes(item.symbol)) {
-        console.log(`  -> Skipping ${item.symbol}: already alerted`);
-        continue;
-      }
-      
-      try {
-        const quote = await getStockQuote(item.symbol);
-        const currentPrice = quote.regularMarketPrice;
-        console.log(`  -> ${item.symbol}: current=${currentPrice}, target=${item.alertPrice}, type=${item.alertType}`);
-        
-        let shouldAlert = false;
-        
-        if (item.alertType === 'below' && currentPrice <= item.alertPrice) {
-          shouldAlert = true;
-          console.log(`  -> Condition met: below`);
-        } else if (item.alertType === 'above' && currentPrice >= item.alertPrice) {
-          shouldAlert = true;
-          console.log(`  -> Condition met: above`);
-        }
-        
-        if (shouldAlert) {
-          console.log(`  -> ALERT TRIGGERED for ${item.symbol}! Sending email...`);
-          const emailSent = await sendEmail(email, item.symbol, currentPrice, item.alertPrice, item.alertType || 'above');
-          if (emailSent) {
-            await addAlertedSymbol(userId, item.symbol);
-            console.log(`  -> Email sent and marked as alerted`);
-          } else {
-            console.log(`  -> Email FAILED to send`);
-          }
-          results.push({
-            symbol: item.symbol,
-            currentPrice,
-            targetPrice: item.alertPrice,
-            emailSent
-          });
-        } else {
-          console.log(`  -> No alert: price not in range`);
-        }
-      } catch (error) {
-        console.error(`  -> Error checking price for ${item.symbol}:`, error);
-      }
-    }
-  } catch (error) {
-    console.error(`Error processing alerts for user ${userId}:`, error);
-  }
-  
-  return results;
-}
-
 export async function GET() {
-  console.log('=== Running price alert check ===');
+  const logs: string[] = [];
+  const results: any[] = [];
+  
+  console.log('=== Running manual alert check ===');
+  logs.push('=== Running manual alert check ===');
   
   if (!RESEND_API_KEY) {
-    console.log('RESEND_API_KEY not configured!');
-    return NextResponse.json({ 
-      error: 'RESEND_API_KEY not configured',
-      message: 'Configure RESEND_API_KEY in Vercel to enable email alerts'
-    }, { status: 500 });
+    const msg = 'RESEND_API_KEY not configured!';
+    console.log(msg);
+    logs.push(msg);
+    return NextResponse.json({ error: msg, logs }, { status: 500 });
   }
   
   try {
     const users = await getAllWatchlistUsers();
-    console.log(`Found ${users.length} users:`, users);
-    
-    let totalAlerts = 0;
+    console.log(`Found ${users.length} users:`, JSON.stringify(users));
+    logs.push(`Found ${users.length} users: ${JSON.stringify(users)}`);
     
     for (const user of users) {
-      console.log(`\nChecking alerts for user: ${user.email} (${user.userId})`);
-      const results = await checkUserAlerts(user.userId, user.email);
-      totalAlerts += results.filter(r => r.emailSent).length;
-      console.log(`Results for ${user.email}:`, results);
+      console.log(`\nProcessing user: ${user.email} (${user.userId})`);
+      logs.push(`\nProcessing user: ${user.email} (${user.userId})`);
+      
+      const alertedSymbols = await getAlertedSymbols(user.userId);
+      console.log(`Already alerted:`, alertedSymbols);
+      logs.push(`Already alerted: ${JSON.stringify(alertedSymbols)}`);
+      
+      const watchlist = await getWatchlistFromFirestore(user.userId);
+      console.log(`Watchlist (${watchlist.length} items):`, JSON.stringify(watchlist));
+      logs.push(`Watchlist (${watchlist.length} items): ${JSON.stringify(watchlist)}`);
+      
+      for (const item of watchlist) {
+        console.log(`\nChecking ${item.symbol}:`);
+        logs.push(`\nChecking ${item.symbol}:`);
+        
+        // Check alert settings
+        if (!item.alertEnabled) {
+          console.log(`  -> SKIP: Alert not enabled`);
+          logs.push(`  -> SKIP: Alert not enabled`);
+          continue;
+        }
+        
+        if (!item.alertPrice || item.alertPrice <= 0) {
+          console.log(`  -> SKIP: No valid alert price`);
+          logs.push(`  -> SKIP: No valid alert price`);
+          continue;
+        }
+        
+        if (alertedSymbols.includes(item.symbol)) {
+          console.log(`  -> SKIP: Already alerted`);
+          logs.push(`  -> SKIP: Already alerted`);
+          continue;
+        }
+        
+        // Get current price
+        try {
+          const quote = await getStockQuote(item.symbol);
+          const currentPrice = quote.regularMarketPrice;
+          console.log(`  -> Current price: $${currentPrice}`);
+          logs.push(`  -> Current price: $${currentPrice}`);
+          
+          let shouldAlert = false;
+          
+          if (item.alertType === 'below' && currentPrice <= item.alertPrice) {
+            shouldAlert = true;
+            console.log(`  -> CONDITION MET: below (${currentPrice} <= ${item.alertPrice})`);
+            logs.push(`  -> CONDITION MET: below (${currentPrice} <= ${item.alertPrice})`);
+          } else if (item.alertType === 'above' && currentPrice >= item.alertPrice) {
+            shouldAlert = true;
+            console.log(`  -> CONDITION MET: above (${currentPrice} >= ${item.alertPrice})`);
+            logs.push(`  -> CONDITION MET: above (${currentPrice} >= ${item.alertPrice})`);
+          }
+          
+          if (shouldAlert) {
+            console.log(`  -> SENDING EMAIL...`);
+            logs.push(`  -> SENDING EMAIL...`);
+            const emailSent = await sendEmail(user.email, item.symbol, currentPrice, item.alertPrice, item.alertType || 'above');
+            
+            if (emailSent) {
+              await addAlertedSymbol(user.userId, item.symbol);
+              console.log(`  -> EMAIL SENT!`);
+              logs.push(`  -> EMAIL SENT!`);
+            } else {
+              console.log(`  -> EMAIL FAILED!`);
+              logs.push(`  -> EMAIL FAILED!`);
+            }
+            
+            results.push({
+              symbol: item.symbol,
+              currentPrice,
+              targetPrice: item.alertPrice,
+              alertType: item.alertType,
+              emailSent
+            });
+          } else {
+            console.log(`  -> No alert: price not in range`);
+            logs.push(`  -> No alert: price not in range`);
+          }
+        } catch (error) {
+          console.log(`  -> ERROR getting price:`, error);
+          logs.push(`  -> ERROR getting price: ${String(error)}`);
+        }
+      }
     }
     
-    console.log(`\n=== Alert check completed: ${totalAlerts} emails sent ===`);
+    console.log(`\n=== DONE: ${results.length} emails sent ===`);
+    logs.push(`\n=== DONE: ${results.length} emails sent ===`);
     
     return NextResponse.json({ 
       message: 'Alert check completed',
-      usersChecked: users.length,
-      alertsSent: totalAlerts,
-      timestamp: new Date().toISOString()
+      results,
+      logs
     });
   } catch (error) {
-    console.error('Error in alert check:', error);
-    return NextResponse.json({ 
-      error: 'Failed to check alerts',
-      message: String(error)
-    }, { status: 500 });
+    console.error('Error:', error);
+    logs.push(`Error: ${String(error)}`);
+    return NextResponse.json({ error: String(error), logs }, { status: 500 });
   }
 }
