@@ -13,7 +13,8 @@ import {
   addWatchlistItem,
   updateWatchlistItem,
   removeWatchlistItem,
-  WatchlistItem
+  WatchlistItem,
+  saveUserEmail
 } from '@/src/services/firebase';
 import { useMediaQuery } from '@/src/hooks/useMediaQuery';
 
@@ -497,6 +498,7 @@ export default function Home() {
 
   useEffect(() => {
     if (session?.user?.email) {
+      saveUserEmail(session.user.email, session.user.email);
       loadPortfolio();
       loadWatchlist();
     }
@@ -571,9 +573,14 @@ export default function Home() {
   };
 
   const handleAddToWatchlist = async () => {
-    if (!session?.user?.email || !watchlistForm.symbol) return;
+    if (!session?.user?.email || !watchlistForm.symbol) {
+      console.log('Missing session or symbol:', { hasSession: !!session?.user?.email, symbol: watchlistForm.symbol });
+      return;
+    }
     try {
-      await addWatchlistItem(session.user.email, {
+      const userId = session.user.email;
+      console.log('Adding to watchlist:', userId, watchlistForm);
+      await addWatchlistItem(userId, {
         symbol: watchlistForm.symbol.toUpperCase(),
         addedAt: new Date().toISOString(),
         alertEnabled: watchlistForm.alertEnabled,
