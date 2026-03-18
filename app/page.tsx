@@ -1692,7 +1692,6 @@ export default function Home() {
           </>
         ) : null}
       </div>
-      </div>
 
       {/* Vista de Informe - Nuevo Formato Detallado */}
       {view === 'informe' && (
@@ -1706,8 +1705,13 @@ export default function Home() {
               <p style={{ fontSize: '48px', margin: '0 0 16px' }}>📋</p>
               <p>Analiza una acción para ver el informe</p>
             </div>
-)}
-      </div>
+          )}
+        </div>
+      )}
+
+      {/* Vista de Framework PRO */}
+      {view === 'framework' && data && (
+        <FrameworkView data={data} />
       )}
 
       {/* Modal para agregar a Watchlist */}
