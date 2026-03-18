@@ -487,6 +487,17 @@ export default function Home() {
     }
   }, [session]);
 
+  useEffect(() => {
+    if (!isMobile) return;
+    
+    const handleScroll = () => {
+      if (menuOpen) setMenuOpen(false);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isMobile, menuOpen]);
+
   const loadPortfolio = async () => {
     if (!session?.user?.email) return;
     try {
@@ -666,6 +677,19 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0d1117', color: '#c9d1d9', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      {isMobile && menuOpen && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 999,
+          }}
+          onClick={() => setMenuOpen(false)}
+        />
+      )}
       <header style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
