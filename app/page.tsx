@@ -10,6 +10,7 @@ import {
   removePortfolioItem,
   PortfolioItem 
 } from '@/src/services/firebase';
+import { useMediaQuery } from '@/src/hooks/useMediaQuery';
 
 interface StockQuote {
   symbol: string;
@@ -475,6 +476,8 @@ export default function Home() {
     notes: '',
     targetPrice: ''
   });
+  const [menuOpen, setMenuOpen] = useState(false);
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   const { data: session, status } = useSession();
 
@@ -663,126 +666,280 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0d1117', color: '#c9d1d9', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #30363d' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #30363d', flexWrap: 'wrap', gap: '12px' }}>
         <h1 style={{ margin: 0, fontSize: '20px', color: '#58a6ff' }}>📈 Stock Analyzer</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <nav style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={() => setView('analyzer')}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '8px',
-                border: '1px solid #30363d',
-                background: view === 'analyzer' ? '#238636' : 'transparent',
-                color: '#c9d1d9',
-                cursor: 'pointer',
-                fontWeight: '500',
-              }}
-            >
-              Analizador
-            </button>
-            <button
-              onClick={() => setView('portfolio')}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '8px',
-                border: '1px solid #30363d',
-                background: view === 'portfolio' ? '#238636' : 'transparent',
-                color: '#c9d1d9',
-                cursor: 'pointer',
-                fontWeight: '500',
-              }}
-            >
-              Portafolio ({portfolio.length})
-            </button>
-            <button
-              onClick={() => setView('watchlist')}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '8px',
-                border: '1px solid #30363d',
-                background: view === 'watchlist' ? '#238636' : 'transparent',
-                color: '#c9d1d9',
-                cursor: 'pointer',
-                fontWeight: '500',
-              }}
-            >
-              Watchlist
-            </button>
-            <button
-              onClick={() => setView('informe')}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '8px',
-                border: '1px solid #30363d',
-                background: view === 'informe' ? '#238636' : 'transparent',
-                color: '#c9d1d9',
-                cursor: 'pointer',
-                fontWeight: '500',
-              }}
-            >
-              Informe
-            </button>
-            <button
-              onClick={() => setView('framework')}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '8px',
-                border: '1px solid #30363d',
-                background: view === 'framework' ? '#238636' : 'transparent',
-                color: '#c9d1d9',
-                cursor: 'pointer',
-                fontWeight: '500',
-              }}
-            >
-              🧠 Framework
-            </button>
-          </nav>
-          {status === 'loading' ? (
-            <span style={{ color: '#8b949e', fontSize: '14px' }}>Cargando...</span>
-          ) : session ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {session.user?.image && (
-                <img 
-                  src={session.user.image} 
-                  alt={session.user.name || 'User'} 
-                  style={{ width: '32px', height: '32px', borderRadius: '50%' }}
-                />
-              )}
-              <span style={{ color: '#c9d1d9', fontSize: '14px' }}>{session.user?.name}</span>
+        
+        {!isMobile ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <nav style={{ display: 'flex', gap: '8px' }}>
               <button
-                onClick={() => signOut()}
+                onClick={() => setView('analyzer')}
                 style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  border: '1px solid #f85149',
-                  background: 'transparent',
-                  color: '#f85149',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #30363d',
+                  background: view === 'analyzer' ? '#238636' : 'transparent',
+                  color: '#c9d1d9',
                   cursor: 'pointer',
-                  fontSize: '12px',
+                  fontWeight: '500',
                 }}
               >
-                Salir
+                Analizador
               </button>
-            </div>
-          ) : (
+              <button
+                onClick={() => setView('portfolio')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #30363d',
+                  background: view === 'portfolio' ? '#238636' : 'transparent',
+                  color: '#c9d1d9',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                }}
+              >
+                Portafolio ({portfolio.length})
+              </button>
+              <button
+                onClick={() => setView('watchlist')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #30363d',
+                  background: view === 'watchlist' ? '#238636' : 'transparent',
+                  color: '#c9d1d9',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                }}
+              >
+                Watchlist
+              </button>
+              <button
+                onClick={() => setView('informe')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #30363d',
+                  background: view === 'informe' ? '#238636' : 'transparent',
+                  color: '#c9d1d9',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                }}
+              >
+                Informe
+              </button>
+              <button
+                onClick={() => setView('framework')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #30363d',
+                  background: view === 'framework' ? '#238636' : 'transparent',
+                  color: '#c9d1d9',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                }}
+              >
+                🧠 Framework
+              </button>
+            </nav>
+            {status === 'loading' ? (
+              <span style={{ color: '#8b949e', fontSize: '14px' }}>Cargando...</span>
+            ) : session ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {session.user?.image && (
+                  <img 
+                    src={session.user.image} 
+                    alt={session.user.name || 'User'} 
+                    style={{ width: '32px', height: '32px', borderRadius: '50%' }}
+                  />
+                )}
+                <span style={{ color: '#c9d1d9', fontSize: '14px' }}>{session.user?.name}</span>
+                <button
+                  onClick={() => signOut()}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #f85149',
+                    background: 'transparent',
+                    color: '#f85149',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                  }}
+                >
+                  Salir
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => signIn('google')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#58a6ff',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                }}
+              >
+                Iniciar sesión
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
             <button
-              onClick={() => signIn('google')}
+              onClick={() => setMenuOpen(!menuOpen)}
               style={{
-                padding: '8px 16px',
-                borderRadius: '8px',
-                border: 'none',
-                background: '#58a6ff',
-                color: 'white',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid #30363d',
+                background: 'transparent',
+                color: '#c9d1d9',
                 cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '14px',
+                fontSize: '20px',
               }}
             >
-              Iniciar sesión
+              {menuOpen ? '✕' : '☰'}
             </button>
-          )}
-        </div>
+            {menuOpen && (
+              <div style={{
+                width: '100%',
+                background: '#161b22',
+                borderRadius: '8px',
+                padding: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+              }}>
+                <button
+                  onClick={() => { setView('analyzer'); setMenuOpen(false); }}
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #30363d',
+                    background: view === 'analyzer' ? '#238636' : 'transparent',
+                    color: '#c9d1d9',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    textAlign: 'left',
+                  }}
+                >
+                  Analizador
+                </button>
+                <button
+                  onClick={() => { setView('portfolio'); setMenuOpen(false); }}
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #30363d',
+                    background: view === 'portfolio' ? '#238636' : 'transparent',
+                    color: '#c9d1d9',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    textAlign: 'left',
+                  }}
+                >
+                  Portafolio ({portfolio.length})
+                </button>
+                <button
+                  onClick={() => { setView('watchlist'); setMenuOpen(false); }}
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #30363d',
+                    background: view === 'watchlist' ? '#238636' : 'transparent',
+                    color: '#c9d1d9',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    textAlign: 'left',
+                  }}
+                >
+                  Watchlist
+                </button>
+                <button
+                  onClick={() => { setView('informe'); setMenuOpen(false); }}
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #30363d',
+                    background: view === 'informe' ? '#238636' : 'transparent',
+                    color: '#c9d1d9',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    textAlign: 'left',
+                  }}
+                >
+                  Informe
+                </button>
+                <button
+                  onClick={() => { setView('framework'); setMenuOpen(false); }}
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #30363d',
+                    background: view === 'framework' ? '#238636' : 'transparent',
+                    color: '#c9d1d9',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    textAlign: 'left',
+                  }}
+                >
+                  🧠 Framework
+                </button>
+                <div style={{ borderTop: '1px solid #30363d', paddingTop: '12px', marginTop: '4px' }}>
+                  {status === 'loading' ? (
+                    <span style={{ color: '#8b949e', fontSize: '14px' }}>Cargando...</span>
+                  ) : session ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      {session.user?.image && (
+                        <img 
+                          src={session.user.image} 
+                          alt={session.user.name || 'User'} 
+                          style={{ width: '32px', height: '32px', borderRadius: '50%' }}
+                        />
+                      )}
+                      <span style={{ color: '#c9d1d9', fontSize: '14px', flex: 1 }}>{session.user?.name}</span>
+                      <button
+                        onClick={() => { signOut(); setMenuOpen(false); }}
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid #f85149',
+                          background: 'transparent',
+                          color: '#f85149',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                        }}
+                      >
+                        Salir
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => { signIn('google'); setMenuOpen(false); }}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: '#58a6ff',
+                        color: 'white',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '14px',
+                      }}
+                    >
+                      Iniciar sesión
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </header>
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
