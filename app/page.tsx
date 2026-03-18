@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { 
   savePortfolioToFirestore, 
@@ -840,6 +841,21 @@ export default function Home() {
               >
                 Watchlist
               </button>
+              <Link href="/screener" target="_blank" style={{ textDecoration: 'none' }}>
+                <button
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #30363d',
+                    background: 'transparent',
+                    color: '#c9d1d9',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                  }}
+                >
+                  🔍 Screener
+                </button>
+              </Link>
               <button
                 onClick={() => setView('informe')}
                 style={{
@@ -985,6 +1001,24 @@ export default function Home() {
                 >
                   Watchlist
                 </button>
+                <Link href="/screener" target="_blank" style={{ textDecoration: 'none' }}>
+                  <button
+                    onClick={() => setMenuOpen(false)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      borderRadius: '8px',
+                      border: '1px solid #30363d',
+                      background: 'transparent',
+                      color: '#c9d1d9',
+                      cursor: 'pointer',
+                      fontWeight: '500',
+                      textAlign: 'left',
+                    }}
+                  >
+                    🔍 Screener
+                  </button>
+                </Link>
                 <button
                   onClick={() => { setView('informe'); setMenuOpen(false); }}
                   style={{
