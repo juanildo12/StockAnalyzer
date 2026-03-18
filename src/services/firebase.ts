@@ -177,7 +177,19 @@ export async function updateWatchlistItem(userId: string, symbol: string, update
   const index = watchlist.findIndex(w => w.symbol === symbol);
   
   if (index >= 0) {
+    const oldItem = watchlist[index];
     watchlist[index] = { ...watchlist[index], ...updates };
+    
+    // If alert settings changed (price, type, or enabled), clear the alerted flag
+    // so user can receive new alerts
+    if (
+      updates.alertPrice !== undefined ||
+      updates.alertType !== undefined ||
+      updates.alertEnabled !== undefined
+    ) {
+      await clearAlertedSymbol(userId, symbol);
+    }
+    
     await saveWatchlistToFirestore(userId, watchlist);
   }
   
