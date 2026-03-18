@@ -992,6 +992,7 @@ export default function Home() {
             <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', maxWidth: '600px', margin: '0 auto 24px', position: 'relative', zIndex: 10 }}>
               <input
                 type="text"
+                className="search-input"
                 value={symbol}
                 placeholder="Ej: AAPL, MSFT, GOOGL..."
                 autoComplete="off"

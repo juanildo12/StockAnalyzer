@@ -32,8 +32,41 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
-  userScalable: false,
+  viewportFit: 'cover',
 };
+
+const iosPwaFixStyles = `
+  html, body {
+    height: 100%;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  input, textarea {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border-radius: 0;
+  }
+  
+  input:focus, textarea:focus {
+    -webkit-appearance: none;
+    outline: none;
+  }
+  
+  @supports (-webkit-touch-callout: none) {
+    input, textarea {
+      font-size: 16px !important;
+    }
+  }
+  
+  @supports (-webkit-touch-callout: none) {
+    .search-input:focus {
+      position: relative;
+      z-index: 9999;
+    }
+  }
+`;
 
 export default function RootLayout({
   children,
@@ -45,6 +78,8 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <style dangerouslySetInnerHTML={{ __html: iosPwaFixStyles }} />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body>
         <Providers>{children}</Providers>
@@ -62,6 +97,15 @@ export default function RootLayout({
                     }
                   );
                 });
+              }
+              
+              // Fix for iOS PWA input zoom issue
+              const meta = document.querySelector('meta[name="viewport"]');
+              if (meta) {
+                const content = meta.getAttribute('content') || '';
+                if (!content.includes('viewport-fit=cover')) {
+                  meta.setAttribute('content', content + ', viewport-fit=cover');
+                }
               }
             `,
           }}
