@@ -989,18 +989,21 @@ export default function Home() {
               <p style={{ color: '#8b949e' }}>Ingresa el ticker para obtener un análisis profesional</p>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', maxWidth: '600px', margin: '0 auto 24px', position: 'relative' }}>
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', maxWidth: '600px', margin: '0 auto 24px', position: 'relative', zIndex: 10 }}>
               <input
                 type="text"
                 value={symbol}
                 placeholder="Ej: AAPL, MSFT, GOOGL..."
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="characters"
                 onKeyDown={e => { if (e.key === 'Enter') searchStock(); }}
                 onChange={e => {
                   setSymbol(e.target.value);
                   setShowSuggestions(true);
                   fetchSuggestions(e.target.value);
                 }}
-                onFocus={() => setShowSuggestions(true)}
+                onFocus={() => { setShowSuggestions(true); if (isMobile) setMenuOpen(false); }}
                 onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                 style={{
                   flex: 1,
@@ -1011,10 +1014,12 @@ export default function Home() {
                   color: '#c9d1d9',
                   fontSize: '16px',
                   outline: 'none',
+                  touchAction: 'manipulation',
+                  WebkitAppearance: 'none',
                 }}
               />
               {showSuggestions && suggestions.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#161b22', border: '1px solid #30363d', borderRadius: '8px', marginTop: '4px', zIndex: 100, maxHeight: '200px', overflow: 'auto' }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#161b22', border: '1px solid #30363d', borderRadius: '8px', marginTop: '4px', zIndex: 1000, maxHeight: '200px', overflow: 'auto' }}>
                   {suggestions.map(s => (
                     <div key={s.symbol} onClick={() => { setSymbol(s.symbol); setShowSuggestions(false); searchStock(); }} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #30363d' }} onMouseOver={e => (e.currentTarget.style.background = '#238636')} onMouseOut={e => (e.currentTarget.style.background = 'transparent')}>
                       <span style={{ color: '#58a6ff', fontWeight: '600' }}>{s.symbol}</span>
