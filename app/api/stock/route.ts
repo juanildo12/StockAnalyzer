@@ -6,6 +6,31 @@ import { generateInformeDetail } from '../../../src/services/informeGenerator';
 
 export async function GET(request: NextRequest) {
   const symbol = request.nextUrl.searchParams.get('symbol');
+  const symbols = request.nextUrl.searchParams.get('symbols');
+
+  // Handle multiple symbols for watchlist
+  if (symbols) {
+    try {
+      const symbolList = symbols.split(',').map(s => s.trim().toUpperCase()).filter(s => s.length > 0);
+      const quotes = [];
+      
+      for (const sym of symbolList) {
+        try {
+          const data = await getStockData(sym);
+          if (data.quote && data.quote.regularMarketPrice > 0) {
+            quotes.push(data.quote);
+          }
+        } catch (error) {
+          console.error(`Error fetching ${sym}:`, error);
+        }
+      }
+      
+      return NextResponse.json({ quotes });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return NextResponse.json({ error: message, quotes: [] }, { status: 500 });
+    }
+  }
 
   if (!symbol) {
     return NextResponse.json({ error: 'Symbol is required' }, { status: 400 });
