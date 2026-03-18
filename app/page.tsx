@@ -8,7 +8,12 @@ import {
   addPortfolioItem, 
   updatePortfolioItem,
   removePortfolioItem,
-  PortfolioItem 
+  PortfolioItem,
+  getWatchlistFromFirestore,
+  addWatchlistItem,
+  updateWatchlistItem,
+  removeWatchlistItem,
+  WatchlistItem
 } from '@/src/services/firebase';
 import { useMediaQuery } from '@/src/hooks/useMediaQuery';
 
@@ -478,12 +483,15 @@ export default function Home() {
   });
   const [menuOpen, setMenuOpen] = useState(false);
   const isMobile = useMediaQuery('(max-width: 768px)');
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+  const [watchlistPrices, setWatchlistPrices] = useState<{ [key: string]: { price: number; change: number; changePercent: number } }>({});
 
   const { data: session, status } = useSession();
 
   useEffect(() => {
     if (session?.user?.email) {
       loadPortfolio();
+      loadWatchlist();
     }
   }, [session]);
 
@@ -495,6 +503,83 @@ export default function Home() {
     } catch (error) {
       console.error('Error loading portfolio:', error);
     }
+  };
+
+  const loadWatchlist = async () => {
+    if (!session?.user?.email) return;
+    try {
+      const items = await getWatchlistFromFirestore(session.user.email);
+      setWatchlist(items);
+      if (items.length > 0) {
+        fetchWatchlistPrices(items.map(w => w.symbol));
+      }
+    } catch (error) {
+      console.error('Error loading watchlist:', error);
+    }
+  };
+
+  const fetchWatchlistPrices = async (symbols: string[]) => {
+    try {
+      const response = await fetch(`/api/stock?symbols=${symbols.join(',')}`);
+      const result = await response.json();
+      if (result.quotes) {
+        const prices: { [key: string]: { price: number; change: number; changePercent: number } } = {};
+        result.quotes.forEach((quote: any) => {
+          prices[quote.symbol] = {
+            price: quote.regularMarketPrice,
+            change: quote.regularMarketChange,
+            changePercent: quote.regularMarketChangePercent
+          };
+        });
+        setWatchlistPrices(prices);
+      }
+    } catch (error) {
+      console.error('Error fetching watchlist prices:', error);
+    }
+  };
+
+  const addToWatchlist = async (symbol: string) => {
+    if (!session?.user?.email) return;
+    try {
+      await addWatchlistItem(session.user.email, {
+        symbol: symbol.toUpperCase(),
+        addedAt: new Date().toISOString(),
+        alertEnabled: false,
+        alertPrice: 0,
+        alertType: 'above'
+      });
+      await loadWatchlist();
+    } catch (error) {
+      console.error('Error adding to watchlist:', error);
+    }
+  };
+
+  const updateWatchlistAlert = async (symbol: string, alertPrice: number, alertEnabled: boolean, alertType: 'above' | 'below') => {
+    if (!session?.user?.email) return;
+    try {
+      await updateWatchlistItem(session.user.email, symbol, {
+        alertPrice,
+        alertEnabled,
+        alertType
+      });
+      await loadWatchlist();
+    } catch (error) {
+      console.error('Error updating watchlist alert:', error);
+    }
+  };
+
+  const removeFromWatchlist = async (symbol: string) => {
+    if (!session?.user?.email) return;
+    try {
+      await removeWatchlistItem(session.user.email, symbol);
+      await loadWatchlist();
+    } catch (error) {
+      console.error('Error removing from watchlist:', error);
+    }
+  };
+
+  const isInWatchlist = (symbol: string) => {
+    return watchlist.some(w => w.symbol === symbol.toUpperCase());
   };
 
   const savePortfolio = async (items: PortfolioItem[]) => {
@@ -1053,6 +1138,26 @@ export default function Home() {
                   >
                     + Agregar al Portafolio
                   </button>
+                  {session && (
+                    <button
+                      onClick={() => addToWatchlist(data.quote.symbol)}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: isInWatchlist(data.quote.symbol) ? '1px solid #2ecc71' : '1px solid #30363d',
+                        background: isInWatchlist(data.quote.symbol) ? '#2ecc7120' : 'transparent',
+                        color: isInWatchlist(data.quote.symbol) ? '#2ecc71' : '#c9d1d9',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        marginBottom: '8px',
+                      }}
+                    >
+                      {isInWatchlist(data.quote.symbol) ? '✓ En Watchlist' : '+ Agregar a Watchlist'}
+                    </button>
+                  )}
                   <a
                     href={`https://www.tipranks.com/stocks/${data.quote.symbol.toLowerCase()}/forecast`}
                     target="_blank"
@@ -1415,10 +1520,133 @@ export default function Home() {
               </button>
             </div>
           ) : (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#8b949e' }}>
-              <p style={{ fontSize: '48px', margin: '0 0 16px' }}>👁️</p>
-              <p style={{ color: '#f0f6fc', fontSize: '18px' }}>Mi Watchlist</p>
-              <p>Próximamente disponible</p>
+            <div>
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <h2 style={{ color: '#f0f6fc', marginBottom: '8px' }}>👁️ Mi Watchlist</h2>
+                <p style={{ color: '#8b949e' }}>Recibe alertas cuando las acciones alcancen tu precio objetivo</p>
+              </div>
+
+              {watchlist.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', background: '#161b22', borderRadius: '12px', border: '1px solid #30363d' }}>
+                  <p style={{ fontSize: '48px', margin: '0 0 16px' }}>📝</p>
+                  <p style={{ color: '#f0f6fc', fontSize: '18px', marginBottom: '8px' }}>Tu watchlist está vacía</p>
+                  <p style={{ color: '#8b949e' }}>Analiza una acción y agrégala a tu watchlist</p>
+                  <button 
+                    onClick={() => setView('analyzer')}
+                    style={{ marginTop: '20px', padding: '12px 24px', borderRadius: '8px', border: 'none', background: '#238636', color: 'white', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}
+                  >
+                    Ir al Analizador
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {watchlist.map(item => {
+                    const priceData = watchlistPrices[item.symbol];
+                    const currentPrice = priceData?.price || 0;
+                    const priceChange = priceData?.change || 0;
+                    const priceChangePercent = priceData?.changePercent || 0;
+                    const alertEnabled = item.alertEnabled ?? false;
+                    const alertPrice = item.alertPrice ?? 0;
+                    const alertType = item.alertType ?? 'above';
+                    const isAlertTriggered = alertEnabled && alertPrice > 0 && (
+                      (alertType === 'above' && currentPrice >= alertPrice) ||
+                      (alertType === 'below' && currentPrice <= alertPrice)
+                    );
+                    
+                    return (
+                      <div key={item.symbol} style={{ background: '#161b22', borderRadius: '12px', padding: '16px', border: isAlertTriggered ? '2px solid #2ecc71' : '1px solid #30363d' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                          <div>
+                            <h3 style={{ margin: 0, color: '#58a6ff', fontSize: '20px' }}>{item.symbol}</h3>
+                            {priceData && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                                <span style={{ color: '#f0f6fc', fontSize: '18px', fontWeight: '600' }}>${currentPrice.toFixed(2)}</span>
+                                <span style={{ color: priceChange >= 0 ? '#2ecc71' : '#e74c3c', fontSize: '14px' }}>
+                                  {priceChange >= 0 ? '+' : ''}{priceChange.toFixed(2)} ({priceChangePercent.toFixed(2)}%)
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => removeFromWatchlist(item.symbol)}
+                            style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #e74c3c', background: 'transparent', color: '#e74c3c', cursor: 'pointer', fontSize: '12px' }}
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+
+                        <div style={{ background: '#0d1117', borderRadius: '8px', padding: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                            <span style={{ color: '#8b949e', fontSize: '14px' }}>🔔 Alerta de precio</span>
+                            <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px' }}>
+                              <input
+                                type="checkbox"
+                                checked={alertEnabled}
+                                onChange={(e) => updateWatchlistAlert(item.symbol, item.alertPrice || 0, e.target.checked, item.alertType || 'above')}
+                                style={{ opacity: 0, width: 0, height: 0 }}
+                              />
+                              <span style={{
+                                position: 'absolute',
+                                cursor: 'pointer',
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                background: alertEnabled ? '#238636' : '#30363d',
+                                borderRadius: '24px',
+                                transition: '0.3s'
+                              }}>
+                                <span style={{
+                                  position: 'absolute',
+                                  content: '',
+                                  height: '18px',
+                                  width: '18px',
+                                  left: alertEnabled ? '23px' : '3px',
+                                  bottom: '3px',
+                                  background: 'white',
+                                  borderRadius: '50%',
+                                  transition: '0.3s'
+                                }} />
+                              </span>
+                            </label>
+                          </div>
+                          
+                          {alertEnabled && (
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                              <select
+                                value={alertType}
+                                onChange={(e) => updateWatchlistAlert(item.symbol, alertPrice, alertEnabled, e.target.value as 'above' | 'below')}
+                                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #30363d', background: '#161b22', color: '#c9d1d9', fontSize: '14px' }}
+                              >
+                                <option value="above">Precio sube a</option>
+                                <option value="below">Precio baja a</option>
+                              </select>
+                              <input
+                                type="number"
+                                placeholder="Precio objetivo"
+                                value={alertPrice || ''}
+                                onChange={(e) => updateWatchlistAlert(item.symbol, parseFloat(e.target.value) || 0, alertEnabled, alertType)}
+                                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #30363d', background: '#161b22', color: '#c9d1d9', fontSize: '14px', width: '120px' }}
+                              />
+                              {alertPrice > 0 && (
+                                <span style={{ color: '#8b949e', fontSize: '13px' }}>
+                                  {alertType === 'above' ? 'Te avisa si sube a' : 'Te avisa si baja a'} ${alertPrice.toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          
+                          {isAlertTriggered && (
+                            <div style={{ marginTop: '12px', padding: '8px 12px', background: '#2ecc7120', borderRadius: '6px', color: '#2ecc71', fontSize: '14px' }}>
+                              ¡Alerta! El precio ha alcanzado tu objetivo
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
