@@ -95,8 +95,10 @@ export default function Screener() {
   const [showFilters, setShowFilters] = useState(true);
   const [addingToWatchlist, setAddingToWatchlist] = useState<string | null>(null);
   const [selectedStock, setSelectedStock] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     loadStocks();
   }, []);
 
@@ -325,7 +327,7 @@ export default function Screener() {
     return '#f85149';
   };
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
       <div style={{
         minHeight: '100vh',
