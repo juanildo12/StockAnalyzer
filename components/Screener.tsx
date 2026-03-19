@@ -37,6 +37,7 @@ interface Filters {
   maxPb: number;
   minDividendYield: number;
   minMarketCap: number;
+  minRevenue: number;
   sectors: string[];
   excludeNegativeEarnings: boolean;
   minRoe: number;
@@ -78,6 +79,7 @@ export default function Screener() {
     maxPb: 5,
     minDividendYield: 0,
     minMarketCap: 0,
+    minRevenue: 0,
     sectors: [],
     excludeNegativeEarnings: true,
     minRoe: 0,
@@ -117,6 +119,7 @@ export default function Screener() {
       if ((stock.priceToBook ?? 0) > filters.maxPb && filters.maxPb > 0) return false;
       if ((stock.dividendYield ?? 0) < filters.minDividendYield) return false;
       if ((stock.marketCap ?? 0) < filters.minMarketCap * 1000000000) return false;
+      if (filters.minRevenue > 0 && (stock.totalRevenue ?? 0) < filters.minRevenue * 1000000) return false;
       if (filters.sectors.length > 0 && stock.sector && !filters.sectors.includes(stock.sector)) return false;
       if ((stock.returnOnEquity ?? 0) < filters.minRoe) return false;
       return true;
@@ -450,6 +453,7 @@ export default function Screener() {
                 { key: 'minDividendYield', label: 'Dividend Yield Mín', max: 10, step: 0.5, value: filters.minDividendYield, color: '#3fb950', suffix: '%' },
                 { key: 'minRoe', label: 'ROE Mínimo', max: 50, value: filters.minRoe, color: '#f0883e', suffix: '%' },
                 { key: 'minMarketCap', label: 'Market Cap Mín', max: 500, value: filters.minMarketCap, color: '#db61a2', prefix: '$', suffix: 'B' },
+                { key: 'minRevenue', label: 'Revenue Mín', max: 500, value: filters.minRevenue, color: '#f97316', prefix: '$', suffix: 'B' },
               ].map((filter) => (
                 <div key={filter.key} style={{
                   padding: '20px',
