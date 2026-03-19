@@ -100,24 +100,40 @@ export default function Screener() {
     loadStocks();
   }, []);
 
-  const loadStocks = async () => {
+  const loadStocks = async (retryCount = 0) => {
     try {
       setLoading(true);
       setError('');
-      const response = await fetch('/api/screener?action=screener');
+      const response = await fetch('/api/screener?action=screener', {
+        signal: AbortSignal.timeout(30000),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error: ${response.status}`);
+      }
+      
       const data = await response.json();
       
-      if (data.screenerStocks) {
+      if (data.screenerStocks && data.screenerStocks.length > 0) {
         setStocks(data.screenerStocks);
+      } else if (retryCount < 2) {
+        setTimeout(() => loadStocks(retryCount + 1), 2000);
       } else {
-        setError('Error loading stocks');
+        setError('No se pudieron cargar las acciones. Intenta recargar la página.');
       }
     } catch (err) {
-      setError('Failed to load stocks');
+      console.error('Load stocks error:', err);
+      if (retryCount < 2) {
+        setTimeout(() => loadStocks(retryCount + 1), 2000);
+      } else {
+        setError('Error al cargar. Verifica tu conexión e intenta de nuevo.');
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  const handleRetry = () => loadStocks(0);
 
   const calculateValueScore = (stock: StockFundamental): number => {
     let score = 0;
@@ -391,7 +407,7 @@ export default function Screener() {
           <div style={{ fontSize: '64px', marginBottom: '24px' }}>⚠️</div>
           <p style={{ color: '#f85149', fontSize: '18px', marginBottom: '24px' }}>{error}</p>
           <button
-            onClick={loadStocks}
+            onClick={handleRetry}
             style={{
               padding: '12px 24px',
               background: 'linear-gradient(135deg, #238636 0%, #2ea043 100%)',
