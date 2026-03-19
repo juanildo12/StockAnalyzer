@@ -12,6 +12,8 @@ interface ScreenerStock {
   peRatio?: number;
   pegRatio?: number;
   priceToBook?: number;
+  priceToSales?: number;
+  priceToFreeCashFlow?: number;
   dividendYield?: number;
   epsTrailingTwelveMonths?: number;
   epsForward?: number;
@@ -28,6 +30,7 @@ interface ScreenerStock {
   earningsGrowth?: number;
   bookValue?: number;
   totalRevenue?: number;
+  operatingCashFlow?: number;
   regularMarketPrice?: number;
   regularMarketChange?: number;
   regularMarketChangePercent?: number;
@@ -73,6 +76,12 @@ async function fetchStockData(symbol: string): Promise<ScreenerStock | null> {
     const bookValue = getRaw(defaultKeyStatistics.bookValue);
     const epsTrailing = getRaw(defaultKeyStatistics.trailingEps);
     const epsForward = getRaw(defaultKeyStatistics.forwardEps);
+    const totalRevenue = getRaw(financialData.totalRevenue);
+    const operatingCashFlow = getRaw(financialData.operatingCashflow);
+
+    const priceToBook = getRaw(defaultKeyStatistics.priceToBook) || (priceValue && bookValue ? priceValue / bookValue : undefined);
+    const priceToSales = totalRevenue && marketCap ? marketCap / totalRevenue : undefined;
+    const priceToFreeCashFlow = operatingCashFlow && operatingCashFlow > 0 && marketCap ? marketCap / operatingCashFlow : undefined;
 
     return {
       symbol,
@@ -82,7 +91,9 @@ async function fetchStockData(symbol: string): Promise<ScreenerStock | null> {
       marketCap,
       peRatio: getRaw(summaryDetail.trailingPE) || (priceValue && epsTrailing ? priceValue / epsTrailing : undefined),
       pegRatio: getRaw(defaultKeyStatistics.pegRatio),
-      priceToBook: getRaw(defaultKeyStatistics.priceToBook) || (priceValue && bookValue ? priceValue / bookValue : undefined),
+      priceToBook,
+      priceToSales,
+      priceToFreeCashFlow,
       dividendYield: (getRaw(summaryDetail.dividendYield) || 0) * 100,
       epsTrailingTwelveMonths: epsTrailing,
       epsForward,
@@ -98,7 +109,8 @@ async function fetchStockData(symbol: string): Promise<ScreenerStock | null> {
       revenueGrowth: getRaw(financialData.revenueGrowth) ? getRaw(financialData.revenueGrowth) * 100 : undefined,
       earningsGrowth: getRaw(financialData.earningsGrowth) ? getRaw(financialData.earningsGrowth) * 100 : undefined,
       bookValue,
-      totalRevenue: getRaw(financialData.totalRevenue),
+      totalRevenue,
+      operatingCashFlow,
       regularMarketPrice: quoteResult.regularMarketPrice,
       regularMarketChange: quoteResult.regularMarketChange,
       regularMarketChangePercent: quoteResult.regularMarketChangePercent,
