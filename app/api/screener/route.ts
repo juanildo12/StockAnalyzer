@@ -3,7 +3,7 @@ import YahooFinance from 'yahoo-finance2';
 
 const yf = new YahooFinance();
 
-interface StockSummary {
+interface ScreenerStock {
   symbol: string;
   shortName: string;
   sector?: string;
@@ -41,62 +41,67 @@ const SAMPLE_STOCKS = [
   'HON', 'UPS', 'GS', 'MS', 'BAC', 'WFC', 'AXP', 'C', 'T', 'VZ',
   'CMCSA', 'PM', 'MDT', 'BMY', 'LLY', 'GILD', 'AMGN', 'ISRG', 'TXN',
   'QCOM', 'AVGO', 'NOW', 'INTU', 'MU', 'LRCX', 'AMAT', 'ADI', 'MCHP',
-  'F', 'GM', 'UBER', 'SQ', 'IBM', 'CSCO', 'TMO'
+  'F', 'GM', 'UBER', 'IBM', 'CSCO', 'TMO'
 ];
 
-async function fetchRealStockData(symbol: string): Promise<StockSummary | null> {
+function getRaw(value: any): any {
+  if (value && typeof value === 'object' && 'raw' in value) {
+    return value.raw;
+  }
+  return value;
+}
+
+async function fetchStockData(symbol: string): Promise<ScreenerStock | null> {
   try {
-    const [quoteSummaryRaw, quote] = await Promise.all([
+    const [quoteSummaryResult, quoteResult] = await Promise.all([
       yf.quoteSummary(symbol, {
         modules: ['summaryDetail', 'defaultKeyStatistics', 'financialData', 'assetProfile']
       }),
       yf.quote(symbol)
-    ]);
+    ]).catch(() => [null, null]);
 
-    if (!quote) return null;
+    if (!quoteResult) return null;
 
-    const quoteSummary = quoteSummaryRaw as any;
-    const summaryDetail = quoteSummary?.summaryDetail || {};
-    const defaultKeyStatistics = quoteSummary?.defaultKeyStatistics || {};
-    const financialData = quoteSummary?.financialData || {};
-    const assetProfile = quoteSummary?.assetProfile || {};
+    const qs = quoteSummaryResult as any;
+    const summaryDetail = qs?.summaryDetail || {};
+    const defaultKeyStatistics = qs?.defaultKeyStatistics || {};
+    const financialData = qs?.financialData || {};
+    const assetProfile = qs?.assetProfile || {};
 
-    const marketCap = summaryDetail.marketCap || defaultKeyStatistics.marketCap;
-    const priceValue = quote.regularMarketPrice || quote.previousClose || 0;
-    const bookValue = defaultKeyStatistics.bookValue;
-    const epsTrailing = defaultKeyStatistics.trailingEps;
-    const epsForward = defaultKeyStatistics.forwardEps;
-
-    const getRaw = (val: any) => (typeof val === 'object' && val !== null && 'raw' in val) ? val.raw : val;
+    const marketCap = getRaw(summaryDetail.marketCap) || getRaw(defaultKeyStatistics.marketCap);
+    const priceValue = quoteResult.regularMarketPrice || quoteResult.previousClose || 0;
+    const bookValue = getRaw(defaultKeyStatistics.bookValue);
+    const epsTrailing = getRaw(defaultKeyStatistics.trailingEps);
+    const epsForward = getRaw(defaultKeyStatistics.forwardEps);
 
     return {
       symbol,
-      shortName: quote.shortName || quote.longName || symbol,
+      shortName: quoteResult.shortName || quoteResult.longName || symbol,
       sector: assetProfile.sector,
       industry: assetProfile.industry,
-      marketCap: getRaw(marketCap),
-      peRatio: getRaw(summaryDetail.trailingPE) || (priceValue && epsTrailing ? priceValue / getRaw(epsTrailing) : undefined),
+      marketCap,
+      peRatio: getRaw(summaryDetail.trailingPE) || (priceValue && epsTrailing ? priceValue / epsTrailing : undefined),
       pegRatio: getRaw(defaultKeyStatistics.pegRatio),
-      priceToBook: priceValue && bookValue ? priceValue / getRaw(bookValue) : undefined,
-      dividendYield: getRaw(summaryDetail.dividendYield),
-      epsTrailingTwelveMonths: getRaw(epsTrailing),
-      epsForward: getRaw(epsForward),
+      priceToBook: getRaw(defaultKeyStatistics.priceToBook) || (priceValue && bookValue ? priceValue / bookValue : undefined),
+      dividendYield: (getRaw(summaryDetail.dividendYield) || 0) * 100,
+      epsTrailingTwelveMonths: epsTrailing,
+      epsForward,
       price: priceValue,
-      fiftyTwoWeekHigh: quote.fiftyTwoWeekHigh,
-      fiftyTwoWeekLow: quote.fiftyTwoWeekLow,
-      fiftyTwoWeekChange: quote.fiftyTwoWeekHighChange,
+      fiftyTwoWeekHigh: quoteResult.fiftyTwoWeekHigh,
+      fiftyTwoWeekLow: quoteResult.fiftyTwoWeekLow,
+      fiftyTwoWeekChange: (quoteResult as any).fiftyTwoWeekHighChange,
       debtToEquity: getRaw(financialData.debtToEquity),
-      returnOnEquity: getRaw(financialData.returnOnEquity),
-      profitMargin: getRaw(financialData.profitMargins),
-      operatingMargin: getRaw(financialData.operatingMargins),
-      grossMargin: getRaw(financialData.grossMargins),
-      revenueGrowth: getRaw(financialData.revenueGrowth),
-      earningsGrowth: getRaw(financialData.earningsGrowth),
-      bookValue: getRaw(bookValue),
+      returnOnEquity: getRaw(financialData.returnOnEquity) ? getRaw(financialData.returnOnEquity) * 100 : undefined,
+      profitMargin: getRaw(financialData.profitMargins) ? getRaw(financialData.profitMargins) * 100 : undefined,
+      operatingMargin: getRaw(financialData.operatingMargins) ? getRaw(financialData.operatingMargins) * 100 : undefined,
+      grossMargin: getRaw(financialData.grossMargins) ? getRaw(financialData.grossMargins) * 100 : undefined,
+      revenueGrowth: getRaw(financialData.revenueGrowth) ? getRaw(financialData.revenueGrowth) * 100 : undefined,
+      earningsGrowth: getRaw(financialData.earningsGrowth) ? getRaw(financialData.earningsGrowth) * 100 : undefined,
+      bookValue,
       totalRevenue: getRaw(financialData.totalRevenue),
-      regularMarketPrice: quote.regularMarketPrice,
-      regularMarketChange: quote.regularMarketChange,
-      regularMarketChangePercent: quote.regularMarketChangePercent,
+      regularMarketPrice: quoteResult.regularMarketPrice,
+      regularMarketChange: quoteResult.regularMarketChange,
+      regularMarketChangePercent: quoteResult.regularMarketChangePercent,
     };
   } catch (error) {
     console.error(`Error fetching ${symbol}:`, (error as Error).message);
@@ -110,13 +115,13 @@ export async function GET(request: Request) {
 
   try {
     if (action === 'screener') {
-      const results: StockSummary[] = [];
+      const results: ScreenerStock[] = [];
       
       const batchSize = 5;
       for (let i = 0; i < SAMPLE_STOCKS.length; i += batchSize) {
         const batch = SAMPLE_STOCKS.slice(i, i + batchSize);
-        const batchResults = await Promise.all(batch.map(s => fetchRealStockData(s)));
-        results.push(...batchResults.filter((r): r is StockSummary => r !== null));
+        const batchResults = await Promise.all(batch.map(s => fetchStockData(s)));
+        results.push(...batchResults.filter((r): r is ScreenerStock => r !== null));
       }
 
       return NextResponse.json({
