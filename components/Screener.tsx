@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 
 interface StockFundamental {
   symbol: string;
@@ -96,15 +96,59 @@ export default function Screener() {
   const [addingToWatchlist, setAddingToWatchlist] = useState<string | null>(null);
   const [selectedStock, setSelectedStock] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const isVisible = useRef(true);
 
   useEffect(() => {
     setMounted(true);
     loadStocks();
   }, []);
 
-  const loadStocks = async (retryCount = 0) => {
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && !isVisible.current) {
+        isVisible.current = true;
+        if (!isRefreshing) {
+          setIsRefreshing(true);
+          loadStocks(true);
+        }
+      } else if (document.visibilityState === 'hidden') {
+        isVisible.current = false;
+      }
+    };
+
+    const handleFocus = () => {
+      if (!isVisible.current) {
+        isVisible.current = true;
+        if (!isRefreshing) {
+          setIsRefreshing(true);
+          loadStocks(true);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [isRefreshing]);
+
+  const handleManualRefresh = useCallback(() => {
+    if (!isRefreshing) {
+      setIsRefreshing(true);
+      loadStocks(true);
+    }
+  }, [isRefreshing]);
+
+  const loadStocks = async (silent = false, retryCount = 0) => {
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       setError('');
       const response = await fetch('/api/screener?action=screener', {
         signal: AbortSignal.timeout(30000),
@@ -118,20 +162,24 @@ export default function Screener() {
       
       if (data.screenerStocks && data.screenerStocks.length > 0) {
         setStocks(data.screenerStocks);
+        setLastUpdated(new Date());
       } else if (retryCount < 2) {
-        setTimeout(() => loadStocks(retryCount + 1), 2000);
+        setTimeout(() => loadStocks(silent, retryCount + 1), 2000);
       } else {
         setError('No se pudieron cargar las acciones. Intenta recargar la página.');
       }
     } catch (err) {
       console.error('Load stocks error:', err);
       if (retryCount < 2) {
-        setTimeout(() => loadStocks(retryCount + 1), 2000);
-      } else {
+        setTimeout(() => loadStocks(silent, retryCount + 1), 2000);
+      } else if (!silent) {
         setError('Error al cargar. Verifica tu conexión e intenta de nuevo.');
       }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
+      setIsRefreshing(false);
     }
   };
 
@@ -446,32 +494,70 @@ export default function Screener() {
           border: '1px solid rgba(88, 166, 255, 0.2)',
           backdropFilter: 'blur(10px)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
-            <div style={{
-              width: '56px',
-              height: '56px',
-              background: 'linear-gradient(135deg, #58a6ff 0%, #a371f7 100%)',
-              borderRadius: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '28px',
-            }}>
-              🔍
-            </div>
-            <div>
-              <h1 style={{ 
-                fontSize: '32px', 
-                fontWeight: '700', 
-                color: '#f0f6fc', 
-                margin: 0,
-                letterSpacing: '-0.5px'
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                background: 'linear-gradient(135deg, #58a6ff 0%, #a371f7 100%)',
+                borderRadius: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '28px',
               }}>
-                Screener de Acciones
-              </h1>
-              <p style={{ color: '#8b949e', fontSize: '14px', margin: '4px 0 0' }}>
-                Encuentra oportunidades de inversión con análisis fundamental
-              </p>
+                🔍
+              </div>
+              <div>
+                <h1 style={{ 
+                  fontSize: '32px', 
+                  fontWeight: '700', 
+                  color: '#f0f6fc', 
+                  margin: 0,
+                  letterSpacing: '-0.5px'
+                }}>
+                  Screener de Acciones
+                </h1>
+                <p style={{ color: '#8b949e', fontSize: '14px', margin: '4px 0 0' }}>
+                  Encuentra oportunidades de inversión con análisis fundamental
+                </p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+              <button
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+                style={{
+                  padding: '10px 20px',
+                  background: isRefreshing ? '#21262d' : 'linear-gradient(135deg, #238636 0%, #2ea043 100%)',
+                  border: 'none',
+                  borderRadius: '10px',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: isRefreshing ? 'wait' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s',
+                }}
+              >
+                <span style={{
+                  display: 'inline-block',
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderTopColor: 'white',
+                  borderRadius: '50%',
+                  animation: isRefreshing ? 'spin 1s linear infinite' : 'none',
+                }} />
+                {isRefreshing ? 'Actualizando...' : 'Actualizar'}
+              </button>
+              {lastUpdated && (
+                <span style={{ color: '#6e7681', fontSize: '12px' }}>
+                  Última actualización: {lastUpdated.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
             </div>
           </div>
           
