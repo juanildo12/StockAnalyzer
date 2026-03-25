@@ -79,6 +79,8 @@ export default function Screener() {
   const [stocks, setStocks] = useState<StockFundamental[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [previousPrices, setPreviousPrices] = useState<Record<string, number>>({});
+  const [priceChanges, setPriceChanges] = useState<Record<string, number>>({});
   const [filters, setFilters] = useState<Filters>({
     maxPe: 30,
     maxPb: 5,
@@ -161,7 +163,21 @@ export default function Screener() {
       const data = await response.json();
       
       if (data.screenerStocks && data.screenerStocks.length > 0) {
+        const currentPrices = stocks.reduce((acc, stock) => {
+          if (stock.price) acc[stock.symbol] = stock.price;
+          return acc;
+        }, {} as Record<string, number>);
+        
+        const changes: Record<string, number> = {};
+        data.screenerStocks.forEach((stock: StockFundamental) => {
+          if (stock.price && currentPrices[stock.symbol]) {
+            changes[stock.symbol] = stock.price - currentPrices[stock.symbol];
+          }
+        });
+        
         setStocks(data.screenerStocks);
+        setPreviousPrices(currentPrices);
+        setPriceChanges(changes);
         setLastUpdated(new Date());
       } else if (retryCount < 2) {
         setTimeout(() => loadStocks(silent, retryCount + 1), 2000);
@@ -868,6 +884,7 @@ export default function Screener() {
                     { key: 'valueScore', label: 'Score', align: 'center' as const, sortable: true },
                     { key: 'symbol', label: 'Símbolo', sortable: false },
                     { key: 'regularMarketPrice', label: 'Precio', align: 'right' as const },
+                    { key: 'priceChange', label: 'Cambio', align: 'right' as const },
                     { key: 'marketCap', label: 'Mkt Cap', align: 'right' as const },
                     { key: 'peRatio', label: 'P/E', align: 'right' as const },
                     { key: 'priceToBook', label: 'P/B', align: 'right' as const },
@@ -950,6 +967,22 @@ export default function Screener() {
                       </td>
                       <td style={{ padding: '12px', textAlign: 'right', color: '#f0f6fc', fontWeight: '600', fontSize: '13px' }}>
                         ${formatNumber(stock.price, 2)}
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'right', fontWeight: '600', fontSize: '12px' }}>
+                        {priceChanges[stock.symbol] !== undefined ? (
+                          <span style={{ 
+                            color: priceChanges[stock.symbol] > 0 ? '#3fb950' : priceChanges[stock.symbol] < 0 ? '#f85149' : '#8b949e',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            gap: '4px'
+                          }}>
+                            {priceChanges[stock.symbol] > 0 ? '▲' : priceChanges[stock.symbol] < 0 ? '▼' : ''}
+                            {priceChanges[stock.symbol] > 0 ? '+' : ''}{formatNumber(priceChanges[stock.symbol], 2)}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#484f58' }}>-</span>
+                        )}
                       </td>
                       <td style={{ padding: '12px', textAlign: 'right', color: '#8b949e', fontSize: '12px' }}>
                         {formatMarketCap(stock.marketCap)}

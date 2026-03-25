@@ -44,7 +44,17 @@ const SAMPLE_STOCKS = [
   'HON', 'UPS', 'GS', 'MS', 'BAC', 'WFC', 'AXP', 'C', 'T', 'VZ',
   'CMCSA', 'PM', 'MDT', 'BMY', 'LLY', 'GILD', 'AMGN', 'ISRG', 'TXN',
   'QCOM', 'AVGO', 'NOW', 'INTU', 'MU', 'LRCX', 'AMAT', 'ADI', 'MCHP',
-  'F', 'GM', 'UBER', 'IBM', 'CSCO', 'TMO'
+  'F', 'GM', 'UBER', 'IBM', 'CSCO', 'TMO',
+  'SPY', 'QQQ', 'DIA', 'IWM', 'BRK.B', 'BLK', 'SCHW', 'SPGI', 'ICE',
+  'USB', 'PNC', 'TFC', 'COF', 'SHW', 'APD', 'LIN', 'ECL', 'AZO', 'CMG',
+  'MDLZ', 'KMB', 'CL', 'PM', 'GIS', 'K', 'HSY', 'STZ', 'KHC', 'DG',
+  'ROST', 'BBY', 'DLTR', 'ORLY', 'AZO', 'PAYX', 'FAST', 'CTAS', 'CPRT',
+  'IDXX', 'IQV', 'REGN', 'VRTX', 'MRNA', 'BIIB', 'ILMN', 'WAT', 'TER',
+  'SNPS', 'CDNS', 'ANSS', 'FTNT', 'PANW', 'CRWD', 'NET', 'ZS', 'DDOG',
+  'SNOW', 'PLTR', 'COIN', 'HOOD', 'RBLX', 'U', 'PATH', 'MDB', 'GTLB',
+  'SE', 'SQ', 'PYPL', 'AFRM', 'SHOP', 'W', 'ZM', 'DOCU', 'TWLO', 'OKTA',
+  'ETSY', 'PINS', 'SNAP', 'MGM', 'WYNN', 'LVS', 'MAR', 'HLT', 'RCL',
+  'NCLH', 'CCL', 'AAL', 'DAL', 'UAL', 'LUV', 'ALK', 'CHRW', 'JBHT', 'FDX', 'UPS'
 ];
 
 function getRaw(value: any): any {
