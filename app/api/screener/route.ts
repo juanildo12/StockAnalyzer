@@ -136,11 +136,21 @@ export async function GET(request: Request) {
         results.push(...batchResults.filter((r): r is ScreenerStock => r !== null));
       }
 
-      return NextResponse.json({
-        stocks: results,
-        total: results.length,
-        screenerStocks: results
-      });
+      return NextResponse.json(
+        {
+          stocks: results,
+          total: results.length,
+          screenerStocks: results,
+          timestamp: Date.now()
+        },
+        {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          }
+        }
+      );
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
