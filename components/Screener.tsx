@@ -272,6 +272,8 @@ export default function Screener() {
       return true;
     });
 
+    console.log('DEBUG: stocks total:', stocks.length, 'filtered:', filtered.length, 'showing:', Math.min(50, filtered.length));
+
     filtered.sort((a, b) => {
       let aVal: number;
       let bVal: number;
