@@ -152,7 +152,7 @@ export default function Screener() {
         setLoading(true);
       }
       setError('');
-      const response = await fetch('/api/screener?action=screener', {
+      const response = await fetch(`/api/screener?action=screener&t=${Date.now()}`, {
         signal: AbortSignal.timeout(30000),
       });
       
