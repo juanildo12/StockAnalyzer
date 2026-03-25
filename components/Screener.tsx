@@ -869,7 +869,7 @@ export default function Screener() {
             alignItems: 'center',
           }}>
             <h2 style={{ color: '#f0f6fc', fontSize: '16px', fontWeight: '600', margin: 0 }}>
-              Resultados ({filteredAndSortedStocks.length})
+              Resultados ({Math.min(50, filteredAndSortedStocks.length)} de {filteredAndSortedStocks.length})
             </h2>
             <span style={{ color: '#8b949e', fontSize: '12px' }}>
               Clic en encabezado para ordenar
