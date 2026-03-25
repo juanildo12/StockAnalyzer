@@ -272,8 +272,6 @@ export default function Screener() {
       return true;
     });
 
-    console.log('DEBUG: stocks total:', stocks.length, 'filtered:', filtered.length, 'showing:', Math.min(50, filtered.length));
-
     filtered.sort((a, b) => {
       let aVal: number;
       let bVal: number;
@@ -871,7 +869,7 @@ export default function Screener() {
             alignItems: 'center',
           }}>
             <h2 style={{ color: '#f0f6fc', fontSize: '16px', fontWeight: '600', margin: 0 }}>
-              Resultados ({Math.min(50, filteredAndSortedStocks.length)} de {filteredAndSortedStocks.length})
+              Resultados ({filteredAndSortedStocks.length})
             </h2>
             <span style={{ color: '#8b949e', fontSize: '12px' }}>
               Clic en encabezado para ordenar
@@ -929,7 +927,7 @@ export default function Screener() {
                 </tr>
               </thead>
               <tbody>
-                {filteredAndSortedStocks.slice(0, 50).map((stock, index) => {
+                {filteredAndSortedStocks.map((stock, index) => {
                   const valueScore = calculateValueScore(stock);
                   const scoreColor = valueScore >= 70 ? '#3fb950' : valueScore >= 50 ? '#a371f7' : valueScore >= 30 ? '#f0883e' : '#f85149';
                   const scoreBg = valueScore >= 70 ? '#3fb95020' : valueScore >= 50 ? '#a371f720' : valueScore >= 30 ? '#f0883e20' : '#f8514920';
