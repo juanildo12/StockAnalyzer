@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface StockFundamental {
   symbol: string;
@@ -101,6 +102,11 @@ export default function Screener() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const isVisible = useRef(true);
+  const router = useRouter();
+
+  const handleAnalyzeStock = (symbol: string) => {
+    router.push(`/?symbol=${symbol}&tab=options`);
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -935,9 +941,11 @@ export default function Screener() {
                   return (
                     <tr 
                       key={stock.symbol}
+                      onClick={() => handleAnalyzeStock(stock.symbol)}
                       style={{ 
                         borderTop: index > 0 ? '1px solid #21262d' : 'none',
                         transition: 'background 0.15s',
+                        cursor: 'pointer',
                       }}
                       onMouseEnter={(e) => e.currentTarget.style.background = '#1c2128'}
                       onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}

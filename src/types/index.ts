@@ -263,3 +263,99 @@ export interface MultiSourceData {
   gurufocus?: GuruFocusData;
   sources: string[];
 }
+
+export interface OptionContract {
+  strike: number;
+  lastPrice: number;
+  bid: number;
+  ask: number;
+  volume: number;
+  openInterest: number;
+  impliedVolatility: number;
+  delta: number;
+  gamma: number;
+  theta: number;
+  vega: number;
+  inTheMoney: boolean;
+  expiration: string;
+  type: 'call' | 'put';
+}
+
+export interface OptionExpiration {
+  date: string;
+  daysToExpiration: number;
+  calls: OptionContract[];
+  puts: OptionContract[];
+}
+
+export interface OptionStrategy {
+  name: string;
+  description: string;
+  idealCondition: string;
+  riskLevel: 'bajo' | 'medio' | 'alto';
+  maxProfit: number | 'ilimitado';
+  maxLoss: number | 'ilimitado';
+  breakeven: number[];
+  example: {
+    strike: number;
+    strikeUpper?: number;
+    premium: number;
+    contracts: number;
+    totalCost: number;
+    maxProfit: number;
+    maxLoss: number;
+    delta: number;
+    deltaUpper?: number;
+    expiration: string;
+    daysToExpiration: number;
+    type: 'call' | 'put' | 'spread';
+  };
+}
+
+export interface OptionsAnalysis {
+  symbol: string;
+  currentPrice: number;
+  stockTrend: 'alcista' | 'bajista' | 'lateral';
+  impliedVolatility: number;
+  ivRank: number;
+  ivPercentile: number;
+  earningsDate: string | null;
+  earningsEstimate: boolean;
+  dividendDate: string | null;
+  recommendedStrategies: {
+    strategy: OptionStrategy;
+    rationale: string;
+    suitabilityScore: number;
+  }[];
+  nextExpirations: OptionExpiration[];
+  keyLevels: {
+    support: number;
+    resistance: number;
+    pivot: number;
+  };
+  ivComparison: {
+    current: number;
+    historicalAverage: number;
+    interpretation: string;
+  };
+}
+
+export interface ScreenerOptionsResult {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  sector: string;
+  suitabilityScore: number;
+  topStrategy: string;
+  ivRank: number;
+  trend: string;
+  recommendation: 'excelente' | 'buena' | 'regular' | 'no_recomendada';
+  keyMetrics: {
+    ivRank: number;
+    trend: string;
+    volume: number;
+    dividendYield: number;
+  };
+}
