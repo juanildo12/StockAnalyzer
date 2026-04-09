@@ -309,6 +309,8 @@ export interface OptionStrategy {
     expiration: string;
     daysToExpiration: number;
     type: 'call' | 'put' | 'spread';
+    takeProfit?: { price: number; percent: number; description: string };
+    stopLoss?: { price: number; percent: number; description: string };
   };
 }
 

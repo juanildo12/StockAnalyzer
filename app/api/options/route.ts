@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import YahooFinance from 'yahoo-finance2';
 import { getOptionsAnalysis, evaluateStockForOptions } from '../../../src/services/options';
 import { getStockQuote, getTechnicalAnalysis, getHistoricalData } from '../../../src/services/yahooFinance';
+
+const yf = new YahooFinance();
 
 export async function GET(request: NextRequest) {
   const symbol = request.nextUrl.searchParams.get('symbol');
@@ -51,68 +54,80 @@ export async function GET(request: NextRequest) {
   }
 
   if (screen === 'screener') {
-    const popularStocks = [
-      'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'AMD', 'INTC', 'JPM',
-      'BAC', 'WMT', 'HD', 'DIS', 'NFLX', 'PYPL', 'SQ', 'COIN', 'SQ', 'UBER'
-    ];
-
     try {
+      const TOP_STOCKS = [
+        'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'AMD', 'INTC', 'JPM',
+        'BAC', 'WMT', 'HD', 'DIS', 'NFLX', 'PYPL', 'SQ', 'COIN', 'UBER', 'COST',
+        'MCD', 'NKE', 'CRM', 'V', 'MA', 'UNH', 'JNJ', 'PFE', 'ABBV', 'MRK'
+      ];
+
       const results = await Promise.all(
-        popularStocks.map(async (sym) => {
+        TOP_STOCKS.map(async (sym) => {
           try {
-            const [quote, historical, technical] = await Promise.all([
-              getStockQuote(sym).catch(() => null),
-              getHistoricalData(sym).catch(() => []),
-              getTechnicalAnalysis(sym).catch(() => null),
+            const [quote, analysis] = await Promise.all([
+              yf.quote(sym).catch(() => null),
+              getOptionsAnalysis(sym),
             ]);
 
-            if (!quote || !quote.regularMarketPrice) return null;
+            if (!analysis) return null;
 
-            const evaluation = evaluateStockForOptions(sym, quote, technical, historical);
+            const earningsDate = analysis.earningsDate;
+            const now = new Date();
+            const isNear = earningsDate && (new Date(earningsDate).getTime() - now.getTime()) < 30 * 24 * 60 * 60 * 1000;
 
             return {
               symbol: sym,
-              name: quote.shortName,
-              price: quote.regularMarketPrice,
-              change: quote.regularMarketChange,
-              changePercent: quote.regularMarketChangePercent,
-              sector: quote.sector || 'Unknown',
-              ...evaluation,
-              keyMetrics: {
-                ivRank: technical ? (quote.regularMarketPrice > 0 ? 50 : 0) : 0,
-                trend: technical?.trend || 'lateral',
-                volume: quote.regularMarketVolume || 0,
-                dividendYield: quote.dividendYield || 0,
-              },
+              name: quote?.shortName || sym,
+              price: analysis.currentPrice,
+              change: quote?.regularMarketChange || 0,
+              changePercent: quote?.regularMarketChangePercent || 0,
+              sector: quote?.sector || 'Unknown',
+              marketCap: quote?.marketCap || 0,
+              volume: quote?.regularMarketVolume || 0,
+              avgVolume: quote?.averageVolume || 0,
+              iv: analysis.impliedVolatility,
+              ivRank: analysis.ivRank,
+              dividendYield: quote?.dividendYield || 0,
+              nearEarnings: isNear,
+              earningsDate: earningsDate,
+              earningsEstimate: analysis.earningsEstimate,
+              suitabilityScore: analysis.recommendedStrategies[0]?.suitabilityScore || 50,
+              recommendation: 'regular',
+              reasons: [analysis.recommendedStrategies[0]?.rationale || ''],
+              topStrategy: analysis.recommendedStrategies[0]?.strategy?.name || 'Long Call',
+              recommendedStrategies: analysis.recommendedStrategies.slice(0, 3).map((r: any) => ({
+                name: r.strategy?.name,
+                score: r.suitabilityScore,
+              })),
             };
-          } catch (e) {
+          } catch {
             return null;
           }
         })
       );
 
-      const validResults = results.filter((r) => r !== null);
+      const scoredStocks = results.filter((r): r is NonNullable<typeof r> => r !== null);
+      scoredStocks.sort((a, b) => b.suitabilityScore - a.suitabilityScore);
 
-      const sortedByScore = [...validResults].sort(
-        (a, b) => (b?.suitabilityScore || 0) - (a?.suitabilityScore || 0)
-      );
-
-      const excellent = sortedByScore.filter((r) => r?.recommendation === 'excelente');
-      const buena = sortedByScore.filter((r) => r?.recommendation === 'buena');
-      const regular = sortedByScore.filter((r) => r?.recommendation === 'regular');
+      const excellent = scoredStocks.filter((r) => r.suitabilityScore >= 75);
+      const buena = scoredStocks.filter((r) => r.suitabilityScore >= 55 && r.suitabilityScore < 75);
+      const regular = scoredStocks.filter((r) => r.suitabilityScore >= 35 && r.suitabilityScore < 55);
 
       return NextResponse.json({
-        all: sortedByScore,
+        all: scoredStocks,
+        totalScanned: TOP_STOCKS.length,
+        filteredCount: scoredStocks.length,
         summary: {
           excellent: excellent.length,
           buena: buena.length,
           regular: regular.length,
-          notRecommended: validResults.length - excellent.length - buena.length - regular.length,
+          notRecommended: scoredStocks.length - excellent.length - buena.length - regular.length,
         },
-        topPicks: sortedByScore.slice(0, 10),
+        topPicks: scoredStocks.slice(0, 5),
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Screener error:', message);
       return NextResponse.json({ error: message }, { status: 500 });
     }
   }

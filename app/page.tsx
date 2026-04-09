@@ -2277,7 +2277,31 @@ function OptionsView() {
   const [screenerLoading, setScreenerLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'analyze' | 'screener'>('analyze');
   const [selectedSymbolFromScreener, setSelectedSymbolFromScreener] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<string>('suitabilityScore');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const searchParams = useSearchParams();
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('desc');
+    }
+  };
+
+  const getSortedStocks = () => {
+    if (!screenerData?.all) return [];
+    return [...screenerData.all].sort((a: any, b: any) => {
+      let valA = a[sortField];
+      let valB = b[sortField];
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+      if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+      if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
 
   const analyzeOptions = async (sym?: string) => {
     const targetSymbol = (sym && typeof sym === 'string') ? sym : symbol;
@@ -2769,6 +2793,41 @@ function OptionsView() {
                                 <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#f0883e' }}>${rec.strategy.example.totalCost?.toFixed(2)}</p>
                               </div>
                             </div>
+                            {/* TP / SL */}
+                            {rec.strategy.example.takeProfit && rec.strategy.example.stopLoss && (
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
+                                <div style={{ padding: '10px', background: '#3fb95020', borderRadius: '6px', border: '1px solid #3fb95040' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                                    <span style={{ fontSize: '12px' }}>🎯</span>
+                                    <span style={{ fontSize: '10px', color: '#8b949e' }}>Take Profit</span>
+                                  </div>
+                                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#3fb950' }}>
+                                    ${rec.strategy.example.takeProfit.price?.toFixed(2)}
+                                    <span style={{ fontSize: '11px', marginLeft: '6px', color: '#3fb950' }}>
+                                      ({rec.strategy.example.takeProfit.percent > 0 ? '+' : ''}{rec.strategy.example.takeProfit.percent}%)
+                                    </span>
+                                  </p>
+                                  <p style={{ margin: '4px 0 0', fontSize: '10px', color: '#8b949e' }}>
+                                    {rec.strategy.example.takeProfit.description}
+                                  </p>
+                                </div>
+                                <div style={{ padding: '10px', background: '#f8514920', borderRadius: '6px', border: '1px solid #f8514940' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                                    <span style={{ fontSize: '12px' }}>🛑</span>
+                                    <span style={{ fontSize: '10px', color: '#8b949e' }}>Stop Loss</span>
+                                  </div>
+                                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#f85149' }}>
+                                    ${rec.strategy.example.stopLoss.price?.toFixed(2)}
+                                    <span style={{ fontSize: '11px', marginLeft: '6px', color: '#f85149' }}>
+                                      ({rec.strategy.example.stopLoss.percent}%)
+                                    </span>
+                                  </p>
+                                  <p style={{ margin: '4px 0 0', fontSize: '10px', color: '#8b949e' }}>
+                                    {rec.strategy.example.stopLoss.description}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                         
@@ -2947,6 +3006,11 @@ function OptionsView() {
                           <div>
                             <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#58a6ff' }}>{stock.symbol}</p>
                             <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#8b949e' }}>{stock.name}</p>
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                              <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: '#30363d', color: '#8b949e' }}>IV: {((stock.iv || 0) * 100).toFixed(0)}%</span>
+                              <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: '#30363d', color: '#8b949e' }}>Vol: {(stock.volume / 1000000).toFixed(1)}M</span>
+                              {stock.nearEarnings && <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: '#f0883e30', color: '#f0883e' }}>⚠ Earnings</span>}
+                            </div>
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -2955,6 +3019,7 @@ function OptionsView() {
                             <p style={{ margin: '2px 0 0', fontSize: '12px', color: stock.change >= 0 ? '#3fb950' : '#f85149' }}>
                               {stock.change >= 0 ? '+' : ''}{stock.changePercent?.toFixed(2)}%
                             </p>
+                            <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#58a6ff' }}>{stock.topStrategy}</p>
                           </div>
                           <div style={{ textAlign: 'center' }}>
                             <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: getRecommendationColor(stock.recommendation) }}>{stock.suitabilityScore}</p>
@@ -2969,21 +3034,27 @@ function OptionsView() {
 
               {/* All Stocks */}
               <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px' }}>
-                <h3 style={{ margin: '0 0 16px', color: '#f0f6fc', fontSize: '18px' }}>📋 Todas las Acciones Analizadas</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h3 style={{ margin: 0, color: '#f0f6fc', fontSize: '18px' }}>📋 Todas las Acciones Analizadas</h3>
+                  <div style={{ fontSize: '12px', color: '#8b949e' }}>
+                    Escaneadas: {screenerData.totalScanned} | Filtradas: {screenerData.filteredCount}
+                  </div>
+                </div>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid #30363d' }}>
-                        <th style={{ padding: '12px 8px', textAlign: 'left', color: '#8b949e', fontSize: '12px', fontWeight: '600' }}>Símbolo</th>
-                        <th style={{ padding: '12px 8px', textAlign: 'right', color: '#8b949e', fontSize: '12px', fontWeight: '600' }}>Precio</th>
-                        <th style={{ padding: '12px 8px', textAlign: 'right', color: '#8b949e', fontSize: '12px', fontWeight: '600' }}>Cambio</th>
-                        <th style={{ padding: '12px 8px', textAlign: 'center', color: '#8b949e', fontSize: '12px', fontWeight: '600' }}>Score</th>
-                        <th style={{ padding: '12px 8px', textAlign: 'center', color: '#8b949e', fontSize: '12px', fontWeight: '600' }}>Tendencia</th>
-                        <th style={{ padding: '12px 8px', textAlign: 'left', color: '#8b949e', fontSize: '12px', fontWeight: '600' }}>Mejor Estrategia</th>
+                        <th onClick={() => handleSort('symbol')} style={{ padding: '12px 8px', textAlign: 'left', color: sortField === 'symbol' ? '#58a6ff' : '#8b949e', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Símbolo {sortField === 'symbol' && (sortDir === 'asc' ? '↑' : '↓')}</th>
+                        <th onClick={() => handleSort('price')} style={{ padding: '12px 8px', textAlign: 'right', color: sortField === 'price' ? '#58a6ff' : '#8b949e', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Precio {sortField === 'price' && (sortDir === 'asc' ? '↑' : '↓')}</th>
+                        <th onClick={() => handleSort('iv')} style={{ padding: '12px 8px', textAlign: 'center', color: sortField === 'iv' ? '#58a6ff' : '#8b949e', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>IV % {sortField === 'iv' && (sortDir === 'asc' ? '↑' : '↓')}</th>
+                        <th onClick={() => handleSort('volume')} style={{ padding: '12px 8px', textAlign: 'right', color: sortField === 'volume' ? '#58a6ff' : '#8b949e', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Volumen {sortField === 'volume' && (sortDir === 'asc' ? '↑' : '↓')}</th>
+                        <th onClick={() => handleSort('suitabilityScore')} style={{ padding: '12px 8px', textAlign: 'center', color: sortField === 'suitabilityScore' ? '#58a6ff' : '#8b949e', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Score {sortField === 'suitabilityScore' && (sortDir === 'asc' ? '↑' : '↓')}</th>
+                        <th style={{ padding: '12px 8px', textAlign: 'center', color: '#8b949e', fontSize: '11px', fontWeight: '600' }}>Earnings</th>
+                        <th onClick={() => handleSort('topStrategy')} style={{ padding: '12px 8px', textAlign: 'left', color: sortField === 'topStrategy' ? '#58a6ff' : '#8b949e', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Estrategia {sortField === 'topStrategy' && (sortDir === 'asc' ? '↑' : '↓')}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {screenerData.all?.map((stock: any) => (
+                      {getSortedStocks().map((stock: any) => (
                         <tr 
                           key={stock.symbol} 
                           onClick={() => setSelectedSymbolFromScreener(stock.symbol)}
@@ -2995,23 +3066,35 @@ function OptionsView() {
                           onMouseEnter={(e) => e.currentTarget.style.background = '#1a2332'}
                           onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                         >
-                          <td style={{ padding: '12px 8px' }}>
+                          <td style={{ padding: '10px 8px' }}>
                             <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#58a6ff' }}>{stock.symbol}</p>
-                            <p style={{ margin: '2px 0 0', fontSize: '11px', color: '#8b949e' }}>{stock.name}</p>
+                            <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#8b949e', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stock.name}</p>
                           </td>
-                          <td style={{ padding: '12px 8px', textAlign: 'right', color: '#f0f6fc', fontSize: '14px' }}>${stock.price?.toFixed(2)}</td>
-                          <td style={{ padding: '12px 8px', textAlign: 'right', color: stock.change >= 0 ? '#3fb950' : '#f85149', fontSize: '14px' }}>
-                            {stock.change >= 0 ? '+' : ''}{stock.changePercent?.toFixed(2)}%
+                          <td style={{ padding: '10px 8px', textAlign: 'right', color: '#f0f6fc', fontSize: '13px' }}>${stock.price?.toFixed(2)}</td>
+                          <td style={{ padding: '10px 8px', textAlign: 'center', color: '#3fb950', fontSize: '12px', fontWeight: '600' }}>
+                            {((stock.iv || 0) * 100).toFixed(0)}%
                           </td>
-                          <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                            <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: '600', background: getRecommendationColor(stock.recommendation) + '30', color: getRecommendationColor(stock.recommendation) }}>
+                          <td style={{ padding: '10px 8px', textAlign: 'right', color: '#f0f6fc', fontSize: '11px' }}>
+                            {(stock.volume / 1000000).toFixed(1)}M
+                          </td>
+                          <td style={{ padding: '10px 8px', textAlign: 'center' }}>
+                            <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600', background: getRecommendationColor(stock.recommendation) + '30', color: getRecommendationColor(stock.recommendation) }}>
                               {stock.suitabilityScore}
                             </span>
                           </td>
-                          <td style={{ padding: '12px 8px', textAlign: 'center', color: stock.keyMetrics?.trend === 'alcista' ? '#3fb950' : stock.keyMetrics?.trend === 'bajista' ? '#f85149' : '#f0883e', fontSize: '13px', textTransform: 'capitalize' }}>
-                            {stock.keyMetrics?.trend || 'lateral'}
+                          <td style={{ padding: '10px 8px', textAlign: 'center' }}>
+                            {stock.earningsDate ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                                <span style={{ fontSize: '10px', color: '#f0f6fc' }}>{stock.earningsDate}</span>
+                                <span style={{ fontSize: '8px', padding: '1px 4px', borderRadius: '3px', background: stock.earningsEstimate ? '#f0883e30' : '#3fb95030', color: stock.earningsEstimate ? '#f0883e' : '#3fb950' }}>
+                                  {stock.earningsEstimate ? 'ESTIMADA' : 'CONFIRMADA'}
+                                </span>
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '10px', color: '#484f58' }}>-</span>
+                            )}
                           </td>
-                          <td style={{ padding: '12px 8px', fontSize: '12px', color: '#58a6ff' }}>{stock.topStrategy}</td>
+                          <td style={{ padding: '10px 8px', fontSize: '11px', color: '#58a6ff' }}>{stock.topStrategy}</td>
                         </tr>
                       ))}
                     </tbody>
