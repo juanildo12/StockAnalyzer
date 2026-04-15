@@ -8,6 +8,152 @@ interface TradeValidatorProps {
   onSymbolChange?: (sym: string) => void;
 }
 
+interface MarketTimingResult {
+  dayOfWeek: string;
+  dayStatus: 'lunes' | 'martes' | 'miercoles' | 'jueves' | 'viernes';
+  marketCondition: string;
+  validation: 'no-operar' | 'precaucion' | 'ideal';
+  validationColor: string;
+  validationBg: string;
+  strategy: string;
+  message: string;
+  details: {
+    tendencia: string;
+    volumen: string;
+    estructura: string;
+    eventosCercanos: string;
+    ubicacionPrecio: string;
+  };
+}
+
+const DIAS_ES: Record<number, string> = {
+  0: 'Domingo',
+  1: 'Lunes',
+  2: 'Martes',
+  3: 'Miércoles',
+  4: 'Jueves',
+  5: 'Viernes',
+  6: 'Sábado'
+};
+
+const DIAS_INGLES: Record<string, string> = {
+  'Domingo': 'sunday',
+  'Lunes': 'lunes',
+  'Martes': 'martes',
+  'Miércoles': 'miercoles',
+  'Jueves': 'jueves',
+  'Viernes': 'viernes',
+  'Sábado': 'saturday'
+};
+
+function analyzeMarketTiming(
+  dayOfWeek: number,
+  marketTrend: string,
+  volume: number,
+  avgVolume: number,
+  currentPrice: number,
+  support: number,
+  resistance: number,
+  nearEarnings: boolean,
+  earningsDate?: string
+): MarketTimingResult {
+  const dia = DIAS_ES[dayOfWeek];
+  const diaStatus = DIAS_INGLES[dia] as 'lunes' | 'martes' | 'miercoles' | 'jueves' | 'viernes';
+  
+  const tendencia = marketTrend || 'lateral';
+  const volumenRatio = avgVolume > 0 ? volume / avgVolume : 1;
+  const volumen = volumenRatio > 1.2 ? 'Alto' : volumenRatio < 0.8 ? 'Bajo' : 'Normal';
+  
+  const rangeSize = resistance - support;
+  const midRange = (support + resistance) / 2;
+  const priceInRange = rangeSize > 0 ? (currentPrice - support) / rangeSize : 0.5;
+  
+  let ubicacion = 'En el medio del rango';
+  if (priceInRange < 0.35) ubicacion = 'Cerca del soporte';
+  else if (priceInRange > 0.65) ubicacion = 'Cerca de la resistencia';
+  
+  let estructura = 'Consolidación';
+  if (tendencia === 'alcista') estructura = 'Breakout';
+  else if (tendencia === 'bajista') estructura = 'Rechazo';
+  
+  let eventosCercanos = 'Sin eventos cercanos';
+  if (nearEarnings && earningsDate) {
+    eventosCercanos = `Earnings el ${new Date(earningsDate).toLocaleDateString('es-ES')}`;
+  }
+  
+  let validation: 'no-operar' | 'precaucion' | 'ideal' = 'precaucion';
+  let validationColor = '#f0883e';
+  let validationBg = '#f0883e20';
+  let strategy = 'Ninguna';
+  let message = '';
+  
+  const enMedioDelRango = priceInRange >= 0.35 && priceInRange <= 0.65;
+  const bajoVolumen = volumen === 'Bajo';
+  const eventoCercano = nearEarnings;
+  
+  if (diaStatus === 'lunes') {
+    if (estructura === 'Breakout' && volumen === 'Alto' && !eventoCercano) {
+      validation = 'precaucion';
+      strategy = 'Bull Call Spread (pequeño)';
+      message = 'Es lunes, día de cautela. Solo permitiría un trade si hay breakout claro con volumen. Considera esperar al martes para mayor claridad.';
+    } else {
+      validation = 'no-operar';
+      message = 'Lunes es día de cautela. Evita operar agresivamente. Usa este día para planificar tu semana y observar.';
+    }
+  } else if (diaStatus === 'martes' || diaStatus === 'miercoles') {
+    if (enMedioDelRango) {
+      validation = 'no-operar';
+      message = 'El precio está en el medio del rango. Espera a que se acerque al soporte para comprar o a resistencia para vender.';
+    } else if (bajoVolumen) {
+      validation = 'no-operar';
+      message = 'El volumen está bajo. Sin volumen no hay convicción. Espera a que el volumen aumente.';
+    } else if (eventoCercano) {
+      validation = 'precaucion';
+      if (tendencia === 'alcista') strategy = 'Put Credit Spread (fecha corta)';
+      else strategy = 'Call Credit Spread (fecha corta)';
+      message = `Hay evento cercano (${eventosCercanos}). Reduce exposición y usa expiraciones cortas.`;
+    } else if (estructura === 'Breakout') {
+      validation = 'ideal';
+      strategy = 'Bull Call Spread';
+      message = '¡Martes/Miércoles! Uno de los mejores días para operar. El mercado muestra señales claras de breakout con buen volumen. Perfecto para un Bull Call Spread.';
+    } else if (estructura === 'Rechazo') {
+      validation = 'ideal';
+      strategy = 'Bear Put Spread';
+      message = '¡Martes/Miércoles! El mercado muestra rechazo bajista. Día ideal para un Bear Put Spread según tu plan semanal.';
+    } else {
+      validation = 'precaucion';
+      strategy = 'Put Credit Spread';
+      message = 'Mercado estable. Un Put Credit Spread es apropiado para generar income en rangos laterales.';
+    }
+  } else if (diaStatus === 'jueves') {
+    validation = 'precaucion';
+    strategy = 'Gestionar posiciones existentes';
+    message = 'Jueves es día de gestión. Evita nuevas entradas agresivas. Concéntrate en cerrar posiciones perdedoras o tomar ganancias.';
+  } else if (diaStatus === 'viernes') {
+    validation = 'no-operar';
+    strategy = 'Cerrar trades';
+    message = 'Viernes es día de cierre. No abras nuevas posiciones. Cierra trades winners o reduce riesgo en perdedores.';
+  }
+  
+  return {
+    dayOfWeek: dia,
+    dayStatus: diaStatus,
+    marketCondition: `${tendencia.charAt(0).toUpperCase() + tendencia.slice(1)} / ${volumen} / ${estructura}`,
+    validation,
+    validationColor,
+    validationBg,
+    strategy,
+    message,
+    details: {
+      tendencia,
+      volumen,
+      estructura,
+      eventosCercanos,
+      ubicacionPrecio: ubicacion
+    }
+  };
+}
+
 export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeValidatorProps) {
   const [formData, setFormData] = useState<Omit<TradeInput, 'setupType'> & { setupType: string }>({
     ticker: '',
@@ -21,6 +167,8 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
   const [result, setResult] = useState<TradeResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingSymbol, setLoadingSymbol] = useState(false);
+  const [marketTiming, setMarketTiming] = useState<MarketTimingResult | null>(null);
+  const [loadingTiming, setLoadingTiming] = useState(false);
 
   useEffect(() => {
     if (initialSymbol && !formData.ticker) {
@@ -32,6 +180,7 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
     if (!symbol || symbol.length < 1) return;
     
     setLoadingSymbol(true);
+    setLoadingTiming(true);
     try {
       const [stockResponse, optionsResponse] = await Promise.all([
         fetch(`/api/stock?symbol=${symbol}`),
@@ -43,6 +192,7 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
       
       if (stockData.error && optionsData.error) {
         setLoadingSymbol(false);
+        setLoadingTiming(false);
         return;
       }
 
@@ -64,10 +214,33 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
         impliedVolatility: impliedVolatility || prev.impliedVolatility
       }));
       
+      const marketTrend = optionsData.technical?.trend || (stockData.technical?.trend) || 'lateral';
+      const volume = stockData.quote?.regularMarketVolume || 0;
+      const avgVolume = stockData.quote?.averageVolume || volume * 1.5;
+      const support = optionsData.optionsAnalysis?.keyLevels?.support || stockData.technical?.support || currentPrice * 0.95;
+      const resistance = optionsData.optionsAnalysis?.keyLevels?.resistance || stockData.technical?.resistance || currentPrice * 1.05;
+      const nearEarnings = optionsData.optionsAnalysis?.earningsDaysUntil !== null && optionsData.optionsAnalysis?.earningsDaysUntil !== undefined && optionsData.optionsAnalysis?.earningsDaysUntil <= 30;
+      const earningsDate = optionsData.optionsAnalysis?.earningsDate;
+      
+      const timing = analyzeMarketTiming(
+        new Date().getDay(),
+        marketTrend,
+        volume,
+        avgVolume,
+        currentPrice,
+        support,
+        resistance,
+        nearEarnings,
+        earningsDate
+      );
+      
+      setMarketTiming(timing);
+      
     } catch (error) {
       console.error('Error loading symbol data:', error);
     } finally {
       setLoadingSymbol(false);
+      setLoadingTiming(false);
     }
   }, []);
 
@@ -83,7 +256,7 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
 
   const handleInputChange = (field: keyof typeof formData, value: string | number) => {
     if (field === 'ticker') {
-      setFormData(prev => ({ ...prev, ticker: value, targetPrice: 0 }));
+      setFormData(prev => ({ ...prev, ticker: String(value), targetPrice: 0 }));
       if (onSymbolChange && typeof value === 'string') onSymbolChange(value.toUpperCase());
     } else {
       setFormData(prev => ({ ...prev, [field]: value }));
@@ -291,6 +464,111 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
           {loading ? 'Evaluando...' : '🎯 Evaluar Trade'}
         </button>
       </div>
+
+      {marketTiming && (
+        <div style={{
+          ...cardStyle,
+          borderLeft: `4px solid ${marketTiming.validationColor}`
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+            <span style={{ fontSize: '32px' }}>📅</span>
+            <div>
+              <h3 style={{ color: '#f0f6fc', fontSize: '20px', margin: 0 }}>
+                Análisis de Mercado
+              </h3>
+              <p style={{ color: '#8b949e', fontSize: '14px', margin: '4px 0 0' }}>
+                {marketTiming.dayOfWeek} - {marketTiming.marketCondition}
+              </p>
+            </div>
+            <div style={{
+              marginLeft: 'auto',
+              padding: '8px 16px',
+              borderRadius: '20px',
+              background: marketTiming.validationBg,
+              color: marketTiming.validationColor,
+              fontWeight: '600',
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              {marketTiming.validation === 'ideal' && '🟢 Ideal'}
+              {marketTiming.validation === 'precaucion' && '🟡 Precaución'}
+              {marketTiming.validation === 'no-operar' && '🔴 No operar'}
+            </div>
+          </div>
+          
+          <div style={{
+            padding: '16px',
+            borderRadius: '8px',
+            background: '#0d1117',
+            marginBottom: '16px'
+          }}>
+            <div style={{ color: marketTiming.validationColor, fontSize: '14px', fontWeight: '500' }}>
+              {marketTiming.message}
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ padding: '12px', borderRadius: '8px', background: '#0d1117', textAlign: 'center' }}>
+              <div style={{ color: '#8b949e', fontSize: '11px', marginBottom: '4px' }}>Tendencia</div>
+              <div style={{ color: '#c9d1d9', fontSize: '14px', fontWeight: '500', textTransform: 'capitalize' }}>
+                {marketTiming.details.tendencia}
+              </div>
+            </div>
+            <div style={{ padding: '12px', borderRadius: '8px', background: '#0d1117', textAlign: 'center' }}>
+              <div style={{ color: '#8b949e', fontSize: '11px', marginBottom: '4px' }}>Volumen</div>
+              <div style={{ color: '#c9d1d9', fontSize: '14px', fontWeight: '500' }}>
+                {marketTiming.details.volumen}
+              </div>
+            </div>
+            <div style={{ padding: '12px', borderRadius: '8px', background: '#0d1117', textAlign: 'center' }}>
+              <div style={{ color: '#8b949e', fontSize: '11px', marginBottom: '4px' }}>Estructura</div>
+              <div style={{ color: '#c9d1d9', fontSize: '14px', fontWeight: '500' }}>
+                {marketTiming.details.estructura}
+              </div>
+            </div>
+            <div style={{ padding: '12px', borderRadius: '8px', background: '#0d1117', textAlign: 'center' }}>
+              <div style={{ color: '#8b949e', fontSize: '11px', marginBottom: '4px' }}>Ubicación</div>
+              <div style={{ color: '#c9d1d9', fontSize: '14px', fontWeight: '500' }}>
+                {marketTiming.details.ubicacionPrecio}
+              </div>
+            </div>
+          </div>
+
+          {marketTiming.details.eventosCercanos !== 'Sin eventos cercanos' && (
+            <div style={{
+              padding: '12px',
+              borderRadius: '8px',
+              background: '#f0883e20',
+              border: '1px solid #f0883e40',
+              marginBottom: '16px'
+            }}>
+              <span style={{ color: '#f0883e', fontSize: '13px' }}>
+                ⚠️ {marketTiming.details.eventosCercanos}
+              </span>
+            </div>
+          )}
+
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '16px',
+            borderRadius: '8px',
+            background: '#23863620',
+            border: '1px solid #23863640'
+          }}>
+            <span style={{ fontSize: '24px' }}>🎯</span>
+            <div>
+              <div style={{ color: '#8b949e', fontSize: '12px' }}>Estrategia recomendada</div>
+              <div style={{ color: '#3fb950', fontSize: '16px', fontWeight: '600' }}>
+                {marketTiming.strategy}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {result && (
         <>
