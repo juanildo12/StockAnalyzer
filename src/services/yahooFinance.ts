@@ -8,10 +8,25 @@ import type {
   FCFHistoryData,
 } from '../types';
 
-const yf = new YahooFinance();
+const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
 const ALPHA_VANTAGE_KEY = process.env.ALPHA_VANTAGE_KEY;
+
+const CACHE_TTL = 5 * 60 * 1000;
+const cache = new Map<string, { data: any; timestamp: number }>();
+
+function getCached<T>(key: string): T | null {
+  const entry = cache.get(key);
+  if (entry && Date.now() - entry.timestamp < CACHE_TTL) {
+    return entry.data as T;
+  }
+  return null;
+}
+
+function setCache(key: string, data: any): void {
+  cache.set(key, { data, timestamp: Date.now() });
+}
 
 const SYMBOL_MAP: Record<string, string> = {
   AAPL: 'Apple Inc',
@@ -462,6 +477,10 @@ export async function getHistoricalData(
   period2?: Date,
 ): Promise<HistoricalData[]> {
   const sym = symbol.toUpperCase();
+  const cacheKey = `hist_${sym}`;
+  
+  const cached = getCached<HistoricalData[]>(cacheKey);
+  if (cached) return cached;
 
   const startDate = period1 || new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
   const endDate = period2 || new Date();
@@ -473,7 +492,7 @@ export async function getHistoricalData(
       interval: '1d',
     });
 
-    return result.map((item: any) => ({
+    const data = result.map((item: any) => ({
       date: item.date.toISOString().split('T')[0],
       close: item.close,
       high: item.high,
@@ -481,6 +500,9 @@ export async function getHistoricalData(
       open: item.open,
       volume: item.volume,
     }));
+    
+    setCache(cacheKey, data);
+    return data;
   } catch (e) {
     console.error('Error in getHistoricalData:', e);
     return [];
@@ -523,6 +545,10 @@ export async function getTechnicalAnalysis(
   symbol: string,
 ): Promise<TechnicalAnalysis | null> {
   const sym = symbol.toUpperCase();
+  const cacheKey = `tech_${sym}`;
+  
+  const cached = getCached<TechnicalAnalysis | null>(cacheKey);
+  if (cached) return cached;
 
   try {
     const result: any = await yf.historical(sym, {
@@ -572,7 +598,7 @@ export async function getTechnicalAnalysis(
 
     const currentPrice = prices[prices.length - 1];
     
-    return {
+    const data = {
       rsi,
       sma50,
       sma200,
@@ -582,6 +608,9 @@ export async function getTechnicalAnalysis(
       resistance,
       signal,
     };
+    
+    setCache(cacheKey, data);
+    return data;
   } catch (e) {
     console.error('Error in getTechnicalAnalysis:', e);
     return null;
@@ -590,6 +619,11 @@ export async function getTechnicalAnalysis(
 
 export async function getStockQuote(symbol: string): Promise<StockQuote> {
   const sym = symbol.toUpperCase();
+  const cacheKey = `quote_${sym}`;
+  
+  const cached = getCached<StockQuote>(cacheKey);
+  if (cached) return cached;
+  
   const companyName = SYMBOL_MAP[sym] || sym;
 
   try {
@@ -634,6 +668,37 @@ export async function getStockQuote(symbol: string): Promise<StockQuote> {
       industry: summary.industry || 'Unknown',
       businessSummary: summary.businessSummary || '',
     };
+    
+    setCache(cacheKey, {
+      symbol: quote.symbol,
+      shortName: quote.shortName || companyName,
+      longName: quote.longName || summary.longName || companyName,
+      currency: quote.currency || 'USD',
+      regularMarketPrice: quote.regularMarketPrice || 0,
+      regularMarketChange: quote.regularMarketChange || 0,
+      regularMarketChangePercent: quote.regularMarketChangePercent || 0,
+      regularMarketDayHigh: quote.regularMarketDayHigh || 0,
+      regularMarketDayLow: quote.regularMarketDayLow || 0,
+      regularMarketVolume: quote.regularMarketVolume || 0,
+      regularMarketOpen: quote.regularMarketOpen || 0,
+      regularMarketPreviousClose: quote.regularMarketPreviousClose || 0,
+      postMarketPrice: quote.postMarketPrice || 0,
+      postMarketChange: quote.postMarketChange || 0,
+      fiftyTwoWeekHigh: quote.fiftyTwoWeekHigh || 0,
+      fiftyTwoWeekLow: quote.fiftyTwoWeekLow || 0,
+      marketCap: quote.marketCap || 0,
+      peRatio: quote.trailingPE || 0,
+      targetMeanPrice: financialData.targetMeanPrice || 0,
+      targetHighPrice: financialData.targetHighPrice || 0,
+      targetLowPrice: financialData.targetLowPrice || 0,
+      recommendationKey: financialData.recommendationKey || 'none',
+      numberOfAnalystOpinions: financialData.numberOfAnalystOpinions || 0,
+      sector: summary.sector || 'Unknown',
+      industry: summary.industry || 'Unknown',
+      businessSummary: summary.businessSummary || '',
+    });
+    
+    return getCached<StockQuote>(cacheKey)!;
   } catch (error) {
     throw new Error(`Failed to fetch quote for ${symbol}`);
   }

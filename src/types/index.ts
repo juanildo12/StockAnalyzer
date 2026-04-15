@@ -302,15 +302,18 @@ export interface OptionStrategy {
     premium: number;
     contracts: number;
     totalCost: number;
+    costPercent: number;
     maxProfit: number;
+    maxProfitPercent: number;
     maxLoss: number;
+    maxLossPercent: number;
     delta: number;
     deltaUpper?: number;
     expiration: string;
     daysToExpiration: number;
     type: 'call' | 'put' | 'spread';
-    takeProfit?: { price: number; percent: number; description: string };
-    stopLoss?: { price: number; percent: number; description: string };
+    takeProfit?: { price: number; percent: number; tpPercent: number; description: string };
+    stopLoss?: { price: number; percent: number; slPercent: number; description: string };
   };
 }
 
@@ -323,6 +326,7 @@ export interface OptionsAnalysis {
   ivPercentile: number;
   earningsDate: string | null;
   earningsEstimate: boolean;
+  earningsDaysUntil: number | null;
   dividendDate: string | null;
   recommendedStrategies: {
     strategy: OptionStrategy;

@@ -384,39 +384,50 @@ function calculateStrategyExample(
     const strikeWidth = currentPrice * 0.08;
     const strikeForCalc = Math.round(currentPrice * 1.05);
     const estimatedPremium = estimateOptionPrice(currentPrice, strikeForCalc, daysToExpiration, iv, 'call');
+    const capital = currentPrice * 100;
     
     switch (strategyName) {
       case 'Covered Call':
+        const ccCost = estimatedPremium * 100;
+        const ccProfit = estimatedPremium * 100 + (currentPrice * 100 - Math.round(currentPrice * 1.05) * 100);
         return {
           strike: Math.round(currentPrice * 1.05),
           premium: estimatedPremium,
           contracts,
-          totalCost: estimatedPremium * 100,
-          maxProfit: estimatedPremium * 100 + (currentPrice * 100 - Math.round(currentPrice * 1.05) * 100),
+          totalCost: ccCost,
+          costPercent: (ccCost / capital * 100).toFixed(1),
+          maxProfit: ccProfit,
+          maxProfitPercent: (ccProfit / capital * 100).toFixed(1),
           maxLoss: 'ilimitado',
+          maxLossPercent: '∞',
           delta: 0.30,
           expiration,
           daysToExpiration,
           type: 'call',
-          takeProfit: { price: currentPrice * 1.10, percent: 10, description: 'Cierra al 50% del max profit' },
-          stopLoss: { price: currentPrice * 0.92, percent: -8, description: 'Cierra si acción cae 8%' },
+          takeProfit: { price: currentPrice * 1.10, percent: 10, tpPercent: 50, description: 'Cierra al 50%' },
+          stopLoss: { price: currentPrice * 0.92, percent: -8, slPercent: 50, description: 'Cierra si pierde 50%' },
         };
       case 'Cash-Secured Put':
         const putStrike = Math.round(currentPrice * 0.95);
         const putPremium = estimateOptionPrice(currentPrice, putStrike, daysToExpiration, iv, 'put');
+        const cspCost = putPremium * 100;
+        const cspProfit = putPremium * 100 + (putStrike * 100 - currentPrice * 100);
         return {
           strike: putStrike,
           premium: putPremium,
           contracts,
-          totalCost: putPremium * 100,
-          maxProfit: putPremium * 100 + (putStrike * 100 - currentPrice * 100),
+          totalCost: cspCost,
+          costPercent: (cspCost / capital * 100).toFixed(1),
+          maxProfit: cspProfit,
+          maxProfitPercent: (cspProfit / capital * 100).toFixed(1),
           maxLoss: 'ilimitado',
+          maxLossPercent: '∞',
           delta: -0.30,
           expiration,
           daysToExpiration,
           type: 'put',
-          takeProfit: { price: currentPrice * 0.97, percent: 3, description: 'Cierra al 50% de profit' },
-          stopLoss: { price: currentPrice * 0.85, percent: -15, description: 'Roll o cierra si cae 15%' },
+          takeProfit: { price: currentPrice * 0.97, percent: 3, tpPercent: 50, description: 'Cierra al 50%' },
+          stopLoss: { price: currentPrice * 0.85, percent: -15, slPercent: 50, description: 'Roll o cierra si pierde 50%' },
         };
       case 'Bull Call Spread':
         const lowerStrike = Math.round(currentPrice);
@@ -424,21 +435,27 @@ function calculateStrategyExample(
         const callPremium = estimateOptionPrice(currentPrice, lowerStrike, daysToExpiration, iv, 'call');
         const shortCallPremium = estimateOptionPrice(currentPrice, upperStrike, daysToExpiration, iv, 'call');
         const spreadPremium = Math.abs(callPremium - shortCallPremium);
+        const bcsCost = spreadPremium * 100;
+        const bcsMaxProfit = strikeWidth * 100 - spreadPremium * 100;
+        const bcsMaxLoss = spreadPremium * 100;
         return {
           strike: lowerStrike,
           strikeUpper: upperStrike,
           premium: spreadPremium,
           contracts,
-          totalCost: spreadPremium * 100,
-          maxProfit: strikeWidth * 100 - spreadPremium * 100,
-          maxLoss: spreadPremium * 100,
+          totalCost: bcsCost,
+          costPercent: (bcsCost / capital * 100).toFixed(1),
+          maxProfit: bcsMaxProfit,
+          maxProfitPercent: (bcsMaxProfit / bcsCost * 100).toFixed(0),
+          maxLoss: bcsMaxLoss,
+          maxLossPercent: 100,
           delta: 0.40,
           deltaUpper: 0.15,
           expiration,
           daysToExpiration,
           type: 'spread',
-          takeProfit: { price: upperStrike, percent: 8, description: 'Cierra al 80% de max profit' },
-          stopLoss: { price: currentPrice * 0.97, percent: -3, description: 'Cierra si pierde 50% del costo' },
+          takeProfit: { price: upperStrike, percent: 8, tpPercent: 80, description: 'Cierra al 80%' },
+          stopLoss: { price: currentPrice * 0.97, percent: -3, slPercent: 50, description: 'Cierra si pierde 50%' },
         };
       case 'Bull Put Spread':
         const bullPutStrike = Math.round(currentPrice * 0.95);
@@ -446,76 +463,95 @@ function calculateStrategyExample(
         const bullPutPremium = estimateOptionPrice(currentPrice, bullPutStrike, daysToExpiration, iv, 'put');
         const bullPutLowerPremium = estimateOptionPrice(currentPrice, bullPutStrikeLower, daysToExpiration, iv, 'put');
         const bullPutCredit = Math.abs(bullPutPremium - bullPutLowerPremium);
+        const bpsCost = bullPutCredit * 100;
+        const bpsMaxProfit = bullPutCredit * 100;
+        const bpsMaxLoss = (bullPutStrike - bullPutStrikeLower) * 100 - bullPutCredit * 100;
         return {
           strike: bullPutStrike,
           strikeUpper: bullPutStrikeLower,
           premium: bullPutCredit,
           contracts,
-          totalCost: bullPutCredit * 100,
-          maxProfit: bullPutCredit * 100,
-          maxLoss: (bullPutStrike - bullPutStrikeLower) * 100 - bullPutCredit * 100,
+          totalCost: bpsCost,
+          costPercent: (bpsCost / capital * 100).toFixed(1),
+          maxProfit: bpsMaxProfit,
+          maxProfitPercent: (bpsMaxProfit / bpsCost * 100).toFixed(0),
+          maxLoss: bpsMaxLoss,
+          maxLossPercent: (bpsMaxLoss / capital * 100).toFixed(1),
           delta: -0.30,
           deltaUpper: -0.10,
           expiration,
           daysToExpiration,
           type: 'spread',
-          takeProfit: { price: currentPrice * 0.98, percent: 2, description: 'Cierra al 50% de profit' },
-          stopLoss: { price: currentPrice * 0.82, percent: -18, description: 'Cierra si pierde 2x la prima' },
+          takeProfit: { price: currentPrice * 0.98, percent: 2, tpPercent: 50, description: 'Cierra al 50%' },
+          stopLoss: { price: currentPrice * 0.82, percent: -18, slPercent: 100, description: 'Pierde todo si asigna' },
         };
       case 'Protective Put':
         const protPutStrike = Math.round(currentPrice * 0.95);
         const protPutPremium = estimateOptionPrice(currentPrice, protPutStrike, daysToExpiration, iv, 'put');
+        const ppCost = protPutPremium * 100;
+        const ppMaxLoss = currentPrice * 0.05 * 100 + protPutPremium * 100;
         return {
           strike: protPutStrike,
           premium: protPutPremium,
           contracts,
-          totalCost: protPutPremium * 100,
+          totalCost: ppCost,
+          costPercent: (ppCost / capital * 100).toFixed(1),
           maxProfit: 'ilimitado',
-          maxLoss: currentPrice * 0.05 * 100 + protPutPremium * 100,
+          maxProfitPercent: '∞',
+          maxLoss: ppMaxLoss,
+          maxLossPercent: (ppMaxLoss / capital * 100).toFixed(1),
           delta: -0.40,
           expiration,
           daysToExpiration,
           type: 'put',
-          takeProfit: { price: currentPrice * 1.15, percent: 15, description: 'Vende put protector si sube 15%' },
-          stopLoss: { price: currentPrice * 0.90, percent: -10, description: 'Ejercuta put si cae 10%' },
+          takeProfit: { price: currentPrice * 1.15, percent: 15, tpPercent: 50, description: 'Vende put protector' },
+          stopLoss: { price: currentPrice * 0.90, percent: -10, slPercent: 100, description: 'Ejercuta put si cae 10%' },
         };
       case 'Long Straddle':
         const straddleCall = estimateOptionPrice(currentPrice, Math.round(currentPrice), daysToExpiration, iv, 'call');
         const straddlePut = estimateOptionPrice(currentPrice, Math.round(currentPrice), daysToExpiration, iv, 'put');
-        const straddleCost = straddleCall + straddlePut;
+        const straddleCostTotal = straddleCall + straddlePut;
+        const sdCost = straddleCostTotal * 100;
         return {
           strike: Math.round(currentPrice),
-          premium: straddleCost,
+          premium: straddleCostTotal,
           contracts,
-          totalCost: straddleCost * 100,
+          totalCost: sdCost,
+          costPercent: (sdCost / capital * 100).toFixed(1),
           maxProfit: 'ilimitado',
-          maxLoss: straddleCost * 100,
+          maxProfitPercent: '∞',
+          maxLoss: sdCost,
+          maxLossPercent: (sdCost / capital * 100).toFixed(1),
           delta: 0.30,
           expiration,
           daysToExpiration,
           type: 'call',
-          takeProfit: { price: currentPrice * 1.15, percent: 15, description: 'Cierra si movimiento > 15%' },
-          stopLoss: { price: currentPrice * 0.97, percent: -3, description: 'Corta si expira sin movimiento' },
+          takeProfit: { price: currentPrice * 1.15, percent: 15, tpPercent: 100, description: 'Si movimiento > 15%' },
+          stopLoss: { price: currentPrice * 0.97, percent: -3, slPercent: 50, description: 'Corta al 50%' },
         };
       case 'Long Strangle':
         const stranglePut = estimateOptionPrice(currentPrice, Math.round(currentPrice * 0.95), daysToExpiration, iv, 'put');
         const strangleCall = estimateOptionPrice(currentPrice, Math.round(currentPrice * 1.05), daysToExpiration, iv, 'call');
-        const strangleCost = stranglePut + strangleCall;
+        const strangleCostTotal = stranglePut + strangleCall;
+        const sgCost = strangleCostTotal * 100;
         return {
           strike: Math.round(currentPrice * 0.95),
           strikeUpper: Math.round(currentPrice * 1.05),
-          premium: strangleCost,
+          premium: strangleCostTotal,
           contracts,
-          totalCost: strangleCost * 100,
+          totalCost: sgCost,
+          costPercent: (sgCost / capital * 100).toFixed(1),
           maxProfit: 'ilimitado',
-          maxLoss: strangleCost * 100,
+          maxProfitPercent: '∞',
+          maxLoss: sgCost,
+          maxLossPercent: (sgCost / capital * 100).toFixed(1),
           delta: 0.20,
           deltaUpper: -0.20,
           expiration,
           daysToExpiration,
           type: 'spread',
-          takeProfit: { price: currentPrice * 1.12, percent: 12, description: 'Cierra si movimiento > 12%' },
-          stopLoss: { price: currentPrice * 0.98, percent: -2, description: 'Corta si expira sin movimiento' },
+          takeProfit: { price: currentPrice * 1.12, percent: 12, tpPercent: 100, description: 'Si movimiento > 12%' },
+          stopLoss: { price: currentPrice * 0.98, percent: -2, slPercent: 50, description: 'Corta al 50%' },
         };
       case 'Iron Condor':
         const icPutSell = Math.round(currentPrice * 0.95);
@@ -527,36 +563,45 @@ function calculateStrategyExample(
         const icCallSellPrem = estimateOptionPrice(currentPrice, icCallSell, daysToExpiration, iv, 'call');
         const icCallBuyPrem = estimateOptionPrice(currentPrice, icCallBuy, daysToExpiration, iv, 'call');
         const icCredit = (icPutSellPrem - icPutBuyPrem) + (icCallSellPrem - icCallBuyPrem);
+        const icCost = Math.abs(icCredit) * 100;
+        const icMaxLoss = (icPutSell - icPutBuy) * 100;
         return {
           strike: icPutSell,
           strikeUpper: icCallSell,
           premium: Math.abs(icCredit),
           contracts,
-          totalCost: Math.abs(icCredit) * 100,
-          maxProfit: Math.abs(icCredit) * 100,
-          maxLoss: (icPutSell - icPutBuy) * 100,
+          totalCost: icCost,
+          costPercent: (icCost / capital * 100).toFixed(1),
+          maxProfit: icCost,
+          maxProfitPercent: (icCost / icMaxLoss * 100).toFixed(0),
+          maxLoss: icMaxLoss,
+          maxLossPercent: (icMaxLoss / capital * 100).toFixed(1),
           delta: -0.20,
           deltaUpper: 0.20,
           expiration,
           daysToExpiration,
           type: 'spread',
-          takeProfit: { price: currentPrice * 1.02, percent: 2, description: 'Cierra al 50% de profit' },
-          stopLoss: { price: currentPrice * 0.85, percent: -15, description: 'Cierra si acción sale del rango' },
+          takeProfit: { price: currentPrice * 1.02, percent: 2, tpPercent: 50, description: 'Cierra al 50%' },
+          stopLoss: { price: currentPrice * 0.85, percent: -15, slPercent: 100, description: 'Cierra si sale rango' },
         };
       default:
+        const defCost = estimatedPremium * 100;
         return {
           strike: Math.round(currentPrice),
           premium: estimatedPremium,
           contracts,
-          totalCost: estimatedPremium * 100,
-          maxProfit: estimatedPremium * 100,
-          maxLoss: estimatedPremium * 100,
+          totalCost: defCost,
+          costPercent: (defCost / capital * 100).toFixed(1),
+          maxProfit: defCost,
+          maxProfitPercent: 100,
+          maxLoss: defCost,
+          maxLossPercent: (defCost / capital * 100).toFixed(1),
           delta: 0.50,
           expiration,
           daysToExpiration,
           type: 'call',
-          takeProfit: { price: currentPrice * 1.10, percent: 10, description: 'Cierra al 50% de profit' },
-          stopLoss: { price: currentPrice * 0.95, percent: -5, description: 'Cierra si pierde 50% del costo' },
+          takeProfit: { price: currentPrice * 1.10, percent: 10, tpPercent: 50, description: 'Cierra al 50%' },
+          stopLoss: { price: currentPrice * 0.95, percent: -5, slPercent: 50, description: 'Cierra si pierde 50%' },
         };
     }
   }
@@ -569,38 +614,48 @@ function calculateStrategyExample(
       const otmCall = calls.find(c => c.strike > currentPrice && c.strike <= currentPrice * 1.1) || calls[0];
       const premium = otmCall?.lastPrice || currentPrice * 0.03;
       const strike = otmCall?.strike || Math.round(currentPrice * 1.05);
+      const ccCost = premium * 100;
+      const ccProfit = premium * 100 + (currentPrice * 100 - strike * 100);
       return {
         strike,
         premium,
         contracts,
-        totalCost: premium * 100,
-        maxProfit: premium * 100 + (currentPrice * 100 - strike * 100),
+        totalCost: ccCost,
+        costPercent: (ccCost / capital * 100).toFixed(1),
+        maxProfit: ccProfit,
+        maxProfitPercent: (ccProfit / capital * 100).toFixed(1),
         maxLoss: 'ilimitado',
+        maxLossPercent: '∞',
         delta: otmCall?.delta || 0.30,
         expiration: otmCall?.expiration || expiration,
         daysToExpiration: otmCall?.expiration ? Math.max(1, Math.ceil((new Date(otmCall.expiration).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : daysToExpiration,
         type: 'call',
-        takeProfit: { price: currentPrice * 1.10, percent: 10, description: 'Cierra al 50% del max profit' },
-        stopLoss: { price: currentPrice * 0.92, percent: -8, description: 'Cierra si acción cae 8%' },
+        takeProfit: { price: currentPrice * 1.10, percent: 10, tpPercent: 50, description: 'Cierra al 50%' },
+        stopLoss: { price: currentPrice * 0.92, percent: -8, slPercent: 50, description: 'Cierra si cae 8%' },
       };
     }
     case 'Cash-Secured Put': {
       const itmPut = puts.find(p => p.strike < currentPrice && p.strike >= currentPrice * 0.9) || puts[0];
       const premium = itmPut?.lastPrice || currentPrice * 0.03;
       const strike = itmPut?.strike || Math.round(currentPrice * 0.95);
+      const cspCost = premium * 100;
+      const cspProfit = premium * 100 + (strike * 100 - currentPrice * 100);
       return {
         strike,
         premium,
         contracts,
-        totalCost: premium * 100,
-        maxProfit: premium * 100 + (strike * 100 - currentPrice * 100),
+        totalCost: cspCost,
+        costPercent: (cspCost / capital * 100).toFixed(1),
+        maxProfit: cspProfit,
+        maxProfitPercent: (cspProfit / capital * 100).toFixed(1),
         maxLoss: 'ilimitado',
+        maxLossPercent: '∞',
         delta: itmPut?.delta || -0.30,
         expiration: itmPut?.expiration || expiration,
         daysToExpiration: itmPut?.expiration ? Math.max(1, Math.ceil((new Date(itmPut.expiration).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : daysToExpiration,
         type: 'put',
-        takeProfit: { price: currentPrice * 0.97, percent: 3, description: 'Cierra al 50% de profit' },
-        stopLoss: { price: currentPrice * 0.85, percent: -15, description: 'Roll o cierra si cae 15%' },
+        takeProfit: { price: currentPrice * 0.97, percent: 3, tpPercent: 50, description: 'Cierra al 50%' },
+        stopLoss: { price: currentPrice * 0.85, percent: -15, slPercent: 50, description: 'Roll o cierra si cae 15%' },
       };
     }
     case 'Bull Call Spread': {
@@ -610,21 +665,26 @@ function calculateStrategyExample(
       const strikeLower = lowerCall?.strike || atmStrike;
       const strikeUpper = upperCall?.strike || Math.round(currentPrice * 1.08);
       const cost = Math.abs(netPremium) * 100;
+      const bcsCost = cost;
+      const bcsMaxProfit = (strikeUpper - strikeLower) * 100 - cost;
       return {
         strike: strikeLower,
         strikeUpper,
         premium: Math.abs(netPremium) || currentPrice * 0.02,
         contracts,
         totalCost: cost,
+        costPercent: (cost / capital * 100).toFixed(1),
         maxProfit: (strikeUpper - strikeLower) * 100 - cost,
+        maxProfitPercent: (bcsMaxProfit / capital * 100).toFixed(1),
         maxLoss: cost,
+        maxLossPercent: (cost / capital * 100).toFixed(1),
         delta: lowerCall?.delta || 0.50,
         deltaUpper: upperCall?.delta || 0.15,
         expiration: lowerCall?.expiration || expiration,
         daysToExpiration: lowerCall?.expiration ? Math.max(1, Math.ceil((new Date(lowerCall.expiration).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : daysToExpiration,
         type: 'spread',
-        takeProfit: { price: strikeUpper, percent: 8, description: 'Cierra al 80% de max profit' },
-        stopLoss: { price: currentPrice * 0.97, percent: -3, description: 'Cierra si pierde 50% del costo' },
+        takeProfit: { price: strikeUpper, percent: 8, tpPercent: 80, description: 'Cierra al 80% de max profit' },
+        stopLoss: { price: currentPrice * 0.97, percent: -3, slPercent: 50, description: 'Cierra si pierde 50% del costo' },
       };
     }
     case 'Bull Put Spread': {
@@ -634,21 +694,25 @@ function calculateStrategyExample(
       const strikeSold = soldPut?.strike || Math.round(currentPrice * 0.95);
       const strikeBought = boughtPut?.strike || Math.round(currentPrice * 0.85);
       const credit = Math.abs(netPremium) * 100;
+      const bpsMaxLoss = (strikeSold - strikeBought) * 100 - credit;
       return {
         strike: strikeSold,
         strikeUpper: strikeBought,
         premium: Math.abs(netPremium) || currentPrice * 0.02,
         contracts,
         totalCost: credit,
+        costPercent: (credit / capital * 100).toFixed(1),
         maxProfit: credit,
-        maxLoss: (strikeSold - strikeBought) * 100 - credit,
+        maxProfitPercent: (credit / capital * 100).toFixed(1),
+        maxLoss: bpsMaxLoss,
+        maxLossPercent: (bpsMaxLoss / capital * 100).toFixed(1),
         delta: soldPut?.delta || -0.30,
         deltaUpper: boughtPut?.delta || -0.10,
         expiration: soldPut?.expiration || expiration,
         daysToExpiration: soldPut?.expiration ? Math.max(1, Math.ceil((new Date(soldPut.expiration).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : daysToExpiration,
         type: 'spread',
-        takeProfit: { price: currentPrice * 0.98, percent: 2, description: 'Cierra al 50% de profit' },
-        stopLoss: { price: currentPrice * 0.82, percent: -18, description: 'Cierra si pierde 2x la prima' },
+        takeProfit: { price: currentPrice * 0.98, percent: 2, tpPercent: 50, description: 'Cierra al 50% de profit' },
+        stopLoss: { price: currentPrice * 0.82, percent: -18, slPercent: 100, description: 'Cierra si pierde 2x la prima' },
       };
     }
     case 'Protective Put': {
@@ -656,19 +720,24 @@ function calculateStrategyExample(
       const premium = otmPut?.lastPrice || currentPrice * 0.02;
       const strike = otmPut?.strike || Math.round(currentPrice * 0.95);
       const distanceDown = currentPrice - strike;
+      const ppCost = premium * 100;
+      const ppMaxLoss = distanceDown * 100 + premium * 100;
       return {
         strike,
         premium,
         contracts,
-        totalCost: premium * 100,
+        totalCost: ppCost,
+        costPercent: (ppCost / capital * 100).toFixed(1),
         maxProfit: 'ilimitado',
-        maxLoss: distanceDown * 100 + premium * 100,
+        maxProfitPercent: '∞',
+        maxLoss: ppMaxLoss,
+        maxLossPercent: (ppMaxLoss / capital * 100).toFixed(1),
         delta: otmPut?.delta || -0.40,
         expiration: otmPut?.expiration || expiration,
         daysToExpiration: otmPut?.expiration ? Math.max(1, Math.ceil((new Date(otmPut.expiration).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : daysToExpiration,
         type: 'put',
-        takeProfit: { price: currentPrice * 1.15, percent: 15, description: 'Vende put protector si sube 15%' },
-        stopLoss: { price: currentPrice * 0.90, percent: -10, description: 'Ejercuta put si cae 10%' },
+        takeProfit: { price: currentPrice * 1.15, percent: 15, tpPercent: 50, description: 'Vende put protector si sube 15%' },
+        stopLoss: { price: currentPrice * 0.90, percent: -10, slPercent: 50, description: 'Ejercuta put si cae 10%' },
       };
     }
     case 'Long Straddle': {
@@ -682,14 +751,17 @@ function calculateStrategyExample(
         premium: totalPremium || currentPrice * 0.05,
         contracts,
         totalCost: cost,
+        costPercent: (cost / capital * 100).toFixed(1),
         maxProfit: 'ilimitado',
+        maxProfitPercent: '∞',
         maxLoss: cost,
+        maxLossPercent: (cost / capital * 100).toFixed(1),
         delta: atmCall?.delta || 0.50,
         expiration: atmCall?.expiration || expiration,
         daysToExpiration: days,
         type: 'call',
-        takeProfit: { price: currentPrice * 1.15, percent: 15, description: 'Cierra si movimiento > 15%' },
-        stopLoss: { price: currentPrice * 0.97, percent: -3, description: 'Corta si expira sin movimiento' },
+        takeProfit: { price: currentPrice * 1.15, percent: 15, tpPercent: 50, description: 'Cierra si movimiento > 15%' },
+        stopLoss: { price: currentPrice * 0.97, percent: -3, slPercent: 100, description: 'Corta si expira sin movimiento' },
       };
     }
     case 'Long Strangle': {
@@ -704,15 +776,18 @@ function calculateStrategyExample(
         premium: totalPremium || currentPrice * 0.03,
         contracts,
         totalCost: cost,
+        costPercent: (cost / capital * 100).toFixed(1),
         maxProfit: 'ilimitado',
+        maxProfitPercent: '∞',
         maxLoss: cost,
+        maxLossPercent: (cost / capital * 100).toFixed(1),
         delta: otmPut?.delta || -0.20,
         deltaUpper: otmCall?.delta || 0.20,
         expiration: otmCall?.expiration || expiration,
         daysToExpiration: days,
         type: 'spread',
-        takeProfit: { price: currentPrice * 1.12, percent: 12, description: 'Cierra si movimiento > 12%' },
-        stopLoss: { price: currentPrice * 0.98, percent: -2, description: 'Corta si expira sin movimiento' },
+        takeProfit: { price: currentPrice * 1.12, percent: 12, tpPercent: 50, description: 'Cierra si movimiento > 12%' },
+        stopLoss: { price: currentPrice * 0.98, percent: -2, slPercent: 100, description: 'Corta si expira sin movimiento' },
       };
     }
     case 'Iron Condor': {
@@ -732,32 +807,39 @@ function calculateStrategyExample(
         premium: Math.abs(netCredit) || currentPrice * 0.02,
         contracts,
         totalCost: credit,
+        costPercent: (credit / capital * 100).toFixed(1),
         maxProfit: credit,
+        maxProfitPercent: (credit / capital * 100).toFixed(1),
         maxLoss: maxRisk,
+        maxLossPercent: (maxRisk / capital * 100).toFixed(1),
         delta: soldPut?.delta || -0.20,
         deltaUpper: soldCall?.delta || 0.20,
         expiration: soldPut?.expiration || expiration,
         daysToExpiration: soldPut?.expiration ? Math.max(1, Math.ceil((new Date(soldPut.expiration).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : daysToExpiration,
         type: 'spread',
-        takeProfit: { price: currentPrice * 1.02, percent: 2, description: 'Cierra al 50% de profit' },
-        stopLoss: { price: currentPrice * 0.85, percent: -15, description: 'Cierra si sale del rango' },
+        takeProfit: { price: currentPrice * 1.02, percent: 2, tpPercent: 50, description: 'Cierra al 50% de profit' },
+        stopLoss: { price: currentPrice * 0.85, percent: -15, slPercent: 100, description: 'Cierra si sale del rango' },
       };
     }
     default: {
       const cost = currentPrice * 0.03 * 100;
+      const defaultMaxProfit = cost * 2;
       return {
         strike: atmStrike,
         premium: currentPrice * 0.03,
         contracts,
         totalCost: cost,
-        maxProfit: cost * 2,
+        costPercent: (cost / capital * 100).toFixed(1),
+        maxProfit: defaultMaxProfit,
+        maxProfitPercent: (defaultMaxProfit / capital * 100).toFixed(1),
         maxLoss: cost,
+        maxLossPercent: (cost / capital * 100).toFixed(1),
         delta: 0.50,
         expiration,
         daysToExpiration,
         type: 'call',
-        takeProfit: { price: currentPrice * 1.10, percent: 10, description: 'Cierra al 50% de profit' },
-        stopLoss: { price: currentPrice * 0.95, percent: -5, description: 'Cierra si pierde 50% del costo' },
+        takeProfit: { price: currentPrice * 1.10, percent: 10, tpPercent: 50, description: 'Cierra al 50% de profit' },
+        stopLoss: { price: currentPrice * 0.95, percent: -5, slPercent: 50, description: 'Cierra si pierde 50% del costo' },
       };
     }
   }
@@ -949,6 +1031,7 @@ export async function getOptionsAnalysis(symbol: string): Promise<OptionsAnalysi
       ivPercentile,
       earningsDate,
       earningsEstimate,
+      earningsDaysUntil: earningsDate ? Math.ceil((new Date(earningsDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null,
       dividendDate,
       recommendedStrategies,
       nextExpirations,

@@ -25,6 +25,16 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
     stopLoss,
   } = recommendation;
 
+  const currentPrice = quote.regularMarketPrice;
+  
+  const targetPercent = currentPrice > 0
+    ? ((targetPrice - currentPrice) / currentPrice * 100).toFixed(1)
+    : '0';
+  
+  const stopPercent = currentPrice > 0
+    ? ((stopLoss - currentPrice) / currentPrice * 100).toFixed(1)
+    : '0';
+
   const analystUpside =
     priceTarget && quote.regularMarketPrice > 0
       ? parseFloat(
@@ -77,15 +87,25 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
         </View>
         <View style={styles.priceRow}>
           <Text style={styles.priceLabel}>🎯 Objetivo:</Text>
-          <Text style={[styles.priceValue, { color: colors.accentGreen }]}>
-            ${targetPrice.toFixed(2)}
-          </Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={[styles.priceValue, { color: colors.accentGreen }]}>
+              ${targetPrice.toFixed(2)}
+            </Text>
+            <Text style={{ fontSize: 11, color: colors.accentGreen }}>
+              +{targetPercent}%
+            </Text>
+          </View>
         </View>
         <View style={styles.priceRow}>
           <Text style={styles.priceLabel}>🛑 Stop Loss:</Text>
-          <Text style={[styles.priceValue, { color: colors.accentRed }]}>
-            ${stopLoss.toFixed(2)}
-          </Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={[styles.priceValue, { color: colors.accentRed }]}>
+              ${stopLoss.toFixed(2)}
+            </Text>
+            <Text style={{ fontSize: 11, color: colors.accentRed }}>
+              {parseFloat(stopPercent) > 0 ? '+' : ''}{stopPercent}%
+            </Text>
+          </View>
         </View>
       </View>
 
