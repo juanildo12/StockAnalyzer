@@ -82,7 +82,12 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
   }, [formData.ticker, loadSymbolData]);
 
   const handleInputChange = (field: keyof typeof formData, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    if (field === 'ticker') {
+      setFormData(prev => ({ ...prev, ticker: value, targetPrice: 0 }));
+      if (onSymbolChange && typeof value === 'string') onSymbolChange(value.toUpperCase());
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   const handleEvaluate = () => {
