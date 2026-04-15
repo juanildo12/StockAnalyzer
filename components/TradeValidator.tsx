@@ -570,7 +570,7 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
         </div>
       )}
 
-      {result && (
+      {result && (!marketTiming || marketTiming.validation !== 'no-operar') && (
         <>
           <div style={{
             ...cardStyle,
