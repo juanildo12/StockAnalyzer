@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 interface StockFundamental {
   symbol: string;
@@ -319,21 +320,42 @@ export default function Screener() {
     return `$${value.toFixed(0)}`;
   };
 
+  const { data: session } = useSession();
+  const LOCAL_WATCHLIST_KEY = 'local-watchlist';
+
   const handleAddToWatchlist = async (symbol: string) => {
     setAddingToWatchlist(symbol);
     try {
-      const response = await fetch('/api/watchlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          symbol,
-          alertEnabled: false,
-          alertPrice: 0,
-          alertType: 'above'
-        }),
-      });
-      if (response.ok) {
-        alert(`${symbol} agregado a Watchlist`);
+      if (session?.user?.email) {
+        const response = await fetch('/api/watchlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            symbol,
+            alertEnabled: false,
+            alertPrice: 0,
+            alertType: 'above'
+          }),
+        });
+        if (response.ok) {
+          alert(`${symbol} agregado a Watchlist`);
+        }
+      } else {
+        const local = localStorage.getItem(LOCAL_WATCHLIST_KEY);
+        const items = local ? JSON.parse(local) : [];
+        if (!items.some((w: any) => w.symbol === symbol.toUpperCase())) {
+          items.push({
+            symbol: symbol.toUpperCase(),
+            addedAt: new Date().toISOString(),
+            alertEnabled: false,
+            alertPrice: 0,
+            alertType: 'above',
+          });
+          localStorage.setItem(LOCAL_WATCHLIST_KEY, JSON.stringify(items));
+          alert(`${symbol} agregado a Watchlist`);
+        } else {
+          alert(`${symbol} ya está en tu Watchlist`);
+        }
       }
     } catch (err) {
       alert('Error al agregar a Watchlist');
@@ -543,6 +565,11 @@ export default function Screener() {
                 <p style={{ color: '#8b949e', fontSize: '14px', margin: '4px 0 0' }}>
                   Encuentra oportunidades de inversión con análisis fundamental
                 </p>
+                {lastUpdated && (
+                  <p style={{ color: '#58a6ff', fontSize: '12px', margin: '8px 0 0', fontWeight: '500' }}>
+                    🕐 Actualizado: {lastUpdated.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                )}
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
@@ -575,11 +602,6 @@ export default function Screener() {
                 }} />
                 {isRefreshing ? 'Actualizando...' : 'Actualizar'}
               </button>
-              {lastUpdated && (
-                <span style={{ color: '#6e7681', fontSize: '12px' }}>
-                  Última actualización: {lastUpdated.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              )}
             </div>
           </div>
           

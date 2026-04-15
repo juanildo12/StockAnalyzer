@@ -34,6 +34,8 @@ interface StockQuote {
   peRatio: number;
 }
 
+const LOCAL_WATCHLIST_KEY = 'local-watchlist';
+
 interface Summary {
   totalCash: number;
   totalDebt: number;
@@ -506,6 +508,8 @@ export default function Home() {
       saveUserEmail(session.user.email, session.user.email);
       loadPortfolio();
       loadWatchlist();
+    } else {
+      loadWatchlist();
     }
   }, [session]);
 
@@ -520,16 +524,27 @@ export default function Home() {
   };
 
   const loadWatchlist = async () => {
-    if (!session?.user?.email) return;
-    try {
-      const items = await getWatchlistFromFirestore(session.user.email);
-      setWatchlist(items);
-      setWatchlistError('');
-      if (items.length > 0) {
-        fetchWatchlistPrices(items.map(w => w.symbol));
+    if (session?.user?.email) {
+      try {
+        const items = await getWatchlistFromFirestore(session.user.email);
+        setWatchlist(items);
+        setWatchlistError('');
+        if (items.length > 0) {
+          fetchWatchlistPrices(items.map(w => w.symbol));
+        }
+      } catch (error) {
+        console.error('Error loading watchlist:', error);
       }
-    } catch (error) {
-      console.error('Error loading watchlist:', error);
+    } else {
+      const local = localStorage.getItem(LOCAL_WATCHLIST_KEY);
+      if (local) {
+        const items = JSON.parse(local) as WatchlistItem[];
+        setWatchlist(items);
+        setWatchlistError('');
+        if (items.length > 0) {
+          fetchWatchlistPrices(items.map(w => w.symbol));
+        }
+      }
     }
   };
 
@@ -576,48 +591,82 @@ export default function Home() {
   };
 
   const handleAddToWatchlist = async () => {
-    if (!session?.user?.email || !watchlistForm.symbol) {
-      console.log('Missing session or symbol:', { hasSession: !!session?.user?.email, symbol: watchlistForm.symbol });
-      return;
-    }
-    try {
-      const userId = session.user.email;
-      console.log('Adding to watchlist:', userId, watchlistForm);
-      await addWatchlistItem(userId, {
-        symbol: watchlistForm.symbol.toUpperCase(),
-        addedAt: new Date().toISOString(),
-        alertEnabled: watchlistForm.alertEnabled,
-        alertPrice: parseFloat(watchlistForm.alertPrice) || 0,
-        alertType: watchlistForm.alertType,
-      });
-      await loadWatchlist();
+    if (!watchlistForm.symbol) return;
+    
+    const newItem: WatchlistItem = {
+      symbol: watchlistForm.symbol.toUpperCase(),
+      addedAt: new Date().toISOString(),
+      alertEnabled: watchlistForm.alertEnabled,
+      alertPrice: parseFloat(watchlistForm.alertPrice) || 0,
+      alertType: watchlistForm.alertType,
+    };
+
+    if (session?.user?.email) {
+      try {
+        await addWatchlistItem(session.user.email, newItem);
+        await loadWatchlist();
+        setShowWatchlistModal(false);
+      } catch (error) {
+        console.error('Error adding to watchlist:', error);
+      }
+    } else {
+      const local = localStorage.getItem(LOCAL_WATCHLIST_KEY);
+      const items = local ? JSON.parse(local) : [];
+      if (!items.some((w: WatchlistItem) => w.symbol === newItem.symbol)) {
+        items.push(newItem);
+        localStorage.setItem(LOCAL_WATCHLIST_KEY, JSON.stringify(items));
+        setWatchlist(items);
+        fetchWatchlistPrices(items.map((w: WatchlistItem) => w.symbol));
+      }
       setShowWatchlistModal(false);
-    } catch (error) {
-      console.error('Error adding to watchlist:', error);
     }
   };
 
   const updateWatchlistAlert = async (symbol: string, alertPrice: number, alertEnabled: boolean, alertType: 'above' | 'below') => {
-    if (!session?.user?.email) return;
-    try {
-      await updateWatchlistItem(session.user.email, symbol, {
-        alertPrice,
-        alertEnabled,
-        alertType
-      });
-      await loadWatchlist();
-    } catch (error) {
-      console.error('Error updating watchlist alert:', error);
+    if (session?.user?.email) {
+      try {
+        await updateWatchlistItem(session.user.email, symbol, {
+          alertPrice,
+          alertEnabled,
+          alertType
+        });
+        await loadWatchlist();
+      } catch (error) {
+        console.error('Error updating watchlist alert:', error);
+      }
+    } else {
+      const local = localStorage.getItem(LOCAL_WATCHLIST_KEY);
+      if (local) {
+        const items = JSON.parse(local) as WatchlistItem[];
+        const index = items.findIndex(w => w.symbol === symbol);
+        if (index !== -1) {
+          items[index] = { ...items[index], alertPrice, alertEnabled, alertType };
+          localStorage.setItem(LOCAL_WATCHLIST_KEY, JSON.stringify(items));
+          setWatchlist(items);
+        }
+      }
     }
   };
 
   const removeFromWatchlist = async (symbol: string) => {
-    if (!session?.user?.email) return;
-    try {
-      await removeWatchlistItem(session.user.email, symbol);
-      await loadWatchlist();
-    } catch (error) {
-      console.error('Error removing from watchlist:', error);
+    if (session?.user?.email) {
+      try {
+        await removeWatchlistItem(session.user.email, symbol);
+        await loadWatchlist();
+      } catch (error) {
+        console.error('Error removing from watchlist:', error);
+      }
+    } else {
+      const local = localStorage.getItem(LOCAL_WATCHLIST_KEY);
+      if (local) {
+        const items = JSON.parse(local) as WatchlistItem[];
+        const filtered = items.filter(w => w.symbol !== symbol);
+        localStorage.setItem(LOCAL_WATCHLIST_KEY, JSON.stringify(filtered));
+        setWatchlist(filtered);
+        const prices = { ...watchlistPrices };
+        delete prices[symbol];
+        setWatchlistPrices(prices);
+      }
     }
   };
 
@@ -1243,9 +1292,8 @@ export default function Home() {
                   >
                     + Agregar al Portafolio
                   </button>
-                  {session && (
-                    <button
-                      onClick={() => openWatchlistModal(data.quote.symbol, data.quote.regularMarketPrice)}
+                  <button
+                    onClick={() => openWatchlistModal(data.quote.symbol, data.quote.regularMarketPrice)}
                       style={{
                         display: 'block',
                         width: '100%',
@@ -1262,7 +1310,6 @@ export default function Home() {
                     >
                       {isInWatchlist(data.quote.symbol) ? '✓ En Watchlist' : '+ Agregar a Watchlist'}
                     </button>
-                  )}
                   <a
                     href={`https://www.tipranks.com/stocks/${data.quote.symbol.toLowerCase()}/forecast`}
                     target="_blank"
@@ -1417,15 +1464,15 @@ export default function Home() {
                     </div>
                     <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px' }}>
                       <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>Target 1</p>
-                      <p style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#58a6ff' }}>${data.summary.target1?.toFixed(2)}</p>
+                      <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#3fb950' }}>${data.summary.target1?.toFixed(2)}</p>
                     </div>
                     <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px' }}>
                       <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>Target 2</p>
-                      <p style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#58a6ff' }}>${data.summary.target2?.toFixed(2)}</p>
+                      <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#3fb950' }}>${data.summary.target2?.toFixed(2)}</p>
                     </div>
                     <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px' }}>
                       <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>Stop Loss</p>
-                      <p style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#f85149' }}>${data.summary.stopLoss?.toFixed(2)}</p>
+                      <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#f85149' }}>${data.summary.stopLoss?.toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
@@ -1595,7 +1642,7 @@ export default function Home() {
           </>
         ) : view === 'watchlist' ? (
           <>
-            {!session ? (
+            {!session && watchlist.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '80px 20px' }}>
                 <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '36px' }}>📊</div>
                 <h2 style={{ color: '#f0f6fc', fontSize: '24px', marginBottom: '8px', fontWeight: '600' }}>Tu Watchlist Personal</h2>
@@ -1970,7 +2017,7 @@ export default function Home() {
 
       {/* Vista de Opciones */}
       {view === 'options' && (
-        <OptionsView />
+        <OptionsView initialSymbol={symbol} onSymbolChange={(sym) => setSymbol(sym)} />
       )}
 
       {/* Modal para agregar a Watchlist */}
@@ -2268,7 +2315,9 @@ export default function Home() {
   );
 }
 
-function OptionsView() {
+type CheckStatus = 'pass' | 'fail';
+
+function OptionsView({ initialSymbol, onSymbolChange }: { initialSymbol?: string; onSymbolChange?: (symbol: string) => void }) {
   const [symbol, setSymbol] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -2279,7 +2328,145 @@ function OptionsView() {
   const [selectedSymbolFromScreener, setSelectedSymbolFromScreener] = useState<string | null>(null);
   const [sortField, setSortField] = useState<string>('suitabilityScore');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [symbolChanges, setSymbolChanges] = useState<{ added: string[]; removed: string[] }>({ added: [], removed: [] });
+  const [showChanges, setShowChanges] = useState(false);
+  const [newSymbols, setNewSymbols] = useState<Set<string>>(new Set());
+  const [timeValidation, setTimeValidation] = useState<{
+    estimatedDays: number;
+    expirationDays: number;
+    expectedMove: number;
+    score: number;
+    setupType: string;
+    distance: number;
+    expectedDays: number;
+    message: string;
+    label: string;
+    labelColor: string;
+  } | null>(null);
+  
+  const [preTradeChecklist, setPreTradeChecklist] = useState<Record<string, CheckStatus>>({
+    marketAligned: 'fail',
+    priceAligned: 'fail',
+    breakout: 'fail',
+    aboveResistance: 'fail',
+    volumeUp: 'fail',
+    aboveEMAs: 'fail',
+    notExtended: 'fail',
+    hasSpace: 'fail',
+    goodRiskReward: 'fail',
+    riskAcceptable: 'fail',
+    goodTiming: 'fail',
+    ivFavorable: 'fail',
+    noEvents: 'fail',
+  });
+  const [showChecklist, setShowChecklist] = useState(false);
   const searchParams = useSearchParams();
+
+  const getStatusIcon = (status: CheckStatus) => {
+    if (status === 'pass') return { icon: '✅', color: '#3fb950' };
+    return { icon: '❌', color: '#f85149' };
+  };
+
+  const getStatusTextColor = (status: CheckStatus) => {
+    if (status === 'pass') return '#3fb950';
+    return '#f85149';
+  };
+
+  const calculateTimeValidation = (data: any) => {
+    const currentPrice = data.optionsAnalysis?.keyLevels?.currentPrice || data.quote?.price || 100;
+    const targetPrice = data.optionsAnalysis?.keyLevels?.resistance || data.optionsAnalysis?.keyLevels?.pivot || currentPrice * 1.05;
+    const adr = data.technical?.adr || currentPrice * 0.02;
+    const iv = data.optionsAnalysis?.impliedVolatility || 0.3;
+    const expirationDays = data.optionsAnalysis?.nextExpirations?.[0]?.daysToExpiration || 30;
+    const trend = data.technical?.trend || 'lateral';
+    
+    const setupType = trend === 'alcista' ? 'breakout' : trend === 'bajista' ? 'swing' : 'income';
+    
+    const distance = Math.abs(targetPrice - currentPrice);
+    const estimatedDays = adr > 0 ? distance / adr : 30;
+    
+    let expectedDays = 20;
+    if (setupType === 'breakout') expectedDays = 10;
+    else if (setupType === 'swing') expectedDays = 20;
+    else expectedDays = 30;
+    
+    const expectedMove = currentPrice * iv * Math.sqrt(expirationDays / 365);
+    
+    let score = 0;
+    let message = '';
+    
+    if (estimatedDays <= expirationDays) {
+      score += 1;
+      message = 'El movimiento esperado cabe dentro del tiempo';
+    } else {
+      message = 'El vencimiento es demasiado corto para este setup';
+    }
+    
+    if (expectedMove >= distance) {
+      score += 1;
+      message += '. Expected move cubre la distancia';
+    } else {
+      message += '. Expected move menor que distancia';
+    }
+    
+    if (expirationDays >= expectedDays) {
+      score += 1;
+      message += '. Expiración adecuada para el setup';
+    } else {
+      message += '. Considera usar una expiración más larga';
+    }
+    
+    let label = 'Mal estructurado';
+    let labelColor = '#f85149';
+    if (score === 3) {
+      label = 'Óptimo';
+      labelColor = '#3fb950';
+    } else if (score === 2) {
+      label = 'Válido';
+      labelColor = '#58a6ff';
+    }
+    
+    setTimeValidation({
+      estimatedDays: Math.round(estimatedDays),
+      expirationDays,
+      expectedMove,
+      score,
+      setupType,
+      distance,
+      expectedDays,
+      message,
+      label,
+      labelColor,
+    });
+    
+    return score >= 2;
+  };
+
+  useEffect(() => {
+    if (data) {
+      const earningsDays = data.optionsAnalysis?.earningsDaysUntil || 999;
+      const noEvents = !data.optionsAnalysis?.earningsDate || earningsDays > 14;
+      const score = data.stockEvaluation?.suitabilityScore || 0;
+      
+      const goodTiming = calculateTimeValidation(data);
+      
+      setPreTradeChecklist({
+        marketAligned: data.technical?.trend === 'alcista' || data.technical?.trend === 'bajista' ? 'pass' : 'fail',
+        priceAligned: 'pass',
+        breakout: score >= 70 ? 'pass' : 'fail',
+        aboveResistance: data.optionsAnalysis?.keyLevels?.currentPrice > data.optionsAnalysis?.keyLevels?.pivot ? 'pass' : 'fail',
+        volumeUp: 'pass',
+        aboveEMAs: 'pass',
+        notExtended: 'pass',
+        hasSpace: 'pass',
+        goodRiskReward: data.optionsAnalysis?.recommendedStrategies?.length > 0 ? 'pass' : 'fail',
+        riskAcceptable: 'pass',
+        goodTiming: goodTiming ? 'pass' : 'fail',
+        ivFavorable: data.optionsAnalysis?.ivRank < 50 ? 'pass' : 'fail',
+        noEvents: noEvents ? 'pass' : 'fail',
+      });
+    }
+  }, [data]);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -2334,14 +2521,18 @@ function OptionsView() {
     if (urlSymbol && typeof urlSymbol === 'string') {
       setSymbol(urlSymbol);
       analyzeOptions(urlSymbol);
+    } else if (initialSymbol && !symbol) {
+      setSymbol(initialSymbol);
+      analyzeOptions(initialSymbol);
     }
-  }, [searchParams]);
+  }, [searchParams, initialSymbol]);
 
   useEffect(() => {
     if (selectedSymbolFromScreener) {
       setSymbol(selectedSymbolFromScreener);
       setActiveTab('analyze');
       analyzeOptions(selectedSymbolFromScreener);
+      if (onSymbolChange) onSymbolChange(selectedSymbolFromScreener);
       setSelectedSymbolFromScreener(null);
     }
   }, [selectedSymbolFromScreener]);
@@ -2351,6 +2542,37 @@ function OptionsView() {
     try {
       const res = await fetch('/api/options?screen=screener');
       const json = await res.json();
+      
+      const currentSymbols = new Set(json.all?.map((s: any) => s.symbol) || []);
+      const savedSymbols = typeof window !== 'undefined' 
+        ? new Set(JSON.parse(localStorage.getItem('optionsScreenerSymbols') || '[]'))
+        : new Set();
+      
+      const added: string[] = [];
+      const removed: string[] = [];
+      
+      currentSymbols.forEach((sym: string) => {
+        if (!savedSymbols.has(sym)) {
+          added.push(sym);
+        }
+      });
+      
+      savedSymbols.forEach((sym: string) => {
+        if (!currentSymbols.has(sym)) {
+          removed.push(sym);
+        }
+      });
+      
+      setSymbolChanges({ added, removed });
+      setNewSymbols(new Set(added));
+      
+      if (added.length > 0 || removed.length > 0) {
+        setShowChanges(true);
+      }
+      
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('optionsScreenerSymbols', JSON.stringify([...currentSymbols]));
+      }
       setScreenerData(json);
     } catch (e) {
       console.error('Screener error:', e);
@@ -2383,8 +2605,31 @@ function OptionsView() {
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-        <h2 style={{ color: '#f0f6fc', marginBottom: '8px' }}>🎯 Estrategias de Opciones</h2>
-        <p style={{ color: '#8b949e' }}>Analiza estrategias de opciones y encuentra acciones ideales para operar</p>
+        <h2 style={{ color: '#f0f6fc', marginBottom: '8px', textAlign: 'center', width: '100%' }}>🎯 Estrategias de Opciones</h2>
+        <p style={{ color: '#8b949e', margin: 0, fontSize: '14px', textAlign: 'center' }}>Analiza estrategias de opciones y encuentra acciones ideales para operar</p>
+      </div>
+      
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px', minHeight: '24px' }}>
+        {data && activeTab === 'analyze' && (
+          <button
+            onClick={() => setShowChecklist(true)}
+            style={{
+              padding: '12px 20px',
+              borderRadius: '8px',
+              border: '2px solid #f0883e',
+              background: 'linear-gradient(135deg, #f0883e20 0%, #f0883e10 100%)',
+              color: '#f0883e',
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            📋 ¿Buen momento?
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -2771,13 +3016,17 @@ function OptionsView() {
                               <div style={{ textAlign: 'center', padding: '8px', background: '#0d1117', borderRadius: '6px' }}>
                                 <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#8b949e' }}>Gan. Máx</p>
                                 <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#3fb950' }}>
-                                  {rec.strategy.example.maxProfit === 'ilimitado' ? '∞' : `$${rec.strategy.example.maxProfit?.toFixed(2)}`}
+                                  {rec.strategy.example.maxProfitPercent === '∞' || rec.strategy.example.maxProfit === 'ilimitado' 
+                                    ? <><span style={{ fontSize: '16px' }}>∞</span> <span style={{ fontSize: '10px', opacity: 0.7 }}>%</span></>
+                                    : <>{rec.strategy.example.maxProfitPercent}% <span style={{ fontSize: '10px', opacity: 0.7 }}>→ ${typeof rec.strategy.example.maxProfit === 'number' ? rec.strategy.example.maxProfit.toFixed(0) : rec.strategy.example.maxProfit}</span></>}
                                 </p>
                               </div>
                               <div style={{ textAlign: 'center', padding: '8px', background: '#0d1117', borderRadius: '6px' }}>
                                 <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#8b949e' }}>Pérd. Máx</p>
                                 <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#f85149' }}>
-                                  {rec.strategy.example.maxLoss === 'ilimitado' ? '∞' : `$${rec.strategy.example.maxLoss?.toFixed(2)}`}
+                                  {rec.strategy.example.maxLossPercent === '∞' || rec.strategy.example.maxLoss === 'ilimitado'
+                                    ? <><span style={{ fontSize: '16px' }}>∞</span> <span style={{ fontSize: '10px', opacity: 0.7 }}>%</span></>
+                                    : <>{rec.strategy.example.maxLossPercent}% <span style={{ fontSize: '10px', opacity: 0.7 }}>→ ${typeof rec.strategy.example.maxLoss === 'number' ? rec.strategy.example.maxLoss.toFixed(0) : rec.strategy.example.maxLoss}</span></>}
                                 </p>
                               </div>
                               <div style={{ textAlign: 'center', padding: '8px', background: '#0d1117', borderRadius: '6px' }}>
@@ -2790,7 +3039,9 @@ function OptionsView() {
                               </div>
                               <div style={{ textAlign: 'center', padding: '8px', background: '#0d1117', borderRadius: '6px' }}>
                                 <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#8b949e' }}>Costo Total</p>
-                                <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#f0883e' }}>${rec.strategy.example.totalCost?.toFixed(2)}</p>
+                                <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#f0883e' }}>
+                                  {rec.strategy.example.costPercent}% <span style={{ fontSize: '10px', opacity: 0.7 }}>→ ${rec.strategy.example.totalCost?.toFixed(0)}</span>
+                                </p>
                               </div>
                             </div>
                             {/* TP / SL */}
@@ -2801,14 +3052,15 @@ function OptionsView() {
                                     <span style={{ fontSize: '12px' }}>🎯</span>
                                     <span style={{ fontSize: '10px', color: '#8b949e' }}>Take Profit</span>
                                   </div>
-                                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#3fb950' }}>
-                                    ${rec.strategy.example.takeProfit.price?.toFixed(2)}
-                                    <span style={{ fontSize: '11px', marginLeft: '6px', color: '#3fb950' }}>
-                                      ({rec.strategy.example.takeProfit.percent > 0 ? '+' : ''}{rec.strategy.example.takeProfit.percent}%)
+                                  <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#3fb950' }}>
+                                    {rec.strategy.example.takeProfit.percent > 0 ? '+' : ''}{rec.strategy.example.takeProfit.percent}%
+                                    <span style={{ fontSize: '12px', marginLeft: '8px', opacity: 0.7 }}>
+                                      → ${rec.strategy.example.takeProfit.price?.toFixed(2)}
                                     </span>
                                   </p>
                                   <p style={{ margin: '4px 0 0', fontSize: '10px', color: '#8b949e' }}>
                                     {rec.strategy.example.takeProfit.description}
+                                    {rec.strategy.example.takeProfit.tpPercent && ` (cierra al ${rec.strategy.example.takeProfit.tpPercent}%)`}
                                   </p>
                                 </div>
                                 <div style={{ padding: '10px', background: '#f8514920', borderRadius: '6px', border: '1px solid #f8514940' }}>
@@ -2816,14 +3068,15 @@ function OptionsView() {
                                     <span style={{ fontSize: '12px' }}>🛑</span>
                                     <span style={{ fontSize: '10px', color: '#8b949e' }}>Stop Loss</span>
                                   </div>
-                                  <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#f85149' }}>
-                                    ${rec.strategy.example.stopLoss.price?.toFixed(2)}
-                                    <span style={{ fontSize: '11px', marginLeft: '6px', color: '#f85149' }}>
-                                      ({rec.strategy.example.stopLoss.percent}%)
+                                  <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#f85149' }}>
+                                    {rec.strategy.example.stopLoss.percent}%
+                                    <span style={{ fontSize: '12px', marginLeft: '8px', opacity: 0.7 }}>
+                                      → ${rec.strategy.example.stopLoss.price?.toFixed(2)}
                                     </span>
                                   </p>
                                   <p style={{ margin: '4px 0 0', fontSize: '10px', color: '#8b949e' }}>
                                     {rec.strategy.example.stopLoss.description}
+                                    {rec.strategy.example.stopLoss.slPercent && ` (cierra al ${rec.strategy.example.stopLoss.slPercent}%)`}
                                   </p>
                                 </div>
                               </div>
@@ -2901,6 +3154,272 @@ function OptionsView() {
                   </div>
                 </div>
               )}
+
+              {/* Checklist Modal */}
+              {showChecklist && data && (
+                <div 
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0,0,0,0.85)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    padding: '20px',
+                  }}
+                  onClick={() => setShowChecklist(false)}
+                >
+                  <div 
+                    style={{
+                      background: '#161b22',
+                      borderRadius: '16px',
+                      padding: '24px',
+                      width: '100%',
+                      maxWidth: '600px',
+                      maxHeight: '90vh',
+                      overflowY: 'auto',
+                      border: '1px solid #30363d',
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                      <h3 style={{ margin: 0, color: '#f0f6fc', fontSize: '20px' }}>🧠 Checklist Institucional</h3>
+                      <button
+                        onClick={() => setShowChecklist(false)}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: '8px',
+                          border: '1px solid #30363d',
+                          background: 'transparent',
+                          color: '#8b949e',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                        }}
+                      >
+                        ✕ Cerrar
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: '16px' }}>
+                      {/* 1. Contexto Mercado */}
+                      <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #58a6ff' }}>
+                        <h4 style={{ margin: '0 0 12px', color: '#58a6ff', fontSize: '14px' }}>🔵 1. CONTEXTO DEL MERCADO</h4>
+                        <div style={{ display: 'grid', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.marketAligned).icon}</span>
+                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.marketAligned) }}>¿SPY/QQQ en tendencia clara? ({data.technical?.trend || 'lateral'})</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.priceAligned).icon}</span>
+                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.priceAligned) }}>¿Precio alineado con tendencia?</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 2. Setup */}
+                      <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #00d4aa' }}>
+                        <h4 style={{ margin: '0 0 12px', color: '#00d4aa', fontSize: '14px' }}>🟢 2. SETUP (TU EDGE)</h4>
+                        <div style={{ display: 'grid', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.breakout).icon}</span>
+                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.breakout) }}>¿Breakout claro de resistencia? (Score: {data.stockEvaluation?.suitabilityScore || 0})</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.aboveResistance).icon}</span>
+                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.aboveResistance) }}>¿Precio sobre pivote? (Precio: ${data.optionsAnalysis?.keyLevels?.currentPrice?.toFixed(2)} | Pivote: ${data.optionsAnalysis?.keyLevels?.pivot?.toFixed(2)})</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.volumeUp).icon}</span>
+                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.volumeUp) }}>¿Volumen superior al promedio?</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.aboveEMAs).icon}</span>
+                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.aboveEMAs) }}>¿Está por encima de EMAs 8/21/50?</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3. Ubicación Precio */}
+                      <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #f0883e' }}>
+                        <h4 style={{ margin: '0 0 12px', color: '#f0883e', fontSize: '14px' }}>🟡 3. UBICACIÓN DEL PRECIO</h4>
+                        <div style={{ display: 'grid', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.notExtended).icon}</span>
+                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.notExtended) }}>¿No está sobreextendido?</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.hasSpace).icon}</span>
+                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.hasSpace) }}>¿Hay espacio hasta resistencia (${data.optionsAnalysis?.keyLevels?.resistance?.toFixed(2)})?</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 4. Riesgo/Recompensa */}
+                      <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #f85149' }}>
+                        <h4 style={{ margin: '0 0 12px', color: '#f85149', fontSize: '14px' }}>🔴 4. RIESGO / RECOMPENSA</h4>
+                        <div style={{ display: 'grid', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.goodRiskReward).icon}</span>
+                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.goodRiskReward) }}>¿Spread da al menos 1:1? ({data.optionsAnalysis?.recommendedStrategies?.length || 0} estrategias)</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.riskAcceptable).icon}</span>
+                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.riskAcceptable) }}>¿Riesgo {'<'}3% del capital?</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 5. Tiempo */}
+                      <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #6e7681' }}>
+                        <h4 style={{ margin: '0 0 12px', color: '#8b949e', fontSize: '14px' }}>⚫ 5. TIEMPO (EXPIRACIÓN)</h4>
+                        
+                        {timeValidation ? (
+                          <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                              <span style={{ 
+                                fontSize: '12px', 
+                                padding: '4px 10px', 
+                                borderRadius: '4px', 
+                                fontWeight: '600',
+                                background: timeValidation.labelColor + '30',
+                                color: timeValidation.labelColor
+                              }}>
+                                {timeValidation.label} (Score: {timeValidation.score}/3)
+                              </span>
+                            </div>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '12px' }}>
+                              <div style={{ textAlign: 'center', padding: '8px', background: '#161b22', borderRadius: '6px' }}>
+                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#8b949e' }}>Dist. Target</p>
+                                <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#f0f6fc' }}>${timeValidation.distance.toFixed(2)}</p>
+                              </div>
+                              <div style={{ textAlign: 'center', padding: '8px', background: '#161b22', borderRadius: '6px' }}>
+                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#8b949e' }}>Días Est.</p>
+                                <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: timeValidation.estimatedDays <= timeValidation.expirationDays ? '#3fb950' : '#f85149' }}>
+                                  {timeValidation.estimatedDays}d
+                                </p>
+                              </div>
+                              <div style={{ textAlign: 'center', padding: '8px', background: '#161b22', borderRadius: '6px' }}>
+                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#8b949e' }}>Exp. Days</p>
+                                <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#58a6ff' }}>{timeValidation.expirationDays}d</p>
+                              </div>
+                              <div style={{ textAlign: 'center', padding: '8px', background: '#161b22', borderRadius: '6px' }}>
+                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#8b949e' }}>Exp. Move</p>
+                                <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#f0883e' }}>${timeValidation.expectedMove.toFixed(2)}</p>
+                              </div>
+                            </div>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px' }}>
+                                <span>{timeValidation.estimatedDays <= timeValidation.expirationDays ? '✅' : '❌'}</span>
+                                <span style={{ color: '#8b949e' }}>ADR cabe en exp</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px' }}>
+                                <span>{timeValidation.expectedMove >= timeValidation.distance ? '✅' : '❌'}</span>
+                                <span style={{ color: '#8b949e' }}>Exp move cubre</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px' }}>
+                                <span>{timeValidation.expirationDays >= timeValidation.expectedDays ? '✅' : '❌'}</span>
+                                <span style={{ color: '#8b949e' }}>Setup: {timeValidation.setupType}</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px' }}>
+                                <span style={{ color: '#8b949e' }}>{timeValidation.expirationDays} días → {timeValidation.estimatedDays}d para target</span>
+                              </div>
+                            </div>
+                            
+                            <p style={{ margin: 0, fontSize: '11px', color: timeValidation.score >= 2 ? '#3fb950' : '#f0883e', fontStyle: 'italic' }}>
+                              {timeValidation.message}
+                            </p>
+                          </>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.goodTiming).icon}</span>
+                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.goodTiming) }}>Analizando tiempo...</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 6. Volatilidad */}
+                      <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #a371f7' }}>
+                        <h4 style={{ margin: '0 0 12px', color: '#a371f7', fontSize: '14px' }}>🟣 6. VOLATILIDAD</h4>
+                        <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>IV Rank: <span style={{ color: data.optionsAnalysis?.ivRank > 50 ? '#f0883e' : '#3fb950', fontWeight: '600' }}>{(data.optionsAnalysis?.ivRank || 0).toFixed(0)}%</span> - {data.optionsAnalysis?.ivRank > 50 ? 'Alta (vender spreads)' : 'Baja (comprar spreads)'}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.ivFavorable).icon}</span>
+                          <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.ivFavorable) }}>¿Estrategia alineada con IV actual?</span>
+                        </div>
+                      </div>
+
+                      {/* 7. Eventos */}
+                      <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #f0883e' }}>
+                        <h4 style={{ margin: '0 0 12px', color: '#f0883e', fontSize: '14px' }}>⚠️ 7. EVENTOS</h4>
+                        <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>
+                          Earnings: <span style={{ color: data.optionsAnalysis?.earningsDate ? '#f0883e' : '#3fb950', fontWeight: '600' }}>
+                            {data.optionsAnalysis?.earningsDate || 'Ninguno cercano'}
+                          </span>
+                          {data.optionsAnalysis?.earningsDaysUntil && data.optionsAnalysis?.earningsDaysUntil <= 30 && (
+                            <span style={{ marginLeft: '8px', fontSize: '11px', padding: '2px 6px', background: data.optionsAnalysis.earningsDaysUntil <= 14 ? '#f8514930' : '#f0883e30', borderRadius: '4px', color: data.optionsAnalysis.earningsDaysUntil <= 14 ? '#f85149' : '#f0883e' }}>
+                              {data.optionsAnalysis.earningsDaysUntil <= 0 ? '⚠️ YA PASÓ' : `En ${data.optionsAnalysis.earningsDaysUntil} días`}
+                            </span>
+                          )}
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.noEvents).icon}</span>
+                          <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.noEvents) }}>¿Sin eventos en {'>'}14 días?</span>
+                        </div>
+                      </div>
+
+                      {/* DECISIÓN FINAL */}
+                      {(() => {
+                        const passCount = Object.values(preTradeChecklist).filter(s => s === 'pass').length;
+                        const failCount = Object.values(preTradeChecklist).filter(s => s === 'fail').length;
+                        const totalChecks = Object.keys(preTradeChecklist).length;
+                        let decision = '', decisionColor = '', bgColor = '';
+                        
+                        if (passCount >= 10) {
+                          decision = '✅ ENTRAS';
+                          decisionColor = '#3fb950';
+                          bgColor = '#3fb95020';
+                        } else if (failCount >= 4) {
+                          decision = '❌ NO TRADE';
+                          decisionColor = '#f85149';
+                          bgColor = '#f8514920';
+                        } else {
+                          decision = '⚠️ RIESGOSO';
+                          decisionColor = '#f0883e';
+                          bgColor = '#f0883e20';
+                        }
+                        
+                        return (
+                          <div style={{ background: bgColor, padding: '20px', borderRadius: '12px', border: `2px solid ${decisionColor}`, textAlign: 'center' }}>
+                            <p style={{ margin: '0 0 8px', fontSize: '28px', fontWeight: 'bold', color: decisionColor }}>{decision}</p>
+                            <p style={{ margin: 0, fontSize: '14px', color: '#8b949e' }}>
+                              ✅ {passCount} &nbsp; ❌ {failCount} / {totalChecks}
+                            </p>
+                            <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#6e7681', fontStyle: 'italic' }}>"Si tengo que convencerme para entrar, ya es un NO."</p>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Botón Cerrar */}
+                      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
+                        <button
+                          onClick={() => setShowChecklist(false)}
+                          style={{
+                            padding: '12px 32px', borderRadius: '8px', border: 'none',
+                            background: '#238636', color: 'white', cursor: 'pointer', fontSize: '14px', fontWeight: '600',
+                          }}
+                        >
+                          ✓ Cerrar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -2967,7 +3486,84 @@ function OptionsView() {
                     <p style={{ margin: '0 0 4px', fontSize: '24px', fontWeight: 'bold', color: '#f85149' }}>{screenerData.summary?.notRecommended || 0}</p>
                     <p style={{ margin: 0, fontSize: '12px', color: '#8b949e' }}>No Recomendadas</p>
                   </div>
+                  <div 
+                    onClick={() => setShowChanges(!showChanges)}
+                    style={{ 
+                      background: '#0d1117', 
+                      padding: '16px', 
+                      borderRadius: '8px', 
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      border: (symbolChanges.added.length > 0 || symbolChanges.removed.length > 0) ? '2px solid #f0883e' : '1px solid #30363d',
+                    }}
+                  >
+                    <p style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: 'bold', color: '#f0883e' }}>
+                      {symbolChanges.added.length > 0 && <span style={{ color: '#3fb950' }}>+{symbolChanges.added.length}</span>}
+                      {symbolChanges.added.length > 0 && symbolChanges.removed.length > 0 && ' / '}
+                      {symbolChanges.removed.length > 0 && <span style={{ color: '#f85149' }}>-{symbolChanges.removed.length}</span>}
+                      {symbolChanges.added.length === 0 && symbolChanges.removed.length === 0 && <span style={{ color: '#8b949e' }}>Sin cambios</span>}
+                    </p>
+                    <p style={{ margin: 0, fontSize: '11px', color: '#8b949e' }}>Ver cambios {showChanges ? '▲' : '▼'}</p>
+                  </div>
                 </div>
+
+                {/* Detalle de cambios */}
+                {showChanges && (
+                  <div style={{ marginTop: '16px', padding: '16px', background: '#0d1117', borderRadius: '8px', border: '1px solid #30363d' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                      <div>
+                        <p style={{ margin: '0 0 8px', color: '#3fb950', fontSize: '13px', fontWeight: '600' }}>🟢 Agregadas ({symbolChanges.added.length})</p>
+                        {symbolChanges.added.length > 0 ? (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {symbolChanges.added.map((sym) => (
+                              <span
+                                key={sym}
+                                onClick={() => setSelectedSymbolFromScreener(sym)}
+                                style={{
+                                  padding: '4px 10px',
+                                  background: '#3fb95020',
+                                  borderRadius: '4px',
+                                  color: '#3fb950',
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {sym}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p style={{ margin: 0, fontSize: '12px', color: '#484f58' }}>Ninguna</p>
+                        )}
+                      </div>
+                      <div>
+                        <p style={{ margin: '0 0 8px', color: '#f85149', fontSize: '13px', fontWeight: '600' }}>🔴 Removidas ({symbolChanges.removed.length})</p>
+                        {symbolChanges.removed.length > 0 ? (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {symbolChanges.removed.map((sym) => (
+                              <span
+                                key={sym}
+                                style={{
+                                  padding: '4px 10px',
+                                  background: '#f8514920',
+                                  borderRadius: '4px',
+                                  color: '#f85149',
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                }}
+                              >
+                                {sym}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p style={{ margin: 0, fontSize: '12px', color: '#484f58' }}>Ninguna</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Top Picks */}
@@ -2975,7 +3571,9 @@ function OptionsView() {
                 <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
                   <h3 style={{ margin: '0 0 16px', color: '#f0f6fc', fontSize: '18px' }}>🏆 Top Picks para Opciones <span style={{ fontSize: '12px', color: '#8b949e', fontWeight: 'normal' }}>(clic para analizar)</span></h3>
                   <div style={{ display: 'grid', gap: '12px' }}>
-                    {screenerData.topPicks.slice(0, 5).map((stock: any, idx: number) => (
+                    {screenerData.topPicks.slice(0, 5).map((stock: any, idx: number) => {
+                      const isNew = newSymbols.has(stock.symbol);
+                      return (
                       <div 
                         key={stock.symbol} 
                         onClick={() => setSelectedSymbolFromScreener(stock.symbol)}
@@ -2990,7 +3588,8 @@ function OptionsView() {
                           gap: '12px',
                           cursor: 'pointer',
                           transition: 'all 0.2s',
-                          border: '1px solid transparent',
+                          border: isNew ? '2px solid #3fb950' : '1px solid transparent',
+                          boxShadow: isNew ? '0 0 10px rgba(63, 185, 80, 0.2)' : 'none',
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.background = '#1a2332';
@@ -2998,13 +3597,16 @@ function OptionsView() {
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.background = '#0d1117';
-                          e.currentTarget.style.borderColor = 'transparent';
+                          e.currentTarget.style.borderColor = isNew ? '#3fb950' : 'transparent';
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#58a6ff', width: '28px', textAlign: 'center' }}>{idx + 1}</span>
                           <div>
-                            <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#58a6ff' }}>{stock.symbol}</p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#58a6ff' }}>{stock.symbol}</p>
+                              {isNew && <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '4px', background: '#3fb950', color: 'white', fontWeight: '700' }}>NUEVA</span>}
+                            </div>
                             <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#8b949e' }}>{stock.name}</p>
                             <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                               <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: '#30363d', color: '#8b949e' }}>IV: {((stock.iv || 0) * 100).toFixed(0)}%</span>
@@ -3027,7 +3629,8 @@ function OptionsView() {
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -3054,7 +3657,9 @@ function OptionsView() {
                       </tr>
                     </thead>
                     <tbody>
-                      {getSortedStocks().map((stock: any) => (
+                      {getSortedStocks().map((stock: any) => {
+                        const isNew = newSymbols.has(stock.symbol);
+                        return (
                         <tr 
                           key={stock.symbol} 
                           onClick={() => setSelectedSymbolFromScreener(stock.symbol)}
@@ -3062,12 +3667,16 @@ function OptionsView() {
                             borderBottom: '1px solid #30363d',
                             cursor: 'pointer',
                             transition: 'background 0.2s',
+                            background: isNew ? 'rgba(63, 185, 80, 0.1)' : 'transparent',
                           }}
                           onMouseEnter={(e) => e.currentTarget.style.background = '#1a2332'}
-                          onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                          onMouseLeave={(e) => e.currentTarget.style.background = isNew ? 'rgba(63, 185, 80, 0.1)' : 'transparent'}
                         >
                           <td style={{ padding: '10px 8px' }}>
-                            <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#58a6ff' }}>{stock.symbol}</p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#58a6ff' }}>{stock.symbol}</p>
+                              {isNew && <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '4px', background: '#3fb950', color: 'white', fontWeight: '700' }}>NUEVA</span>}
+                            </div>
                             <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#8b949e', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stock.name}</p>
                           </td>
                           <td style={{ padding: '10px 8px', textAlign: 'right', color: '#f0f6fc', fontSize: '13px' }}>${stock.price?.toFixed(2)}</td>
@@ -3096,7 +3705,8 @@ function OptionsView() {
                           </td>
                           <td style={{ padding: '10px 8px', fontSize: '11px', color: '#58a6ff' }}>{stock.topStrategy}</td>
                         </tr>
-                      ))}
+                      );
+                    })}
                     </tbody>
                   </table>
                 </div>
