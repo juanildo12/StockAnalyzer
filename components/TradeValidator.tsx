@@ -33,27 +33,29 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
     
     setLoadingSymbol(true);
     try {
-      const response = await fetch(`/api/stock?symbol=${symbol}`);
-      const data = await response.json();
+      const [stockResponse, optionsResponse] = await Promise.all([
+        fetch(`/api/stock?symbol=${symbol}`),
+        fetch(`/api/options?symbol=${symbol}`)
+      ]);
       
-      if (data.error) {
+      const stockData = await stockResponse.json();
+      const optionsData = await optionsResponse.json();
+      
+      if (stockData.error && optionsData.error) {
         setLoadingSymbol(false);
         return;
       }
 
-      const currentPrice = data.quote?.regularMarketPrice || 0;
+      const currentPrice = stockData.quote?.regularMarketPrice || optionsData.optionsAnalysis?.currentPrice || 0;
       
       let adr = 0;
-      if (data.historical && data.historical.length > 0) {
-        const last20Days = data.historical.slice(-20);
+      if (stockData.historical && stockData.historical.length > 0) {
+        const last20Days = stockData.historical.slice(-20);
         const dailyRanges = last20Days.map((d: any) => d.high - d.low);
         adr = dailyRanges.reduce((sum: number, r: number) => sum + r, 0) / dailyRanges.length;
       }
       
-      let impliedVolatility = 0;
-      if (data.options?.analysis) {
-        impliedVolatility = data.options.analysis.averageIV || 0;
-      }
+      let impliedVolatility = optionsData.optionsAnalysis?.impliedVolatility || 0;
       
       setFormData(prev => ({
         ...prev,
