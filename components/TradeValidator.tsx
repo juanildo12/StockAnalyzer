@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { evaluateTrade, TradeInput, TradeResult } from '@/src/services/tradeValidator';
 
 interface TradeValidatorProps {
@@ -20,12 +20,64 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
   });
   const [result, setResult] = useState<TradeResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingSymbol, setLoadingSymbol] = useState(false);
 
   useEffect(() => {
     if (initialSymbol && !formData.ticker) {
       setFormData(prev => ({ ...prev, ticker: initialSymbol }));
     }
   }, [initialSymbol]);
+
+  const loadSymbolData = useCallback(async (symbol: string) => {
+    if (!symbol || symbol.length < 1) return;
+    
+    setLoadingSymbol(true);
+    try {
+      const response = await fetch(`/api/stock?symbol=${symbol}`);
+      const data = await response.json();
+      
+      if (data.error) {
+        setLoadingSymbol(false);
+        return;
+      }
+
+      const currentPrice = data.quote?.regularMarketPrice || 0;
+      
+      let adr = 0;
+      if (data.historical && data.historical.length > 0) {
+        const last20Days = data.historical.slice(-20);
+        const dailyRanges = last20Days.map((d: any) => d.high - d.low);
+        adr = dailyRanges.reduce((sum: number, r: number) => sum + r, 0) / dailyRanges.length;
+      }
+      
+      let impliedVolatility = 0;
+      if (data.options?.analysis) {
+        impliedVolatility = data.options.analysis.averageIV || 0;
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        currentPrice,
+        adr: adr || prev.adr,
+        impliedVolatility: impliedVolatility || prev.impliedVolatility
+      }));
+      
+    } catch (error) {
+      console.error('Error loading symbol data:', error);
+    } finally {
+      setLoadingSymbol(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData.ticker && formData.ticker.length >= 1) {
+        loadSymbolData(formData.ticker);
+      }
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [formData.ticker, loadSymbolData]);
 
   const handleInputChange = (field: keyof typeof formData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -106,17 +158,39 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           <div style={inputGroupStyle}>
-            <label style={labelStyle}>Ticker</label>
-            <input
-              type="text"
-              value={formData.ticker}
-              onChange={(e) => {
-                handleInputChange('ticker', e.target.value.toUpperCase());
-                if (onSymbolChange) onSymbolChange(e.target.value.toUpperCase());
-              }}
-              placeholder="AAPL"
-              style={inputStyle}
-            />
+            <label style={labelStyle}>
+              Ticker {loadingSymbol && <span style={{ color: '#58a6ff', fontSize: '12px' }}>(cargando datos...)</span>}
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                value={formData.ticker}
+                onChange={(e) => {
+                  handleInputChange('ticker', e.target.value.toUpperCase());
+                  if (onSymbolChange) onSymbolChange(e.target.value.toUpperCase());
+                }}
+                placeholder="AAPL"
+                style={{
+                  ...inputStyle,
+                  paddingRight: loadingSymbol ? '40px' : '12px'
+                }}
+              />
+              {loadingSymbol && (
+                <span style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  display: 'inline-block',
+                  width: '16px',
+                  height: '16px',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderTopColor: '#58a6ff',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }} />
+              )}
+            </div>
           </div>
 
           <div style={inputGroupStyle}>
