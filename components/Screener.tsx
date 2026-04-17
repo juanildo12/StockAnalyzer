@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
 interface StockFundamental {
@@ -37,17 +37,45 @@ interface StockFundamental {
   regularMarketChangePercent?: number;
 }
 
+interface ScreenerStock {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  sector: string;
+  marketCap: number;
+  volume: number;
+  avgVolume: number;
+  volumeRatio: number;
+  iv: number;
+  ivRank: number;
+  ivPercentile: number;
+  dividendYield: number;
+  nearEarnings: boolean;
+  daysUntilEarnings: number | null;
+  earningsDate: string | null;
+  earningsEstimate: any;
+  stockTrend: string;
+  suitabilityScore: number;
+  recommendation: 'excellent' | 'buena' | 'regular' | 'poor';
+  reasons: string[];
+  topStrategy: string;
+  recommendedStrategies: {
+    name: string;
+    score: number;
+    rationale: string;
+  }[];
+}
+
 interface Filters {
-  maxPe: number;
-  maxPb: number;
-  maxPFCF: number;
-  minDividendYield: number;
+  minScore: number;
+  minIV: number;
+  maxIV: number;
+  minVolumeRatio: number;
   minMarketCap: number;
-  minRevenue: number;
   sectors: string[];
-  excludeNegativeEarnings: boolean;
-  minRoe: number;
-  minProfitMargin: number;
+  excludeNearEarnings: boolean;
 }
 
 interface SortConfig {
@@ -78,22 +106,19 @@ const SECTOR_COLORS: { [key: string]: string } = {
 };
 
 export default function Screener() {
-  const [stocks, setStocks] = useState<StockFundamental[]>([]);
+  const [stocks, setStocks] = useState<ScreenerStock[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [previousPrices, setPreviousPrices] = useState<Record<string, number>>({});
   const [priceChanges, setPriceChanges] = useState<Record<string, number>>({});
   const [filters, setFilters] = useState<Filters>({
-    maxPe: 30,
-    maxPb: 5,
-    maxPFCF: 50,
-    minDividendYield: 0,
+    minScore: 0,
+    minIV: 0,
+    maxIV: 100,
+    minVolumeRatio: 0,
     minMarketCap: 0,
-    minRevenue: 0,
     sectors: [],
-    excludeNegativeEarnings: true,
-    minRoe: 0,
-    minProfitMargin: 0,
+    excludeNearEarnings: false,
   });
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'valueScore', direction: 'desc' });
   const [showFilters, setShowFilters] = useState(true);
@@ -102,8 +127,17 @@ export default function Screener() {
   const [mounted, setMounted] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const hasNavigated = useRef(false);
+  const [screenerSummary, setScreenerSummary] = useState<{
+    excellent: number;
+    buena: number;
+    regular: number;
+    notRecommended: number;
+    totalScanned: number;
+  } | null>(null);
   const isVisible = useRef(true);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const handleAnalyzeStock = (symbol: string) => {
     router.push(`/?symbol=${symbol}&tab=options`);
@@ -113,6 +147,15 @@ export default function Screener() {
     setMounted(true);
     loadStocks();
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlSymbol = searchParams.get('symbol');
+    if (urlSymbol && !hasNavigated.current) {
+      hasNavigated.current = true;
+      handleAnalyzeStock(urlSymbol.toUpperCase());
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -159,8 +202,8 @@ export default function Screener() {
         setLoading(true);
       }
       setError('');
-      const response = await fetch(`/api/screener?action=screener&t=${Date.now()}`, {
-        signal: AbortSignal.timeout(30000),
+      const response = await fetch(`/api/options?screen=screener&t=${Date.now()}`, {
+        signal: AbortSignal.timeout(120000),
       });
       
       if (!response.ok) {
@@ -169,23 +212,20 @@ export default function Screener() {
       
       const data = await response.json();
       
-      if (data.screenerStocks && data.screenerStocks.length > 0) {
-        const currentPrices = stocks.reduce((acc, stock) => {
-          if (stock.price) acc[stock.symbol] = stock.price;
-          return acc;
-        }, {} as Record<string, number>);
-        
-        const changes: Record<string, number> = {};
-        data.screenerStocks.forEach((stock: StockFundamental) => {
-          if (stock.price && currentPrices[stock.symbol]) {
-            changes[stock.symbol] = stock.price - currentPrices[stock.symbol];
-          }
+      if (data.all && data.all.length > 0) {
+        setStocks(data.all);
+        setScreenerSummary({
+          excellent: data.summary?.excellent || 0,
+          buena: data.summary?.buena || 0,
+          regular: data.summary?.regular || 0,
+          notRecommended: data.summary?.notRecommended || 0,
+          totalScanned: data.totalScanned || data.all.length,
         });
-        
-        setStocks(data.screenerStocks);
-        setPreviousPrices(currentPrices);
-        setPriceChanges(changes);
-        setLastUpdated(new Date());
+        if (data.lastUpdated) {
+          setLastUpdated(new Date(data.lastUpdated));
+        } else {
+          setLastUpdated(new Date());
+        }
       } else if (retryCount < 2) {
         setTimeout(() => loadStocks(silent, retryCount + 1), 2000);
       } else {
@@ -208,74 +248,14 @@ export default function Screener() {
 
   const handleRetry = () => loadStocks(0);
 
-  const calculateValueScore = (stock: StockFundamental): number => {
-    let score = 0;
-    let count = 0;
-
-    if (stock.peRatio && stock.peRatio > 0) {
-      if (stock.peRatio <= 10) score += 25;
-      else if (stock.peRatio <= 15) score += 20;
-      else if (stock.peRatio <= 20) score += 15;
-      else if (stock.peRatio <= 25) score += 10;
-      else if (stock.peRatio <= 35) score += 5;
-      count++;
-    }
-
-    if (stock.priceToBook) {
-      if (stock.priceToBook <= 1) score += 25;
-      else if (stock.priceToBook <= 2) score += 20;
-      else if (stock.priceToBook <= 3) score += 15;
-      else if (stock.priceToBook <= 5) score += 10;
-      else if (stock.priceToBook <= 10) score += 5;
-      count++;
-    }
-
-    if (stock.priceToFreeCashFlow && stock.priceToFreeCashFlow > 0) {
-      if (stock.priceToFreeCashFlow <= 15) score += 20;
-      else if (stock.priceToFreeCashFlow <= 25) score += 15;
-      else if (stock.priceToFreeCashFlow <= 35) score += 10;
-      else if (stock.priceToFreeCashFlow <= 50) score += 5;
-      count++;
-    }
-
-    if (stock.returnOnEquity) {
-      if (stock.returnOnEquity >= 25) score += 15;
-      else if (stock.returnOnEquity >= 20) score += 12;
-      else if (stock.returnOnEquity >= 15) score += 8;
-      else if (stock.returnOnEquity >= 10) score += 4;
-      count++;
-    }
-
-    if (stock.profitMargin) {
-      if (stock.profitMargin >= 20) score += 10;
-      else if (stock.profitMargin >= 15) score += 8;
-      else if (stock.profitMargin >= 10) score += 5;
-      else if (stock.profitMargin >= 5) score += 3;
-      count++;
-    }
-
-    if (stock.debtToEquity) {
-      if (stock.debtToEquity <= 30) score += 5;
-      else if (stock.debtToEquity <= 60) score += 3;
-      else if (stock.debtToEquity <= 100) score += 1;
-      count++;
-    }
-
-    return count > 0 ? Math.round((score / (count * 25)) * 100) : 0;
-  };
-
   const filteredAndSortedStocks = useMemo(() => {
     let filtered = stocks.filter(stock => {
-      if (filters.excludeNegativeEarnings && (stock.peRatio ?? 0) <= 0) return false;
-      if ((stock.peRatio ?? 0) > filters.maxPe && filters.maxPe > 0) return false;
-      if ((stock.priceToBook ?? 0) > filters.maxPb && filters.maxPb > 0) return false;
-      if (filters.maxPFCF > 0 && stock.priceToFreeCashFlow && stock.priceToFreeCashFlow > filters.maxPFCF) return false;
-      if ((stock.dividendYield ?? 0) < filters.minDividendYield) return false;
-      if ((stock.marketCap ?? 0) < filters.minMarketCap * 1000000000) return false;
-      if (filters.minRevenue > 0 && (stock.totalRevenue ?? 0) < filters.minRevenue * 1000000) return false;
       if (filters.sectors.length > 0 && stock.sector && !filters.sectors.includes(stock.sector)) return false;
-      if ((stock.returnOnEquity ?? 0) < filters.minRoe) return false;
-      if ((stock.profitMargin ?? 0) < filters.minProfitMargin) return false;
+      if (stock.suitabilityScore < filters.minScore) return false;
+      if ((stock.iv * 100) < filters.minIV) return false;
+      if ((stock.iv * 100) > filters.maxIV) return false;
+      if (stock.volumeRatio < filters.minVolumeRatio) return false;
+      if (filters.excludeNearEarnings && stock.nearEarnings) return false;
       return true;
     });
 
@@ -283,18 +263,37 @@ export default function Screener() {
       let aVal: number;
       let bVal: number;
 
-      if (sortConfig.key === 'valueScore') {
-        aVal = calculateValueScore(a);
-        bVal = calculateValueScore(b);
-      } else {
-        aVal = (a as any)[sortConfig.key] ?? 0;
-        bVal = (b as any)[sortConfig.key] ?? 0;
+      switch (sortConfig.key) {
+        case 'valueScore':
+          aVal = a.suitabilityScore;
+          bVal = b.suitabilityScore;
+          break;
+        case 'price':
+          aVal = a.price;
+          bVal = b.price;
+          break;
+        case 'changePercent':
+          aVal = a.changePercent;
+          bVal = b.changePercent;
+          break;
+        case 'iv':
+          aVal = a.iv;
+          bVal = b.iv;
+          break;
+        case 'volumeRatio':
+          aVal = a.volumeRatio;
+          bVal = b.volumeRatio;
+          break;
+        case 'marketCap':
+          aVal = a.marketCap;
+          bVal = b.marketCap;
+          break;
+        default:
+          aVal = a.suitabilityScore;
+          bVal = b.suitabilityScore;
       }
 
-      if (sortConfig.direction === 'asc') {
-        return aVal > bVal ? 1 : -1;
-      }
-      return aVal < bVal ? 1 : -1;
+      return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
     });
 
     return filtered;
@@ -371,52 +370,6 @@ export default function Screener() {
         ? prev.sectors.filter(s => s !== sector)
         : [...prev.sectors, sector],
     }));
-  };
-
-  const getValueColor = (stock: StockFundamental, key: keyof StockFundamental): string => {
-    const value = stock[key] as number | undefined;
-    if (value === undefined || value === null) return '#6e7681';
-    
-    switch (key) {
-      case 'peRatio':
-        if (value <= 0) return '#f85149';
-        if (value <= 15) return '#3fb950';
-        if (value <= 25) return '#a371f7';
-        return '#f85149';
-      case 'priceToBook':
-        if (value <= 1) return '#3fb950';
-        if (value <= 3) return '#a371f7';
-        if (value > 10) return '#f85149';
-        return '#c9d1d9';
-      case 'dividendYield':
-        if (value >= 3) return '#3fb950';
-        if (value >= 1) return '#a371f7';
-        return '#c9d1d9';
-      case 'returnOnEquity':
-        if (value >= 20) return '#3fb950';
-        if (value >= 10) return '#a371f7';
-        return '#c9d1d9';
-      case 'profitMargin':
-        if (value >= 20) return '#3fb950';
-        if (value >= 5) return '#a371f7';
-        if (value < 0) return '#f85149';
-        return '#c9d1d9';
-      case 'revenueGrowth':
-        if (value >= 20) return '#3fb950';
-        if (value >= 5) return '#a371f7';
-        if (value < 0) return '#f85149';
-        return '#c9d1d9';
-      default:
-        return '#c9d1d9';
-    }
-  };
-
-  const getValueColorPFCF = (value: number | undefined): string => {
-    if (!value || value <= 0) return '#6e7681';
-    if (value <= 15) return '#3fb950';
-    if (value <= 25) return '#a371f7';
-    if (value <= 40) return '#f0883e';
-    return '#f85149';
   };
 
   if (!mounted || loading) {
@@ -613,8 +566,9 @@ export default function Screener() {
             flexWrap: 'wrap'
           }}>
             {[
-              { label: 'Total analizadas', value: stocks.length, color: '#58a6ff' },
-              { label: 'Matchean filtros', value: filteredAndSortedStocks.length, color: '#3fb950' },
+              { label: 'Total analizadas', value: screenerSummary?.totalScanned || stocks.length, color: '#58a6ff' },
+              { label: 'Excelentes', value: screenerSummary?.excellent || 0, color: '#3fb950' },
+              { label: 'Buenas', value: screenerSummary?.buena || 0, color: '#f0883e' },
               { label: 'Sectores activos', value: filters.sectors.length || 'Todos', color: '#a371f7' },
             ].map((stat, i) => (
               <div key={i} style={{
@@ -678,11 +632,11 @@ export default function Screener() {
             {/* Preset Buttons */}
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', color: '#c9d1d9', fontSize: '13px', marginBottom: '12px', fontWeight: '500' }}>
-                Presets Warren Buffett:
+                Presets:
               </label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                 <button
-                  onClick={() => setFilters({ maxPe: 25, maxPb: 3, maxPFCF: 30, minDividendYield: 0, minMarketCap: 0, minRevenue: 0, sectors: [], excludeNegativeEarnings: true, minRoe: 15, minProfitMargin: 5 })}
+                  onClick={() => setFilters({ minScore: 0, minIV: 40, maxIV: 100, minVolumeRatio: 0, minMarketCap: 0, sectors: [], excludeNearEarnings: false })}
                   style={{
                     padding: '10px 16px',
                     borderRadius: '20px',
@@ -694,10 +648,10 @@ export default function Screener() {
                     cursor: 'pointer',
                   }}
                 >
-                  💰 Buffett Style
+                  💰 High IV
                 </button>
                 <button
-                  onClick={() => setFilters({ maxPe: 15, maxPb: 1.5, maxPFCF: 20, minDividendYield: 0, minMarketCap: 0, minRevenue: 0, sectors: [], excludeNegativeEarnings: true, minRoe: 10, minProfitMargin: 0 })}
+                  onClick={() => setFilters({ minScore: 0, minIV: 0, maxIV: 100, minVolumeRatio: 1.5, minMarketCap: 0, sectors: [], excludeNearEarnings: false })}
                   style={{
                     padding: '10px 16px',
                     borderRadius: '20px',
@@ -709,10 +663,10 @@ export default function Screener() {
                     cursor: 'pointer',
                   }}
                 >
-                  🔥 Deep Value
+                  🔥 High Volume
                 </button>
                 <button
-                  onClick={() => setFilters({ maxPe: 35, maxPb: 8, maxPFCF: 50, minDividendYield: 0, minMarketCap: 0, minRevenue: 0, sectors: [], excludeNegativeEarnings: true, minRoe: 20, minProfitMargin: 15 })}
+                  onClick={() => setFilters({ minScore: 55, minIV: 0, maxIV: 100, minVolumeRatio: 0, minMarketCap: 0, sectors: [], excludeNearEarnings: false })}
                   style={{
                     padding: '10px 16px',
                     borderRadius: '20px',
@@ -724,10 +678,10 @@ export default function Screener() {
                     cursor: 'pointer',
                   }}
                 >
-                  ⭐ Quality Growth
+                  ⭐ Top Picks
                 </button>
                 <button
-                  onClick={() => setFilters({ maxPe: 100, maxPb: 20, maxPFCF: 50, minDividendYield: 0, minMarketCap: 0, minRevenue: 0, sectors: [], excludeNegativeEarnings: false, minRoe: 0, minProfitMargin: 0 })}
+                  onClick={() => setFilters({ minScore: 0, minIV: 0, maxIV: 100, minVolumeRatio: 0, minMarketCap: 0, sectors: [], excludeNearEarnings: false })}
                   style={{
                     padding: '10px 16px',
                     borderRadius: '20px',
@@ -747,14 +701,9 @@ export default function Screener() {
             {/* Range Filters */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '24px' }}>
               {[
-                { key: 'maxPe', label: 'P/E Máximo', max: 100, value: filters.maxPe, color: '#58a6ff' },
-                { key: 'maxPb', label: 'P/B Máximo', max: 20, step: 0.5, value: filters.maxPb, color: '#a371f7' },
-                { key: 'maxPFCF', label: 'P/FCF Máximo', max: 60, value: filters.maxPFCF, color: '#00d4aa' },
-                { key: 'minDividendYield', label: 'Dividend Yield Mín', max: 10, step: 0.5, value: filters.minDividendYield, color: '#3fb950', suffix: '%' },
-                { key: 'minRoe', label: 'ROE Mínimo', max: 50, value: filters.minRoe, color: '#f0883e', suffix: '%' },
-                { key: 'minProfitMargin', label: 'Profit Margin Mín', max: 40, value: filters.minProfitMargin, color: '#f97316', suffix: '%' },
-                { key: 'minMarketCap', label: 'Market Cap Mín', max: 500, value: filters.minMarketCap, color: '#db61a2', prefix: '$', suffix: 'B' },
-                { key: 'minRevenue', label: 'Revenue Mín', max: 500, value: filters.minRevenue, color: '#f97316', prefix: '$', suffix: 'B' },
+                { key: 'minScore', label: 'Score Mínimo', max: 100, value: filters.minScore, color: '#58a6ff', suffix: '' },
+                { key: 'minIV', label: 'IV Mínimo', max: 100, value: filters.minIV, color: '#f0883e', suffix: '%', step: 5 },
+                { key: 'minVolumeRatio', label: 'Volumen Ratio Mín', max: 3, value: filters.minVolumeRatio, color: '#3fb950', suffix: 'x', step: 0.1 },
               ].map((filter) => (
                 <div key={filter.key} style={{
                   padding: '20px',
@@ -807,31 +756,31 @@ export default function Screener() {
                 color: '#c9d1d9', 
                 cursor: 'pointer',
                 padding: '16px',
-                background: filters.excludeNegativeEarnings ? 'rgba(63, 185, 80, 0.1)' : 'rgba(0,0,0,0.2)',
+                background: filters.excludeNearEarnings ? 'rgba(63, 185, 80, 0.1)' : 'rgba(0,0,0,0.2)',
                 borderRadius: '10px',
-                border: filters.excludeNegativeEarnings ? '1px solid rgba(63, 185, 80, 0.3)' : '1px solid #21262d',
+                border: filters.excludeNearEarnings ? '1px solid rgba(63, 185, 80, 0.3)' : '1px solid #21262d',
                 transition: 'all 0.2s',
               }}>
                 <div style={{
                   width: '22px',
                   height: '22px',
                   borderRadius: '6px',
-                  border: `2px solid ${filters.excludeNegativeEarnings ? '#3fb950' : '#484f58'}`,
-                  background: filters.excludeNegativeEarnings ? '#3fb950' : 'transparent',
+                  border: `2px solid ${filters.excludeNearEarnings ? '#3fb950' : '#484f58'}`,
+                  background: filters.excludeNearEarnings ? '#3fb950' : 'transparent',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   transition: 'all 0.2s',
                 }}>
-                  {filters.excludeNegativeEarnings && <span style={{ color: 'white', fontSize: '14px', fontWeight: 'bold' }}>✓</span>}
+                  {filters.excludeNearEarnings && <span style={{ color: 'white', fontSize: '14px', fontWeight: 'bold' }}>✓</span>}
                 </div>
                 <input
                   type="checkbox"
-                  checked={filters.excludeNegativeEarnings}
-                  onChange={(e) => setFilters(prev => ({ ...prev, excludeNegativeEarnings: e.target.checked }))}
+                  checked={filters.excludeNearEarnings}
+                  onChange={(e) => setFilters(prev => ({ ...prev, excludeNearEarnings: e.target.checked }))}
                   style={{ display: 'none' }}
                 />
-                <span style={{ fontSize: '14px' }}>Excluir acciones con ganancias negativas (P/E negativo)</span>
+                <span style={{ fontSize: '14px' }}>Excluir acciones con earnings cercanos (30 días)</span>
               </label>
             </div>
 
@@ -897,29 +846,26 @@ export default function Screener() {
             alignItems: 'center',
           }}>
             <h2 style={{ color: '#f0f6fc', fontSize: '16px', fontWeight: '600', margin: 0 }}>
-              Resultados ({filteredAndSortedStocks.length}) [stocks:{stocks.length}]
+              Acciones para Opciones ({filteredAndSortedStocks.length})
             </h2>
             <span style={{ color: '#8b949e', fontSize: '12px' }}>
-              Clic en encabezado para ordenar
+              Ordenadas por score de idoneidad
             </span>
           </div>
 
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1100px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
               <thead>
                 <tr style={{ background: '#21262d' }}>
                   {[
-                    { key: 'valueScore', label: 'Score', align: 'center' as const, sortable: true },
-                    { key: 'symbol', label: 'Símbolo', sortable: false },
-                    { key: 'regularMarketPrice', label: 'Precio', align: 'right' as const },
-                    { key: 'priceChange', label: 'Cambio', align: 'right' as const },
-                    { key: 'marketCap', label: 'Mkt Cap', align: 'right' as const },
-                    { key: 'peRatio', label: 'P/E', align: 'right' as const },
-                    { key: 'priceToBook', label: 'P/B', align: 'right' as const },
-                    { key: 'priceToFreeCashFlow', label: 'P/FCF', align: 'right' as const },
-                    { key: 'returnOnEquity', label: 'ROE', align: 'right' as const },
-                    { key: 'profitMargin', label: 'Margen', align: 'right' as const },
-                    { key: 'dividendYield', label: 'Div.Y', align: 'right' as const },
+                    { key: 'valueScore', label: 'Score', align: 'center' as const },
+                    { key: 'symbol', label: 'Símbolo', align: 'left' as const },
+                    { key: 'price', label: 'Precio', align: 'right' as const },
+                    { key: 'change', label: '%', align: 'right' as const },
+                    { key: 'iv', label: 'IV', align: 'right' as const },
+                    { key: 'ivRank', label: 'IV Rank', align: 'right' as const },
+                    { key: 'nearEarnings', label: 'Earnings', align: 'center' as const },
+                    { key: 'topStrategy', label: 'Estrategia', align: 'left' as const },
                   ].map((col) => (
                     <th
                       key={col.key}
@@ -956,9 +902,8 @@ export default function Screener() {
               </thead>
               <tbody>
                 {filteredAndSortedStocks.map((stock, index) => {
-                  const valueScore = calculateValueScore(stock);
-                  const scoreColor = valueScore >= 70 ? '#3fb950' : valueScore >= 50 ? '#a371f7' : valueScore >= 30 ? '#f0883e' : '#f85149';
-                  const scoreBg = valueScore >= 70 ? '#3fb95020' : valueScore >= 50 ? '#a371f720' : valueScore >= 30 ? '#f0883e20' : '#f8514920';
+                  const scoreColor = stock.suitabilityScore >= 75 ? '#3fb950' : stock.suitabilityScore >= 55 ? '#f0883e' : stock.suitabilityScore >= 35 ? '#a371f7' : '#f85149';
+                  const scoreBg = stock.suitabilityScore >= 75 ? '#3fb95020' : stock.suitabilityScore >= 55 ? '#f0883e20' : stock.suitabilityScore >= 35 ? '#a371f720' : '#f8514920';
                   
                   return (
                     <tr 
@@ -977,85 +922,85 @@ export default function Screener() {
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          width: '44px',
-                          height: '44px',
+                          width: '48px',
+                          height: '48px',
                           borderRadius: '10px',
                           background: scoreBg,
                           border: `2px solid ${scoreColor}`,
                           fontWeight: '700',
-                          fontSize: '14px',
+                          fontSize: '15px',
                           color: scoreColor,
                         }}>
-                          {valueScore}
+                          {stock.suitabilityScore}
                         </div>
                       </td>
                       <td style={{ padding: '12px' }}>
-                        <div style={{ fontWeight: '700', color: '#f0f6fc', fontSize: '15px' }}>{stock.symbol}</div>
-                        <div style={{ fontSize: '10px', color: '#6e7681', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {stock.shortName}
+                        <div style={{ fontWeight: '700', color: '#58a6ff', fontSize: '15px' }}>{stock.symbol}</div>
+                        <div style={{ fontSize: '10px', color: '#6e7681', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {stock.name}
+                        </div>
+                        <div style={{ fontSize: '10px', color: '#8b949e', marginTop: '2px' }}>
+                          {stock.sector}
                         </div>
                       </td>
-                      <td style={{ padding: '12px', textAlign: 'right', color: '#f0f6fc', fontWeight: '600', fontSize: '13px' }}>
-                        ${formatNumber(stock.price, 2)}
+                      <td style={{ padding: '12px', textAlign: 'right', color: '#f0f6fc', fontWeight: '600', fontSize: '14px' }}>
+                        ${stock.price?.toFixed(2)}
                       </td>
-                      <td style={{ padding: '12px', textAlign: 'right', fontWeight: '600', fontSize: '12px' }}>
-                        {priceChanges[stock.symbol] !== undefined ? (
-                          <span style={{ 
-                            color: priceChanges[stock.symbol] > 0 ? '#3fb950' : priceChanges[stock.symbol] < 0 ? '#f85149' : '#8b949e',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'flex-end',
-                            gap: '4px'
-                          }}>
-                            {priceChanges[stock.symbol] > 0 ? '▲' : priceChanges[stock.symbol] < 0 ? '▼' : ''}
-                            {priceChanges[stock.symbol] > 0 ? '+' : ''}{formatNumber(priceChanges[stock.symbol], 2)}
-                          </span>
-                        ) : (
-                          <span style={{ color: '#484f58' }}>-</span>
-                        )}
+                      <td style={{ padding: '12px', textAlign: 'right', fontWeight: '600', fontSize: '13px', color: stock.changePercent > 0 ? '#3fb950' : stock.changePercent < 0 ? '#f85149' : '#8b949e' }}>
+                        {stock.changePercent > 0 ? '+' : ''}{stock.changePercent?.toFixed(2)}%
                       </td>
-                      <td style={{ padding: '12px', textAlign: 'right', color: '#8b949e', fontSize: '12px' }}>
-                        {formatMarketCap(stock.marketCap)}
+                      <td style={{ padding: '12px', textAlign: 'right', color: stock.iv > 0.5 ? '#f0883e' : stock.iv > 0.3 ? '#a371f7' : '#3fb950', fontWeight: '600', fontSize: '13px' }}>
+                        {(stock.iv * 100).toFixed(0)}%
                       </td>
-                      <td style={{ padding: '12px', textAlign: 'right', color: getValueColor(stock, 'peRatio'), fontWeight: '600', fontSize: '13px' }}>
-                        {formatNumber(stock.peRatio)}
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'right', color: getValueColor(stock, 'priceToBook'), fontWeight: '600', fontSize: '13px' }}>
-                        {formatNumber(stock.priceToBook)}
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'right', color: getValueColorPFCF(stock.priceToFreeCashFlow), fontWeight: '600', fontSize: '13px' }}>
-                        {stock.priceToFreeCashFlow ? formatNumber(stock.priceToFreeCashFlow) : '-'}
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'right', color: getValueColor(stock, 'returnOnEquity'), fontWeight: '600', fontSize: '13px' }}>
-                        {formatNumber(stock.returnOnEquity)}%
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'right', color: getValueColor(stock, 'profitMargin'), fontWeight: '600', fontSize: '13px' }}>
-                        {formatNumber(stock.profitMargin)}%
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'right', color: getValueColor(stock, 'dividendYield'), fontWeight: '600', fontSize: '13px' }}>
-                        {formatNumber(stock.dividendYield)}%
+                      <td style={{ padding: '12px', textAlign: 'right', color: '#8b949e', fontWeight: '600', fontSize: '13px' }}>
+                        {stock.ivRank?.toFixed(0) || '-'}
                       </td>
                       <td style={{ padding: '12px', textAlign: 'center' }}>
-                      <button
-                        onClick={() => handleAddToWatchlist(stock.symbol)}
-                        disabled={addingToWatchlist === stock.symbol}
-                        style={{
-                          padding: '8px 16px',
-                          borderRadius: '8px',
-                          border: '1px solid #30363d',
-                          background: addingToWatchlist === stock.symbol ? '#30363d' : 'linear-gradient(135deg, #238636 0%, #2ea043 100%)',
-                          color: addingToWatchlist === stock.symbol ? '#8b949e' : 'white',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          cursor: addingToWatchlist === stock.symbol ? 'wait' : 'pointer',
-                          transition: 'all 0.2s',
-                        }}
-                      >
-                        {addingToWatchlist === stock.symbol ? '...' : '⭐ Watch'}
-                      </button>
-                    </td>
-                  </tr>
-                );
+                        {stock.nearEarnings ? (
+                          <span style={{
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            background: '#f0883e20',
+                            color: '#f0883e',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                          }}>
+                            📅 {stock.daysUntilEarnings}d
+                          </span>
+                        ) : (
+                          <span style={{ color: '#484f58', fontSize: '11px' }}>-</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px' }}>
+                        <div style={{ color: '#c9d1d9', fontSize: '12px', fontWeight: '500' }}>
+                          {stock.topStrategy}
+                        </div>
+                        {stock.reasons.length > 0 && (
+                          <div style={{ fontSize: '10px', color: '#8b949e', marginTop: '2px', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {stock.reasons[0]}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center' }}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleAddToWatchlist(stock.symbol); }}
+                          disabled={addingToWatchlist === stock.symbol}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: '6px',
+                            border: '1px solid #30363d',
+                            background: addingToWatchlist === stock.symbol ? '#30363d' : '#23863620',
+                            color: addingToWatchlist === stock.symbol ? '#8b949e' : '#3fb950',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            cursor: addingToWatchlist === stock.symbol ? 'wait' : 'pointer',
+                          }}
+                        >
+                          {addingToWatchlist === stock.symbol ? '...' : '⭐'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
                 })}
               </tbody>
             </table>

@@ -1,5 +1,6 @@
 import { Providers } from './providers';
 import { Metadata, Viewport } from 'next';
+import { Suspense } from 'react';
 
 export const metadata: Metadata = {
   title: 'Stock Analyzer',
@@ -114,7 +115,11 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0d1117' }} />}>
+            {children}
+          </Suspense>
+        </Providers>
         <script
           dangerouslySetInnerHTML={{
             __html: `

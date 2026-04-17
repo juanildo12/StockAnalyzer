@@ -5,6 +5,44 @@ import { getStockQuote, getTechnicalAnalysis, getHistoricalData } from '../../..
 
 const yf = new YahooFinance();
 
+const QUALITY_POOL = [
+  'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'AMD', 'INTC', 'JPM',
+  'BAC', 'WMT', 'HD', 'DIS', 'NFLX', 'PYPL', 'SQ', 'COIN', 'UBER', 'COST',
+  'MCD', 'NKE', 'CRM', 'V', 'MA', 'UNH', 'JNJ', 'PFE', 'ABBV', 'MRK',
+  'AVGO', 'QCOM', 'MU', 'TXN', 'NOW', 'ORCL', 'ADBE', 'SNOW', 'DDOG', 'CRWD',
+  'ZS', 'WDAY', 'TEAM', 'NET', 'OKTA', 'SNAP', 'ROKU', 'PLTR', 'RBLX', 'U',
+  'BKNG', 'SBUX', 'LULU', 'ROST', 'TJX', 'DG', 'DLTR', 'ETSY', 'GM', 'F',
+  'XOM', 'CVX', 'COP', 'SLB', 'EOG', 'DVN', 'FANG', 'MPC', 'HAL', 'OXY',
+  'CAT', 'DE', 'BA', 'HON', 'GE', 'UPS', 'FDX', 'LMT', 'RTX', 'NOC',
+  'LLY', 'BMY', 'AMGN', 'GILD', 'REGN', 'VRTX', 'MRNA', 'CNC', 'HUM',
+  'SPOT', 'DASH', 'LYFT', 'HOOD', 'AFRM', 'OPEN', 'SNOW', 'SE', 'PATH',
+  'BABA', 'JD', 'PDD', 'BIDU', 'MELI', 'SE', 'AYX', 'DOCU', 'ZM', 'TWLO',
+  'RIVN', 'LCID', 'STLA', 'GM', 'F', 'TM', 'RACE', 'PAG',
+  'MSTR', 'MARA', 'RIOT', 'GME', 'AMC',
+  'AAL', 'DAL', 'UAL', 'LUV', 'RCL', 'CCL', 'MGM', 'WYNN', 'LVS',
+  'PARA', 'WBD', 'CMCSA', 'FOX', 'NWSA',
+  'GOLD', 'NEM', 'AEM', 'FNV',
+  'KLAC', 'LRCX', 'AMAT', 'ASML', 'SMCI', 'MRVL', 'MPWR', 'TER',
+  'GS', 'MS', 'C', 'WFC', 'SCHW', 'BLK', 'AXP', 'DFS', 'SYF',
+];
+
+function seededShuffle<T>(array: T[], seed: number): T[] {
+  const shuffled = [...array];
+  let s = seed;
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    s = Math.imul(s ^ (s >>> 16), 0x45d9f3b);
+    s = Math.imul(s ^ (s >>> 16), 0x45d9f3b);
+    s ^= s >>> 16;
+    const j = s % (i + 1);
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+function dateToSeed(date: Date): number {
+  return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+}
+
 export async function GET(request: NextRequest) {
   const symbol = request.nextUrl.searchParams.get('symbol');
   const screen = request.nextUrl.searchParams.get('screen');
@@ -55,25 +93,55 @@ export async function GET(request: NextRequest) {
 
   if (screen === 'screener') {
     try {
-      const TOP_STOCKS = [
-        'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'AMD', 'INTC', 'JPM',
-        'BAC', 'WMT', 'HD', 'DIS', 'NFLX', 'PYPL', 'SQ', 'COIN', 'UBER', 'COST',
-        'MCD', 'NKE', 'CRM', 'V', 'MA', 'UNH', 'JNJ', 'PFE', 'ABBV', 'MRK'
-      ];
+      const today = new Date();
+      const seed = dateToSeed(today);
+      const dayOfWeek = today.getDay();
+      const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const dateStr = today.toISOString().split('T')[0];
+
+      const shuffledPool = seededShuffle(QUALITY_POOL, seed);
+      const DAILY_STOCKS = shuffledPool.slice(0, 30);
 
       const results = await Promise.all(
-        TOP_STOCKS.map(async (sym) => {
+        DAILY_STOCKS.map(async (sym) => {
           try {
             const [quote, analysis] = await Promise.all([
               yf.quote(sym).catch(() => null),
-              getOptionsAnalysis(sym),
+              getOptionsAnalysis(sym).catch(() => null),
             ]);
 
             if (!analysis) return null;
 
             const earningsDate = analysis.earningsDate;
             const now = new Date();
-            const isNear = earningsDate && (new Date(earningsDate).getTime() - now.getTime()) < 30 * 24 * 60 * 60 * 1000;
+            const daysUntilEarnings = earningsDate
+              ? Math.ceil((new Date(earningsDate).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+              : null;
+            const isNear = daysUntilEarnings !== null && daysUntilEarnings >= 0 && daysUntilEarnings <= 30;
+
+            const volumeRatio = quote?.averageVolume && quote?.regularMarketVolume
+              ? quote.regularMarketVolume / quote.averageVolume
+              : 1;
+
+            let ivBoost = 0;
+            if (analysis.impliedVolatility > 0.6) ivBoost = 15;
+            else if (analysis.impliedVolatility > 0.4) ivBoost = 8;
+            else if (analysis.impliedVolatility > 0.25) ivBoost = 3;
+
+            let volumeBoost = 0;
+            if (volumeRatio > 1.8) volumeBoost = 12;
+            else if (volumeRatio > 1.3) volumeBoost = 6;
+            else if (volumeRatio > 1.0) volumeBoost = 2;
+
+            let earningsBoost = 0;
+            if (isNear && daysUntilEarnings! <= 7) earningsBoost = 20;
+            else if (isNear && daysUntilEarnings! <= 14) earningsBoost = 12;
+            else if (isNear && daysUntilEarnings! <= 30) earningsBoost = 5;
+
+            const trendBoost = analysis.stockTrend === 'Alcista' ? 5 : analysis.stockTrend === 'Bajista' ? -5 : 0;
+
+            const baseScore = analysis.recommendedStrategies[0]?.suitabilityScore || 50;
+            const adjustedScore = Math.min(100, Math.max(0, baseScore + ivBoost + volumeBoost + earningsBoost + trendBoost));
 
             return {
               symbol: sym,
@@ -85,19 +153,29 @@ export async function GET(request: NextRequest) {
               marketCap: quote?.marketCap || 0,
               volume: quote?.regularMarketVolume || 0,
               avgVolume: quote?.averageVolume || 0,
+              volumeRatio: volumeRatio,
               iv: analysis.impliedVolatility,
               ivRank: analysis.ivRank,
+              ivPercentile: analysis.ivPercentile,
               dividendYield: quote?.dividendYield || 0,
               nearEarnings: isNear,
+              daysUntilEarnings: daysUntilEarnings,
               earningsDate: earningsDate,
               earningsEstimate: analysis.earningsEstimate,
-              suitabilityScore: analysis.recommendedStrategies[0]?.suitabilityScore || 50,
-              recommendation: 'regular',
-              reasons: [analysis.recommendedStrategies[0]?.rationale || ''],
+              stockTrend: analysis.stockTrend,
+              suitabilityScore: adjustedScore,
+              recommendation: adjustedScore >= 75 ? 'excellent' : adjustedScore >= 55 ? 'buena' : adjustedScore >= 35 ? 'regular' : 'poor',
+              reasons: [
+                ...(analysis.recommendedStrategies[0]?.rationale ? [analysis.recommendedStrategies[0].rationale] : []),
+                ...(ivBoost > 0 ? [`IV: ${(analysis.impliedVolatility * 100).toFixed(0)}% - primas buenas`] : []),
+                ...(volumeBoost > 0 ? [`Vol: ${volumeRatio.toFixed(1)}x`] : []),
+                ...(earningsBoost > 0 ? [`Earnings: ${daysUntilEarnings}d`] : []),
+              ],
               topStrategy: analysis.recommendedStrategies[0]?.strategy?.name || 'Long Call',
               recommendedStrategies: analysis.recommendedStrategies.slice(0, 3).map((r: any) => ({
                 name: r.strategy?.name,
                 score: r.suitabilityScore,
+                rationale: r.rationale,
               })),
             };
           } catch {
@@ -115,8 +193,12 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         all: scoredStocks,
-        totalScanned: TOP_STOCKS.length,
+        totalScanned: DAILY_STOCKS.length,
+        poolSize: QUALITY_POOL.length,
         filteredCount: scoredStocks.length,
+        lastUpdated: new Date().toISOString(),
+        screenerDate: dateStr,
+        screenerDay: dayNames[dayOfWeek],
         summary: {
           excellent: excellent.length,
           buena: buena.length,
@@ -124,6 +206,9 @@ export async function GET(request: NextRequest) {
           notRecommended: scoredStocks.length - excellent.length - buena.length - regular.length,
         },
         topPicks: scoredStocks.slice(0, 5),
+        nearEarnings: scoredStocks.filter((r) => r.nearEarnings),
+        highIV: scoredStocks.filter((r) => r.iv > 0.4),
+        highVolume: scoredStocks.filter((r) => r.volumeRatio > 1.2),
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';

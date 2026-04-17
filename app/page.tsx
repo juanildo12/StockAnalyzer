@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import { 
   savePortfolioToFirestore, 
@@ -490,6 +490,7 @@ export default function Home() {
   });
   const [menuOpen, setMenuOpen] = useState(false);
   const isMobile = useMediaQuery('(max-width: 768px)');
+  const searchParams = useSearchParams();
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [watchlistPrices, setWatchlistPrices] = useState<{ [key: string]: { price: number; change: number; changePercent: number } }>({});
   const [showWatchlistModal, setShowWatchlistModal] = useState(false);
@@ -700,14 +701,14 @@ export default function Home() {
     }
   };
 
-  const searchStock = async () => {
-    if (!symbol.trim()) return;
+  const searchStock = async (symToSearch?: string) => {
+    const sym = (symToSearch || symbol).trim().toUpperCase();
+    if (!sym) return;
     setLoading(true);
     setError('');
     setData(null);
 
     try {
-      const sym = symbol.toUpperCase();
       const res = await fetch(`/api/stock?symbol=${sym}`);
 
       if (!res.ok) {
@@ -734,6 +735,19 @@ export default function Home() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const urlSymbol = searchParams?.get('symbol');
+    if (urlSymbol && view === 'analyzer') {
+      const upperSymbol = urlSymbol.toUpperCase();
+      if (upperSymbol !== symbol) {
+        setSymbol(upperSymbol);
+      }
+      if (!data || data?.quote?.symbol !== upperSymbol) {
+        searchStock(upperSymbol);
+      }
+    }
+  }, [searchParams, view]);
 
   const addToPortfolio = async () => {
     if (!data || !addForm.shares || !session?.user?.email) return;
@@ -1284,7 +1298,8 @@ export default function Home() {
                 </div>
               )}
               <button
-                onClick={searchStock}
+                type="button"
+                onClick={() => searchStock()}
                 disabled={loading}
                 style={{
                   padding: '14px 24px',
@@ -2077,7 +2092,15 @@ export default function Home() {
 
       {/* Vista de Opciones */}
       {view === 'options' && (
-        <OptionsView initialSymbol={symbol} onSymbolChange={(sym) => setSymbol(sym)} />
+        <OptionsView 
+          initialSymbol={symbol} 
+          currentSymbol={symbol} 
+          onSymbolChange={(sym) => setSymbol(sym)} 
+          onAnalyzeInMain={(sym) => {
+            setSymbol(sym);
+            searchStock(sym);
+          }} 
+        />
       )}
 
       {/* Vista de Trade Validator */}
@@ -2387,7 +2410,7 @@ export default function Home() {
 
 type CheckStatus = 'pass' | 'fail';
 
-function OptionsView({ initialSymbol, onSymbolChange }: { initialSymbol?: string; onSymbolChange?: (symbol: string) => void }) {
+function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeInMain }: { initialSymbol?: string; onSymbolChange?: (symbol: string) => void; currentSymbol?: string; onAnalyzeInMain?: (symbol: string) => void }) {
   const [symbol, setSymbol] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -2400,7 +2423,9 @@ function OptionsView({ initialSymbol, onSymbolChange }: { initialSymbol?: string
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [symbolChanges, setSymbolChanges] = useState<{ added: string[]; removed: string[] }>({ added: [], removed: [] });
   const [showChanges, setShowChanges] = useState(false);
+  const router = useRouter();
   const [newSymbols, setNewSymbols] = useState<Set<string>>(new Set());
+  const [screenerFilter, setScreenerFilter] = useState('');
   const [timeValidation, setTimeValidation] = useState<{
     estimatedDays: number;
     expirationDays: number;
@@ -2431,6 +2456,12 @@ function OptionsView({ initialSymbol, onSymbolChange }: { initialSymbol?: string
   });
   const [showChecklist, setShowChecklist] = useState(false);
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (currentSymbol && currentSymbol !== initialSymbol) {
+      setScreenerFilter(currentSymbol.toUpperCase());
+    }
+  }, [currentSymbol]);
 
   const getStatusIcon = (status: CheckStatus) => {
     if (status === 'pass') return { icon: '✅', color: '#3fb950' };
@@ -2549,7 +2580,14 @@ function OptionsView({ initialSymbol, onSymbolChange }: { initialSymbol?: string
 
   const getSortedStocks = () => {
     if (!screenerData?.all) return [];
-    return [...screenerData.all].sort((a: any, b: any) => {
+    let stocks = [...screenerData.all];
+    
+    if (screenerFilter) {
+      const filter = screenerFilter.toUpperCase();
+      stocks = stocks.filter((s: any) => s.symbol.includes(filter));
+    }
+    
+    return stocks.sort((a: any, b: any) => {
       let valA = a[sortField];
       let valB = b[sortField];
       if (typeof valA === 'string') valA = valA.toLowerCase();
@@ -2566,6 +2604,7 @@ function OptionsView({ initialSymbol, onSymbolChange }: { initialSymbol?: string
     setLoading(true);
     setError('');
     setData(null);
+    setScreenerFilter(targetSymbol.toUpperCase());
 
     try {
       const res = await fetch(`/api/options?symbol=${targetSymbol.toUpperCase()}`);
@@ -2575,6 +2614,8 @@ function OptionsView({ initialSymbol, onSymbolChange }: { initialSymbol?: string
       }
       const json = await res.json();
       setData(json);
+      if (onSymbolChange) onSymbolChange(targetSymbol.toUpperCase());
+      if (onAnalyzeInMain) onAnalyzeInMain(targetSymbol.toUpperCase());
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -2591,6 +2632,9 @@ function OptionsView({ initialSymbol, onSymbolChange }: { initialSymbol?: string
     if (urlSymbol && typeof urlSymbol === 'string') {
       setSymbol(urlSymbol);
       analyzeOptions(urlSymbol);
+    } else if (initialSymbol && initialSymbol !== symbol) {
+      setSymbol(initialSymbol);
+      analyzeOptions(initialSymbol);
     } else if (initialSymbol && !symbol) {
       setSymbol(initialSymbol);
       analyzeOptions(initialSymbol);
@@ -2675,8 +2719,8 @@ function OptionsView({ initialSymbol, onSymbolChange }: { initialSymbol?: string
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-        <h2 style={{ color: '#f0f6fc', marginBottom: '8px', textAlign: 'center', width: '100%' }}>🎯 Estrategias de Opciones</h2>
-        <p style={{ color: '#8b949e', margin: 0, fontSize: '14px', textAlign: 'center' }}>Analiza estrategias de opciones y encuentra acciones ideales para operar</p>
+        <h2 style={{ color: '#f0f6fc', marginBottom: '8px' }}>🎯 Estrategias de Opciones</h2>
+        <p style={{ color: '#8b949e', margin: 0, fontSize: '14px' }}>Analiza estrategias de opciones y encuentra acciones ideales para operar</p>
       </div>
       
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px', minHeight: '24px' }}>
@@ -3712,6 +3756,40 @@ function OptionsView({ initialSymbol, onSymbolChange }: { initialSymbol?: string
                   <div style={{ fontSize: '12px', color: '#8b949e' }}>
                     Escaneadas: {screenerData.totalScanned} | Filtradas: {screenerData.filteredCount}
                   </div>
+                </div>
+                <div style={{ marginBottom: '16px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={screenerFilter}
+                    onChange={(e) => setScreenerFilter(e.target.value)}
+                    placeholder="Filtrar por símbolo..."
+                    style={{
+                      flex: 1,
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #30363d',
+                      background: '#0d1117',
+                      color: '#c9d1d9',
+                      fontSize: '14px',
+                      outline: 'none',
+                    }}
+                  />
+                  {screenerFilter && (
+                    <button
+                      onClick={() => setScreenerFilter('')}
+                      style={{
+                        padding: '10px 16px',
+                        borderRadius: '8px',
+                        border: '1px solid #30363d',
+                        background: 'transparent',
+                        color: '#8b949e',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                      }}
+                    >
+                      Limpiar
+                    </button>
+                  )}
                 </div>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
