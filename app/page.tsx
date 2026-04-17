@@ -20,6 +20,7 @@ import {
 } from '@/src/services/firebase';
 import { useMediaQuery } from '@/src/hooks/useMediaQuery';
 import TradeValidator from '@/components/TradeValidator';
+import TradeStationPanel from '@/components/TradeStationPanel';
 
 interface StockQuote {
   symbol: string;
@@ -475,7 +476,7 @@ export default function Home() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [view, setView] = useState<'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'framework' | 'options' | 'trade-validator'>('analyzer');
+  const [view, setView] = useState<'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'framework' | 'options' | 'trade-validator' | 'tradestation'>('analyzer');
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -963,6 +964,20 @@ export default function Home() {
               >
                 ✅ Trade Validator
               </button>
+              <button
+                onClick={() => setView('tradestation')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #30363d',
+                  background: view === 'tradestation' ? '#238636' : 'transparent',
+                  color: '#c9d1d9',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                }}
+              >
+                📊 TradeStation
+              </button>
             </nav>
             {status === 'loading' ? (
               <span style={{ color: '#8b949e', fontSize: '14px' }}>Cargando...</span>
@@ -1157,6 +1172,21 @@ export default function Home() {
                   }}
                 >
                   ✅ Trade Validator
+                </button>
+                <button
+                  onClick={() => { setView('tradestation'); setMenuOpen(false); }}
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #30363d',
+                    background: view === 'tradestation' ? '#238636' : 'transparent',
+                    color: '#c9d1d9',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    textAlign: 'left',
+                  }}
+                >
+                  📊 TradeStation
                 </button>
                 <div style={{ borderTop: '1px solid #30363d', paddingTop: '12px', marginTop: '4px' }}>
                   {status === 'loading' ? (
@@ -2053,6 +2083,11 @@ export default function Home() {
       {/* Vista de Trade Validator */}
       {view === 'trade-validator' && (
         <TradeValidator initialSymbol={symbol} onSymbolChange={(sym) => setSymbol(sym)} />
+      )}
+
+      {/* Vista de TradeStation */}
+      {view === 'tradestation' && (
+        <TradeStationPanel />
       )}
 
       {/* Modal para agregar a Watchlist */}
