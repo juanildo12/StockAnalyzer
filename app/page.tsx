@@ -37,6 +37,7 @@ interface StockQuote {
 }
 
 const LOCAL_WATCHLIST_KEY = 'local-watchlist';
+const LOCAL_PORTFOLIO_KEY = 'local-portfolio';
 
 interface Summary {
   totalCash: number;
@@ -517,12 +518,19 @@ export default function Home() {
   }, [session]);
 
   const loadPortfolio = async () => {
-    if (!session?.user?.email) return;
-    try {
-      const items = await getPortfolioFromFirestore(session.user.email);
-      setPortfolio(items);
-    } catch (error) {
-      console.error('Error loading portfolio:', error);
+    if (session?.user?.email) {
+      try {
+        const items = await getPortfolioFromFirestore(session.user.email);
+        setPortfolio(items);
+      } catch (error) {
+        console.error('Error loading portfolio:', error);
+      }
+    } else {
+      const local = localStorage.getItem(LOCAL_PORTFOLIO_KEY);
+      if (local) {
+        const items = JSON.parse(local) as PortfolioItem[];
+        setPortfolio(items);
+      }
     }
   };
 
@@ -750,7 +758,7 @@ export default function Home() {
   }, [searchParams, view]);
 
   const addToPortfolio = async () => {
-    if (!data || !addForm.shares || !session?.user?.email) return;
+    if (!data || !addForm.shares) return;
     
     const price = addForm.price ? parseFloat(addForm.price) : data.quote.regularMarketPrice;
     
@@ -765,8 +773,16 @@ export default function Home() {
     };
 
     try {
-      const updatedPortfolio = await addPortfolioItem(session.user.email, newItem);
-      setPortfolio(updatedPortfolio);
+      if (session?.user?.email) {
+        const updatedPortfolio = await addPortfolioItem(session.user.email, newItem);
+        setPortfolio(updatedPortfolio);
+      } else {
+        const localData = localStorage.getItem(LOCAL_PORTFOLIO_KEY);
+        const items: PortfolioItem[] = localData ? JSON.parse(localData) : [];
+        items.push(newItem);
+        localStorage.setItem(LOCAL_PORTFOLIO_KEY, JSON.stringify(items));
+        setPortfolio(items);
+      }
       setShowAddModal(false);
       setAddForm({ shares: '', price: '', date: new Date().toISOString().split('T')[0], notes: '', targetPrice: '' });
     } catch (error) {
@@ -775,10 +791,19 @@ export default function Home() {
   };
 
   const removeFromPortfolio = async (sym: string) => {
-    if (!session?.user?.email) return;
     try {
-      const updatedPortfolio = await removePortfolioItem(session.user.email, sym);
-      setPortfolio(updatedPortfolio);
+      if (session?.user?.email) {
+        const updatedPortfolio = await removePortfolioItem(session.user.email, sym);
+        setPortfolio(updatedPortfolio);
+      } else {
+        const local = localStorage.getItem(LOCAL_PORTFOLIO_KEY);
+        if (local) {
+          const items: PortfolioItem[] = JSON.parse(local);
+          const filtered = items.filter(item => item.symbol !== sym);
+          localStorage.setItem(LOCAL_PORTFOLIO_KEY, JSON.stringify(filtered));
+          setPortfolio(filtered);
+        }
+      }
     } catch (error) {
       console.error('Error removing from portfolio:', error);
     }
@@ -2406,7 +2431,7 @@ export default function Home() {
               </button>
               <button
                 onClick={addToPortfolio}
-                disabled={!addForm.shares || !session?.user?.email}
+                disabled={!addForm.shares}
                 style={{
                   flex: 1,
                   padding: '12px',
@@ -2416,8 +2441,8 @@ export default function Home() {
                   color: 'white',
                   fontSize: '16px',
                   fontWeight: 'bold',
-                  cursor: (!addForm.shares || !session?.user?.email) ? 'not-allowed' : 'pointer',
-                  opacity: (!addForm.shares || !session?.user?.email) ? 0.5 : 1,
+                  cursor: !addForm.shares ? 'not-allowed' : 'pointer',
+                  opacity: !addForm.shares ? 0.5 : 1,
                 }}
               >
                 Agregar
