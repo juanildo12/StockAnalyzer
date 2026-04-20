@@ -2430,7 +2430,8 @@ export default function Home() {
                 Cancelar
               </button>
               <button
-                onClick={addToPortfolio}
+                type="button"
+                onClick={() => addToPortfolio()}
                 disabled={!addForm.shares}
                 style={{
                   flex: 1,
