@@ -773,16 +773,12 @@ export default function Home() {
     };
 
     try {
-      if (session?.user?.email) {
-        const updatedPortfolio = await addPortfolioItem(session.user.email, newItem);
-        setPortfolio(updatedPortfolio);
-      } else {
-        const localData = localStorage.getItem(LOCAL_PORTFOLIO_KEY);
-        const items: PortfolioItem[] = localData ? JSON.parse(localData) : [];
-        items.push(newItem);
-        localStorage.setItem(LOCAL_PORTFOLIO_KEY, JSON.stringify(items));
-        setPortfolio(items);
-      }
+      // Always use localStorage for now (Firebase has permission issues)
+      const localData = localStorage.getItem(LOCAL_PORTFOLIO_KEY);
+      const items: PortfolioItem[] = localData ? JSON.parse(localData) : [];
+      items.push(newItem);
+      localStorage.setItem(LOCAL_PORTFOLIO_KEY, JSON.stringify(items));
+      setPortfolio(items);
       setShowAddModal(false);
       setAddForm({ shares: '', price: '', date: new Date().toISOString().split('T')[0], notes: '', targetPrice: '' });
     } catch (error) {
