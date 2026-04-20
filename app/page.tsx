@@ -612,25 +612,16 @@ export default function Home() {
       alertType: watchlistForm.alertType,
     };
 
-    if (session?.user?.email) {
-      try {
-        await addWatchlistItem(session.user.email, newItem);
-        await loadWatchlist();
-        setShowWatchlistModal(false);
-      } catch (error) {
-        console.error('Error adding to watchlist:', error);
-      }
-    } else {
-      const local = localStorage.getItem(LOCAL_WATCHLIST_KEY);
-      const items = local ? JSON.parse(local) : [];
-      if (!items.some((w: WatchlistItem) => w.symbol === newItem.symbol)) {
-        items.push(newItem);
-        localStorage.setItem(LOCAL_WATCHLIST_KEY, JSON.stringify(items));
-        setWatchlist(items);
-        fetchWatchlistPrices(items.map((w: WatchlistItem) => w.symbol));
-      }
-      setShowWatchlistModal(false);
+    // Always use localStorage (Firebase has permission issues)
+    const local = localStorage.getItem(LOCAL_WATCHLIST_KEY);
+    const items = local ? JSON.parse(local) : [];
+    if (!items.some((w: WatchlistItem) => w.symbol === newItem.symbol)) {
+      items.push(newItem);
+      localStorage.setItem(LOCAL_WATCHLIST_KEY, JSON.stringify(items));
+      setWatchlist(items);
+      fetchWatchlistPrices(items.map((w: WatchlistItem) => w.symbol));
     }
+    setShowWatchlistModal(false);
   };
 
   const updateWatchlistAlert = async (symbol: string, alertPrice: number, alertEnabled: boolean, alertType: 'above' | 'below') => {
