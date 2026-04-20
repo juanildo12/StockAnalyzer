@@ -2251,6 +2251,182 @@ export default function Home() {
         </div>
       )}
 
+      {/* Modal para agregar al portafolio */}
+      {showAddModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }}>
+          <div style={{ background: '#161b22', borderRadius: '12px', padding: '24px', width: '90%', maxWidth: '450px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h3 style={{ margin: '0 0 16px', color: '#f0f6fc' }}>Agregar al Portafolio</h3>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Símbolo</label>
+              <input
+                type="text"
+                value={data?.quote?.symbol || ''}
+                disabled
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #30363d',
+                  background: '#0d1117',
+                  color: '#c9d1d9',
+                  fontSize: '16px',
+                  opacity: 0.7,
+                }}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Número de acciones *</label>
+              <input
+                type="number"
+                value={addForm.shares}
+                onChange={e => setAddForm({ ...addForm, shares: e.target.value })}
+                placeholder="Ej: 100"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #30363d',
+                  background: '#0d1117',
+                  color: '#c9d1d9',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Precio de compra por acción</label>
+              <input
+                type="number"
+                value={addForm.price}
+                onChange={e => setAddForm({ ...addForm, price: e.target.value })}
+                placeholder="Precio actual"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #30363d',
+                  background: '#0d1117',
+                  color: '#c9d1d9',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Fecha de compra</label>
+              <input
+                type="date"
+                value={addForm.date}
+                onChange={e => setAddForm({ ...addForm, date: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #30363d',
+                  background: '#0d1117',
+                  color: '#c9d1d9',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Precio objetivo (opcional)</label>
+              <input
+                type="number"
+                value={addForm.targetPrice}
+                onChange={e => setAddForm({ ...addForm, targetPrice: e.target.value })}
+                placeholder="Precio objetivo"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #30363d',
+                  background: '#0d1117',
+                  color: '#c9d1d9',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Notas (opcional)</label>
+              <textarea
+                value={addForm.notes}
+                onChange={e => setAddForm({ ...addForm, notes: e.target.value })}
+                placeholder="Notas sobre esta posición..."
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #30363d',
+                  background: '#0d1117',
+                  color: '#c9d1d9',
+                  fontSize: '16px',
+                  boxSizing: 'border-box',
+                  resize: 'vertical',
+                }}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setShowAddModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: '1px solid #30363d',
+                  background: 'transparent',
+                  color: '#c9d1d9',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={addToPortfolio}
+                disabled={!addForm.shares || !session?.user?.email}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#238636',
+                  color: 'white',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  cursor: (!addForm.shares || !session?.user?.email) ? 'not-allowed' : 'pointer',
+                  opacity: (!addForm.shares || !session?.user?.email) ? 0.5 : 1,
+                }}
+              >
+                Agregar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal para editar posición del portafolio */}
       {showEditModal && editingItem && (
         <div style={{
