@@ -513,9 +513,14 @@ export default function Home() {
       loadPortfolio();
       loadWatchlist();
     } else {
+      loadPortfolio();
       loadWatchlist();
     }
   }, [session]);
+
+  useEffect(() => {
+    loadPortfolio();
+  }, []);
 
   const loadPortfolio = async () => {
     if (session?.user?.email) {
