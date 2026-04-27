@@ -94,16 +94,16 @@ export async function GET(request: NextRequest) {
   if (screen === 'screener') {
     try {
       const today = new Date();
-      const seed = dateToSeed(today);
       const dayOfWeek = today.getDay();
       const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
       const dateStr = today.toISOString().split('T')[0];
 
-      const shuffledPool = seededShuffle(QUALITY_POOL, seed);
-      const DAILY_STOCKS = shuffledPool.slice(0, 30);
+      const DAILY_STOCKS = QUALITY_POOL;
+      const dailySeed = dateToSeed(today);
+      const dailyStocks = seededShuffle(DAILY_STOCKS, dailySeed).slice(0, 50);
 
       const results = await Promise.all(
-        DAILY_STOCKS.map(async (sym) => {
+        dailyStocks.map(async (sym) => {
           try {
             const [quote, analysis] = await Promise.all([
               yf.quote(sym).catch(() => null),
@@ -192,8 +192,8 @@ export async function GET(request: NextRequest) {
       const regular = scoredStocks.filter((r) => r.suitabilityScore >= 35 && r.suitabilityScore < 55);
 
       return NextResponse.json({
-        all: scoredStocks,
-        totalScanned: DAILY_STOCKS.length,
+        all: scoredStocks.slice(0, 30),
+        totalScanned: scoredStocks.length,
         poolSize: QUALITY_POOL.length,
         filteredCount: scoredStocks.length,
         lastUpdated: new Date().toISOString(),

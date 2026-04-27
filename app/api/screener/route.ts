@@ -36,6 +36,23 @@ interface ScreenerStock {
   regularMarketChangePercent?: number;
 }
 
+function seededShuffle<T>(array: T[], seed: number): T[] {
+  const shuffled = [...array];
+  let s = seed;
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    s = Math.imul(s ^ (s >>> 16), 0x45d9f3b);
+    s = Math.imul(s ^ (s >>> 16), 0x45d9f3b);
+    s ^= s >>> 16;
+    const j = s % (i + 1);
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+function dateToSeed(date: Date): number {
+  return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+}
+
 const SAMPLE_STOCKS = [
   'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'JPM', 'JNJ',
   'V', 'PG', 'UNH', 'HD', 'MA', 'DIS', 'NFLX', 'INTC', 'AMD', 'CRM',
@@ -137,21 +154,30 @@ export async function GET(request: Request) {
 
   try {
     if (action === 'screener') {
+      const today = new Date();
+      const dailySeed = dateToSeed(today);
+      const dailyStocks = seededShuffle(SAMPLE_STOCKS, dailySeed).slice(0, 50);
+      
       const results: ScreenerStock[] = [];
       
       const batchSize = 5;
-      for (let i = 0; i < SAMPLE_STOCKS.length; i += batchSize) {
-        const batch = SAMPLE_STOCKS.slice(i, i + batchSize);
+      for (let i = 0; i < dailyStocks.length; i += batchSize) {
+        const batch = dailyStocks.slice(i, i + batchSize);
         const batchResults = await Promise.all(batch.map(s => fetchStockData(s)));
         results.push(...batchResults.filter((r): r is ScreenerStock => r !== null));
       }
+
+      const today = new Date();
+      const dateStr = today.toISOString().split('T')[0];
 
       return NextResponse.json(
         {
           stocks: results,
           total: results.length,
           screenerStocks: results,
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          date: dateStr,
+          dailyCount: 50
         },
         {
           headers: {

@@ -21,6 +21,7 @@ import {
 import { useMediaQuery } from '@/src/hooks/useMediaQuery';
 import TradeValidator from '@/components/TradeValidator';
 import TradeStationPanel from '@/components/TradeStationPanel';
+import ScreenerPage from '@/app/screener/page';
 
 interface StockQuote {
   symbol: string;
@@ -477,7 +478,7 @@ export default function Home() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [view, setView] = useState<'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'framework' | 'options' | 'trade-validator' | 'tradestation'>('analyzer');
+  const [view, setView] = useState<'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'framework' | 'options' | 'trade-validator' | 'tradestation' | 'screener'>('analyzer');
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -924,13 +925,13 @@ export default function Home() {
               >
                 Watchlist
               </button>
-              <Link href="/screener" target="_blank" style={{ textDecoration: 'none' }}>
-                <button
+              <button
+                  onClick={() => setView('screener')}
                   style={{
                     padding: '8px 16px',
                     borderRadius: '8px',
                     border: '1px solid #30363d',
-                    background: 'transparent',
+                    background: view === 'screener' ? '#238636' : 'transparent',
                     color: '#c9d1d9',
                     cursor: 'pointer',
                     fontWeight: '500',
@@ -938,7 +939,6 @@ export default function Home() {
                 >
                   🔍 Screener
                 </button>
-              </Link>
               <button
                 onClick={() => setView('informe')}
                 style={{
@@ -1126,24 +1126,22 @@ export default function Home() {
                 >
                   Watchlist
                 </button>
-                <Link href="/screener" target="_blank" style={{ textDecoration: 'none' }}>
-                  <button
-                    onClick={() => setMenuOpen(false)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      borderRadius: '8px',
-                      border: '1px solid #30363d',
-                      background: 'transparent',
-                      color: '#c9d1d9',
-                      cursor: 'pointer',
-                      fontWeight: '500',
-                      textAlign: 'left',
-                    }}
-                  >
-                    🔍 Screener
-                  </button>
-                </Link>
+                <button
+                  onClick={() => { setView('screener'); setMenuOpen(false); }}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #30363d',
+                    background: view === 'screener' ? '#238636' : 'transparent',
+                    color: '#c9d1d9',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    textAlign: 'left',
+                  }}
+                >
+                  🔍 Screener
+                </button>
                 <button
                   onClick={() => { setView('informe'); setMenuOpen(false); }}
                   style={{
@@ -2118,6 +2116,11 @@ export default function Home() {
             searchStock(sym);
           }} 
         />
+      )}
+
+      {/* Vista de Screener */}
+      {view === 'screener' && (
+        <ScreenerPage />
       )}
 
       {/* Vista de Trade Validator */}
