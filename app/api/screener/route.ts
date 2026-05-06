@@ -167,7 +167,6 @@ export async function GET(request: Request) {
         results.push(...batchResults.filter((r): r is ScreenerStock => r !== null));
       }
 
-      const today = new Date();
       const dateStr = today.toISOString().split('T')[0];
 
       return NextResponse.json(

@@ -193,6 +193,40 @@ export default function ScreenerPage() {
             <ScreenerLoading />
           ) : fundamentalData ? (
             <div>
+              {/* Scoring Mode Badge */}
+              {fundamentalData.scoringMode && (
+                <div style={{ 
+                  background: '#161b22', 
+                  borderRadius: '12px', 
+                  padding: '16px 20px', 
+                  marginBottom: '20px',
+                  border: '1px solid #30363d',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '28px' }}>{fundamentalData.scoringMode.icon}</span>
+                    <div style={{ flex: 1 }}>
+                      <h4 style={{ margin: '0 0 4px', color: '#f0f6fc', fontSize: '16px' }}>
+                        Modo de hoy: {fundamentalData.scoringMode.name}
+                      </h4>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#8b949e' }}>
+                        {fundamentalData.scoringMode.focus}
+                      </p>
+                    </div>
+                    <span style={{ 
+                      background: '#23863620',
+                      color: '#3fb950',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {fundamentalData.totalUniverse} en universo • {fundamentalData.scanned} escaneadas
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Summary */}
               <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -284,7 +318,7 @@ export default function ScreenerPage() {
 
               {/* Table */}
               <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px' }}>
-                <h4 style={{ margin: '0 0 16px', color: '#f0f6fc', fontSize: '16px' }}>📋 Todas las Oportunidades ({fundamentalData.count})</h4>
+                <h4 style={{ margin: '0 0 16px', color: '#f0f6fc', fontSize: '16px' }}>📋 Todas las Oportunidades ({fundamentalData.stocks?.length || 0})</h4>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                     <thead>
