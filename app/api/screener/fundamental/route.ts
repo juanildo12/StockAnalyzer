@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
+import { getTodayInLaPaz } from '../../../../src/utils/dateUtils';
 
 const yf = new YahooFinance();
 
@@ -368,7 +369,7 @@ function getReasons(stock: any, score: number, mode: string): string[] {
 
 export async function GET(request: NextRequest) {
   try {
-    const today = new Date();
+    const today = getTodayInLaPaz();
     const combinedUniverse = Array.from(new Set([...SP500_TICKERS, ...GROWTH_MID_CAP]));
     const dailySeed = dateToSeed(today);
     const shuffledUniverse = seededShuffle(combinedUniverse, dailySeed);

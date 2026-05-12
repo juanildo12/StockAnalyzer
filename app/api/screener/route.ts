@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
+import { getTodayInLaPaz } from '../../../src/utils/dateUtils';
 
 const yf = new YahooFinance();
 
@@ -154,7 +155,7 @@ export async function GET(request: Request) {
 
   try {
     if (action === 'screener') {
-      const today = new Date();
+      const today = getTodayInLaPaz();
       const dailySeed = dateToSeed(today);
       const dailyStocks = seededShuffle(SAMPLE_STOCKS, dailySeed).slice(0, 50);
       

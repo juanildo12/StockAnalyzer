@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
 import { getOptionsAnalysis, evaluateStockForOptions } from '../../../src/services/options';
 import { getStockQuote, getTechnicalAnalysis, getHistoricalData } from '../../../src/services/yahooFinance';
+import { getTodayInLaPaz } from '../../../src/utils/dateUtils';
 
 const yf = new YahooFinance();
 
@@ -93,7 +94,7 @@ export async function GET(request: NextRequest) {
 
   if (screen === 'screener') {
     try {
-      const today = new Date();
+      const today = getTodayInLaPaz();
       const dayOfWeek = today.getDay();
       const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
       const dateStr = today.toISOString().split('T')[0];
