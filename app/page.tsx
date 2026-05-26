@@ -23,6 +23,7 @@ import TradeValidator from '@/components/TradeValidator';
 import TradeStationPanel from '@/components/TradeStationPanel';
 import ScreenerPage from '@/app/screener/page';
 
+
 interface StockQuote {
   symbol: string;
   shortName: string;
@@ -478,7 +479,7 @@ export default function Home() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [view, setView] = useState<'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'framework' | 'options' | 'trade-validator' | 'tradestation' | 'screener'>('analyzer');
+  const [view, setView] = useState<'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'framework' | 'options' | 'trade-validator' | 'tradestation' | 'screener'>('analyzer');
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -939,6 +940,7 @@ export default function Home() {
                 >
                   🔍 Screener
                 </button>
+
               <button
                 onClick={() => setView('informe')}
                 style={{
@@ -952,6 +954,20 @@ export default function Home() {
                 }}
               >
                 Informe
+              </button>
+              <button
+                onClick={() => setView('risk-report')}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #30363d',
+                  background: view === 'risk-report' ? '#238636' : 'transparent',
+                  color: '#c9d1d9',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                }}
+              >
+                Risk Report
               </button>
               <button
                 onClick={() => setView('framework')}
@@ -1142,6 +1158,7 @@ export default function Home() {
                 >
                   🔍 Screener
                 </button>
+
                 <button
                   onClick={() => { setView('informe'); setMenuOpen(false); }}
                   style={{
@@ -1156,6 +1173,21 @@ export default function Home() {
                   }}
                 >
                   Informe
+                </button>
+                <button
+                  onClick={() => { setView('risk-report'); setMenuOpen(false); }}
+                  style={{
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #30363d',
+                    background: view === 'risk-report' ? '#238636' : 'transparent',
+                    color: '#c9d1d9',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    textAlign: 'left',
+                  }}
+                >
+                  Risk Report
                 </button>
                 <button
                   onClick={() => { setView('framework'); setMenuOpen(false); }}
@@ -2098,6 +2130,19 @@ export default function Home() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Vista de Risk Report */}
+      {view === 'risk-report' && (
+        data ? <RiskReport data={data} symbol={symbol} /> : (
+          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', textAlign: 'center' }}>
+            <div style={{ background: '#0d1117', borderRadius: '16px', padding: '80px 32px', border: '1px solid #30363d' }}>
+              <p style={{ fontSize: '48px', margin: '0 0 16px' }}>📊</p>
+              <p style={{ color: '#8b949e', fontSize: '16px' }}>Analiza una acción primero para ver su Risk Report</p>
+              <p style={{ color: '#8b949e', fontSize: '13px' }}>Usa el Analizador para buscar un ticker</p>
+            </div>
+          </div>
+        )
       )}
 
       {/* Vista de Framework PRO */}
@@ -4168,6 +4213,307 @@ function FrameworkView({ data }: { data: any }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function formatLargeNum(n: number): string {
+  if (n >= 1e12) return '$' + (n / 1e12).toFixed(2) + 'T';
+  if (n >= 1e9) return '$' + (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+  return '$' + n.toLocaleString();
+}
+
+function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
+  const [page, setPage] = useState(1);
+  const q = data.quote;
+  const s = data.summary;
+  const t = data.technical;
+  const r = data.recommendation;
+
+  const price = q.regularMarketPrice;
+  const change = q.regularMarketChange;
+  const changePct = q.regularMarketChangePercent;
+  const isPos = change >= 0;
+  const mcap = q.marketCap || 0;
+  const pe = q.peRatio || s.peRatio || 0;
+  const revGrowth = s.revenueGrowthPercent || 0;
+  const netMargin = s.profitMarginsPercent || 0;
+  const totalRev = s.totalRevenue || 0;
+  const companyName = q.longName || q.shortName || symbol;
+
+  const strengthScore = (() => {
+    let score = 50;
+    if (pe > 0 && pe < 15) score += 15;
+    else if (pe > 30) score -= 10;
+    if (revGrowth > 10) score += 15;
+    else if (revGrowth > 0) score += 5;
+    else score -= 10;
+    if (netMargin > 20) score += 15;
+    else if (netMargin > 10) score += 5;
+    if (s.totalCash > s.totalDebt) score += 10;
+    else score -= 5;
+    if (t?.trend === 'up' || t?.signal === 'buy') score += 10;
+    else if (t?.trend === 'down') score -= 5;
+    if (r?.confidence > 70) score += 10;
+    else if (r?.confidence > 50) score += 5;
+    return Math.max(0, Math.min(100, Math.round(score)));
+  })();
+  const gaugeScore = 100 - strengthScore;
+  const gaugeAngle = -90 + (gaugeScore / 100) * 180;
+  const riskLabel = gaugeScore <= 30 ? 'Low Risk' : gaugeScore <= 60 ? 'Medium Risk' : 'High Risk';
+  const riskColor = gaugeScore <= 30 ? '#22c55e' : gaugeScore <= 60 ? '#f59e0b' : '#ef4444';
+
+  const verAction = data.recommendation?.action || s.verdict || 'HOLD';
+  const verColor = verAction === 'COMPRAR' || verAction === 'BUY' ? '#3fb950' : verAction === 'VENDER' || verAction === 'SELL' ? '#ef4444' : '#f59e0b';
+
+  const cardBase = { background: '#161b22', borderRadius: '12px', padding: '20px', border: '1px solid #30363d' };
+
+  const clipboardText = [
+    `${symbol} RISK SCORE REPORT`,
+    `Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+    '',
+    `TICKER: ${symbol} | ${companyName}`,
+    `Price: $${price.toFixed(2)} (${isPos ? '+' : ''}${change.toFixed(2)}, ${isPos ? '+' : ''}${changePct.toFixed(2)}%)`,
+    '',
+    `RISK SCORE: ${gaugeScore}/100 (${riskLabel})`,
+    `Strength Score: ${strengthScore}/100`,
+    `P/E: ${pe.toFixed(2)}`,
+    `Revenue Growth: ${revGrowth >= 0 ? '+' : ''}${revGrowth.toFixed(1)}%`,
+    `Net Margin: ${netMargin.toFixed(1)}%`,
+    `Market Cap: ${formatLargeNum(mcap)}`,
+    `Verdict: ${verAction}`,
+  ].join('\n');
+
+  return (
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={() => setPage(1)} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid #30363d', background: page === 1 ? '#238636' : 'transparent', color: '#c9d1d9', cursor: 'pointer', fontWeight: '500', fontSize: '13px' }}>Page 1 · Overview</button>
+          <button onClick={() => setPage(2)} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid #30363d', background: page === 2 ? '#238636' : 'transparent', color: '#c9d1d9', cursor: 'pointer', fontWeight: '500', fontSize: '13px' }}>Page 2 · Deep Dive</button>
+        </div>
+        <button onClick={() => navigator.clipboard.writeText(clipboardText)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #30363d', background: 'transparent', color: '#8b949e', cursor: 'pointer', fontSize: '13px' }}>Copy Report</button>
+      </div>
+
+      {page === 1 && (
+        <div style={{ background: '#0d1117', borderRadius: '16px', padding: '32px', border: '1px solid #30363d' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '20px', borderBottom: '1px solid #30363d' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '24px', fontWeight: '700', background: '#1a6df5', color: '#fff', padding: '6px 16px', borderRadius: '8px' }}>{symbol}</span>
+              <div>
+                <div style={{ fontWeight: '600', fontSize: '16px', color: '#f0f6fc' }}>{companyName}</div>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '28px', fontWeight: '600', color: '#f0f6fc' }}>${price.toFixed(2)}</div>
+              <div style={{ color: isPos ? '#3fb950' : '#ef4444', fontSize: '14px' }}>{isPos ? '+' : ''}{change.toFixed(2)} ({isPos ? '+' : ''}{changePct.toFixed(2)}%)</div>
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', color: '#8b949e', marginBottom: '16px' }}>Risk Score</div>
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <svg width="200" height="120" viewBox="0 0 200 120">
+                <defs><linearGradient id="gGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#22c55e"/><stop offset="30%" stopColor="#f59e0b"/><stop offset="60%" stopColor="#f97316"/><stop offset="100%" stopColor="#ef4444"/></linearGradient></defs>
+                <path d="M 20 95 A 80 80 0 0 1 180 95" fill="none" stroke="#21262d" strokeWidth="14" strokeLinecap="round"/>
+                <path d="M 20 95 A 80 80 0 0 1 180 95" fill="none" stroke="url(#gGrad)" strokeWidth="14" strokeLinecap="round" strokeDasharray="201" strokeDashoffset="0"/>
+                <line x1="100" y1="95" x2={100 + 55 * Math.cos((gaugeAngle - 90) * Math.PI / 180)} y2={95 + 55 * Math.sin((gaugeAngle - 90) * Math.PI / 180)} stroke="#e8eaed" strokeWidth="2" strokeLinecap="round"/>
+                <circle cx="100" cy="95" r="4" fill="#e8eaed"/>
+              </svg>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '32px', fontWeight: '700', color: '#f0f6fc', marginTop: '-16px' }}>{gaugeScore}</div>
+              <div style={{ fontSize: '11px', color: '#8b949e' }}>{riskLabel} · Score: <span style={{ fontWeight: '600', color: riskColor }}>{gaugeScore}/100</span></div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px', marginBottom: '28px' }}>
+            {[
+              { label: 'Market Cap', val: formatLargeNum(mcap) },
+              { label: 'P/E Ratio', val: pe ? pe.toFixed(2) : 'N/A' },
+              { label: 'Revenue TTM', val: formatLargeNum(totalRev) },
+              { label: 'Rev. Growth', val: (revGrowth >= 0 ? '+' : '') + revGrowth.toFixed(1) + '%' },
+              { label: 'Net Margin', val: netMargin.toFixed(1) + '%' },
+              { label: 'Strength', val: strengthScore + '/100' },
+            ].map(k => (
+              <div key={k.label} style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: '10px', padding: '14px 12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#8b949e' }}>{k.label}</div>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '16px', fontWeight: '600', color: '#f0f6fc', marginTop: '6px' }}>{k.val}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginBottom: '28px' }}>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.5px', color: '#8b949e', marginBottom: '12px' }}>Technical Snapshot</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+              {[
+                { label: 'RSI (14)', val: t?.rsi?.toFixed(1) || 'N/A' },
+                { label: 'Trend', val: t?.trend || 'N/A' },
+                { label: 'Signal', val: t?.signal || 'N/A' },
+                { label: 'Confidence', val: r?.confidence ? r.confidence + '%' : 'N/A' },
+              ].map(k => (
+                <div key={k.label} style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: '10px', padding: '14px 12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#8b949e' }}>{k.label}</div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '16px', fontWeight: '600', color: '#f0f6fc', marginTop: '6px' }}>{k.val}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '28px' }}>
+            {[
+              { title: 'Valuation', color: pe > 25 ? '#f59e0b' : '#22c55e', grade: pe > 25 ? 'Premium' : 'Fair', rows: [
+                { label: 'P/E (TTM)', val: pe ? pe.toFixed(2) : 'N/A' },
+                { label: 'Market Cap', val: formatLargeNum(mcap) },
+                { label: '52W High', val: q.fiftyTwoWeekHigh ? '$' + q.fiftyTwoWeekHigh.toFixed(2) : 'N/A' },
+                { label: '52W Low', val: q.fiftyTwoWeekLow ? '$' + q.fiftyTwoWeekLow.toFixed(2) : 'N/A' },
+                { label: 'Target Price', val: q.targetMeanPrice ? '$' + q.targetMeanPrice.toFixed(2) : 'N/A' },
+              ]},
+              { title: 'Financial Health', color: s.totalCash > s.totalDebt ? '#22c55e' : '#f59e0b', grade: s.totalCash > s.totalDebt ? 'Strong' : 'Watch', rows: [
+                { label: 'Total Cash', val: formatLargeNum(s.totalCash) },
+                { label: 'Total Debt', val: formatLargeNum(s.totalDebt) },
+                { label: 'Cash/Debt', val: s.totalDebt > 0 ? (s.totalCash / s.totalDebt).toFixed(2) : 'N/A' },
+                { label: 'Profit Margin', val: netMargin.toFixed(1) + '%' },
+                { label: 'Cash Class', val: s.cashClassification || 'N/A' },
+              ]},
+              { title: 'Growth', color: revGrowth > 5 ? '#22c55e' : '#ef4444', grade: revGrowth > 5 ? 'Growing' : 'Stalling', rows: [
+                { label: 'Revenue YoY', val: (revGrowth >= 0 ? '+' : '') + revGrowth.toFixed(1) + '%' },
+                { label: 'Avg P/E 6M', val: s.avgPe6Months ? s.avgPe6Months.toFixed(2) : 'N/A' },
+                { label: 'Projected Price', val: s.projectedPrice ? '$' + s.projectedPrice.toFixed(2) : 'N/A' },
+                { label: 'Potential Return', val: s.potentialReturn ? (s.potentialReturn >= 0 ? '+' : '') + s.potentialReturn.toFixed(1) + '%' : 'N/A' },
+                { label: 'Verdict', val: verAction },
+              ]},
+            ].map(card => (
+              <div key={card.title} style={cardBase}>
+                <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1.2px', color: '#8b949e', marginBottom: '14px', paddingBottom: '10px', borderBottom: '1px solid #30363d' }}>{card.title}</div>
+                {card.rows.map((r, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', fontSize: '13px', borderTop: i > 0 ? '1px solid #0d1117' : 'none' }}>
+                    <span style={{ color: '#8b949e' }}>{r.label}</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: '500', color: '#f0f6fc' }}>{r.val}</span>
+                  </div>
+                ))}
+                <div style={{ marginTop: '8px', paddingTop: '10px', borderTop: '1px solid #30363d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', color: '#8b949e' }}>Grade</span>
+                  <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '6px', fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', fontWeight: '600', background: card.color + '20', color: card.color }}>{card.grade}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.5px', color: '#8b949e', marginBottom: '16px' }}>Score Breakdown · 35/35/30 Weighting</div>
+            {[
+              { label: 'Valuation', pct: Math.min(100, Math.max(10, pe > 0 && pe < 15 ? 80 : pe < 25 ? 60 : 40)), color: '#3b82f6', max: '/35' },
+              { label: 'Financial Health', pct: Math.min(100, Math.max(10, s.totalCash > s.totalDebt ? 75 : 45)), color: '#22c55e', max: '/35' },
+              { label: 'Growth', pct: Math.min(100, Math.max(10, revGrowth > 10 ? 85 : revGrowth > 0 ? 60 : 30)), color: '#f59e0b', max: '/30' },
+            ].map(b => (
+              <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '14px' }}>
+                <span style={{ width: '120px', fontSize: '13px', color: '#8b949e' }}>{b.label}</span>
+                <div style={{ flex: 1, height: '20px', background: '#21262d', borderRadius: '10px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: b.pct + '%', borderRadius: '10px', background: b.color }}></div>
+                </div>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '14px', color: '#f0f6fc', width: '50px', textAlign: 'right' }}>{b.pct}</span>
+                <span style={{ fontSize: '11px', color: '#8b949e', width: '40px' }}>{b.max}</span>
+              </div>
+            ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #30363d' }}>
+              <span style={{ width: '120px', fontSize: '13px', fontWeight: '600', color: '#f0f6fc' }}>Total Score</span>
+              <div style={{ flex: 1, height: '24px', background: '#21262d', borderRadius: '10px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: strengthScore + '%', borderRadius: '10px', background: 'linear-gradient(90deg, #1a6df5, #3b82f6, #22c55e)' }}></div>
+              </div>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '16px', fontWeight: '700', color: '#f0f6fc', width: '50px', textAlign: 'right' }}>{strengthScore}</span>
+              <span style={{ fontSize: '11px', color: '#8b949e', width: '40px' }}>/100</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {page === 2 && (
+        <div style={{ background: '#0d1117', borderRadius: '16px', padding: '32px', border: '1px solid #30363d' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '20px', borderBottom: '1px solid #30363d' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '24px', fontWeight: '700', background: '#1a6df5', color: '#fff', padding: '6px 16px', borderRadius: '8px' }}>{symbol}</span>
+              <div>
+                <div style={{ fontWeight: '600', fontSize: '16px', color: '#f0f6fc' }}>{companyName}</div>
+                <div style={{ fontSize: '12px', color: '#8b949e' }}>Deep Dive</div>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '11px', color: '#8b949e' }}>Report Generated</div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', color: '#f0f6fc' }}>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+            </div>
+          </div>
+
+          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', color: '#8b949e', marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid #30363d' }}>Key Fundamentals</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '28px' }}>
+            {[
+              ['Cash', formatLargeNum(s.totalCash)],
+              ['Debt', formatLargeNum(s.totalDebt)],
+              ['Avg Profit Margin (4Y)', s.avgProfitMargin ? s.avgProfitMargin.toFixed(1) + '%' : 'N/A'],
+              ['Revenue Growth', (revGrowth >= 0 ? '+' : '') + revGrowth.toFixed(1) + '%'],
+              ['Projected Price', s.projectedPrice ? '$' + s.projectedPrice.toFixed(2) : 'N/A'],
+              ['Potential Return', s.potentialReturn ? (s.potentialReturn >= 0 ? '+' : '') + s.potentialReturn.toFixed(1) + '%' : 'N/A'],
+              ['Target Low - High', q.targetMeanPrice ? '$' + q.targetMeanPrice.toFixed(2) : 'N/A'],
+              ['Support / Resistance', t?.support && t?.resistance ? '$' + t.support.toFixed(2) + ' / $' + t.resistance.toFixed(2) : 'N/A'],
+            ].map((r, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: '#161b22', borderRadius: '8px', fontSize: '13px', border: '1px solid #30363d' }}>
+                <span style={{ color: '#8b949e' }}>{r[0]}</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: '500', color: '#f0f6fc' }}>{r[1]}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', color: '#8b949e', marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid #30363d' }}>Strategy & Targets</div>
+          <div style={{ background: 'linear-gradient(135deg, #0d1117, #161b22)', border: '1px solid #30363d', borderRadius: '12px', padding: '20px', marginBottom: '28px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div>
+              <div style={{ fontSize: '12px', marginBottom: '12px', color: '#f0f6fc' }}>Price Targets</div>
+              {[
+                ['Buy Zone Low', r?.buyZoneLow ? '$' + r.buyZoneLow.toFixed(2) : s.buyZoneLow ? '$' + s.buyZoneLow.toFixed(2) : 'N/A'],
+                ['Buy Zone High', r?.buyZoneHigh ? '$' + r.buyZoneHigh.toFixed(2) : s.buyZoneHigh ? '$' + s.buyZoneHigh.toFixed(2) : 'N/A'],
+                ['Target Price', r?.targetPrice ? '$' + r.targetPrice.toFixed(2) : s.targetMeanPrice ? '$' + s.targetMeanPrice.toFixed(2) : 'N/A'],
+                ['Stop Loss', r?.stopLoss ? '$' + r.stopLoss.toFixed(2) : s.stopLoss ? '$' + s.stopLoss.toFixed(2) : 'N/A'],
+                ['Target 1', s.target1 ? '$' + s.target1.toFixed(2) : 'N/A'],
+                ['Target 2', s.target2 ? '$' + s.target2.toFixed(2) : 'N/A'],
+              ].map((r, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: '13px', borderBottom: '1px solid #0d1117' }}>
+                  <span style={{ color: '#8b949e' }}>{r[0]}</span>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: '500', color: '#f0f6fc' }}>{r[1]}</span>
+                </div>
+              ))}
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', marginBottom: '12px', color: '#f0f6fc' }}>Recommendation</div>
+              <div style={{ padding: '20px', background: verColor + '20', borderRadius: '12px', textAlign: 'center', marginBottom: '12px' }}>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: verColor }}>{r?.action || s.verdict || 'HOLD'}</div>
+                {r?.confidence && <div style={{ fontSize: '13px', color: '#8b949e', marginTop: '4px' }}>Confidence: {r.confidence}%</div>}
+              </div>
+              {r?.reasoning && (
+                <div style={{ fontSize: '12px', color: '#8b949e', padding: '12px', background: '#0d1117', borderRadius: '8px', lineHeight: '1.5' }}>
+                  {r.reasoning}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'center', padding: '28px 20px', borderTop: '1px solid #30363d' }}>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', color: '#8b949e', marginBottom: '8px' }}>Bottom Line</div>
+            <div style={{ maxWidth: '500px', margin: '16px auto', height: '8px', background: '#21262d', borderRadius: '4px', overflow: 'hidden', display: 'flex' }}>
+              <div style={{ height: '100%', width: strengthScore + '%', background: gaugeScore <= 30 ? '#22c55e' : gaugeScore <= 60 ? '#f59e0b' : '#ef4444' }}></div>
+              <div style={{ height: '100%', flex: 1, background: '#21262d' }}></div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', maxWidth: '500px', margin: '6px auto 0', fontSize: '10px', color: '#8b949e' }}>
+              <span>Low Risk</span><span>Medium</span><span>High Risk</span>
+            </div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#8b949e', marginTop: '4px' }}>
+              Strength Score: {strengthScore}/100 · Risk Score: {gaugeScore}/100
+            </div>
+            <div style={{ fontSize: '18px', fontWeight: '600', marginTop: '20px', color: verColor }}>
+              {verAction} · {riskLabel} ({gaugeScore}/100)
+            </div>
+            <div style={{ fontSize: '13px', color: '#8b949e', marginTop: '6px', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
+              {r?.reasoning || `Based on the analysis of ${symbol}, the stock shows a strength score of ${strengthScore}/100 with a risk score of ${gaugeScore}/100. Current P/E is ${pe.toFixed(2)} with revenue growth of ${revGrowth.toFixed(1)}%.`}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
