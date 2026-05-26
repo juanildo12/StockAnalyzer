@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
-import { getTodayInLaPaz } from '../../../../src/utils/dateUtils';
 
 const yf = new YahooFinance();
+
+export const dynamic = 'force-dynamic';
 
 const SP500_TICKERS = [
   'AAPL', 'MSFT', 'GOOGL', 'GOOG', 'AMZN', 'NVDA', 'META', 'TSLA', 'BRK-B', 'V',
@@ -82,7 +83,8 @@ const SCORING_MODES = [
 ];
 
 function getDailyMode(date: Date) {
-  const seed = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+  const d = new Date(date.getTime() - 4 * 60 * 60 * 1000);
+  const seed = d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
   return SCORING_MODES[seed % SCORING_MODES.length];
 }
 
@@ -100,7 +102,8 @@ function seededShuffle<T>(array: T[], seed: number): T[] {
 }
 
 function dateToSeed(date: Date): number {
-  return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+  const d = new Date(date.getTime() - 4 * 60 * 60 * 1000);
+  return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
 }
 
 interface StockFundamental {
@@ -369,7 +372,7 @@ function getReasons(stock: any, score: number, mode: string): string[] {
 
 export async function GET(request: NextRequest) {
   try {
-    const today = getTodayInLaPaz();
+    const today = new Date();
     const combinedUniverse = Array.from(new Set([...SP500_TICKERS, ...GROWTH_MID_CAP]));
     const dailySeed = dateToSeed(today);
     const shuffledUniverse = seededShuffle(combinedUniverse, dailySeed);
@@ -480,9 +483,10 @@ export async function GET(request: NextRequest) {
     const dateStr = today.toISOString().split('T')[0];
     const totalAnalyzed = validStocks.length;
 
-    return NextResponse.json({
+    const jsonResp = NextResponse.json({
       stocks: validStocks.slice(0, 30),
       count: validStocks.length,
+      _cached: false,
       totalAnalyzed: totalAnalyzed,
       totalUniverse: combinedUniverse.length,
       scanned: dailyStocks.length,
@@ -504,9 +508,13 @@ export async function GET(request: NextRequest) {
       highYield: validStocks.filter((r) => r.dividendYield > 0.02).slice(0, 10),
       growth: validStocks.filter((r) => r.revenueGrowth > 0.15).slice(0, 10),
     });
+    jsonResp.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return jsonResp;
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('Fundamental screener error:', message);
-    return NextResponse.json({ error: message }, { status: 500 });
+    const errResp = NextResponse.json({ error: message }, { status: 500 });
+    errResp.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    return errResp;
   }
 }

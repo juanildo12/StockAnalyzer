@@ -13,7 +13,7 @@ const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
 const ALPHA_VANTAGE_KEY = process.env.ALPHA_VANTAGE_KEY;
 
-const CACHE_TTL = 5 * 60 * 1000;
+const CACHE_TTL = 1 * 60 * 1000;
 const cache = new Map<string, { data: any; timestamp: number }>();
 
 function getCached<T>(key: string): T | null {

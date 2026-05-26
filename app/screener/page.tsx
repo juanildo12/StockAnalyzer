@@ -91,7 +91,7 @@ export default function ScreenerPage() {
     setFundamentalLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/screener/fundamental');
+      const res = await fetch(`/api/screener/fundamental?t=${Date.now()}`);
       if (!res.ok) throw new Error('Error loading screener');
       const json = await res.json();
       setFundamentalData(json);
@@ -108,7 +108,7 @@ export default function ScreenerPage() {
     setOptionsLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/options?screen=screener');
+      const res = await fetch(`/api/options?screen=screener&t=${Date.now()}`);
       if (!res.ok) throw new Error('Error loading screener');
       const json = await res.json();
       setOptionsData(json);

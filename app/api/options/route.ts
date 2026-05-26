@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
 import { getOptionsAnalysis, evaluateStockForOptions } from '../../../src/services/options';
 import { getStockQuote, getTechnicalAnalysis, getHistoricalData } from '../../../src/services/yahooFinance';
-import { getTodayInLaPaz } from '../../../src/utils/dateUtils';
 
 const yf = new YahooFinance();
+
+export const dynamic = 'force-dynamic';
 
 const QUALITY_POOL = [
   'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'AMD', 'INTC', 'JPM',
@@ -41,7 +42,14 @@ function seededShuffle<T>(array: T[], seed: number): T[] {
 }
 
 function dateToSeed(date: Date): number {
-  return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+  const d = new Date(date.getTime() - 4 * 60 * 60 * 1000);
+  return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+}
+
+function jsonResponse(data: any, status = 200) {
+  const res = NextResponse.json(data, { status });
+  res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  return res;
 }
 
 export async function GET(request: NextRequest) {
@@ -49,7 +57,7 @@ export async function GET(request: NextRequest) {
   const screen = request.nextUrl.searchParams.get('screen');
 
   if (!symbol && !screen) {
-    return NextResponse.json({ error: 'Symbol or screen parameter required' }, { status: 400 });
+    return jsonResponse({ error: 'Symbol or screen parameter required' }, 400);
   }
 
   if (symbol) {
@@ -64,12 +72,12 @@ export async function GET(request: NextRequest) {
       ]);
 
       if (!quote) {
-        return NextResponse.json({ error: `Ticker "${sym}" no encontrado` }, { status: 404 });
+        return jsonResponse({ error: `Ticker "${sym}" no encontrado` }, 404);
       }
 
       const stockEvaluation = evaluateStockForOptions(sym, quote, technical, historical);
 
-      return NextResponse.json({
+      return jsonResponse({
         optionsAnalysis,
         stockEvaluation,
         quote: {
@@ -88,13 +96,13 @@ export async function GET(request: NextRequest) {
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return NextResponse.json({ error: message }, { status: 500 });
+      return jsonResponse({ error: message }, 500);
     }
   }
 
   if (screen === 'screener') {
     try {
-      const today = getTodayInLaPaz();
+      const today = new Date();
       const dayOfWeek = today.getDay();
       const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
       const dateStr = today.toISOString().split('T')[0];
@@ -192,7 +200,7 @@ export async function GET(request: NextRequest) {
       const buena = scoredStocks.filter((r) => r.suitabilityScore >= 55 && r.suitabilityScore < 75);
       const regular = scoredStocks.filter((r) => r.suitabilityScore >= 35 && r.suitabilityScore < 55);
 
-      return NextResponse.json({
+      return jsonResponse({
         all: scoredStocks.slice(0, 30),
         totalScanned: scoredStocks.length,
         poolSize: QUALITY_POOL.length,
@@ -214,9 +222,9 @@ export async function GET(request: NextRequest) {
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error('Screener error:', message);
-      return NextResponse.json({ error: message }, { status: 500 });
+      return jsonResponse({ error: message }, 500);
     }
   }
 
-  return NextResponse.json({ error: 'Invalid parameters' }, { status: 400 });
+  return jsonResponse({ error: 'Invalid parameters' }, 400);
 }

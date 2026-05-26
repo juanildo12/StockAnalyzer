@@ -4,6 +4,14 @@ import { analyzeStock } from '../../../src/services/stockAnalysis';
 import { getAllSourceData, mergeWithYahooData } from '../../../src/services/dataSources';
 import { generateInformeDetail } from '../../../src/services/informeGenerator';
 
+export const dynamic = 'force-dynamic';
+
+function jsonResponse(data: any, status = 200) {
+  const res = NextResponse.json(data, { status });
+  res.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  return res;
+}
+
 export async function GET(request: NextRequest) {
   const symbol = request.nextUrl.searchParams.get('symbol');
   const symbols = request.nextUrl.searchParams.get('symbols');
@@ -25,15 +33,15 @@ export async function GET(request: NextRequest) {
         }
       }
       
-      return NextResponse.json({ quotes });
+      return jsonResponse({ quotes });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      return NextResponse.json({ error: message, quotes: [] }, { status: 500 });
+      return jsonResponse({ error: message, quotes: [] }, 500);
     }
   }
 
   if (!symbol) {
-    return NextResponse.json({ error: 'Symbol is required' }, { status: 400 });
+    return jsonResponse({ error: 'Symbol is required' }, 400);
   }
 
   const sym = symbol.toUpperCase();
@@ -42,7 +50,7 @@ export async function GET(request: NextRequest) {
     const data = await getStockData(sym);
 
     if (!data.quote || data.quote.regularMarketPrice === 0) {
-      return NextResponse.json({ error: `Ticker "${sym}" no encontrado` }, { status: 404 });
+      return jsonResponse({ error: `Ticker "${sym}" no encontrado` }, 404);
     }
 
     const multiSourceData = await getAllSourceData(sym);
@@ -113,7 +121,8 @@ export async function GET(request: NextRequest) {
       informeDetail = null;
     }
 
-    return NextResponse.json({
+    return jsonResponse({
+      _cached: false,
       quote,
       historical: enhancedData.historical,
       summary: {
@@ -147,6 +156,7 @@ export async function GET(request: NextRequest) {
         totalRevenue: summary?.totalRevenue || 0,
         freeCashflow: summary?.freeCashflow || 0,
         marketCap,
+
       },
       priceTarget: enhancedData.priceTarget,
       technical,
@@ -158,6 +168,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return jsonResponse({ error: message }, 500);
   }
 }
