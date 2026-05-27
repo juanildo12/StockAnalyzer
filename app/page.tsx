@@ -4495,15 +4495,14 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
 
           <div style={{ textAlign: 'center', padding: '28px 20px', borderTop: '1px solid #30363d' }}>
             <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', color: '#8b949e', marginBottom: '8px' }}>Bottom Line</div>
-            <div style={{ maxWidth: '500px', margin: '16px auto', height: '8px', background: '#21262d', borderRadius: '4px', overflow: 'hidden', display: 'flex' }}>
-              <div style={{ height: '100%', width: strengthScore + '%', background: gaugeScore <= 30 ? '#22c55e' : gaugeScore <= 60 ? '#f59e0b' : '#ef4444' }}></div>
-              <div style={{ height: '100%', flex: 1, background: '#21262d' }}></div>
+            <div style={{ maxWidth: '500px', margin: '16px auto', height: '8px', background: '#21262d', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: gaugeScore + '%', background: gaugeScore <= 30 ? '#22c55e' : gaugeScore <= 60 ? '#f59e0b' : '#ef4444', borderRadius: '4px' }}></div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', maxWidth: '500px', margin: '6px auto 0', fontSize: '10px', color: '#8b949e' }}>
               <span>Low Risk</span><span>Medium</span><span>High Risk</span>
             </div>
             <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#8b949e', marginTop: '4px' }}>
-              Strength Score: {strengthScore}/100 · Risk Score: {gaugeScore}/100
+              Risk Score: {gaugeScore}/100
             </div>
             <div style={{ fontSize: '18px', fontWeight: '600', marginTop: '20px', color: verColor }}>
               {verAction} · {riskLabel} ({gaugeScore}/100)
