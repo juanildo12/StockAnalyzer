@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getStockData } from '../../../src/services/yahooFinance';
+import { getStockData, getStockNews } from '../../../src/services/yahooFinance';
 import { analyzeStock } from '../../../src/services/stockAnalysis';
 import { getAllSourceData, mergeWithYahooData } from '../../../src/services/dataSources';
 import { generateInformeDetail } from '../../../src/services/informeGenerator';
+import { calculateNNWC } from '../../../src/services/nnwcAnalysis';
+import { analyzeGraham } from '../../../src/services/grahamAnalysis';
+import { enrichStockData, extractFinancialMetrics, extractFinnhubMetrics } from '../../../src/services/polygonFinnhubEnrichment';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +50,11 @@ export async function GET(request: NextRequest) {
   const sym = symbol.toUpperCase();
 
   try {
-    const data = await getStockData(sym);
+    const [data, enrichment, yahooNews] = await Promise.all([
+      getStockData(sym),
+      enrichStockData(sym),
+      getStockNews(sym).catch(() => []),
+    ]);
 
     if (!data.quote || data.quote.regularMarketPrice === 0) {
       return jsonResponse({ error: `Ticker "${sym}" no encontrado` }, 404);
@@ -68,31 +75,58 @@ export async function GET(request: NextRequest) {
     const summary = enhancedData.summary;
     const quote = enhancedData.quote;
 
-    // Debug: log summary keys if available
-    console.log('Summary keys:', summary ? Object.keys(summary) : 'null');
-    console.log('Profit margins in summary:', summary?.profitMargins);
+    // ---- Polygon + Finnhub enrichment ----
+    const pf = extractFinancialMetrics(enrichment.polygon.financials);
+    const fm = extractFinnhubMetrics(enrichment.finnhub.metrics);
 
-    const totalCash = summary?.totalCash || 0;
-    const totalDebt = summary?.totalDebt || 0;
-    const profitMargins = (summary?.profitMargins && summary.profitMargins > 0) ? summary.profitMargins : (quote?.profitMargins || 0.25);
-    const revenueGrowth = (summary?.revenueGrowth && summary.revenueGrowth > 0) ? summary.revenueGrowth : 0.15;
-    const peRatio = quote.peRatio || summary?.peRatio || 0;
+    const totalCash = pf.totalCash || summary?.totalCash || 0;
+    const totalDebt = pf.totalDebt || summary?.totalDebt || 0;
+    const totalLiabilities = pf.totalLiabilities || summary?.totalLiabilities || 0;
+    const currentAssets = pf.currentAssets || summary?.currentAssets || 0;
+    const currentLiabilities = pf.currentLiabilities || summary?.currentLiabilities || 0;
+    const accountsReceivable = pf.accountsReceivable || summary?.accountsReceivable || 0;
+    const inventory = pf.inventory || summary?.inventory || 0;
+    const totalRevenue = pf.revenue || summary?.totalRevenue || 0;
 
-    // Calculate avgProfitMargin - use Yahoo data directly (already in percentage)
+    const peRatio = fm.peRatio ?? quote.peRatio ?? summary?.peRatio ?? 0;
+    // Finnhub returns percentages (25 for 25%), normalize to decimal
+    const rawPM = fm.profitMargin;
+    const pmDecimal = rawPM != null && rawPM > 0 ? (rawPM > 1 ? rawPM / 100 : rawPM) : 0;
+    const profitMargins = pmDecimal || (summary?.profitMargins ?? quote?.profitMargins ?? 0.25);
+    const rawRG = fm.revenueGrowth;
+    const rgDecimal = rawRG != null && rawRG > 0 ? (rawRG > 1 ? rawRG / 100 : rawRG) : 0;
+    const revenueGrowth = rgDecimal || (summary?.revenueGrowth ?? 0.15);
+    const marketCap = fm.marketCapitalization ?? quote.marketCap ?? 0;
+    const currentPrice = quote.regularMarketPrice || 0;
+
     const avgProfitMargin = summary?.avgProfitMargin || profitMargins * 100 || 25;
-
-    // Calculate revenueGrowth manually if it's 0 - use growth from Yahoo data
-    const calculatedRevenueGrowth = revenueGrowth > 0 
-      ? revenueGrowth * 100 
-      : 15; // Default to 15% if no data
+    const calculatedRevenueGrowth = revenueGrowth > 0 ? revenueGrowth * 100 : 15;
     const debtToCash = totalCash > 0 ? totalDebt / totalCash : 0;
     const avgPe6Months = peRatio > 0 ? peRatio * 0.95 : 20;
-    
-    const marketCap = quote.marketCap || 0;
-    const currentPrice = quote.regularMarketPrice || 0;
+
+    const priceToBook = fm.priceToBook ?? quote.priceToBook ?? summary?.priceToBook ?? 0;
+
+    const grahamResult = analyzeGraham({
+      cash: totalCash,
+      totalDebt,
+      currentAssets,
+      currentLiabilities,
+      totalLiabilities,
+      marketCap,
+      priceToBook,
+      bookValue: summary?.bookValue,
+    });
+
+    const nnwcResult = calculateNNWC({
+      cash: totalCash,
+      receivables: accountsReceivable,
+      inventory,
+      totalLiabilities,
+      marketCap,
+    });
     const sharesOutstanding = marketCap > 0 && currentPrice > 0 ? marketCap / currentPrice : 0;
     
-    const revenueLastYear = summary?.totalRevenue || marketCap * 0.3;
+    const revenueLastYear = totalRevenue || marketCap * 0.3;
     const earningsLastYear = revenueLastYear * profitMargins;
     const projectedMarketCap = earningsLastYear * avgPe6Months;
     const projectedPrice = sharesOutstanding > 0 ? projectedMarketCap / sharesOutstanding : currentPrice * 1.15;
@@ -100,7 +134,7 @@ export async function GET(request: NextRequest) {
 
     const buyZoneLow = currentPrice * 0.9;
     const buyZoneHigh = currentPrice * 0.97;
-    const target1 = enhancedData.priceTarget?.targetMean || projectedPrice * 1.15;
+    const target1 = enrichment.finnhub.priceTarget?.targetMean || enhancedData.priceTarget?.targetMean || projectedPrice * 1.15;
     const target2 = target1 * 1.25;
     const stopLoss = currentPrice * 0.85;
 
@@ -153,11 +187,17 @@ export async function GET(request: NextRequest) {
         peClassification: analysis.fundamentals.principle1.description,
         cashClassification: analysis.fundamentals.principle2.description,
         debtClassification: analysis.fundamentals.principle2.description,
-        totalRevenue: summary?.totalRevenue || 0,
-        freeCashflow: summary?.freeCashflow || 0,
+        totalRevenue,
+        freeCashflow: fm.freeCashFlow ?? summary?.freeCashflow ?? 0,
         marketCap,
-
+        accountsReceivable,
+        inventory,
+        totalLiabilities,
+        currentAssets,
+        currentLiabilities,
       },
+      nnwc: nnwcResult,
+      graham: grahamResult,
       priceTarget: enhancedData.priceTarget,
       technical,
       fundamentals: analysis.fundamentals,
@@ -165,6 +205,23 @@ export async function GET(request: NextRequest) {
       discountScore: analysis.discountScore,
       multiSource: multiSourceData,
       informeDetail,
+      // ---- Polygon + Finnhub enriched data ----
+      polygon: enrichment.polygon,
+      finnhub: {
+        profile: enrichment.finnhub.profile,
+        metrics: fm,
+        recommendation: enrichment.finnhub.recommendation,
+        earnings: enrichment.finnhub.earnings,
+        priceTarget: enrichment.finnhub.priceTarget,
+        insiderTransactions: enrichment.finnhub.insiderTransactions,
+        socialSentiment: enrichment.finnhub.socialSentiment,
+        news: enrichment.finnhub.news,
+        yahooNews,
+        peerGroups: enrichment.finnhub.peerGroups,
+        incomeStatement: enrichment.finnhub.incomeStatement,
+        balanceSheet: enrichment.finnhub.balanceSheet,
+        cashFlow: enrichment.finnhub.cashFlow,
+      },
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';

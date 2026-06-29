@@ -204,17 +204,17 @@ export function classifyPERatio(pe: number): { label: string; description: strin
   }
 }
 
-export function classifyCashLevel(cashMillions: number): { label: string; description: string } {
-  if (cashMillions >= 10000) {
+export function classifyCashLevel(cashRaw: number): { label: string; description: string } {
+  if (cashRaw >= 1e10) {
     return { label: 'Excelente', description: 'Cash excepcional - empresa muy sólida financieramente' };
-  } else if (cashMillions >= 1000) {
+  } else if (cashRaw >= 1e9) {
     return { label: 'Muy Bueno', description: 'Cash muy fuerte - ample liquidez' };
-  } else if (cashMillions >= 500) {
+  } else if (cashRaw >= 5e8) {
     return { label: 'Bueno', description: 'Cash sólido - buena posición financiera' };
-  } else if (cashMillions >= 100) {
+  } else if (cashRaw >= 1e8) {
     return { label: 'Adecuado', description: 'Cash moderado - operación sostenible' };
-  } else if (cashMillions >= 50) {
-    return { label: 'Limitado', description: 'Cash limitado -需要注意现金流' };
+  } else if (cashRaw >= 5e7) {
+    return { label: 'Limitado', description: 'Cash limitado - monitorear flujo de caja' };
   } else {
     return { label: 'Crítico', description: 'Cash insuficiente - riesgo de insolvencia' };
   }

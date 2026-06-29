@@ -118,6 +118,11 @@ export interface StockSummary {
   ebitdaMargins: number;
   operatingCashflow: number;
   freeCashflow: number;
+  accountsReceivable?: number;
+  inventory?: number;
+  totalLiabilities?: number;
+  currentAssets?: number;
+  currentLiabilities?: number;
 }
 
 export interface StockAnalysis {
@@ -364,4 +369,22 @@ export interface ScreenerOptionsResult {
     volume: number;
     dividendYield: number;
   };
+}
+
+export interface NNWCInput {
+  cash: number;
+  receivables: number;
+  inventory: number;
+  totalLiabilities: number;
+  marketCap: number;
+}
+
+export type NNWCClassification = 'excelente' | 'cumple' | 'no-cumple' | 'negativo' | 'sin-datos';
+
+export interface NNWCResult {
+  nnwc: number;
+  discountPercent: number;
+  ratio: number;
+  classification: NNWCClassification;
+  displayMessage: string;
 }

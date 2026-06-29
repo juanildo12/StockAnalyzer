@@ -202,7 +202,16 @@ async function getSECFinancials(symbol: string): Promise<{ revenue?: number; net
   }
 }
 
-async function scrapeYahooBalanceSheet(symbol: string): Promise<{ totalCash: number; totalDebt: number }> {
+export async function scrapeYahooBalanceSheet(symbol: string): Promise<{
+  totalCash: number;
+  totalDebt: number;
+  accountsReceivable?: number;
+  inventory?: number;
+  totalLiabilities?: number;
+  currentAssets?: number;
+  currentLiabilities?: number;
+  bookValue?: number;
+}> {
   try {
     // Try fundamentalsTimeSeries endpoint - newer Yahoo Finance API
     const result: any = await (yf as any).fundamentalsTimeSeries(symbol, {
@@ -216,7 +225,16 @@ async function scrapeYahooBalanceSheet(symbol: string): Promise<{ totalCash: num
       const cash = latest?.cashAndCashEquivalents || latest?.cash || 0;
       const debt = latest?.totalDebt || 0;
       if (cash > 0 || debt > 0) {
-        return { totalCash: cash, totalDebt: debt };
+        return {
+          totalCash: cash,
+          totalDebt: debt,
+          accountsReceivable: latest?.accountsReceivable || latest?.receivables || 0,
+          inventory: latest?.inventory || 0,
+          totalLiabilities: latest?.totalLiabilitiesNetMinorityInterest || latest?.totalLiabilities || 0,
+          currentAssets: latest?.currentAssets || 0,
+          currentLiabilities: latest?.currentLiabilities || 0,
+          bookValue: latest?.totalEquityGrossMinorityInterest || latest?.stockholdersEquity || 0,
+        };
       }
     }
     
@@ -231,7 +249,16 @@ async function scrapeYahooBalanceSheet(symbol: string): Promise<{ totalCash: num
       const latest = resultQ[0];
       const cash = latest?.cashAndCashEquivalents || latest?.cash || 0;
       const debt = latest?.totalDebt || 0;
-      return { totalCash: cash, totalDebt: debt };
+      return {
+        totalCash: cash,
+        totalDebt: debt,
+        accountsReceivable: latest?.accountsReceivable || latest?.receivables || 0,
+        inventory: latest?.inventory || 0,
+        totalLiabilities: latest?.totalLiabilitiesNetMinorityInterest || latest?.totalLiabilities || 0,
+        currentAssets: latest?.currentAssets || 0,
+        currentLiabilities: latest?.currentLiabilities || 0,
+        bookValue: latest?.totalEquityGrossMinorityInterest || latest?.stockholdersEquity || 0,
+      };
     }
     
     return { totalCash: 0, totalDebt: 0 };
@@ -302,16 +329,26 @@ export async function getStockSummary(
       getAlphaVantageIncomeStatement(sym).catch(() => ({ profitMargin: 0, avgProfitMargin: 0, revenueGrowth: 0 })),
       getSECFinancials(sym).catch(() => ({})),
       getYahooBalanceSheetDirect(sym).catch(() => ({ totalCash: 0, totalDebt: 0 })),
-      scrapeYahooBalanceSheet(sym).catch(() => ({ totalCash: 0, totalDebt: 0 })),
+      scrapeYahooBalanceSheet(sym).catch(() => ({ totalCash: 0, totalDebt: 0, accountsReceivable: 0, inventory: 0, totalLiabilities: 0, currentAssets: 0, currentLiabilities: 0, bookValue: 0 })),
     ]);
 
     let totalCashRaw = 0;
     let totalDebtRaw = 0;
+    let accountsReceivableRaw = 0;
+    let inventoryRaw = 0;
+    let totalLiabilitiesRaw = 0;
+    let currentAssetsRaw = 0;
+    let currentLiabilitiesRaw = 0;
 
-    // Try scraped data first (from Yahoo finance page)
-    if (scrapedData?.totalCash > 0 || scrapedData?.totalDebt > 0) {
+    // Try scraped data first (from Yahoo finance page via fundamentalsTimeSeries)
+    if (scrapedData?.totalCash > 0 || scrapedData?.totalDebt > 0 || scrapedData?.inventory) {
       totalCashRaw = scrapedData.totalCash;
       totalDebtRaw = scrapedData.totalDebt;
+      accountsReceivableRaw = scrapedData.accountsReceivable || 0;
+      inventoryRaw = scrapedData.inventory || 0;
+      totalLiabilitiesRaw = scrapedData.totalLiabilities || 0;
+      currentAssetsRaw = scrapedData.currentAssets || 0;
+      currentLiabilitiesRaw = scrapedData.currentLiabilities || 0;
     }
 
     // Try Yahoo Finance Direct API first (new approach)
@@ -337,6 +374,19 @@ export async function getStockSummary(
           if (totalDebtRaw === 0 && latest.totalDebt && latest.totalDebt[0]?.raw !== undefined) {
             totalDebtRaw = latest.totalDebt[0].raw;
           }
+          if (accountsReceivableRaw === 0 && latest.receivables && latest.receivables[0]?.raw !== undefined) {
+            accountsReceivableRaw = latest.receivables[0].raw;
+          } else if (accountsReceivableRaw === 0 && latest.totalReceivables && latest.totalReceivables[0]?.raw !== undefined) {
+            accountsReceivableRaw = latest.totalReceivables[0].raw;
+          }
+          if (inventoryRaw === 0 && latest.inventory && latest.inventory[0]?.raw !== undefined) {
+            inventoryRaw = latest.inventory[0].raw;
+          }
+          if (totalLiabilitiesRaw === 0 && latest.totalLiabilitiesNetMinorityInterest && latest.totalLiabilitiesNetMinorityInterest[0]?.raw !== undefined) {
+            totalLiabilitiesRaw = latest.totalLiabilitiesNetMinorityInterest[0].raw;
+          } else if (totalLiabilitiesRaw === 0 && latest.totalLiabilities && latest.totalLiabilities[0]?.raw !== undefined) {
+            totalLiabilitiesRaw = latest.totalLiabilities[0].raw;
+          }
         }
       } catch (e) {
         // Try quarterly
@@ -354,6 +404,19 @@ export async function getStockSummary(
             }
             if (totalDebtRaw === 0 && latest.totalDebt && latest.totalDebt[0]?.raw !== undefined) {
               totalDebtRaw = latest.totalDebt[0].raw;
+            }
+            if (accountsReceivableRaw === 0 && latest.receivables && latest.receivables[0]?.raw !== undefined) {
+              accountsReceivableRaw = latest.receivables[0].raw;
+            } else if (accountsReceivableRaw === 0 && latest.totalReceivables && latest.totalReceivables[0]?.raw !== undefined) {
+              accountsReceivableRaw = latest.totalReceivables[0].raw;
+            }
+            if (inventoryRaw === 0 && latest.inventory && latest.inventory[0]?.raw !== undefined) {
+              inventoryRaw = latest.inventory[0].raw;
+            }
+            if (totalLiabilitiesRaw === 0 && latest.totalLiabilitiesNetMinorityInterest && latest.totalLiabilitiesNetMinorityInterest[0]?.raw !== undefined) {
+              totalLiabilitiesRaw = latest.totalLiabilitiesNetMinorityInterest[0].raw;
+            } else if (totalLiabilitiesRaw === 0 && latest.totalLiabilities && latest.totalLiabilities[0]?.raw !== undefined) {
+              totalLiabilitiesRaw = latest.totalLiabilities[0].raw;
             }
           }
         } catch (e2) {
@@ -464,6 +527,11 @@ export async function getStockSummary(
       ebitdaMargins: financialData?.ebitdaMargins || 0,
       operatingCashflow: financialData?.operatingCashflow || 0,
       freeCashflow: financialData?.freeCashflow || 0,
+      accountsReceivable: accountsReceivableRaw || undefined,
+      inventory: inventoryRaw || undefined,
+      totalLiabilities: totalLiabilitiesRaw || undefined,
+      currentAssets: currentAssetsRaw || undefined,
+      currentLiabilities: currentLiabilitiesRaw || undefined,
     };
   } catch (e) {
     console.error('Error in getStockSummary:', e);
@@ -552,18 +620,20 @@ export async function getTechnicalAnalysis(
 
   try {
     const result: any = await yf.historical(sym, {
-      period1: new Date(Date.now() - 200 * 24 * 60 * 60 * 1000),
+      period1: new Date(Date.now() - 400 * 24 * 60 * 60 * 1000),
       period2: new Date(),
       interval: '1d',
     });
 
-    if (!result || result.length === 0) return null;
+    if (!result || result.length < 200) return null;
 
     const prices = result.map((item: any) => item.close);
     
-    // Calculate SMA 50 and SMA 200
+    const tradingDays = prices.length;
     const sma50 = prices.slice(-50).reduce((a: number, b: number) => a + b, 0) / 50;
-    const sma200 = prices.slice(-200).reduce((a: number, b: number) => a + b, 0) / 200;
+    const sma200 = tradingDays >= 200
+      ? prices.slice(-200).reduce((a: number, b: number) => a + b, 0) / 200
+      : prices.slice(-tradingDays).reduce((a: number, b: number) => a + b, 0) / tradingDays;
     
     // Calculate RSI (14)
     const rsiPeriod = 14;
@@ -617,6 +687,66 @@ export async function getTechnicalAnalysis(
   }
 }
 
+async function fetchYahooFinanceDirect(symbol: string): Promise<any> {
+  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbol}`;
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      'Accept': 'application/json',
+    },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  const result = data?.quoteResponse?.result?.[0];
+  if (!result) throw new Error('No quote result');
+  return result;
+}
+
+async function fetchYahooFinanceSummaryDirect(symbol: string): Promise<any> {
+  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=summaryProfile,financialData`;
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+      'Accept': 'application/json',
+    },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  return data?.quoteSummary?.result?.[0] || null;
+}
+
+async function scrapeGoogleFinance(symbol: string): Promise<{ price: number; change: number; changePct: number; name: string } | null> {
+  try {
+    const exchanges = ['NASDAQ', 'NYSE'];
+    for (const exchange of exchanges) {
+      const url = `https://www.google.com/finance/quote/${symbol}:${exchange}`;
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+          'Accept': 'text/html',
+        },
+      });
+      if (!res.ok) continue;
+      const html = await res.text();
+      const priceMatch = html.match(/data-last-price="([\d.]+)"/);
+      if (priceMatch) {
+        const changeMatch = html.match(/data-change-pct="(-?[\d.]+)"/);
+        const changeAbsMatch = html.match(/data-change="(-?[\d.]+)"/);
+        const nameMatch = html.match(/<div class="[^"]*">([^<]+)<\/div>/);
+        return {
+          price: parseFloat(priceMatch[1]),
+          change: changeAbsMatch ? parseFloat(changeAbsMatch[1]) : 0,
+          changePct: changeMatch ? parseFloat(changeMatch[1]) : 0,
+          name: nameMatch ? nameMatch[1].trim() : symbol,
+        };
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getStockQuote(symbol: string): Promise<StockQuote> {
   const sym = symbol.toUpperCase();
   const cacheKey = `quote_${sym}`;
@@ -625,83 +755,99 @@ export async function getStockQuote(symbol: string): Promise<StockQuote> {
   if (cached) return cached;
   
   const companyName = SYMBOL_MAP[sym] || sym;
+  let quoteResult: any = null;
+  let summaryResult: any = null;
+  let usedScraped = false;
 
   try {
-    const [quoteResult, summaryResult] = await Promise.all([
+    [quoteResult, summaryResult] = await Promise.all([
       yf.quote(sym).catch(() => null),
       yf.quoteSummary(sym, { modules: ['summaryProfile', 'financialData'] }).catch(() => null),
     ]);
-
-    if (!quoteResult) {
-      throw new Error('Quote not found');
-    }
-
-    const quote = quoteResult;
-    const summary = (summaryResult?.summaryProfile || {}) as any;
-    const financialData = (summaryResult?.financialData || {}) as any;
-
-    return {
-      symbol: quote.symbol,
-      shortName: quote.shortName || companyName,
-      longName: quote.longName || summary.longName || companyName,
-      currency: quote.currency || 'USD',
-      regularMarketPrice: quote.regularMarketPrice || 0,
-      regularMarketChange: quote.regularMarketChange || 0,
-      regularMarketChangePercent: quote.regularMarketChangePercent || 0,
-      regularMarketDayHigh: quote.regularMarketDayHigh || 0,
-      regularMarketDayLow: quote.regularMarketDayLow || 0,
-      regularMarketVolume: quote.regularMarketVolume || 0,
-      regularMarketOpen: quote.regularMarketOpen || 0,
-      regularMarketPreviousClose: quote.regularMarketPreviousClose || 0,
-      postMarketPrice: quote.postMarketPrice || 0,
-      postMarketChange: quote.postMarketChange || 0,
-      fiftyTwoWeekHigh: quote.fiftyTwoWeekHigh || 0,
-      fiftyTwoWeekLow: quote.fiftyTwoWeekLow || 0,
-      marketCap: quote.marketCap || 0,
-      peRatio: quote.trailingPE || 0,
-      targetMeanPrice: financialData.targetMeanPrice || 0,
-      targetHighPrice: financialData.targetHighPrice || 0,
-      targetLowPrice: financialData.targetLowPrice || 0,
-      recommendationKey: financialData.recommendationKey || 'none',
-      numberOfAnalystOpinions: financialData.numberOfAnalystOpinions || 0,
-      sector: summary.sector || 'Unknown',
-      industry: summary.industry || 'Unknown',
-      businessSummary: summary.businessSummary || '',
-    };
-    
-    setCache(cacheKey, {
-      symbol: quote.symbol,
-      shortName: quote.shortName || companyName,
-      longName: quote.longName || summary.longName || companyName,
-      currency: quote.currency || 'USD',
-      regularMarketPrice: quote.regularMarketPrice || 0,
-      regularMarketChange: quote.regularMarketChange || 0,
-      regularMarketChangePercent: quote.regularMarketChangePercent || 0,
-      regularMarketDayHigh: quote.regularMarketDayHigh || 0,
-      regularMarketDayLow: quote.regularMarketDayLow || 0,
-      regularMarketVolume: quote.regularMarketVolume || 0,
-      regularMarketOpen: quote.regularMarketOpen || 0,
-      regularMarketPreviousClose: quote.regularMarketPreviousClose || 0,
-      postMarketPrice: quote.postMarketPrice || 0,
-      postMarketChange: quote.postMarketChange || 0,
-      fiftyTwoWeekHigh: quote.fiftyTwoWeekHigh || 0,
-      fiftyTwoWeekLow: quote.fiftyTwoWeekLow || 0,
-      marketCap: quote.marketCap || 0,
-      peRatio: quote.trailingPE || 0,
-      targetMeanPrice: financialData.targetMeanPrice || 0,
-      targetHighPrice: financialData.targetHighPrice || 0,
-      targetLowPrice: financialData.targetLowPrice || 0,
-      recommendationKey: financialData.recommendationKey || 'none',
-      numberOfAnalystOpinions: financialData.numberOfAnalystOpinions || 0,
-      sector: summary.sector || 'Unknown',
-      industry: summary.industry || 'Unknown',
-      businessSummary: summary.businessSummary || '',
-    });
-    
-    return getCached<StockQuote>(cacheKey)!;
-  } catch (error) {
-    throw new Error(`Failed to fetch quote for ${symbol}`);
+  } catch {
+    quoteResult = null;
   }
+
+  if (!quoteResult) {
+    console.log(`[YahooFinance] yf.quote failed for ${sym}, trying direct HTTP...`);
+    try {
+      quoteResult = await fetchYahooFinanceDirect(sym);
+      const summaryDirect = await fetchYahooFinanceSummaryDirect(sym).catch(() => null);
+      if (summaryDirect) {
+        summaryResult = summaryDirect;
+      }
+      usedScraped = true;
+      console.log(`[YahooFinance] Direct HTTP success for ${sym}`);
+    } catch (directErr) {
+      console.log(`[YahooFinance] Direct HTTP also failed for ${sym}, scraping Google Finance...`);
+      const gf = await scrapeGoogleFinance(sym);
+      if (gf) {
+        quoteResult = {
+          symbol: sym,
+          shortName: gf.name,
+          longName: gf.name,
+          currency: 'USD',
+          regularMarketPrice: gf.price,
+          regularMarketChange: gf.change,
+          regularMarketChangePercent: gf.changePct,
+          regularMarketDayHigh: 0,
+          regularMarketDayLow: 0,
+          regularMarketVolume: 0,
+          regularMarketOpen: 0,
+          regularMarketPreviousClose: gf.price - gf.change,
+          postMarketPrice: 0,
+          postMarketChange: 0,
+          fiftyTwoWeekHigh: 0,
+          fiftyTwoWeekLow: 0,
+          marketCap: 0,
+          trailingPE: 0,
+        };
+        usedScraped = true;
+        console.log(`[YahooFinance] Google Finance scrape success for ${sym}: $${gf.price}`);
+      }
+    }
+  }
+
+  if (!quoteResult) {
+    throw new Error(`Failed to fetch quote for ${sym} from all sources`);
+  }
+
+  const quote = quoteResult;
+  const summaryData = summaryResult?.summaryProfile || {};
+  const financialData = summaryResult?.financialData || {};
+  const summaryProfile = usedScraped ? {} : summaryData;
+
+  const stockQuote: StockQuote = {
+    symbol: quote.symbol || sym,
+    shortName: quote.shortName || quote.longName || companyName,
+    longName: quote.longName || quote.shortName || companyName,
+    currency: quote.currency || 'USD',
+    regularMarketPrice: quote.regularMarketPrice || 0,
+    regularMarketChange: quote.regularMarketChange || 0,
+    regularMarketChangePercent: quote.regularMarketChangePercent || 0,
+    regularMarketDayHigh: quote.regularMarketDayHigh || 0,
+    regularMarketDayLow: quote.regularMarketDayLow || 0,
+    regularMarketVolume: quote.regularMarketVolume || 0,
+    regularMarketOpen: quote.regularMarketOpen || 0,
+    regularMarketPreviousClose: quote.regularMarketPreviousClose || quote.regularMarketPrice || 0,
+    postMarketPrice: quote.postMarketPrice || 0,
+    postMarketChange: quote.postMarketChange || 0,
+    fiftyTwoWeekHigh: quote.fiftyTwoWeekHigh || 0,
+    fiftyTwoWeekLow: quote.fiftyTwoWeekLow || 0,
+    marketCap: quote.marketCap || 0,
+    peRatio: quote.trailingPE || 0,
+    targetMeanPrice: financialData.targetMeanPrice || 0,
+    targetHighPrice: financialData.targetHighPrice || 0,
+    targetLowPrice: financialData.targetLowPrice || 0,
+    recommendationKey: financialData.recommendationKey || 'none',
+    numberOfAnalystOpinions: financialData.numberOfAnalystOpinions || 0,
+    sector: summaryProfile.sector || 'Unknown',
+    industry: summaryProfile.industry || 'Unknown',
+    businessSummary: summaryProfile.businessSummary || '',
+  };
+
+  setCache(cacheKey, stockQuote);
+  return stockQuote;
 }
 
 export async function getStockData(symbol: string) {
@@ -748,5 +894,71 @@ export async function getFCFHistory(symbol: string): Promise<FCFHistoryData[]> {
   } catch (error) {
     console.error('Error fetching FCF history:', error);
     return [];
+  }
+}
+
+export interface NewsItem {
+  title: string;
+  link: string;
+  publisher: string;
+  publishedDate: string;
+  summary: string;
+}
+
+async function scrapeYahooFinanceNews(symbol: string): Promise<NewsItem[]> {
+  try {
+    const url = `https://finance.yahoo.com/quote/${symbol}/`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'text/html',
+      },
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+    const items: NewsItem[] = [];
+    const regex = /"title":"([^"]+)","publisher":"([^"]+)","link":"([^"]+)","summary":"([^"]+)","providerPublishTime":(\d+)/g;
+    let match;
+    while ((match = regex.exec(html)) !== null) {
+      items.push({
+        title: match[1].replace(/\\u[0-9a-f]{4}/g, ''),
+        link: match[3].replace(/\\\//g, '/'),
+        publisher: match[2],
+        publishedDate: new Date(parseInt(match[5]) * 1000).toISOString().split('T')[0],
+        summary: match[4].replace(/\\u[0-9a-f]{4}/g, ''),
+      });
+      if (items.length >= 5) break;
+    }
+    return items;
+  } catch {
+    return [];
+  }
+}
+
+export async function getStockNews(symbol: string): Promise<NewsItem[]> {
+  try {
+    const result = await yf.search(symbol, { newsCount: 5 }).catch(() => null);
+    if (result?.news && result.news.length > 0) {
+      return result.news.map((item: any) => {
+        let pubDate = '';
+        if (item.providerPublishTime) {
+          const t = item.providerPublishTime;
+          pubDate = new Date(t instanceof Date ? t : typeof t === 'number' ? t * 1000 : t).toISOString().split('T')[0];
+        }
+        return {
+          title: item.title || '',
+          link: item.link || '',
+          publisher: item.publisher || '',
+          publishedDate: pubDate,
+          summary: item.summary || '',
+        };
+      });
+    }
+    console.log(`[YahooFinance] yf.search returned no news for ${symbol}, scraping...`);
+    return await scrapeYahooFinanceNews(symbol);
+  } catch (error) {
+    console.error('Error fetching news:', error);
+    const scraped = await scrapeYahooFinanceNews(symbol).catch(() => [] as NewsItem[]);
+    return scraped;
   }
 }

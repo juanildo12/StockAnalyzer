@@ -111,8 +111,13 @@ export async function getMacrotrendsData(symbol: string): Promise<MacrotrendsDat
 
 export async function getMarketBeatData(symbol: string): Promise<MarketBeatData | null> {
   try {
-    const url = `https://www.marketbeat.com/stocks/nasdaq/${symbol.toLowerCase()}/price-target`;
-    const response = await fetchWithTimeout(url);
+    let url = `https://www.marketbeat.com/stocks/nasdaq/${symbol.toLowerCase()}/price-target`;
+    let response = await fetchWithTimeout(url);
+    
+    if (!response.ok) {
+      url = `https://www.marketbeat.com/stocks/nyse/${symbol.toLowerCase()}/price-target`;
+      response = await fetchWithTimeout(url);
+    }
     
     if (!response.ok) {
       console.log(`MarketBeat: Failed to fetch ${symbol}, status: ${response.status}`);
@@ -126,9 +131,9 @@ export async function getMarketBeatData(symbol: string): Promise<MarketBeatData 
     const lowTargetMatch = html.match(/low.*?\$\s*(\d+\.?\d*)/i);
     const analystCountMatch = html.match(/(\d+)\s+Wall Street/i);
     
-    const buyMatch = html.match(/(\d+)\s+buy/gi);
-    const holdMatch = html.match(/(\d+)\s+hold/gi);
-    const sellMatch = html.match(/(\d+)\s+sell/gi);
+    const buyMatch = html.match(/(\d+)\s+(buy|Buy)/);
+    const holdMatch = html.match(/(\d+)\s+(hold|Hold)/);
+    const sellMatch = html.match(/(\d+)\s+(sell|Sell)/);
     
     const ratingMatch = html.match(/consensus.*?rating.*?([A-Za-z\s]+)/i);
     
@@ -139,9 +144,9 @@ export async function getMarketBeatData(symbol: string): Promise<MarketBeatData 
       highPriceTarget: highTargetMatch ? parseFloat(highTargetMatch[1]) : 0,
       lowPriceTarget: lowTargetMatch ? parseFloat(lowTargetMatch[1]) : 0,
       numberOfAnalysts: analystCountMatch ? parseInt(analystCountMatch[1]) : 0,
-      buyRatings: buyMatch ? buyMatch.length : 0,
-      holdRatings: holdMatch ? holdMatch.length : 0,
-      sellRatings: sellMatch ? sellMatch.length : 0,
+      buyRatings: buyMatch ? parseInt(buyMatch[1]) : 0,
+      holdRatings: holdMatch ? parseInt(holdMatch[1]) : 0,
+      sellRatings: sellMatch ? parseInt(sellMatch[1]) : 0,
       lastUpdated: new Date().toISOString()
     };
   } catch (error) {

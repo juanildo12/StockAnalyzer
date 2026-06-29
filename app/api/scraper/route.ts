@@ -101,7 +101,7 @@ async function scrapeYahooFinance(ticker: string): Promise<any> {
 
 async function scrapeTipRanks(ticker: string): Promise<any> {
   try {
-    const url = `https://www.tipranks.com/api/stocks/get hedge-fund-ratings?ticker=${ticker}`;
+    const url = `https://www.tipranks.com/api/stocks/get-hedge-fund-ratings?ticker=${ticker}`;
     const response = await fetchWithTimeout(url);
     const data = await response.json();
     
@@ -204,8 +204,16 @@ async function scrapeGuruFocus(ticker: string): Promise<any> {
 
 async function scrapeMarketBeat(ticker: string): Promise<any> {
   try {
-    const url = `https://www.marketbeat.com/stocks/${ticker.toUpperCase()}/price-target`;
-    const response = await fetchWithTimeout(url);
+    let url = `https://www.marketbeat.com/stocks/nasdaq/${ticker.toUpperCase()}/price-target`;
+    let response = await fetchWithTimeout(url);
+    
+    if (!response.ok) {
+      url = `https://www.marketbeat.com/stocks/nyse/${ticker.toUpperCase()}/price-target`;
+      response = await fetchWithTimeout(url);
+    }
+    
+    if (!response.ok) return null;
+    
     const html = await response.text();
     
     const avgTargetMatch = html.match(/Average.*?\$([\d,]+)/);
@@ -228,29 +236,6 @@ async function scrapeMarketBeat(ticker: string): Promise<any> {
   return null;
 }
 
-async function scrapeCNBC(ticker: string): Promise<any> {
-  try {
-    const url = `https://www.cnbc.com/id/MSDCH人民共和国102096093/device/pcd/quote/${ticker.toUpperCase()}.html`;
-    const response = await fetchWithTimeout(url);
-    const html = await response.text();
-    
-    const priceMatch = html.match(/"price":\s*"?([\d.]+)"?/);
-    const changeMatch = html.match(/"change":\s*"?([-\d.]+)"?/);
-    const peMatch = html.match(/P\/E.*?(\d+\.?\d*)/);
-    const mktCapMatch = html.match(/Market Cap.*?\$?([\d.]+)([BM])/i);
-    
-    return {
-      price: priceMatch ? parseFloat(priceMatch[1]) : 0,
-      change: changeMatch ? parseFloat(changeMatch[1]) : 0,
-      peRatio: peMatch ? parseFloat(peMatch[1]) : 0,
-      marketCap: mktCapMatch ? parseFloat(mktCapMatch[1]) * (mktCapMatch[2] === 'B' ? 1e9 : 1e6) : 0,
-    };
-  } catch (error) {
-    console.error('CNBC scrape error:', error);
-  }
-  
-  return null;
-}
 
 export async function GET(request: NextRequest) {
   const ticker = request.nextUrl.searchParams.get('ticker');
@@ -285,17 +270,13 @@ export async function GET(request: NextRequest) {
       case 'marketbeat':
         result = await scrapeMarketBeat(ticker);
         break;
-      case 'cnbc':
-        result = await scrapeCNBC(ticker);
-        break;
       default:
-        const [yahoo, tipranks, macrotrends, gurufocus, marketbeat, cnbc] = await Promise.allSettled([
+        const [yahoo, tipranks, macrotrends, gurufocus, marketbeat] = await Promise.allSettled([
           scrapeYahooFinance(ticker),
           scrapeTipRanks(ticker),
           scrapeMacrotrends(ticker),
           scrapeGuruFocus(ticker),
           scrapeMarketBeat(ticker),
-          scrapeCNBC(ticker),
         ]);
         
         result = {
@@ -304,7 +285,6 @@ export async function GET(request: NextRequest) {
           macrotrends: macrotrends.status === 'fulfilled' ? macrotrends.value : null,
           gurufocus: gurufocus.status === 'fulfilled' ? gurufocus.value : null,
           marketbeat: marketbeat.status === 'fulfilled' ? marketbeat.value : null,
-          cnbc: cnbc.status === 'fulfilled' ? cnbc.value : null,
         };
     }
     

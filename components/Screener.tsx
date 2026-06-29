@@ -1,4 +1,5 @@
 'use client';
+import { colors as C, radius as R, font as F } from '@/src/utils/webTheme';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -376,7 +377,7 @@ export default function Screener() {
     return (
       <div style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%)',
+        background: `linear-gradient(135deg, ${C.bg} 0%, ${C.bgCard} 50%, ${C.bg} 100%)`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -385,8 +386,8 @@ export default function Screener() {
           <div style={{
             width: '80px',
             height: '80px',
-            border: '4px solid #21262d',
-            borderTopColor: '#58a6ff',
+            border: '4px solid ' + C.borderLight,
+            borderTopColor: C.accent,
             borderRadius: '50%',
             animation: 'spin 1s linear infinite',
             margin: '0 auto 24px',
@@ -407,27 +408,27 @@ export default function Screener() {
               width: 18px;
               height: 18px;
               border-radius: 50%;
-              background: #f0f6fc;
-              cursor: pointer;
-              border: 2px solid #30363d;
+background: ${C.textPrimary};
+            cursor: pointer;
+            border: 2px solid ${C.border};
               box-shadow: 0 2px 6px rgba(0,0,0,0.3);
               transition: all 0.15s;
             }
             input[type="range"]::-webkit-slider-thumb:hover {
               transform: scale(1.1);
-              border-color: #58a6ff;
+              border-color: ${C.accent};
             }
             input[type="range"]::-moz-range-thumb {
               width: 18px;
               height: 18px;
               border-radius: 50%;
-              background: #f0f6fc;
-              cursor: pointer;
-              border: 2px solid #30363d;
+background: ${C.textPrimary};
+            cursor: pointer;
+            border: 2px solid ${C.border};
               box-shadow: 0 2px 6px rgba(0,0,0,0.3);
             }
           `}</style>
-          <p style={{ color: '#8b949e', fontSize: '18px', margin: 0 }}>Analizando mercado...</p>
+          <p style={{ color: C.textMuted, fontSize: '18px', margin: 0 }}>Analizando mercado...</p>
           <p style={{ color: '#484f58', fontSize: '14px', marginTop: '8px' }}> Cargando fundamentales</p>
         </div>
       </div>
@@ -441,23 +442,23 @@ export default function Screener() {
         justifyContent: 'center', 
         alignItems: 'center', 
         minHeight: '100vh',
-        background: '#0d1117'
+        background: C.bg
       }}>
         <div style={{ 
           textAlign: 'center',
           padding: '48px',
-          background: '#161b22',
+          background: C.bgCard,
           borderRadius: '16px',
-          border: '1px solid #30363d',
+          border: '1px solid ' + C.border,
           maxWidth: '400px'
         }}>
           <div style={{ fontSize: '64px', marginBottom: '24px' }}>⚠️</div>
-          <p style={{ color: '#f85149', fontSize: '18px', marginBottom: '24px' }}>{error}</p>
+          <p style={{ color: C.negative, fontSize: '18px', marginBottom: '24px' }}>{error}</p>
           <button
             onClick={handleRetry}
             style={{
               padding: '12px 24px',
-              background: 'linear-gradient(135deg, #238636 0%, #2ea043 100%)',
+              background: `linear-gradient(135deg, ${C.accent} 0%, #2ea043 100%)`,
               color: 'white',
               border: 'none',
               borderRadius: '8px',
@@ -477,7 +478,7 @@ export default function Screener() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(180deg, #0d1117 0%, #161b22 100%)',
+      background: `linear-gradient(180deg, ${C.bg} 0%, ${C.bgCard} 100%)`,
       padding: '32px 24px',
     }}>
       <div style={{ maxWidth: '1600px', margin: '0 auto' }}>
@@ -496,7 +497,7 @@ export default function Screener() {
               <div style={{
                 width: '56px',
                 height: '56px',
-                background: 'linear-gradient(135deg, #58a6ff 0%, #a371f7 100%)',
+                background: `linear-gradient(135deg, ${C.accent} 0%, ${C.accentLight} 100%)`,
                 borderRadius: '16px',
                 display: 'flex',
                 alignItems: 'center',
@@ -509,17 +510,17 @@ export default function Screener() {
                 <h1 style={{ 
                   fontSize: '32px', 
                   fontWeight: '700', 
-                  color: '#f0f6fc', 
+                  color: C.textPrimary, 
                   margin: 0,
                   letterSpacing: '-0.5px'
                 }}>
                   Screener de Acciones
                 </h1>
-                <p style={{ color: '#8b949e', fontSize: '14px', margin: '4px 0 0' }}>
+                <p style={{ color: C.textMuted, fontSize: '14px', margin: '4px 0 0' }}>
                   Encuentra oportunidades de inversión con análisis fundamental
                 </p>
                 {lastUpdated && (
-                  <p style={{ color: '#58a6ff', fontSize: '12px', margin: '8px 0 0', fontWeight: '500' }}>
+                  <p style={{ color: C.accent, fontSize: '12px', margin: '8px 0 0', fontWeight: '500' }}>
                     🕐 Actualizado: {lastUpdated.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 )}
@@ -531,7 +532,7 @@ export default function Screener() {
                 disabled={isRefreshing}
                 style={{
                   padding: '10px 20px',
-                  background: isRefreshing ? '#21262d' : 'linear-gradient(135deg, #238636 0%, #2ea043 100%)',
+                  background: isRefreshing ? C.borderLight : 'linear-gradient(135deg, #238636 0%, #2ea043 100%)',
                   border: 'none',
                   borderRadius: '10px',
                   color: 'white',
@@ -566,20 +567,20 @@ export default function Screener() {
             flexWrap: 'wrap'
           }}>
             {[
-              { label: 'Total analizadas', value: screenerSummary?.totalScanned || stocks.length, color: '#58a6ff' },
-              { label: 'Excelentes', value: screenerSummary?.excellent || 0, color: '#3fb950' },
-              { label: 'Buenas', value: screenerSummary?.buena || 0, color: '#f0883e' },
-              { label: 'Sectores activos', value: filters.sectors.length || 'Todos', color: '#a371f7' },
+              { label: 'Total analizadas', value: screenerSummary?.totalScanned || stocks.length, color: C.accent },
+              { label: 'Excelentes', value: screenerSummary?.excellent || 0, color: C.positive },
+              { label: 'Buenas', value: screenerSummary?.buena || 0, color: C.warning },
+              { label: 'Sectores activos', value: filters.sectors.length || 'Todos', color: C.accentLight },
             ].map((stat, i) => (
               <div key={i} style={{
                 padding: '16px 20px',
                 background: 'rgba(0,0,0,0.3)',
                 borderRadius: '12px',
-                border: '1px solid #30363d',
+                border: '1px solid ' + C.border,
                 flex: '1 1 150px',
               }}>
                 <div style={{ color: stat.color, fontSize: '28px', fontWeight: '700' }}>{stat.value}</div>
-                <div style={{ color: '#8b949e', fontSize: '12px', marginTop: '4px' }}>{stat.label}</div>
+                <div style={{ color: C.textMuted, fontSize: '12px', marginTop: '4px' }}>{stat.label}</div>
               </div>
             ))}
           </div>
@@ -591,10 +592,10 @@ export default function Screener() {
           style={{
             width: '100%',
             padding: '16px 24px',
-            background: showFilters ? 'rgba(88, 166, 255, 0.1)' : '#161b22',
-            border: showFilters ? '1px solid rgba(88, 166, 255, 0.3)' : '1px solid #30363d',
+            background: showFilters ? 'rgba(88, 166, 255, 0.1)' : C.bgCard,
+            border: showFilters ? '1px solid rgba(88, 166, 255, 0.3)' : '1px solid ' + C.border,
             borderRadius: '12px',
-            color: '#f0f6fc',
+            color: C.textPrimary,
             cursor: 'pointer',
             marginBottom: '16px',
             display: 'flex',
@@ -611,10 +612,10 @@ export default function Screener() {
           </span>
           <span style={{
             padding: '6px 12px',
-            background: '#21262d',
+            background: C.borderLight,
             borderRadius: '6px',
             fontSize: '12px',
-            color: '#8b949e'
+            color: C.textMuted
           }}>
             {showFilters ? 'Ocultar' : 'Mostrar'}
           </span>
@@ -622,16 +623,16 @@ export default function Screener() {
 
         {showFilters && (
           <div style={{
-            background: '#161b22',
+            background: C.bgCard,
             borderRadius: '16px',
             padding: '24px',
             marginBottom: '24px',
-            border: '1px solid #30363d',
+            border: '1px solid ' + C.border,
           }}>
             
             {/* Preset Buttons */}
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', color: '#c9d1d9', fontSize: '13px', marginBottom: '12px', fontWeight: '500' }}>
+              <label style={{ display: 'block', color: C.textSecondary, fontSize: '13px', marginBottom: '12px', fontWeight: '500' }}>
                 Presets:
               </label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
@@ -641,8 +642,8 @@ export default function Screener() {
                     padding: '10px 16px',
                     borderRadius: '20px',
                     border: '2px solid #3fb950',
-                    background: '#3fb95020',
-                    color: '#3fb950',
+                    background: `${C.positive}20`,
+                    color: C.positive,
                     fontSize: '13px',
                     fontWeight: '600',
                     cursor: 'pointer',
@@ -656,8 +657,8 @@ export default function Screener() {
                     padding: '10px 16px',
                     borderRadius: '20px',
                     border: '2px solid #f0883e',
-                    background: '#f0883e20',
-                    color: '#f0883e',
+                    background: `${C.warning}20`,
+                    color: C.warning,
                     fontSize: '13px',
                     fontWeight: '600',
                     cursor: 'pointer',
@@ -671,8 +672,8 @@ export default function Screener() {
                     padding: '10px 16px',
                     borderRadius: '20px',
                     border: '2px solid #a371f7',
-                    background: '#a371f720',
-                    color: '#a371f7',
+                    background: `${C.accentLight}20`,
+                    color: C.accentLight,
                     fontSize: '13px',
                     fontWeight: '600',
                     cursor: 'pointer',
@@ -687,7 +688,7 @@ export default function Screener() {
                     borderRadius: '20px',
                     border: '2px solid #6e7681',
                     background: 'transparent',
-                    color: '#8b949e',
+                    color: C.textMuted,
                     fontSize: '13px',
                     fontWeight: '600',
                     cursor: 'pointer',
@@ -701,18 +702,18 @@ export default function Screener() {
             {/* Range Filters */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px', marginBottom: '24px' }}>
               {[
-                { key: 'minScore', label: 'Score Mínimo', max: 100, value: filters.minScore, color: '#58a6ff', suffix: '' },
-                { key: 'minIV', label: 'IV Mínimo', max: 100, value: filters.minIV, color: '#f0883e', suffix: '%', step: 5 },
-                { key: 'minVolumeRatio', label: 'Volumen Ratio Mín', max: 3, value: filters.minVolumeRatio, color: '#3fb950', suffix: 'x', step: 0.1 },
+                { key: 'minScore', label: 'Score Mínimo', max: 100, value: filters.minScore, color: C.accent, suffix: '' },
+                { key: 'minIV', label: 'IV Mínimo', max: 100, value: filters.minIV, color: C.warning, suffix: '%', step: 5 },
+                { key: 'minVolumeRatio', label: 'Volumen Ratio Mín', max: 3, value: filters.minVolumeRatio, color: C.positive, suffix: 'x', step: 0.1 },
               ].map((filter) => (
                 <div key={filter.key} style={{
                   padding: '20px',
                   background: 'rgba(0,0,0,0.2)',
                   borderRadius: '12px',
-                  border: '1px solid #21262d',
+                  border: '1px solid ' + C.borderLight,
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <label style={{ color: '#c9d1d9', fontSize: '13px', fontWeight: '500' }}>{filter.label}</label>
+                    <label style={{ color: C.textSecondary, fontSize: '13px', fontWeight: '500' }}>{filter.label}</label>
                     <span style={{ 
                       color: filter.color, 
                       fontSize: '16px', 
@@ -738,7 +739,7 @@ export default function Screener() {
                       width: '100%',
                       height: '6px',
                       borderRadius: '3px',
-                      background: `linear-gradient(to right, ${filter.color} 0%, ${filter.color} ${(filter.value / filter.max) * 100}%, #30363d ${(filter.value / filter.max) * 100}%, #30363d 100%)`,
+                      background: `linear-gradient(to right, ${filter.color} 0%, ${filter.color} ${(filter.value / filter.max) * 100}%, ${C.border} ${(filter.value / filter.max) * 100}%, ${C.border} 100%)`,
                       appearance: 'none',
                       cursor: 'pointer',
                     }}
@@ -753,20 +754,20 @@ export default function Screener() {
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: '12px', 
-                color: '#c9d1d9', 
+                color: C.textSecondary, 
                 cursor: 'pointer',
                 padding: '16px',
                 background: filters.excludeNearEarnings ? 'rgba(63, 185, 80, 0.1)' : 'rgba(0,0,0,0.2)',
                 borderRadius: '10px',
-                border: filters.excludeNearEarnings ? '1px solid rgba(63, 185, 80, 0.3)' : '1px solid #21262d',
+                border: filters.excludeNearEarnings ? '1px solid rgba(63, 185, 80, 0.3)' : '1px solid ' + C.borderLight,
                 transition: 'all 0.2s',
               }}>
                 <div style={{
                   width: '22px',
                   height: '22px',
                   borderRadius: '6px',
-                  border: `2px solid ${filters.excludeNearEarnings ? '#3fb950' : '#484f58'}`,
-                  background: filters.excludeNearEarnings ? '#3fb950' : 'transparent',
+                  border: `2px solid ${filters.excludeNearEarnings ? C.positive : '#484f58'}`,
+                  background: filters.excludeNearEarnings ? C.positive : 'transparent',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -786,7 +787,7 @@ export default function Screener() {
 
             {/* Sector Pills */}
             <div>
-              <label style={{ display: 'block', color: '#c9d1d9', fontSize: '13px', marginBottom: '12px', fontWeight: '500' }}>
+              <label style={{ display: 'block', color: C.textSecondary, fontSize: '13px', marginBottom: '12px', fontWeight: '500' }}>
                 Filtrar por Sector:
               </label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
@@ -797,9 +798,9 @@ export default function Screener() {
                     style={{
                       padding: '10px 16px',
                       borderRadius: '20px',
-                      border: `2px solid ${filters.sectors.includes(sector) ? SECTOR_COLORS[sector] : '#30363d'}`,
-                      background: filters.sectors.includes(sector) ? `${SECTOR_COLORS[sector]}20` : '#21262d',
-                      color: filters.sectors.includes(sector) ? SECTOR_COLORS[sector] : '#8b949e',
+                      border: `2px solid ${filters.sectors.includes(sector) ? SECTOR_COLORS[sector] : C.border}`,
+                      background: filters.sectors.includes(sector) ? `${SECTOR_COLORS[sector]}20` : C.borderLight,
+                      color: filters.sectors.includes(sector) ? SECTOR_COLORS[sector] : C.textMuted,
                       fontSize: '13px',
                       fontWeight: '500',
                       cursor: 'pointer',
@@ -816,8 +817,8 @@ export default function Screener() {
                       padding: '10px 16px',
                       borderRadius: '20px',
                       border: '2px solid #f85149',
-                      background: '#f8514920',
-                      color: '#f85149',
+                      background: `${C.negative}20`,
+                      color: C.negative,
                       fontSize: '13px',
                       fontWeight: '500',
                       cursor: 'pointer',
@@ -833,22 +834,22 @@ export default function Screener() {
 
         {/* Results Table */}
         <div style={{
-          background: '#161b22',
+          background: C.bgCard,
           borderRadius: '16px',
           overflow: 'hidden',
-          border: '1px solid #30363d',
+          border: '1px solid ' + C.border,
         }}>
           <div style={{
             padding: '20px 24px',
-            borderBottom: '1px solid #30363d',
+            borderBottom: '1px solid ' + C.border,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
           }}>
-            <h2 style={{ color: '#f0f6fc', fontSize: '16px', fontWeight: '600', margin: 0 }}>
+            <h2 style={{ color: C.textPrimary, fontSize: '16px', fontWeight: '600', margin: 0 }}>
               Acciones para Opciones ({filteredAndSortedStocks.length})
             </h2>
-            <span style={{ color: '#8b949e', fontSize: '12px' }}>
+            <span style={{ color: C.textMuted, fontSize: '12px' }}>
               Ordenadas por score de idoneidad
             </span>
           </div>
@@ -856,7 +857,7 @@ export default function Screener() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
               <thead>
-                <tr style={{ background: '#21262d' }}>
+                <tr style={{ background: C.borderLight }}>
                   {[
                     { key: 'valueScore', label: 'Score', align: 'center' as const },
                     { key: 'symbol', label: 'Símbolo', align: 'left' as const },
@@ -873,7 +874,7 @@ export default function Screener() {
                       style={{
                         padding: '14px 12px',
                         textAlign: col.align || 'left',
-                        color: '#8b949e',
+                        color: C.textMuted,
                         fontSize: '11px',
                         fontWeight: '600',
                         textTransform: 'uppercase',
@@ -895,22 +896,22 @@ export default function Screener() {
                       )}
                     </th>
                   ))}
-                  <th style={{ padding: '14px 16px', color: '#8b949e', fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', textAlign: 'center' }}>
+                  <th style={{ padding: '14px 16px', color: C.textMuted, fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', textAlign: 'center' }}>
                     Acciones
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {filteredAndSortedStocks.map((stock, index) => {
-                  const scoreColor = stock.suitabilityScore >= 75 ? '#3fb950' : stock.suitabilityScore >= 55 ? '#f0883e' : stock.suitabilityScore >= 35 ? '#a371f7' : '#f85149';
-                  const scoreBg = stock.suitabilityScore >= 75 ? '#3fb95020' : stock.suitabilityScore >= 55 ? '#f0883e20' : stock.suitabilityScore >= 35 ? '#a371f720' : '#f8514920';
+                  const scoreColor = stock.suitabilityScore >= 75 ? C.positive : stock.suitabilityScore >= 55 ? C.warning : stock.suitabilityScore >= 35 ? C.accentLight : C.negative;
+                  const scoreBg = stock.suitabilityScore >= 75 ? `${C.positive}20` : stock.suitabilityScore >= 55 ? `${C.warning}20` : stock.suitabilityScore >= 35 ? `${C.accentLight}20` : `${C.negative}20`;
                   
                   return (
                     <tr 
                       key={stock.symbol}
                       onClick={() => handleAnalyzeStock(stock.symbol)}
                       style={{ 
-                        borderTop: index > 0 ? '1px solid #21262d' : 'none',
+                        borderTop: index > 0 ? '1px solid ' + C.borderLight : 'none',
                         transition: 'background 0.15s',
                         cursor: 'pointer',
                       }}
@@ -935,24 +936,24 @@ export default function Screener() {
                         </div>
                       </td>
                       <td style={{ padding: '12px' }}>
-                        <div style={{ fontWeight: '700', color: '#58a6ff', fontSize: '15px' }}>{stock.symbol}</div>
+                        <div style={{ fontWeight: '700', color: C.accent, fontSize: '15px' }}>{stock.symbol}</div>
                         <div style={{ fontSize: '10px', color: '#6e7681', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {stock.name}
                         </div>
-                        <div style={{ fontSize: '10px', color: '#8b949e', marginTop: '2px' }}>
+                        <div style={{ fontSize: '10px', color: C.textMuted, marginTop: '2px' }}>
                           {stock.sector}
                         </div>
                       </td>
-                      <td style={{ padding: '12px', textAlign: 'right', color: '#f0f6fc', fontWeight: '600', fontSize: '14px' }}>
+                      <td style={{ padding: '12px', textAlign: 'right', color: C.textPrimary, fontWeight: '600', fontSize: '14px' }}>
                         ${stock.price?.toFixed(2)}
                       </td>
-                      <td style={{ padding: '12px', textAlign: 'right', fontWeight: '600', fontSize: '13px', color: stock.changePercent > 0 ? '#3fb950' : stock.changePercent < 0 ? '#f85149' : '#8b949e' }}>
+                      <td style={{ padding: '12px', textAlign: 'right', fontWeight: '600', fontSize: '13px', color: stock.changePercent > 0 ? C.positive : stock.changePercent < 0 ? C.negative : C.textMuted }}>
                         {stock.changePercent > 0 ? '+' : ''}{stock.changePercent?.toFixed(2)}%
                       </td>
-                      <td style={{ padding: '12px', textAlign: 'right', color: stock.iv > 0.5 ? '#f0883e' : stock.iv > 0.3 ? '#a371f7' : '#3fb950', fontWeight: '600', fontSize: '13px' }}>
+                      <td style={{ padding: '12px', textAlign: 'right', color: stock.iv > 0.5 ? C.warning : stock.iv > 0.3 ? C.accentLight : C.positive, fontWeight: '600', fontSize: '13px' }}>
                         {(stock.iv * 100).toFixed(0)}%
                       </td>
-                      <td style={{ padding: '12px', textAlign: 'right', color: '#8b949e', fontWeight: '600', fontSize: '13px' }}>
+                      <td style={{ padding: '12px', textAlign: 'right', color: C.textMuted, fontWeight: '600', fontSize: '13px' }}>
                         {stock.ivRank?.toFixed(0) || '-'}
                       </td>
                       <td style={{ padding: '12px', textAlign: 'center' }}>
@@ -960,8 +961,8 @@ export default function Screener() {
                           <span style={{
                             padding: '4px 8px',
                             borderRadius: '4px',
-                            background: '#f0883e20',
-                            color: '#f0883e',
+                            background: `${C.warning}20`,
+                            color: C.warning,
                             fontSize: '11px',
                             fontWeight: '600',
                           }}>
@@ -972,11 +973,11 @@ export default function Screener() {
                         )}
                       </td>
                       <td style={{ padding: '12px' }}>
-                        <div style={{ color: '#c9d1d9', fontSize: '12px', fontWeight: '500' }}>
+                        <div style={{ color: C.textSecondary, fontSize: '12px', fontWeight: '500' }}>
                           {stock.topStrategy}
                         </div>
                         {stock.reasons.length > 0 && (
-                          <div style={{ fontSize: '10px', color: '#8b949e', marginTop: '2px', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: '10px', color: C.textMuted, marginTop: '2px', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {stock.reasons[0]}
                           </div>
                         )}
@@ -988,9 +989,9 @@ export default function Screener() {
                           style={{
                             padding: '8px 12px',
                             borderRadius: '6px',
-                            border: '1px solid #30363d',
-                            background: addingToWatchlist === stock.symbol ? '#30363d' : '#23863620',
-                            color: addingToWatchlist === stock.symbol ? '#8b949e' : '#3fb950',
+                            border: '1px solid ' + C.border,
+                            background: addingToWatchlist === stock.symbol ? C.border : `${C.accent}20`,
+                            color: addingToWatchlist === stock.symbol ? C.textMuted : C.positive,
                             fontSize: '11px',
                             fontWeight: '600',
                             cursor: addingToWatchlist === stock.symbol ? 'wait' : 'pointer',
@@ -1012,7 +1013,7 @@ export default function Screener() {
               textAlign: 'center', 
             }}>
               <div style={{ fontSize: '64px', marginBottom: '24px' }}>🔍</div>
-              <p style={{ color: '#8b949e', fontSize: '18px', marginBottom: '8px' }}>Ninguna acción matchea los filtros</p>
+              <p style={{ color: C.textMuted, fontSize: '18px', marginBottom: '8px' }}>Ninguna acción matchea los filtros</p>
               <p style={{ color: '#484f58', fontSize: '14px' }}>Intenta relajar los criterios de búsqueda</p>
             </div>
           )}
@@ -1022,19 +1023,19 @@ export default function Screener() {
         <div style={{
           marginTop: '24px',
           padding: '24px',
-          background: '#161b22',
+          background: C.bgCard,
           borderRadius: '12px',
-          border: '1px solid #30363d',
+          border: '1px solid ' + C.border,
         }}>
-          <h3 style={{ color: '#f0f6fc', fontSize: '14px', fontWeight: '600', marginTop: 0, marginBottom: '16px' }}>
+          <h3 style={{ color: C.textPrimary, fontSize: '14px', fontWeight: '600', marginTop: 0, marginBottom: '16px' }}>
             📚 Guía de Métricas
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
             {[
-              { metric: 'P/E (Price/Earnings)', desc: 'Precio relativo a ganancias. <15 puede indicar valor, >30 puede indicar sobreprecio.', color: '#58a6ff' },
-              { metric: 'P/B (Price/Book)', desc: 'Precio relativo a valor en libros. <1 puede indicar subvaloración. Ideal para bancos.', color: '#a371f7' },
-              { metric: 'ROE (Return on Equity)', desc: 'Rentabilidad sobre capital propio. >15% indica gestión eficiente.', color: '#3fb950' },
-              { metric: 'Dividend Yield', desc: 'Dividendo anual / precio. >4% puede ser atractivo pero investiga el payout ratio.', color: '#f0883e' },
+              { metric: 'P/E (Price/Earnings)', desc: 'Precio relativo a ganancias. <15 puede indicar valor, >30 puede indicar sobreprecio.', color: C.accent },
+              { metric: 'P/B (Price/Book)', desc: 'Precio relativo a valor en libros. <1 puede indicar subvaloración. Ideal para bancos.', color: C.accentLight },
+              { metric: 'ROE (Return on Equity)', desc: 'Rentabilidad sobre capital propio. >15% indica gestión eficiente.', color: C.positive },
+              { metric: 'Dividend Yield', desc: 'Dividendo anual / precio. >4% puede ser atractivo pero investiga el payout ratio.', color: C.warning },
             ].map((item, i) => (
               <div key={i} style={{
                 padding: '16px',
@@ -1043,7 +1044,7 @@ export default function Screener() {
                 borderLeft: `3px solid ${item.color}`,
               }}>
                 <div style={{ color: item.color, fontWeight: '600', fontSize: '13px', marginBottom: '6px' }}>{item.metric}</div>
-                <div style={{ color: '#8b949e', fontSize: '12px', lineHeight: '1.5' }}>{item.desc}</div>
+                <div style={{ color: C.textMuted, fontSize: '12px', lineHeight: '1.5' }}>{item.desc}</div>
               </div>
             ))}
           </div>
@@ -1058,7 +1059,7 @@ export default function Screener() {
           border: '1px solid rgba(248, 81, 73, 0.3)',
           textAlign: 'center'
         }}>
-          <p style={{ color: '#f85149', fontSize: '13px', margin: 0 }}>
+          <p style={{ color: C.negative, fontSize: '13px', margin: 0 }}>
             ⚠️ Esta herramienta es solo informativa. Los datos son simulados/estimados. No constituye consejo financiero. Investiga siempre antes de invertir.
           </p>
         </div>

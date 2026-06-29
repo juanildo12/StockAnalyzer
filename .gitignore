@@ -81,3 +81,4 @@ yarn-error.log
 .env.development.local
 .next/
 .next/
+.env.local

@@ -906,18 +906,20 @@ export async function getOptionsAnalysis(symbol: string): Promise<OptionsAnalysi
     const nextExpirations: OptionExpiration[] = [];
     if (chainResult?.options) {
       for (const expDate of chainResult.options.slice(0, 3)) {
-        if (!expDate || !expDate.date) continue;
+        if (!expDate) continue;
+        const rawDate = expDate.expirationDate || expDate.date;
+        if (!rawDate) continue;
         
-        const expDateStr = typeof expDate.date === 'string' 
-          ? expDate.date 
-          : expDate.date.toISOString?.()?.split('T')[0] || '';
+        const expDateStr = typeof rawDate === 'string' 
+          ? rawDate 
+          : rawDate.toISOString?.()?.split('T')[0] || '';
         
         const daysToExpiration = Math.max(
           1,
           Math.ceil((new Date(expDateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
         );
 
-        const processContracts = (contracts: any[]): OptionContract[] => {
+        const processContracts = (contracts: any[], type: 'call' | 'put'): OptionContract[] => {
           return contracts.slice(0, 10).map((c: any) => ({
             strike: c.strike,
             lastPrice: c.lastPrice || 0,
@@ -926,21 +928,21 @@ export async function getOptionsAnalysis(symbol: string): Promise<OptionsAnalysi
             volume: c.volume || 0,
             openInterest: c.openInterest || 0,
             impliedVolatility: c.impliedVolatility || 0,
-            delta: c.greeks?.delta || calculateDelta(c.strike, currentPrice, daysToExpiration, impliedVolatility, true),
+            delta: c.greeks?.delta || calculateDelta(c.strike, currentPrice, daysToExpiration, impliedVolatility, type === 'call'),
             gamma: c.greeks?.gamma || 0,
             theta: c.greeks?.theta || 0,
             vega: c.greeks?.vega || 0,
             inTheMoney: c.inTheMoney || false,
             expiration: expDateStr,
-            type: 'call' as const,
+            type: type,
           }));
         };
 
         nextExpirations.push({
           date: expDateStr,
           daysToExpiration,
-          calls: processContracts(expDate.calls || []),
-          puts: processContracts(expDate.puts || []),
+          calls: processContracts(expDate.calls || [], 'call'),
+          puts: processContracts(expDate.puts || [], 'put'),
         });
       }
     }
@@ -1063,22 +1065,13 @@ function calculateDelta(
   iv: number,
   isCall: boolean
 ): number {
-  const timeToExpiry = daysToExpiration / 365;
-  const moneyness = currentPrice / strike;
-  
-  if (timeToExpiry <= 0) return isCall ? (moneyness > 1 ? 1 : 0) : (moneyness < 1 ? -1 : 0);
-  
-  let delta: number;
-  if (isCall) {
-    delta = moneyness > 1.05 ? 0.7 + Math.random() * 0.25 : 
-            moneyness < 0.95 ? 0.3 - Math.random() * 0.25 : 
-            0.5;
-  } else {
-    delta = moneyness < 0.95 ? -0.7 - Math.random() * 0.25 : 
-            moneyness > 1.05 ? -0.3 + Math.random() * 0.25 : 
-            -0.5;
+  const T = daysToExpiration / 365;
+  if (T <= 0 || iv <= 0) {
+    return isCall ? (currentPrice > strike ? 1 : 0) : (currentPrice > strike ? 0 : -1);
   }
-  
+  const r = 0.045;
+  const d1 = (Math.log(currentPrice / strike) + (r + 0.5 * iv * iv) * T) / (iv * Math.sqrt(T));
+  const delta = isCall ? normalCDF(d1) : normalCDF(d1) - 1;
   return Math.max(-1, Math.min(1, delta));
 }
 

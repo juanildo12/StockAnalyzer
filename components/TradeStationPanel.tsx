@@ -1,4 +1,5 @@
 'use client';
+import { colors as C, radius as R, font as F } from '@/src/utils/webTheme';
 
 import { useState, useEffect, useCallback } from 'react';
 
@@ -179,9 +180,9 @@ export default function TradeStationPanel() {
   };
 
   const cardStyle: React.CSSProperties = {
-    background: '#161b22',
+    background: C.bgCard,
     borderRadius: '12px',
-    border: '1px solid #30363d',
+    border: '1px solid ' + C.border,
     padding: '20px',
     marginBottom: '16px',
   };
@@ -190,9 +191,9 @@ export default function TradeStationPanel() {
     width: '100%',
     padding: '10px 12px',
     borderRadius: '8px',
-    border: '1px solid #30363d',
-    background: '#0d1117',
-    color: '#c9d1d9',
+    border: '1px solid ' + C.border,
+    background: C.bg,
+    color: C.textSecondary,
     fontSize: '14px',
     boxSizing: 'border-box',
   };
@@ -214,10 +215,10 @@ export default function TradeStationPanel() {
     <div style={containerStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ color: '#f0f6fc', fontSize: '28px', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <h1 style={{ color: C.textPrimary, fontSize: '28px', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontSize: '32px' }}>📊</span> TradeStation
           </h1>
-          <p style={{ color: '#8b949e', fontSize: '14px', margin: '8px 0 0' }}>
+          <p style={{ color: C.textMuted, fontSize: '14px', margin: '8px 0 0' }}>
             Conecta con tu cuenta de TradeStation para gestionar trades
           </p>
         </div>
@@ -245,9 +246,9 @@ export default function TradeStationPanel() {
             style={{
               padding: '10px 16px',
               borderRadius: '8px',
-              border: '1px solid #30363d',
+              border: '1px solid ' + C.border,
               background: 'transparent',
-              color: '#c9d1d9',
+              color: C.textSecondary,
               cursor: 'pointer',
             }}
           >
@@ -259,10 +260,10 @@ export default function TradeStationPanel() {
       {error && (
         <div style={{
           ...cardStyle,
-          borderLeft: '4px solid #f85149',
-          background: '#f8514920',
+          borderLeft: '4px solid ' + C.negative,
+          background: `${C.negative}20`,
         }}>
-          <p style={{ color: '#f85149', margin: 0 }}>{error}</p>
+          <p style={{ color: C.negative, margin: 0 }}>{error}</p>
         </div>
       )}
 
@@ -274,9 +275,9 @@ export default function TradeStationPanel() {
             style={{
               padding: '10px 20px',
               borderRadius: '8px',
-              border: '1px solid #30363d',
-              background: activeTab === tab.id ? '#238636' : 'transparent',
-              color: '#c9d1d9',
+              border: '1px solid ' + C.border,
+              background: activeTab === tab.id ? C.accent : 'transparent',
+              color: C.textSecondary,
               cursor: 'pointer',
               fontWeight: '500',
               whiteSpace: 'nowrap',
@@ -288,13 +289,13 @@ export default function TradeStationPanel() {
       </div>
 
       {loading && (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#8b949e' }}>
+        <div style={{ textAlign: 'center', padding: '40px', color: C.textMuted }}>
           <span style={{
             display: 'inline-block',
             width: '24px',
             height: '24px',
             border: '3px solid #30363d',
-            borderTopColor: '#58a6ff',
+            borderTopColor: C.accent,
             borderRadius: '50%',
             animation: 'spin 1s linear infinite',
           }} />
@@ -308,58 +309,58 @@ export default function TradeStationPanel() {
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
                 <div style={{ ...cardStyle, textAlign: 'center' }}>
-                  <div style={{ color: '#8b949e', fontSize: '12px', marginBottom: '8px' }}>Portfolio Value</div>
-                  <div style={{ color: '#f0f6fc', fontSize: '28px', fontWeight: '700' }}>
+                  <div style={{ color: C.textMuted, fontSize: '12px', marginBottom: '8px' }}>Portfolio Value</div>
+                  <div style={{ color: C.textPrimary, fontSize: '28px', fontWeight: '700' }}>
                     ${balance?.PortfolioValue?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '—'}
                   </div>
                 </div>
                 <div style={{ ...cardStyle, textAlign: 'center' }}>
-                  <div style={{ color: '#8b949e', fontSize: '12px', marginBottom: '8px' }}>Cash Balance</div>
-                  <div style={{ color: '#f0f6fc', fontSize: '28px', fontWeight: '700' }}>
+                  <div style={{ color: C.textMuted, fontSize: '12px', marginBottom: '8px' }}>Cash Balance</div>
+                  <div style={{ color: C.textPrimary, fontSize: '28px', fontWeight: '700' }}>
                     ${balance?.CashBalance?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '—'}
                   </div>
                 </div>
                 <div style={{ ...cardStyle, textAlign: 'center' }}>
-                  <div style={{ color: '#8b949e', fontSize: '12px', marginBottom: '8px' }}>Buying Power</div>
-                  <div style={{ color: '#3fb950', fontSize: '28px', fontWeight: '700' }}>
+                  <div style={{ color: C.textMuted, fontSize: '12px', marginBottom: '8px' }}>Buying Power</div>
+                  <div style={{ color: C.positive, fontSize: '28px', fontWeight: '700' }}>
                     ${balance?.BuyingPower?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '—'}
                   </div>
                 </div>
                 <div style={{ ...cardStyle, textAlign: 'center' }}>
-                  <div style={{ color: '#8b949e', fontSize: '12px', marginBottom: '8px' }}>Equity</div>
-                  <div style={{ color: '#f0f6fc', fontSize: '28px', fontWeight: '700' }}>
+                  <div style={{ color: C.textMuted, fontSize: '12px', marginBottom: '8px' }}>Equity</div>
+                  <div style={{ color: C.textPrimary, fontSize: '28px', fontWeight: '700' }}>
                     ${balance?.Equity?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '—'}
                   </div>
                 </div>
               </div>
 
               <div style={{ ...cardStyle }}>
-                <h3 style={{ color: '#f0f6fc', marginTop: 0 }}>Posiciones Abiertas ({positions.length})</h3>
+                <h3 style={{ color: C.textPrimary, marginTop: 0 }}>Posiciones Abiertas ({positions.length})</h3>
                 {positions.length === 0 ? (
-                  <p style={{ color: '#8b949e', textAlign: 'center', padding: '20px' }}>Sin posiciones abiertas</p>
+                  <p style={{ color: C.textMuted, textAlign: 'center', padding: '20px' }}>Sin posiciones abiertas</p>
                 ) : (
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
-                        <tr style={{ borderBottom: '1px solid #30363d' }}>
-                          <th style={{ textAlign: 'left', padding: '12px 8px', color: '#8b949e', fontSize: '12px' }}>Símbolo</th>
-                          <th style={{ textAlign: 'right', padding: '12px 8px', color: '#8b949e', fontSize: '12px' }}>Cantidad</th>
-                          <th style={{ textAlign: 'right', padding: '12px 8px', color: '#8b949e', fontSize: '12px' }}>Precio Entrada</th>
-                          <th style={{ textAlign: 'right', padding: '12px 8px', color: '#8b949e', fontSize: '12px' }}>Precio Actual</th>
-                          <th style={{ textAlign: 'right', padding: '12px 8px', color: '#8b949e', fontSize: '12px' }}>P/L</th>
+                        <tr style={{ borderBottom: '1px solid ' + C.border }}>
+                          <th style={{ textAlign: 'left', padding: '12px 8px', color: C.textMuted, fontSize: '12px' }}>Símbolo</th>
+                          <th style={{ textAlign: 'right', padding: '12px 8px', color: C.textMuted, fontSize: '12px' }}>Cantidad</th>
+                          <th style={{ textAlign: 'right', padding: '12px 8px', color: C.textMuted, fontSize: '12px' }}>Precio Entrada</th>
+                          <th style={{ textAlign: 'right', padding: '12px 8px', color: C.textMuted, fontSize: '12px' }}>Precio Actual</th>
+                          <th style={{ textAlign: 'right', padding: '12px 8px', color: C.textMuted, fontSize: '12px' }}>P/L</th>
                         </tr>
                       </thead>
                       <tbody>
                         {positions.map((pos, i) => (
                           <tr key={i} style={{ borderBottom: '1px solid #21262d' }}>
-                            <td style={{ padding: '12px 8px', color: '#58a6ff', fontWeight: '600' }}>{pos.Symbol}</td>
-                            <td style={{ padding: '12px 8px', textAlign: 'right', color: '#c9d1d9' }}>{pos.Quantity}</td>
-                            <td style={{ padding: '12px 8px', textAlign: 'right', color: '#c9d1d9' }}>${pos.AverageEntryPrice?.toFixed(2)}</td>
-                            <td style={{ padding: '12px 8px', textAlign: 'right', color: '#c9d1d9' }}>${pos.CurrentPrice?.toFixed(2)}</td>
+                            <td style={{ padding: '12px 8px', color: C.accent, fontWeight: '600' }}>{pos.Symbol}</td>
+                            <td style={{ padding: '12px 8px', textAlign: 'right', color: C.textSecondary }}>{pos.Quantity}</td>
+                            <td style={{ padding: '12px 8px', textAlign: 'right', color: C.textSecondary }}>${pos.AverageEntryPrice?.toFixed(2)}</td>
+                            <td style={{ padding: '12px 8px', textAlign: 'right', color: C.textSecondary }}>${pos.CurrentPrice?.toFixed(2)}</td>
                             <td style={{ 
                               padding: '12px 8px', 
                               textAlign: 'right', 
-                              color: pos.OpenPL >= 0 ? '#3fb950' : '#f85149',
+                              color: pos.OpenPL >= 0 ? C.positive : C.negative,
                               fontWeight: '600'
                             }}>
                               {pos.OpenPL >= 0 ? '+' : ''}{pos.OpenPL?.toFixed(2)} ({pos.OpenPLPercent?.toFixed(2)}%)
@@ -376,9 +377,9 @@ export default function TradeStationPanel() {
 
           {activeTab === 'positions' && (
             <div style={cardStyle}>
-              <h3 style={{ color: '#f0f6fc', marginTop: 0 }}>Todas las Posiciones ({positions.length})</h3>
+              <h3 style={{ color: C.textPrimary, marginTop: 0 }}>Todas las Posiciones ({positions.length})</h3>
               {positions.length === 0 ? (
-                <p style={{ color: '#8b949e', textAlign: 'center', padding: '40px' }}>Sin posiciones</p>
+                <p style={{ color: C.textMuted, textAlign: 'center', padding: '40px' }}>Sin posiciones</p>
               ) : (
                 <div style={{ display: 'grid', gap: '12px' }}>
                   {positions.map((pos, i) => (
@@ -387,19 +388,19 @@ export default function TradeStationPanel() {
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: '16px',
-                      background: '#0d1117',
+                      background: C.bg,
                       borderRadius: '8px',
-                      border: '1px solid #30363d',
+                      border: '1px solid ' + C.border,
                     }}>
                       <div>
-                        <div style={{ color: '#58a6ff', fontSize: '18px', fontWeight: '600' }}>{pos.Symbol}</div>
-                        <div style={{ color: '#8b949e', fontSize: '13px' }}>{pos.Quantity} acciones</div>
+                        <div style={{ color: C.accent, fontSize: '18px', fontWeight: '600' }}>{pos.Symbol}</div>
+                        <div style={{ color: C.textMuted, fontSize: '13px' }}>{pos.Quantity} acciones</div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ color: '#c9d1d9' }}>Entrada: ${pos.AverageEntryPrice?.toFixed(2)}</div>
-                        <div style={{ color: '#c9d1d9' }}>Actual: ${pos.CurrentPrice?.toFixed(2)}</div>
+                        <div style={{ color: C.textSecondary }}>Entrada: ${pos.AverageEntryPrice?.toFixed(2)}</div>
+                        <div style={{ color: C.textSecondary }}>Actual: ${pos.CurrentPrice?.toFixed(2)}</div>
                         <div style={{ 
-                          color: pos.OpenPL >= 0 ? '#3fb950' : '#f85149',
+                          color: pos.OpenPL >= 0 ? C.positive : C.negative,
                           fontSize: '16px',
                           fontWeight: '600'
                         }}>
@@ -415,9 +416,9 @@ export default function TradeStationPanel() {
 
           {activeTab === 'orders' && (
             <div style={cardStyle}>
-              <h3 style={{ color: '#f0f6fc', marginTop: 0 }}>Órdenes ({orders.length})</h3>
+              <h3 style={{ color: C.textPrimary, marginTop: 0 }}>Órdenes ({orders.length})</h3>
               {orders.length === 0 ? (
-                <p style={{ color: '#8b949e', textAlign: 'center', padding: '40px' }}>Sin órdenes activas</p>
+                <p style={{ color: C.textMuted, textAlign: 'center', padding: '40px' }}>Sin órdenes activas</p>
               ) : (
                 <div style={{ display: 'grid', gap: '12px' }}>
                   {orders.map((order, i) => (
@@ -426,11 +427,11 @@ export default function TradeStationPanel() {
                       justifyContent: 'space-between',
                       alignItems: 'center',
                       padding: '16px',
-                      background: '#0d1117',
+                      background: C.bg,
                       borderRadius: '8px',
                       border: `1px solid ${
-                        order.Status === 'Filled' ? '#3fb95040' :
-                        order.Status === 'Canceled' ? '#f8514940' : '#30363d'
+                        order.Status === 'Filled' ? `${C.positive}40` :
+                        order.Status === 'Canceled' ? `${C.negative}40` : C.border
                       }`,
                     }}>
                       <div>
@@ -440,14 +441,14 @@ export default function TradeStationPanel() {
                             borderRadius: '4px',
                             fontSize: '11px',
                             fontWeight: '600',
-                            background: order.Side === 'Buy' ? '#3fb95030' : '#f8514930',
-                            color: order.Side === 'Buy' ? '#3fb950' : '#f85149',
+                            background: order.Side === 'Buy' ? `${C.positive}30` : `${C.negative}30`,
+                            color: order.Side === 'Buy' ? C.positive : C.negative,
                           }}>
                             {order.Side}
                           </span>
-                          <span style={{ color: '#58a6ff', fontSize: '16px', fontWeight: '600' }}>{order.Symbol}</span>
+                          <span style={{ color: C.accent, fontSize: '16px', fontWeight: '600' }}>{order.Symbol}</span>
                         </div>
-                        <div style={{ color: '#8b949e', fontSize: '12px', marginTop: '4px' }}>
+                        <div style={{ color: C.textMuted, fontSize: '12px', marginTop: '4px' }}>
                           {order.Quantity} @ {order.OrderType} {order.FillPrice ? `→ $${order.FillPrice}` : ''}
                         </div>
                       </div>
@@ -457,12 +458,12 @@ export default function TradeStationPanel() {
                           borderRadius: '20px',
                           fontSize: '12px',
                           fontWeight: '600',
-                          background: order.Status === 'Filled' ? '#3fb95020' :
-                            order.Status === 'Canceled' ? '#f8514920' :
-                            order.Status === 'Rejected' ? '#f8514920' : '#58a6ff20',
-                          color: order.Status === 'Filled' ? '#3fb950' :
-                            order.Status === 'Canceled' ? '#f85149' :
-                            order.Status === 'Rejected' ? '#f85149' : '#58a6ff',
+                          background: order.Status === 'Filled' ? `${C.positive}20` :
+                            order.Status === 'Canceled' ? `${C.negative}20` :
+                            order.Status === 'Rejected' ? `${C.negative}20` : `${C.accent}20`,
+                          color: order.Status === 'Filled' ? C.positive :
+                            order.Status === 'Canceled' ? C.negative :
+                            order.Status === 'Rejected' ? C.negative : C.accent,
                         }}>
                           {order.Status}
                         </span>
@@ -472,9 +473,9 @@ export default function TradeStationPanel() {
                             style={{
                               padding: '6px 12px',
                               borderRadius: '6px',
-                              border: '1px solid #f85149',
+                              border: '1px solid ' + C.negative,
                               background: 'transparent',
-                              color: '#f85149',
+                              color: C.negative,
                               cursor: 'pointer',
                               fontSize: '12px',
                             }}
@@ -492,11 +493,11 @@ export default function TradeStationPanel() {
 
           {activeTab === 'quick-trade' && (
             <div style={cardStyle}>
-              <h3 style={{ color: '#f0f6fc', marginTop: 0 }}>⚡ Trade Rápido</h3>
+              <h3 style={{ color: C.textPrimary, marginTop: 0 }}>⚡ Trade Rápido</h3>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '13px' }}>Símbolo</label>
+                  <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: '13px' }}>Símbolo</label>
                   <input
                     type="text"
                     value={orderForm.symbol}
@@ -506,7 +507,7 @@ export default function TradeStationPanel() {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '13px' }}>Cantidad</label>
+                  <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: '13px' }}>Cantidad</label>
                   <input
                     type="number"
                     value={orderForm.quantity}
@@ -516,7 +517,7 @@ export default function TradeStationPanel() {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '13px' }}>Tipo</label>
+                  <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: '13px' }}>Tipo</label>
                   <select
                     value={orderForm.orderType}
                     onChange={(e) => setOrderForm(prev => ({ ...prev, orderType: e.target.value as 'Market' | 'Limit' }))}
@@ -527,7 +528,7 @@ export default function TradeStationPanel() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '13px' }}>Precio {orderForm.orderType === 'Limit' ? '(requerido)' : '(opcional)'}</label>
+                  <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: '13px' }}>Precio {orderForm.orderType === 'Limit' ? '(requerido)' : '(opcional)'}</label>
                   <input
                     type="number"
                     value={orderForm.price || ''}
@@ -547,7 +548,7 @@ export default function TradeStationPanel() {
                       padding: '12px 24px',
                       borderRadius: '8px',
                       border: 'none',
-                      background: orderForm.side === 'Buy' ? '#3fb950' : '#30363d',
+                      background: orderForm.side === 'Buy' ? C.positive : C.border,
                       color: 'white',
                       fontWeight: '600',
                       cursor: 'pointer',
@@ -561,7 +562,7 @@ export default function TradeStationPanel() {
                       padding: '12px 24px',
                       borderRadius: '8px',
                       border: 'none',
-                      background: orderForm.side === 'Sell' ? '#f85149' : '#30363d',
+                      background: orderForm.side === 'Sell' ? C.negative : C.border,
                       color: 'white',
                       fontWeight: '600',
                       cursor: 'pointer',
@@ -570,7 +571,7 @@ export default function TradeStationPanel() {
                     SELL
                   </button>
                 </div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#8b949e', fontSize: '14px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: C.textMuted, fontSize: '14px' }}>
                   <input
                     type="checkbox"
                     checked={orderForm.isSimulated}
@@ -588,7 +589,7 @@ export default function TradeStationPanel() {
                   padding: '14px',
                   borderRadius: '8px',
                   border: 'none',
-                  background: loading ? '#21262d' : orderForm.side === 'Buy' ? 'linear-gradient(135deg, #238636 0%, #2ea043 100%)' : 'linear-gradient(135deg, #da3633 0%, #f85149 100%)',
+                  background: loading ? C.borderLight : orderForm.side === 'Buy' ? `linear-gradient(135deg, ${C.accent} 0%, #2ea043 100%)` : `linear-gradient(135deg, #da3633 0%, ${C.negative} 100%)`,
                   color: 'white',
                   fontSize: '16px',
                   fontWeight: '600',
@@ -603,10 +604,10 @@ export default function TradeStationPanel() {
                   marginTop: '16px',
                   padding: '12px',
                   borderRadius: '8px',
-                  background: orderResult.success ? '#3fb95020' : '#f8514920',
-                  border: `1px solid ${orderResult.success ? '#3fb95040' : '#f8514940'}`,
+                  background: orderResult.success ? `${C.positive}20` : `${C.negative}20`,
+                  border: `1px solid ${orderResult.success ? `${C.positive}40` : `${C.negative}40`}`,
                 }}>
-                  <p style={{ margin: 0, color: orderResult.success ? '#3fb950' : '#f85149', fontSize: '14px' }}>
+                  <p style={{ margin: 0, color: orderResult.success ? C.positive : C.negative, fontSize: '14px' }}>
                     {orderResult.message}
                   </p>
                 </div>

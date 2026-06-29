@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession, signIn, signOut } from 'next-auth/react';
+import Sidebar from '@/components/Sidebar';
 import { 
   savePortfolioToFirestore, 
   getPortfolioFromFirestore, 
@@ -877,430 +878,82 @@ export default function Home() {
     : 0;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0d1117', color: '#c9d1d9', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #30363d', flexWrap: 'wrap', gap: '12px' }}>
-        <h1 style={{ margin: 0, fontSize: '20px', color: '#58a6ff' }}>📈 Stock Analyzer</h1>
-        
-        {!isMobile ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <nav style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => setView('analyzer')}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: view === 'analyzer' ? '#238636' : 'transparent',
-                  color: '#c9d1d9',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                }}
-              >
-                Analizador
-              </button>
-              <button
-                onClick={() => setView('portfolio')}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: view === 'portfolio' ? '#238636' : 'transparent',
-                  color: '#c9d1d9',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                }}
-              >
-                Portafolio ({portfolio.length})
-              </button>
-              <button
-                onClick={() => setView('watchlist')}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: view === 'watchlist' ? '#238636' : 'transparent',
-                  color: '#c9d1d9',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                }}
-              >
-                Watchlist
-              </button>
-              <button
-                  onClick={() => setView('screener')}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #30363d',
-                    background: view === 'screener' ? '#238636' : 'transparent',
-                    color: '#c9d1d9',
-                    cursor: 'pointer',
-                    fontWeight: '500',
-                  }}
-                >
-                  🔍 Screener
-                </button>
-
-              <button
-                onClick={() => setView('informe')}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: view === 'informe' ? '#238636' : 'transparent',
-                  color: '#c9d1d9',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                }}
-              >
-                Informe
-              </button>
-              <button
-                onClick={() => setView('risk-report')}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: view === 'risk-report' ? '#238636' : 'transparent',
-                  color: '#c9d1d9',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                }}
-              >
-                Risk Report
-              </button>
-              <button
-                onClick={() => setView('framework')}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: view === 'framework' ? '#238636' : 'transparent',
-                  color: '#c9d1d9',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                }}
-              >
-                🧠 Framework
-              </button>
-              <button
-                onClick={() => setView('options')}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: view === 'options' ? '#238636' : 'transparent',
-                  color: '#c9d1d9',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                }}
-              >
-                🎯 Opciones
-              </button>
-              <button
-                onClick={() => setView('trade-validator')}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: view === 'trade-validator' ? '#238636' : 'transparent',
-                  color: '#c9d1d9',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                }}
-              >
-                ✅ Trade Validator
-              </button>
-              <button
-                onClick={() => setView('tradestation')}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: view === 'tradestation' ? '#238636' : 'transparent',
-                  color: '#c9d1d9',
-                  cursor: 'pointer',
-                  fontWeight: '500',
-                }}
-              >
-                📊 TradeStation
-              </button>
-            </nav>
-            {status === 'loading' ? (
-              <span style={{ color: '#8b949e', fontSize: '14px' }}>Cargando...</span>
-            ) : session ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {session.user?.image && (
-                  <img 
-                    src={session.user.image} 
-                    alt={session.user.name || 'User'} 
-                    style={{ width: '32px', height: '32px', borderRadius: '50%' }}
-                  />
-                )}
-                <span style={{ color: '#c9d1d9', fontSize: '14px' }}>{session.user?.name}</span>
-                <button
-                  onClick={() => signOut()}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    border: '1px solid #f85149',
-                    background: 'transparent',
-                    color: '#f85149',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                  }}
-                >
-                  Salir
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => signIn('google')}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: '#58a6ff',
-                  color: 'white',
-                  cursor: 'pointer',
-                  fontWeight: '600',
-                  fontSize: '14px',
-                }}
-              >
-                Iniciar sesión
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: '1px solid #30363d',
-                background: 'transparent',
-                color: '#c9d1d9',
-                cursor: 'pointer',
-                fontSize: '20px',
-              }}
-            >
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#0d1117', color: '#c9d1d9', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      {!isMobile && <Sidebar view={view} onViewChange={setView} />}
+      <div style={{ flex: 1, marginLeft: isMobile ? 0 : 220, display: 'flex', flexDirection: 'column' }}>
+      <header style={{ display: 'flex', alignItems: 'center', padding: '12px 24px', borderBottom: '1px solid #30363d', background: 'linear-gradient(180deg, rgba(124,58,237,0.08) 0%, transparent 100%)' }}>
+        {isMobile && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button onClick={() => setMenuOpen(!menuOpen)}
+              style={{ padding: '4px 8px', border: 'none', background: 'transparent', color: '#8b949e', cursor: 'pointer', fontSize: '20px' }}>
               {menuOpen ? '✕' : '☰'}
             </button>
-            {menuOpen && (
-              <div style={{
-                width: '100%',
-                background: '#161b22',
-                borderRadius: '8px',
-                padding: '12px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-              }}>
-                <button
-                  onClick={() => { setView('analyzer'); setMenuOpen(false); }}
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #30363d',
-                    background: view === 'analyzer' ? '#238636' : 'transparent',
-                    color: '#c9d1d9',
-                    cursor: 'pointer',
-                    fontWeight: '500',
-                    textAlign: 'left',
-                  }}
-                >
-                  Analizador
-                </button>
-                <button
-                  onClick={() => { setView('portfolio'); setMenuOpen(false); }}
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #30363d',
-                    background: view === 'portfolio' ? '#238636' : 'transparent',
-                    color: '#c9d1d9',
-                    cursor: 'pointer',
-                    fontWeight: '500',
-                    textAlign: 'left',
-                  }}
-                >
-                  Portafolio ({portfolio.length})
-                </button>
-                <button
-                  onClick={() => { setView('watchlist'); setMenuOpen(false); }}
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #30363d',
-                    background: view === 'watchlist' ? '#238636' : 'transparent',
-                    color: '#c9d1d9',
-                    cursor: 'pointer',
-                    fontWeight: '500',
-                    textAlign: 'left',
-                  }}
-                >
-                  Watchlist
-                </button>
-                <button
-                  onClick={() => { setView('screener'); setMenuOpen(false); }}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #30363d',
-                    background: view === 'screener' ? '#238636' : 'transparent',
-                    color: '#c9d1d9',
-                    cursor: 'pointer',
-                    fontWeight: '500',
-                    textAlign: 'left',
-                  }}
-                >
-                  🔍 Screener
-                </button>
-
-                <button
-                  onClick={() => { setView('informe'); setMenuOpen(false); }}
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #30363d',
-                    background: view === 'informe' ? '#238636' : 'transparent',
-                    color: '#c9d1d9',
-                    cursor: 'pointer',
-                    fontWeight: '500',
-                    textAlign: 'left',
-                  }}
-                >
-                  Informe
-                </button>
-                <button
-                  onClick={() => { setView('risk-report'); setMenuOpen(false); }}
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #30363d',
-                    background: view === 'risk-report' ? '#238636' : 'transparent',
-                    color: '#c9d1d9',
-                    cursor: 'pointer',
-                    fontWeight: '500',
-                    textAlign: 'left',
-                  }}
-                >
-                  Risk Report
-                </button>
-                <button
-                  onClick={() => { setView('framework'); setMenuOpen(false); }}
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #30363d',
-                    background: view === 'framework' ? '#238636' : 'transparent',
-                    color: '#c9d1d9',
-                    cursor: 'pointer',
-                    fontWeight: '500',
-                    textAlign: 'left',
-                  }}
-                >
-                  🧠 Framework
-                </button>
-                <button
-                  onClick={() => { setView('options'); setMenuOpen(false); }}
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #30363d',
-                    background: view === 'options' ? '#238636' : 'transparent',
-                    color: '#c9d1d9',
-                    cursor: 'pointer',
-                    fontWeight: '500',
-                    textAlign: 'left',
-                  }}
-                >
-                  🎯 Opciones
-                </button>
-                <button
-                  onClick={() => { setView('trade-validator'); setMenuOpen(false); }}
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #30363d',
-                    background: view === 'trade-validator' ? '#238636' : 'transparent',
-                    color: '#c9d1d9',
-                    cursor: 'pointer',
-                    fontWeight: '500',
-                    textAlign: 'left',
-                  }}
-                >
-                  ✅ Trade Validator
-                </button>
-                <button
-                  onClick={() => { setView('tradestation'); setMenuOpen(false); }}
-                  style={{
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #30363d',
-                    background: view === 'tradestation' ? '#238636' : 'transparent',
-                    color: '#c9d1d9',
-                    cursor: 'pointer',
-                    fontWeight: '500',
-                    textAlign: 'left',
-                  }}
-                >
-                  📊 TradeStation
-                </button>
-                <div style={{ borderTop: '1px solid #30363d', paddingTop: '12px', marginTop: '4px' }}>
-                  {status === 'loading' ? (
-                    <span style={{ color: '#8b949e', fontSize: '14px' }}>Cargando...</span>
-                  ) : session ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      {session.user?.image && (
-                        <img 
-                          src={session.user.image} 
-                          alt={session.user.name || 'User'} 
-                          style={{ width: '32px', height: '32px', borderRadius: '50%' }}
-                        />
-                      )}
-                      <span style={{ color: '#c9d1d9', fontSize: '14px', flex: 1 }}>{session.user?.name}</span>
-                      <button
-                        onClick={() => { signOut(); setMenuOpen(false); }}
-                        style={{
-                          padding: '8px 12px',
-                          borderRadius: '6px',
-                          border: '1px solid #f85149',
-                          background: 'transparent',
-                          color: '#f85149',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                        }}
-                      >
-                        Salir
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => { signIn('google'); setMenuOpen(false); }}
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        background: '#58a6ff',
-                        color: 'white',
-                        cursor: 'pointer',
-                        fontWeight: '600',
-                        fontSize: '14px',
-                      }}
-                    >
-                      Iniciar sesión
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </>
+            <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'linear-gradient(135deg, #7C3AED 0%, #6366F1 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '700', color: '#fff' }}>P</div>
+            <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#f0f6fc', letterSpacing: '-0.3px' }}>Prospector</h1>
+          </div>
         )}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {status === 'loading' ? (
+            <span style={{ color: '#8b949e', fontSize: '14px' }}>Cargando...</span>
+          ) : session ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {session.user?.image && (
+                <img src={session.user.image} alt={session.user.name || 'User'} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+              )}
+              <span style={{ color: '#c9d1d9', fontSize: '14px' }}>{session.user?.name}</span>
+              <button onClick={() => signOut()} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #f85149', background: 'transparent', color: '#f85149', cursor: 'pointer', fontSize: '12px' }}>Salir</button>
+            </div>
+          ) : (
+            <button onClick={() => signIn('google')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#7C3AED', color: 'white', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>Iniciar sesión</button>
+          )}
+        </div>
       </header>
+
+
+        {isMobile && menuOpen && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9998 }} onClick={() => setMenuOpen(false)} />
+        )}
+        {isMobile && menuOpen && (
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '280px', height: '100vh', background: '#161b22', borderRight: '1px solid #30363d', zIndex: 9999, overflowY: 'auto', padding: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '12px', background: 'linear-gradient(135deg, #7C3AED 0%, #6366F1 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '700', color: '#fff' }}>P</div>
+                <span style={{ fontSize: '18px', fontWeight: '700', color: '#f0f6fc' }}>Prospector</span>
+              </div>
+              <button onClick={() => setMenuOpen(false)} style={{ padding: '4px 8px', border: 'none', background: 'transparent', color: '#8b949e', cursor: 'pointer', fontSize: '24px' }}>✕</button>
+            </div>
+            {[
+      { id: 'analyzer', icon: '🔍', label: 'Analizador' },
+      { id: 'portfolio', icon: '📁', label: 'Portafolio' },
+      { id: 'watchlist', icon: '👁️', label: 'Watchlist' },
+      { id: 'screener', icon: '🔎', label: 'Screener' },
+      { id: 'informe', icon: '📄', label: 'Informe' },
+      { id: 'risk-report', icon: '⚠️', label: 'Risk Report' },
+      { id: 'framework', icon: '🧠', label: 'Framework' },
+      { id: 'options', icon: '🎯', label: 'Opciones' },
+      { id: 'trade-validator', icon: '✅', label: 'Trade Validator' },
+      { id: 'tradestation', icon: '📊', label: 'TradeStation' }
+            ].map(({ id, icon, label }) => (
+              <button key={id} onClick={() => { setView(id); setMenuOpen(false); }}
+                style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #30363d', background: view === id ? '#7C3AED' : 'transparent', color: '#c9d1d9', cursor: 'pointer', fontWeight: '500', textAlign: 'left', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span>{icon}</span><span>{label} {id === 'portfolio' ? `(${portfolio.length})` : ''}</span>
+              </button>
+            ))}
+            <div style={{ borderTop: '1px solid #30363d', paddingTop: '16px', marginTop: '16px' }}>
+              {status === 'loading' ? (
+                <span style={{ color: '#8b949e', fontSize: '14px' }}>Cargando...</span>
+              ) : session ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {session.user?.image && <img src={session.user.image} alt={session.user.name || 'User'} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />}
+                  <span style={{ color: '#c9d1d9', fontSize: '14px', flex: 1 }}>{session.user?.name}</span>
+                  <button onClick={() => { signOut(); setMenuOpen(false); }} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #f85149', background: 'transparent', color: '#f85149', cursor: 'pointer', fontSize: '12px' }}>Salir</button>
+                </div>
+              ) : (
+                <button onClick={() => { signIn('google'); setMenuOpen(false); }} style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: 'none', background: '#7C3AED', color: 'white', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>Iniciar sesión</button>
+              )}
+            </div>
+          </div>
+        )}
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
         {view === 'analyzer' ? (
@@ -2646,6 +2299,7 @@ export default function Home() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
