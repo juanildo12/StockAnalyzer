@@ -5,7 +5,7 @@ import {
   LineChart, FileText, Shield, Wallet, Eye, Filter,
   DollarSign, CheckCircle, Building2, FlaskConical,
   LayoutDashboard, Brain, Puzzle, Bot, ChevronDown,
-  ChevronRight, Search, Briefcase, Wrench,
+  ChevronRight, Search, Briefcase, Wrench, Gamepad2,
 } from 'lucide-react';
 import { colors as C, radius as R } from '@/src/utils/webTheme';
 
@@ -63,6 +63,14 @@ const NAV_GROUPS: NavGroup[] = [
       { view: 'ai-coach', label: 'FinRobot Coach', icon: <Bot size={18} /> },
     ],
   },
+  {
+    id: 'juego',
+    label: 'Trading Trainer',
+    icon: <Gamepad2 size={14} />,
+    items: [
+      { view: 'trading-trainer', label: 'Trading Trainer', icon: <Gamepad2 size={18} /> },
+    ],
+  },
 ];
 
 export default function Sidebar({ view, onViewChange }: SidebarProps) {
@@ -70,6 +78,7 @@ export default function Sidebar({ view, onViewChange }: SidebarProps) {
     analisis: false,
     trading: false,
     herramientas: false,
+    juego: false,
   });
 
   const toggle = (id: string) => setCollapsed(prev => ({ ...prev, [id]: !prev[id] }));

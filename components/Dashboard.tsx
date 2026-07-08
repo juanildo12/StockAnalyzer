@@ -15,6 +15,7 @@ import MetricChartPanel from './MetricChartPanel';
 import VeredictoPanel from './VeredictoPanel';
 import OptionsScreenerPanel from './OptionsScreenerPanel';
 import ScreenerRankingsPanel from './ScreenerRankingsPanel';
+import TopWeeklyPicks from './TopWeeklyPicks';
 import { colors as C, radius as R, font as F, transition as T } from '@/src/utils/webTheme';
 
 const TOP_N_SIGNALS = 30;
@@ -83,6 +84,8 @@ export default function Dashboard({
   const [detailLoading, setDetailLoading] = useState(false);
   const [enrichedData, setEnrichedData] = useState<any>(null);
   const [enrichedLoading, setEnrichedLoading] = useState(false);
+  const [quoteData, setQuoteData] = useState<any>(null);
+  const [technicalData, setTechnicalData] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [dashboardSection, setDashboardSection] = useState<'signals' | 'bullsbears' | 'market' | 'opciones' | 'screeners'>('signals');
   const [showLearningGuide, setShowLearningGuide] = useState(false);
@@ -90,33 +93,33 @@ export default function Dashboard({
 
   // Load top signals from market screener
   useEffect(() => {
+    let active = true;
     async function loadSignals() {
       try {
         setLoading(true);
-        // Get daily screened stocks
         const screenerRes = await fetch('/api/screener?action=screener');
         const screenerJson = await screenerRes.json();
         const stocks = screenerJson.stocks || screenerJson.screenerStocks || [];
         const symbols = stocks.map((s: any) => s.symbol).filter(Boolean).slice(0, TOP_N_SIGNALS).join(',');
 
         if (!symbols) {
-          setSignals([]);
-          setLoading(false);
+          if (active) { setSignals([]); setLoading(false); }
           return;
         }
 
         const res = await fetch(`/api/signal?symbols=${symbols}`);
         const json = await res.json();
-        if (json.signals) {
+        if (active && json.signals) {
           setSignals(json.signals.filter((s: SignalData | null) => s != null));
         }
       } catch (err) {
-        setError('Error al cargar señales');
+        if (active) setError('Error al cargar señales');
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
     loadSignals();
+    return () => { active = false; };
   }, []);
 
   // Handle stock click
@@ -140,6 +143,8 @@ export default function Dashboard({
           finnhub: stockJson.finnhub,
           summary: stockJson.summary,
         });
+        setQuoteData(stockJson.quote ?? null);
+        setTechnicalData(stockJson.technical ?? null);
       }
     } catch (err) {
       setError(`Error al cargar ${symbol}`);
@@ -239,6 +244,8 @@ export default function Dashboard({
               symbol={selectedSymbol}
               detailData={detailData}
               summary={enrichedData?.summary ?? null}
+              quote={quoteData}
+              technical={technicalData}
             />
           </div>
         ) : (
@@ -255,7 +262,12 @@ export default function Dashboard({
             ) : dashboardSection === 'opciones' ? (
               <OptionsScreenerPanel />
             ) : dashboardSection === 'screeners' ? (
-              <ScreenerRankingsPanel />
+              <>
+                <TopWeeklyPicks onStockClick={handleStockClick} />
+                <div style={{ marginTop: '24px' }}>
+                  <ScreenerRankingsPanel onStockClick={handleStockClick} />
+                </div>
+              </>
             ) : (
               <>
                 <TopPicksSection signals={sortedSignals} onStockClick={handleStockClick} />
@@ -279,7 +291,7 @@ function Header({
   return (
     <div style={{ marginBottom: '24px', background: C.gradientHero, borderRadius: R.lg, padding: '20px' }}>
       {/* Top Bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ width: '36px', height: '36px', borderRadius: R.sm, background: 'linear-gradient(135deg, ' + C.accentLight + ', #7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '800', color: 'white' }}>
             P
@@ -288,8 +300,8 @@ function Header({
             Prospector
           </h1>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', whiteSpace: 'nowrap', WebkitOverflowScrolling: 'touch', flex: '1 1 auto', justifyContent: 'flex-end' }}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
             <input
               type="text"
               placeholder="Buscar símbolo..."
@@ -302,7 +314,7 @@ function Header({
                 padding: '8px 16px 8px 36px',
                 color: C.textPrimary,
                 fontSize: '14px',
-                width: '180px',
+                width: '140px',
                 outline: 'none',
               }}
             />

@@ -22,7 +22,12 @@ import {
 import { useMediaQuery } from '@/src/hooks/useMediaQuery';
 import TradeValidator from '@/components/TradeValidator';
 import TradeStationPanel from '@/components/TradeStationPanel';
+import Dashboard from '@/components/Dashboard';
+import AICoach from '@/components/AICoach';
+import BacktestPanel from '@/components/BacktestPanel';
+import ScreenerGraham from '@/components/ScreenerGraham';
 import ScreenerPage from '@/app/screener/page';
+import TradingTrainer from '@/components/TradingTrainer';
 
 
 interface StockQuote {
@@ -480,7 +485,7 @@ export default function Home() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [view, setView] = useState<'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'framework' | 'options' | 'trade-validator' | 'tradestation' | 'screener'>('analyzer');
+  const [view, setView] = useState<'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'framework' | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard' | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer'>('analyzer');
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -524,6 +529,31 @@ export default function Home() {
   useEffect(() => {
     loadPortfolio();
   }, []);
+
+  // Daily refresh of watchlist prices at 8PM Bolivia time (UTC-4)
+  useEffect(() => {
+    const msTo8PM = (): number => {
+      const now = new Date();
+      const laPazStr = now.toLocaleString('en-US', { timeZone: 'America/La_Paz' });
+      const laPaz = new Date(laPazStr);
+      const target = new Date(laPaz);
+      target.setHours(20, 0, 0, 0);
+      if (target <= laPaz) target.setDate(target.getDate() + 1);
+      return target.getTime() - laPaz.getTime();
+    };
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const schedule = () => {
+      timer = setTimeout(async () => {
+        const syms = watchlist.map(w => w.symbol);
+        if (syms.length > 0) await fetchWatchlistPrices(syms);
+        schedule();
+      }, msTo8PM());
+    };
+
+    if (watchlist.length > 0) schedule();
+    return () => { if (timer) clearTimeout(timer); };
+  }, [watchlist.length]);
 
   const loadPortfolio = async () => {
     if (session?.user?.email) {
@@ -878,10 +908,10 @@ export default function Home() {
     : 0;
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#0d1117', color: '#c9d1d9', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', width: '100%', maxWidth: '100%', background: '#0d1117', color: '#c9d1d9', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {!isMobile && <Sidebar view={view} onViewChange={setView} />}
-      <div style={{ flex: 1, marginLeft: isMobile ? 0 : 220, display: 'flex', flexDirection: 'column' }}>
-      <header style={{ display: 'flex', alignItems: 'center', padding: '12px 24px', borderBottom: '1px solid #30363d', background: 'linear-gradient(180deg, rgba(124,58,237,0.08) 0%, transparent 100%)' }}>
+      <div style={{ flex: 1, minWidth: 0, width: '100%', maxWidth: '100%', marginLeft: isMobile ? 0 : 220, display: 'flex', flexDirection: 'column' }}>
+      <header style={{ display: 'flex', alignItems: 'center', padding: '12px 24px', borderBottom: '1px solid #30363d', background: '#0d1117', position: isMobile ? 'sticky' : undefined, top: 0, zIndex: isMobile ? 100 : undefined }}>
         {isMobile && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button onClick={() => setMenuOpen(!menuOpen)}
@@ -911,10 +941,10 @@ export default function Home() {
 
 
         {isMobile && menuOpen && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9998 }} onClick={() => setMenuOpen(false)} />
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 10000 }} onClick={() => setMenuOpen(false)} />
         )}
         {isMobile && menuOpen && (
-          <div style={{ position: 'fixed', top: 0, left: 0, width: '280px', height: '100vh', background: '#161b22', borderRight: '1px solid #30363d', zIndex: 9999, overflowY: 'auto', padding: '20px' }}>
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '280px', height: '100dvh', background: '#161b22', borderRight: '1px solid #30363d', zIndex: 10001, overflowY: 'auto', padding: '20px', paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ width: '36px', height: '36px', borderRadius: '12px', background: 'linear-gradient(135deg, #7C3AED 0%, #6366F1 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '700', color: '#fff' }}>P</div>
@@ -932,7 +962,12 @@ export default function Home() {
       { id: 'framework', icon: '🧠', label: 'Framework' },
       { id: 'options', icon: '🎯', label: 'Opciones' },
       { id: 'trade-validator', icon: '✅', label: 'Trade Validator' },
-      { id: 'tradestation', icon: '📊', label: 'TradeStation' }
+      { id: 'tradestation', icon: '📊', label: 'TradeStation' },
+      { id: 'dashboard', icon: '📈', label: 'Dashboard' },
+      { id: 'ai-coach', icon: '🤖', label: 'FinRobot Coach' },
+      { id: 'backtest', icon: '🧪', label: 'Backtest' },
+      { id: 'inversor-inteligente', icon: '🧠', label: 'Inv. Inteligente' },
+      { id: 'trading-trainer', icon: '🎮', label: 'Trading Trainer' }
             ].map(({ id, icon, label }) => (
               <button key={id} onClick={() => { setView(id); setMenuOpen(false); }}
                 style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #30363d', background: view === id ? '#7C3AED' : 'transparent', color: '#c9d1d9', cursor: 'pointer', fontWeight: '500', textAlign: 'left', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1771,7 +1806,7 @@ export default function Home() {
       </div>
       {/* Vista de Informe - Nuevo Formato Detallado */}
       {view === 'informe' && (
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+      <div style={{ width: '100%', maxWidth: isMobile ? '100%' : '1200px', margin: '0 auto', padding: isMobile ? '12px' : '20px', boxSizing: 'border-box' }}>
           {data?.informeDetail ? (
             <RenderInforme informe={data.informeDetail} data={data} />
           ) : data ? (
@@ -1829,6 +1864,31 @@ export default function Home() {
       {/* Vista de TradeStation */}
       {view === 'tradestation' && (
         <TradeStationPanel />
+      )}
+
+      {/* Vista de Dashboard */}
+      {view === 'dashboard' && (
+        <Dashboard onNavigateToAICoach={() => setView('ai-coach')} />
+      )}
+
+      {/* Vista de AI Coach */}
+      {view === 'ai-coach' && (
+        <AICoach symbol={symbol} onAnalyzeSymbol={(sym) => setSymbol(sym)} />
+      )}
+
+      {/* Vista de Backtest */}
+      {view === 'backtest' && (
+        <BacktestPanel />
+      )}
+
+      {/* Vista de Inversor Inteligente */}
+      {view === 'inversor-inteligente' && (
+        <ScreenerGraham onSelect={(sym) => { setSymbol(sym); setView('analyzer'); }} />
+      )}
+
+      {/* Vista de Trading Trainer */}
+      {view === 'trading-trainer' && (
+        <TradingTrainer />
       )}
 
       {/* Modal para agregar a Watchlist */}
@@ -2801,18 +2861,18 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
               {data.optionsAnalysis && (
                 <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px' }}>
                   <h3 style={{ margin: '0 0 16px', color: '#f0f6fc', fontSize: '18px' }}>🎯 Niveles Clave</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-                    <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '10px' }}>
+                    <div style={{ background: '#0d1117', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
                       <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>Soporte</p>
-                      <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#3fb950' }}>${data.optionsAnalysis.keyLevels?.support?.toFixed(2)}</p>
+                      <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#3fb950' }}>${data.optionsAnalysis.keyLevels?.support?.toFixed(2)}</p>
                     </div>
-                    <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+                    <div style={{ background: '#0d1117', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
                       <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>Pivote</p>
-                      <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#f0f6fc' }}>${data.optionsAnalysis.keyLevels?.pivot?.toFixed(2)}</p>
+                      <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#f0f6fc' }}>${data.optionsAnalysis.keyLevels?.pivot?.toFixed(2)}</p>
                     </div>
-                    <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
+                    <div style={{ background: '#0d1117', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
                       <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>Resistencia</p>
-                      <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#f85149' }}>${data.optionsAnalysis.keyLevels?.resistance?.toFixed(2)}</p>
+                      <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#f85149' }}>${data.optionsAnalysis.keyLevels?.resistance?.toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
@@ -2858,12 +2918,12 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             {rec.strategy.name === 'Bull Call Spread' && (
                               <div style={{ marginBottom: '12px' }}>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                                  <div style={{ flex: 1, minWidth: '200px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
                                     <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 COMPRA</p>
                                     <p style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 'bold', color: 'white' }}>1 CALL ${rec.strategy.example.strike?.toFixed(2)}</p>
                                     <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.delta?.toFixed(2)}</p>
                                   </div>
-                                  <div style={{ flex: 1, minWidth: '200px', padding: '12px', background: '#da3633', borderRadius: '8px', textAlign: 'center' }}>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '12px', background: '#da3633', borderRadius: '8px', textAlign: 'center' }}>
                                     <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 VENDE</p>
                                     <p style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 'bold', color: 'white' }}>1 CALL ${rec.strategy.example.strikeUpper?.toFixed(2)}</p>
                                     <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.deltaUpper?.toFixed(2)}</p>
@@ -2880,12 +2940,12 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             {rec.strategy.name === 'Bull Put Spread' && (
                               <div style={{ marginBottom: '12px' }}>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                                  <div style={{ flex: 1, minWidth: '200px', padding: '12px', background: '#da3633', borderRadius: '8px', textAlign: 'center' }}>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '12px', background: '#da3633', borderRadius: '8px', textAlign: 'center' }}>
                                     <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 VENDE</p>
                                     <p style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 'bold', color: 'white' }}>1 PUT ${rec.strategy.example.strike?.toFixed(2)}</p>
                                     <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.delta?.toFixed(2)}</p>
                                   </div>
-                                  <div style={{ flex: 1, minWidth: '200px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
                                     <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 COMPRA</p>
                                     <p style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 'bold', color: 'white' }}>1 PUT ${rec.strategy.example.strikeUpper?.toFixed(2)}</p>
                                     <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.deltaUpper?.toFixed(2)}</p>
@@ -2947,12 +3007,12 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             {rec.strategy.name === 'Long Straddle' && (
                               <div style={{ marginBottom: '12px' }}>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                                  <div style={{ flex: 1, minWidth: '150px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
+                                  <div style={{ flex: 1, minWidth: '120px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
                                     <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 COMPRA</p>
                                     <p style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 'bold', color: 'white' }}>1 CALL ${rec.strategy.example.strike?.toFixed(2)}</p>
                                     <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Δ ~0.50</p>
                                   </div>
-                                  <div style={{ flex: 1, minWidth: '150px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
+                                  <div style={{ flex: 1, minWidth: '120px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
                                     <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 COMPRA</p>
                                     <p style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 'bold', color: 'white' }}>1 PUT ${rec.strategy.example.strike?.toFixed(2)}</p>
                                     <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Δ ~-0.50</p>
@@ -2969,12 +3029,12 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             {rec.strategy.name === 'Long Strangle' && (
                               <div style={{ marginBottom: '12px' }}>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                                  <div style={{ flex: 1, minWidth: '150px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
+                                  <div style={{ flex: 1, minWidth: '120px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
                                     <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 COMPRA</p>
                                     <p style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 'bold', color: 'white' }}>1 CALL ${rec.strategy.example.strikeUpper?.toFixed(2)}</p>
                                     <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Δ ~0.20</p>
                                   </div>
-                                  <div style={{ flex: 1, minWidth: '150px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
+                                  <div style={{ flex: 1, minWidth: '120px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
                                     <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 COMPRA</p>
                                     <p style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 'bold', color: 'white' }}>1 PUT ${rec.strategy.example.strike?.toFixed(2)}</p>
                                     <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Δ ~-0.20</p>
@@ -2992,22 +3052,22 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                               <div style={{ marginBottom: '12px' }}>
                                 <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#58a6ff', fontWeight: '600' }}>🟢 LADO PUT (Bajista):</p>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                                  <div style={{ flex: 1, minWidth: '140px', padding: '10px', background: '#da3633', borderRadius: '6px', textAlign: 'center' }}>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '10px', background: '#da3633', borderRadius: '6px', textAlign: 'center' }}>
                                     <p style={{ margin: '0', fontSize: '11px', color: 'rgba(255,255,255,0.8)' }}>VENDE PUT</p>
                                     <p style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>${rec.strategy.example.strike?.toFixed(2)}</p>
                                   </div>
-                                  <div style={{ flex: 1, minWidth: '140px', padding: '10px', background: '#238636', borderRadius: '6px', textAlign: 'center' }}>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '10px', background: '#238636', borderRadius: '6px', textAlign: 'center' }}>
                                     <p style={{ margin: '0', fontSize: '11px', color: 'rgba(255,255,255,0.8)' }}>COMPRA PUT</p>
                                     <p style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>${rec.strategy.example.strikeUpper?.toFixed(2)}</p>
                                   </div>
                                 </div>
                                 <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#58a6ff', fontWeight: '600' }}>🔴 LADO CALL (Alcista):</p>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                                  <div style={{ flex: 1, minWidth: '140px', padding: '10px', background: '#da3633', borderRadius: '6px', textAlign: 'center' }}>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '10px', background: '#da3633', borderRadius: '6px', textAlign: 'center' }}>
                                     <p style={{ margin: '0', fontSize: '11px', color: 'rgba(255,255,255,0.8)' }}>VENDE CALL</p>
                                     <p style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>${rec.strategy.example.strikeUpper?.toFixed(2)}</p>
                                   </div>
-                                  <div style={{ flex: 1, minWidth: '140px', padding: '10px', background: '#238636', borderRadius: '6px', textAlign: 'center' }}>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '10px', background: '#238636', borderRadius: '6px', textAlign: 'center' }}>
                                     <p style={{ margin: '0', fontSize: '11px', color: 'rgba(255,255,255,0.8)' }}>COMPRA CALL</p>
                                     <p style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>${rec.strategy.example.strikeUpper! * 1.1?.toFixed(2)}</p>
                                   </div>
@@ -3772,10 +3832,10 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
 }
 
 function FrameworkView({ data }: { data: any }) {
-  const fcfYield = ((data.summary.freeCashflow || 0) / (data.summary.marketCap || 1)) * 100;
+  const fcfYield = data.quote.marketCap ? ((data.summary.freeCashflow || 0) / data.quote.marketCap) * 100 : 0;
   const pe = data.quote?.peRatio || 0;
-  const revGrowth = data.summary.revenueGrowthPercent || 0;
-  const margin = data.summary.profitMarginsPercent || 0;
+  const revGrowth = (data.summary.revenueGrowth || 0) * 100;
+  const margin = (data.summary.profitMargins || 0) * 100;
   const isFCFPositive = (data.summary.freeCashflow || 0) >= 0;
 
   let score = 0;
@@ -3783,7 +3843,7 @@ function FrameworkView({ data }: { data: any }) {
   if (fcfYield > 5) score += 2;
   if (revGrowth > 15) score += 2;
   if (margin > 15) score += 2;
-  if (pe < 25) score += 2;
+  if (pe > 0 && pe < 25) score += 2;
 
   const decision = score >= 8 ? '💎 FUERTE COMPRA' : score >= 5 ? '🤔 EVALUAR' : '❌ EVITAR';
   const color = score >= 8 ? '#3fb950' : score >= 5 ? '#f0883e' : '#f85149';
@@ -3979,7 +4039,7 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px', marginBottom: '28px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '10px', marginBottom: '28px' }}>
             {[
               { label: 'Market Cap', val: formatLargeNum(mcap) },
               { label: 'P/E Ratio', val: pe ? pe.toFixed(2) : 'N/A' },
@@ -3988,31 +4048,31 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
               { label: 'Net Margin', val: netMargin.toFixed(1) + '%' },
               { label: 'Strength', val: strengthScore + '/100' },
             ].map(k => (
-              <div key={k.label} style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: '10px', padding: '14px 12px', textAlign: 'center' }}>
-                <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#8b949e' }}>{k.label}</div>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '16px', fontWeight: '600', color: '#f0f6fc', marginTop: '6px' }}>{k.val}</div>
+              <div key={k.label} style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: '10px', padding: '10px 8px', textAlign: 'center' }}>
+                <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#8b949e' }}>{k.label}</div>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '14px', fontWeight: '600', color: '#f0f6fc', marginTop: '6px' }}>{k.val}</div>
               </div>
             ))}
           </div>
 
           <div style={{ marginBottom: '28px' }}>
             <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.5px', color: '#8b949e', marginBottom: '12px' }}>Technical Snapshot</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
               {[
                 { label: 'RSI (14)', val: t?.rsi?.toFixed(1) || 'N/A' },
                 { label: 'Trend', val: t?.trend || 'N/A' },
                 { label: 'Signal', val: t?.signal || 'N/A' },
                 { label: 'Confidence', val: r?.confidence ? r.confidence + '%' : 'N/A' },
               ].map(k => (
-                <div key={k.label} style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: '10px', padding: '14px 12px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.8px', color: '#8b949e' }}>{k.label}</div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '16px', fontWeight: '600', color: '#f0f6fc', marginTop: '6px' }}>{k.val}</div>
+                <div key={k.label} style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: '10px', padding: '10px 8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#8b949e' }}>{k.label}</div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '14px', fontWeight: '600', color: '#f0f6fc', marginTop: '6px' }}>{k.val}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '28px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', marginBottom: '28px' }}>
             {[
               { title: 'Valuation', color: pe > 25 ? '#f59e0b' : '#22c55e', grade: pe > 25 ? 'Premium' : 'Fair', rows: [
                 { label: 'P/E (TTM)', val: pe ? pe.toFixed(2) : 'N/A' },

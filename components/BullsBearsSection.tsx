@@ -73,7 +73,7 @@ export default function BullsBearsSection({ signals, onStockClick }: BullsBearsS
         <span style={{ color: C.textMuted, fontSize: '13px' }}>Clasificación por horizonte temporal</span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
         {/* Short-term column */}
         <div>
           <h3 style={{ margin: '0 0 8px', color: C.textMuted, fontSize: '13px', fontWeight: '600', letterSpacing: '0.5px' }}>

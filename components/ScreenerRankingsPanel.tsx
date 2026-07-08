@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import ScreenerCard from './ScreenerCard';
+import ScreenerDetailView from './ScreenerDetailView';
 
 interface RankingRow {
   symbol: string;
@@ -43,11 +44,16 @@ const SCREENER_IDS = [
   'bull-trades',
 ];
 
-export default function ScreenerRankingsPanel() {
+export default function ScreenerRankingsPanel({
+  onStockClick,
+}: {
+  onStockClick?: (symbol: string) => void;
+}) {
   const [data, setData] = useState<RankingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [visible, setVisible] = useState(3);
+  const [selectedScreener, setSelectedScreener] = useState<ScreenerData | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,6 +109,18 @@ export default function ScreenerRankingsPanel() {
     .filter(Boolean) as ScreenerData[];
 
   const showMore = sortedScreeners.length > visible;
+
+  if (selectedScreener) {
+    return (
+      <ScreenerDetailView
+        screener={selectedScreener}
+        onBack={() => setSelectedScreener(null)}
+        onViewStock={(symbol) => {
+          if (onStockClick) onStockClick(symbol);
+        }}
+      />
+    );
+  }
 
   return (
     <div style={{
@@ -164,7 +182,7 @@ export default function ScreenerRankingsPanel() {
       {/* Cards grid */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
         gap: '20px',
       }}>
         {sortedScreeners.slice(0, visible).map((s, i) => (
@@ -176,6 +194,7 @@ export default function ScreenerRankingsPanel() {
               updatedAt={s.updatedAt}
               formulas={s.formulas}
               rankings={s.rankings}
+              onExpand={() => setSelectedScreener(s)}
             />
           </div>
         ))}
@@ -220,7 +239,7 @@ function LoadingState() {
     <div style={{
       background: '#0B0B0B',
       borderRadius: '24px',
-      padding: '32px',
+      padding: '20px',
       border: '1px solid #1F1F1F',
     }}>
       <div style={{ marginBottom: '28px' }}>
@@ -240,7 +259,7 @@ function LoadingState() {
       </div>
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
         gap: '20px',
       }}>
         {[1, 2, 3].map(i => (

@@ -543,12 +543,15 @@ export async function getHistoricalData(
   symbol: string,
   period1?: Date,
   period2?: Date,
+  noCache?: boolean,
 ): Promise<HistoricalData[]> {
   const sym = symbol.toUpperCase();
   const cacheKey = `hist_${sym}`;
   
-  const cached = getCached<HistoricalData[]>(cacheKey);
-  if (cached) return cached;
+  if (!noCache) {
+    const cached = getCached<HistoricalData[]>(cacheKey);
+    if (cached) return cached;
+  }
 
   const startDate = period1 || new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
   const endDate = period2 || new Date();

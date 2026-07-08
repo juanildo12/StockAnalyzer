@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "Bull Buddy",
+    "slug": "bull-buddy",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "bull-buddy",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bullbuddy.app"
+    },
+    "android": {
+      "package": "com.bullbuddy.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF6E5",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-notifications",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "iosAppId": "ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy",
+          "androidAppId": "ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy",
+          "userTrackingUsageDescription": "Este identificador se usará solo para entregar anuncios no personalizados según la edad del usuario.",
+          "skAdNetworkItems": []
+        }
+      ]
+    ]
+  }
+}

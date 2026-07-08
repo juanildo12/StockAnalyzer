@@ -54,7 +54,7 @@ export default function MarketOverviewPanel({ onStockClick }: { onStockClick?: (
         </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 0 }}>
         {/* Gainers */}
         <div style={{ padding: 12, borderRight: `1px solid ${C.border}` }}>
           <div style={{ fontSize: F.sizeSm, fontWeight: 600, color: C.positive, marginBottom: 8 }}>

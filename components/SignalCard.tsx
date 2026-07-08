@@ -131,7 +131,7 @@ export default function SignalCard({ data, onClick, selected }: SignalCardProps)
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: C.textMuted, borderTop: '1px solid ' + C.borderLight, paddingTop: '8px' }}>
+      <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: C.textMuted, borderTop: '1px solid ' + C.borderLight, paddingTop: '8px', flexWrap: 'wrap' }}>
         {data.details && data.details.peRatio > 0 && <span>PE: {toFixed(data.details.peRatio, 1)}</span>}
         {data.details && data.details.marketCap > 0 && <span>MktCap: {fmtCompact(data.details.marketCap)}</span>}
         {data.details?.trend && <span>Trend: {data.details.trend}</span>}

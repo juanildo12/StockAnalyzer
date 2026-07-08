@@ -103,7 +103,7 @@ function MetricChartCard({ title, description, metricData, cardKey, dates, price
     <div style={{
       background: '#FFFFFF',
       borderRadius: '22px',
-      padding: '24px',
+      padding: '20px',
       border: '1px solid #E8E8ED',
     }}>
       {/* Header */}
@@ -205,11 +205,15 @@ export default function MetricChartPanel({ symbol }: MetricChartPanelProps) {
     }
   }, [symbol]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
 
   if (loading) {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '12px' }}>
         {[1, 2, 3, 4, 5, 6].map(i => <LoadingCard key={i} />)}
       </div>
     );
@@ -218,7 +222,7 @@ export default function MetricChartPanel({ symbol }: MetricChartPanelProps) {
   if (!data || !data.dates || data.dates.length === 0) return null;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '16px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '12px' }}>
       {CARDS.map(card => (
         <MetricChartCard
           key={card.key}

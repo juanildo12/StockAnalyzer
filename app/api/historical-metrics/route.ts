@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getBars } from '@/src/services/polygonClient';
+import { getHistoricalData } from '@/src/services/yahooFinance';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,28 +18,18 @@ export async function GET(req: NextRequest) {
   if (!symbol) return NextResponse.json({ error: 'symbol required' }, { status: 400 });
 
   const sym = symbol.toUpperCase();
-  const now = new Date();
-  const to = now.toISOString().split('T')[0];
-  const fromFull = new Date(now);
-  fromFull.setFullYear(fromFull.getFullYear() - 1);
 
   try {
-    const fmt = (d: Date) => d.toISOString().split('T')[0];
-    const bars = await getBars(sym, fmt(fromFull), to, 1, 'day').catch(() => []);
-    bars.sort((a: any, b: any) => a.t - b.t);
-
-    if (bars.length < 30) {
+    const bars = await getHistoricalData(sym, undefined, undefined, true);
+    if (!bars || bars.length < 30) {
       return NextResponse.json({ symbol: sym, dates: [], price: [], upsideBreakout: [], downsideBreakout: [], volumePressure: [], trendQuality: [], entryConfidence: [], riskReward: [] });
     }
 
-    const closes = bars.map((b: any) => b.c);
-    const highs = bars.map((b: any) => b.h);
-    const lows = bars.map((b: any) => b.l);
-    const volumes = bars.map((b: any) => b.v);
-    const dates = bars.map((b: any) => {
-      const d = new Date(b.t);
-      return d.toISOString().split('T')[0];
-    });
+    const closes = bars.map((b: any) => b.close);
+    const highs = bars.map((b: any) => b.high);
+    const lows = bars.map((b: any) => b.low);
+    const volumes = bars.map((b: any) => b.volume);
+    const dates = bars.map((b: any) => b.date);
 
     const volSMA = sma(volumes, 20);
     const volSMAPadded = [...Array(volumes.length - volSMA.length).fill(1), ...volSMA];
@@ -144,6 +134,7 @@ export async function GET(req: NextRequest) {
     const TRIM = 14;
     const idx = Math.max(0, bars.length - TRIM);
 
+    const lastDate = dates[dates.length - 1];
     return NextResponse.json({
       symbol: sym,
       price: closes.slice(idx),
@@ -154,6 +145,7 @@ export async function GET(req: NextRequest) {
       trendQuality: trendQuality.slice(idx),
       entryConfidence: entryConfidence.slice(idx),
       riskReward: riskReward.slice(idx),
+      lastDate,
     });
   } catch {
     return NextResponse.json({ symbol: sym, dates: [], price: [], upsideBreakout: [], downsideBreakout: [], volumePressure: [], trendQuality: [], entryConfidence: [], riskReward: [] });

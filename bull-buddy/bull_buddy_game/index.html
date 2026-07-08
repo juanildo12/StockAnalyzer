@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Bull Buddy - Aprende a Invertir</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Quicksand:wght@500;600;700&display=swap');
+
+:root{
+  --bg: #FFF6E5; --card: #FFFFFF; --ink: #2B2A4C;
+  --mint: #3FD6A0; --mint-dark: #23AD80; --coral: #FF6B6B; --coral-dark: #E2504F;
+  --purple: #9B5DE5; --sun: #FFC93C; --sky: #4EC5F1; --line: #EFE6D0; --radius: 20px;
+}
+*{box-sizing:border-box;}
+body{margin:0; font-family:'Quicksand',sans-serif; background:var(--bg); color:var(--ink); display:flex; justify-content:center;}
+#app{width:100%; max-width:480px; min-height:100vh; background:var(--bg); display:flex; flex-direction:column; position:relative; overflow:hidden;}
+h1,h2,h3{font-family:'Baloo 2',sans-serif; margin:0;}
+
+header{padding:12px 14px 8px; display:flex; align-items:center; gap:8px; background:var(--card); border-bottom:3px solid var(--line);}
+.stat{display:flex; align-items:center; gap:4px; font-weight:700; font-size:13px; background:#FFF7DE; padding:5px 8px; border-radius:999px; border:2px solid var(--sun); white-space:nowrap; position:relative;}
+.stat.cash{background:#E7FBF3; border-color:var(--mint);}
+.stat.streak{background:#FFEEE0; border-color:#FF8C42;}
+#levelWrap{flex:1; min-width:50px;}
+#xpBar{height:9px; background:var(--line); border-radius:999px; overflow:hidden; margin-top:3px;}
+#xpFill{height:100%; width:0%; background:linear-gradient(90deg,var(--sky),var(--purple)); transition:width .4s ease;}
+#levelLabel{font-size:10px; font-weight:700; color:#8b89b3;}
+.coinPop{position:absolute; top:-4px; right:-4px; font-size:11px; font-weight:800; color:var(--mint-dark); animation:popUp .8s ease forwards; pointer-events:none;}
+@keyframes popUp{0%{opacity:1; transform:translateY(0);} 100%{opacity:0; transform:translateY(-22px);}}
+
+#iconRow{display:flex; gap:7px; padding:8px 14px; background:var(--card); overflow-x:auto;}
+.iconBtn{flex:0 0 auto; width:64px; background:#F7F3E8; border:2px solid var(--line); border-radius:14px; padding:8px 4px; display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer; font-weight:700; font-size:10px; color:var(--ink); font-family:'Quicksand'; position:relative;}
+.iconBtn .ic{font-size:18px;}
+.iconBtn:active{transform:scale(0.94);}
+.iconBtn .pingDot{position:absolute; top:4px; right:8px; width:8px; height:8px; border-radius:50%; background:var(--coral); border:1.5px solid #fff;}
+
+#eventBanner{margin:0 14px 8px; background:linear-gradient(90deg,#FFDE7A,#FFB35C); border-radius:16px; padding:10px 12px; display:flex; align-items:center; gap:10px; border:2px solid #E6A800;}
+#eventBanner .eIcon{font-size:22px;}
+#eventBanner .eText{flex:1; font-size:11.5px; font-weight:700; color:#6b4a00; line-height:1.3;}
+#eventBanner .eTimer{font-family:'Baloo 2'; font-size:13px; color:#6b4a00; background:#fff9ec; padding:3px 8px; border-radius:999px;}
+
+#mascotBar{display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--card); border-bottom:3px solid var(--line);}
+#mascotFace{width:52px;height:52px; flex-shrink:0; border-radius:50%; background:var(--sun); display:flex;align-items:center;justify-content:center; font-size:28px; border:3px solid #E6A800; transition:transform .25s ease;}
+#mascotFace.shake{animation: shake .4s ease;}
+@keyframes shake{0%,100%{transform:rotate(0);} 25%{transform:rotate(-10deg) scale(1.1);} 75%{transform:rotate(10deg) scale(1.1);}}
+#mascotBubble{background:#F1EEFF; border:2px solid var(--purple); border-radius:16px; padding:8px 12px; font-size:12.5px; font-weight:600; flex:1; line-height:1.35;}
+
+main{flex:1; overflow-y:auto; padding:14px; padding-bottom:90px;}
+.screen{display:none; animation: fadein .25s ease;}
+.screen.active{display:block;}
+@keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+.card{background:var(--card); border-radius:var(--radius); padding:16px; margin-bottom:14px; box-shadow:0 3px 0 var(--line); border:2px solid var(--line);}
+
+#tickerRow{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+#tickerName{font-family:'Baloo 2'; font-size:20px;}
+#tickerPrice{font-family:'Baloo 2'; font-size:22px;}
+.pricePos{color:var(--mint-dark);} .priceNeg{color:var(--coral-dark);}
+#chartSvg{width:100%; height:190px; display:block;}
+.candle-up{fill:var(--mint);} .candle-down{fill:var(--coral);}
+.wick{stroke:#9b9bb0; stroke-width:1.4;}
+.tradeControls{display:flex; gap:10px; margin-top:12px;}
+.qtyBtn{width:38px;height:38px;border-radius:12px;border:2px solid var(--line); background:#fff; font-size:18px; font-weight:800; cursor:pointer; color:var(--ink);}
+#qtyDisplay{flex:1; display:flex; align-items:center; justify-content:center; font-family:'Baloo 2'; font-size:17px; background:#F7F3E8; border-radius:12px;}
+.actionBtns{display:flex; gap:10px; margin-top:12px;}
+.bigBtn{flex:1; padding:13px; border:none; border-radius:14px; font-family:'Baloo 2'; font-size:16px; color:#fff; cursor:pointer; box-shadow:0 3px 0 rgba(0,0,0,0.15); transition:transform .08s ease;}
+.bigBtn:active{transform:translateY(2px) scale(0.98); box-shadow:none;}
+.buyBtn{background:var(--mint-dark);} .sellBtn{background:var(--coral-dark);}
+#portfolioBox{display:flex; justify-content:space-between; font-size:13px; font-weight:700; color:#6b6a8d; margin-top:10px;}
+#volBadge{font-size:10.5px; font-weight:700; color:#a9793a; background:#FFF3DE; padding:2px 8px; border-radius:999px;}
+
+.qBadge{display:inline-block; background:var(--purple); color:#fff; font-weight:700; font-size:11px; padding:3px 10px; border-radius:999px; margin-bottom:8px;}
+.tierBadge{display:inline-block; color:#fff; font-weight:800; font-size:11px; padding:3px 10px; border-radius:999px; margin-bottom:8px; margin-left:6px;}
+.comboBadge{display:inline-block; background:var(--sun); color:#7a5200; font-weight:800; font-size:11px; padding:3px 10px; border-radius:999px; margin-bottom:8px; margin-left:6px;}
+.qOption{display:block; width:100%; text-align:left; padding:12px 14px; margin-top:8px; border-radius:14px; border:2px solid var(--line); background:#fff; font-weight:700; font-size:14.5px; cursor:pointer; color:var(--ink);}
+.qOption:hover{border-color:var(--sky);}
+.qOption.correct{background:#E7FBF3; border-color:var(--mint-dark); color:var(--mint-dark);}
+.qOption.wrong{background:#FFECEC; border-color:var(--coral-dark); color:var(--coral-dark);}
+
+.missionChoice{display:block; width:100%; text-align:left; padding:13px 14px; margin-top:10px; border-radius:14px; border:2px solid var(--sky); background:#EFFAFF; font-weight:700; font-size:14px; cursor:pointer; color:var(--ink);}
+.missionChoice:hover{background:#DFF3FF;}
+
+nav{position:absolute; bottom:0; left:0; right:0; display:flex; background:var(--card); border-top:3px solid var(--line); padding:8px 6px calc(8px + env(safe-area-inset-bottom)); max-width:480px; margin:0 auto;}
+.navBtn{flex:1; background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px; cursor:pointer; color:#a9a8c3; font-weight:700; font-size:11px;}
+.navBtn .ic{font-size:22px;}
+.navBtn.active{color:var(--purple);}
+
+.modalOverlay{position:absolute; inset:0; background:rgba(43,42,76,0.55); display:none; align-items:flex-end; z-index:50;}
+.modalOverlay.open{display:flex;}
+.modalSheet{background:var(--bg); width:100%; max-height:85%; border-radius:24px 24px 0 0; padding:18px; overflow-y:auto; animation:slideUp .25s ease; display:flex; flex-direction:column;}
+@keyframes slideUp{from{transform:translateY(100%);} to{transform:translateY(0);}}
+.modalHeader{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;}
+.closeBtn{background:var(--line); border:none; width:30px; height:30px; border-radius:50%; font-weight:800; cursor:pointer; font-size:14px;}
+
+.badgeGrid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.badgeCard{background:var(--card); border:2px solid var(--line); border-radius:16px; padding:12px; text-align:center; opacity:0.4;}
+.badgeCard.unlocked{opacity:1; border-color:var(--sun); background:#FFFBEE;}
+.badgeCard .bIcon{font-size:30px;}
+.badgeCard .bName{font-family:'Baloo 2'; font-size:13px; margin-top:4px;}
+.badgeCard .bDesc{font-size:10.5px; color:#8b89b3; font-weight:600; margin-top:2px;}
+
+.shopSection{margin-bottom:16px;}
+.shopSection h3{font-size:15px; margin-bottom:8px;}
+.shopGrid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+.shopItem{background:var(--card); border:2px solid var(--line); border-radius:16px; padding:12px; text-align:center; position:relative;}
+.shopItem .eventTag{position:absolute; top:6px; right:6px; background:var(--coral); color:#fff; font-size:8.5px; font-weight:800; padding:2px 6px; border-radius:999px;}
+.shopItem .sIcon{font-size:32px;}
+.shopItem .sName{font-family:'Baloo 2'; font-size:12.5px; margin:4px 0 6px;}
+.shopBtn{width:100%; padding:7px; border-radius:10px; border:none; font-weight:800; font-size:12px; cursor:pointer;}
+.shopBtn.buy{background:var(--mint-dark); color:#fff;}
+.shopBtn.owned{background:var(--line); color:#8b89b3;}
+.shopBtn.equipped{background:var(--purple); color:#fff;}
+
+.lbRow{display:flex; align-items:center; gap:10px; padding:10px 8px; border-radius:14px; margin-bottom:6px; background:var(--card); border:2px solid var(--line);}
+.lbRow.me{border-color:var(--purple); background:#F5EEFF;}
+.lbRank{font-family:'Baloo 2'; font-size:15px; width:26px; text-align:center;}
+.lbName{flex:1; font-weight:700; font-size:14px;}
+.lbCoins{font-weight:800; font-size:13px; color:var(--mint-dark);}
+.challengeCard{background:#EFFAFF; border:2px solid var(--sky); border-radius:16px; padding:12px; margin-bottom:14px;}
+.challengeCard h3{font-size:14px; margin-bottom:8px;}
+.vsRow{display:flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700;}
+.vsBarBg{flex:1; height:10px; background:#fff; border-radius:999px; overflow:hidden;}
+.vsBarFill{height:100%; border-radius:999px;}
+
+#toastWrap{position:absolute; top:10px; left:0; right:0; display:flex; flex-direction:column; align-items:center; gap:6px; z-index:100; pointer-events:none;}
+.toast{background:var(--ink); color:#fff; padding:10px 16px; border-radius:999px; font-weight:700; font-size:13px; display:flex; align-items:center; gap:8px; box-shadow:0 4px 10px rgba(0,0,0,0.2); animation: toastIn .3s ease, toastOut .3s ease 2.2s forwards;}
+@keyframes toastIn{from{opacity:0; transform:translateY(-15px);} to{opacity:1; transform:translateY(0);}}
+@keyframes toastOut{to{opacity:0; transform:translateY(-15px);}}
+
+#confettiCanvas{position:absolute; inset:0; pointer-events:none; z-index:90;}
+
+.streakDayRow{display:flex; gap:6px; margin:14px 0;}
+.streakDay{flex:1; aspect-ratio:1; border-radius:12px; background:var(--card); border:2px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:18px;}
+.streakDay.done{background:#FFF1DE; border-color:#FF8C42;}
+.claimBtn{width:100%; padding:14px; border:none; border-radius:14px; background:linear-gradient(90deg,#FF8C42,var(--sun)); color:#fff; font-family:'Baloo 2'; font-size:16px; cursor:pointer; box-shadow:0 3px 0 rgba(0,0,0,0.15);}
+.claimBtn:disabled{background:var(--line); color:#a9a8c3; cursor:default; box-shadow:none;}
+
+/* CHAT */
+#chatMessages{flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:6px 2px; min-height:260px; max-height:50vh;}
+.chatMsg{max-width:80%; padding:9px 13px; border-radius:16px; font-size:13.5px; font-weight:600; line-height:1.35;}
+.chatMsg.toro{background:#F1EEFF; border:2px solid var(--purple); align-self:flex-start; border-bottom-left-radius:4px;}
+.chatMsg.user{background:var(--mint); color:#fff; align-self:flex-end; border-bottom-right-radius:4px;}
+.chatInputRow{display:flex; gap:8px; margin-top:10px;}
+#chatInput{flex:1; padding:11px 14px; border-radius:999px; border:2px solid var(--line); font-family:'Quicksand'; font-size:14px;}
+#chatSendBtn{background:var(--purple); color:#fff; border:none; border-radius:999px; width:42px; height:42px; font-size:16px; cursor:pointer;}
+.typingDots span{animation: blink 1s infinite; }
+.typingDots span:nth-child(2){animation-delay:.2s;} .typingDots span:nth-child(3){animation-delay:.4s;}
+@keyframes blink{0%,80%,100%{opacity:.2;} 40%{opacity:1;}}
+
+/* REELS */
+#reelCardWrap{background:linear-gradient(160deg,#F1EEFF,#EFFAFF); border-radius:20px; padding:22px 18px; min-height:280px; display:flex; flex-direction:column; justify-content:center; text-align:center; border:2px solid var(--line);}
+#reelCardWrap .rIcon{font-size:44px; margin-bottom:10px;}
+#reelCardWrap h3{font-size:18px; margin-bottom:8px;}
+#reelCardWrap p{font-size:13.5px; font-weight:600; color:#5f5e82; line-height:1.4;}
+.reelProgress{display:flex; gap:4px; margin-bottom:12px;}
+.reelProgress span{flex:1; height:5px; border-radius:999px; background:var(--line);}
+.reelProgress span.done{background:var(--purple);}
+.reelNavBtns{display:flex; gap:10px; margin-top:14px;}
+
+/* AD */
+#adOverlayInner{text-align:center; padding:30px 10px;}
+#adBarBg{width:100%; height:14px; background:var(--line); border-radius:999px; overflow:hidden; margin:16px 0;}
+#adBarFill{height:100%; width:0%; background:linear-gradient(90deg,var(--sun),var(--mint)); transition:width .1s linear;}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="confettiCanvas"></canvas>
+  <div id="toastWrap"></div>
+
+  <header>
+    <div class="stat">🪙 <span id="coinCount">150</span></div>
+    <div class="stat streak">🔥 <span id="streakCount">0</span></div>
+    <div id="levelWrap">
+      <div id="levelLabel">Nv <span id="levelNum">1</span></div>
+      <div id="xpBar"><div id="xpFill"></div></div>
+    </div>
+    <div class="stat cash">💵 <span id="cashCount">1,000</span></div>
+  </header>
+
+  <div id="iconRow">
+    <div class="iconBtn" onclick="openModal('chatModal')"><span class="ic">💬</span>Chat Toro</div>
+    <div class="iconBtn" onclick="openModal('reelsModal')"><span class="ic">📱</span>Reels</div>
+    <div class="iconBtn" onclick="openModal('achModal')"><span class="ic">🏆</span>Logros</div>
+    <div class="iconBtn" onclick="openModal('shopModal')"><span class="ic">🛍️</span>Tienda</div>
+    <div class="iconBtn" onclick="openModal('lbModal')"><span class="ic">📶</span>Ranking</div>
+    <div class="iconBtn" onclick="openModal('streakModal')"><span class="ic">🔥</span>Racha</div>
+    <div class="iconBtn" onclick="openAd()"><span class="ic">🎬</span>+Monedas</div>
+  </div>
+
+  <div id="eventBanner">
+    <div class="eIcon">🐂✨</div>
+    <div class="eText">Evento: Semana del Toro Alcista<br>Recompensa: skin exclusivo Toro Dorado</div>
+    <div class="eTimer" id="eventTimer">--:--:--</div>
+  </div>
+
+  <div id="mascotBar">
+    <div id="mascotFace" onclick="playMoo()" style="cursor:pointer;" title="¡Tócame!">🐂</div>
+    <div id="mascotBubble"><span id="mascotText">¡Hola! Soy Toro. Ahora también puedes chatear conmigo 💬</span></div>
+  </div>
+
+  <main>
+    <section class="screen active" id="screen-sim">
+      <div class="card">
+        <div id="tickerRow">
+          <div id="tickerName">🚀 MOONCO</div>
+          <div id="tickerPrice">$100.00</div>
+        </div>
+        <div style="margin-bottom:6px;"><span id="volBadge">Volatilidad: Suave 🌤️</span></div>
+        <svg id="chartSvg" viewBox="0 0 320 190"></svg>
+        <div class="tradeControls">
+          <button class="qtyBtn" onclick="changeQty(-1)">−</button>
+          <div id="qtyDisplay">1 acción</div>
+          <button class="qtyBtn" onclick="changeQty(1)">+</button>
+        </div>
+        <div class="actionBtns">
+          <button class="bigBtn buyBtn" onclick="trade('buy')">📈 Comprar</button>
+          <button class="bigBtn sellBtn" onclick="trade('sell')">📉 Vender</button>
+        </div>
+        <div id="portfolioBox">
+          <span id="holdingsLabel">Tienes: 0 acciones</span>
+          <span id="valueLabel">Valor: $0</span>
+        </div>
+      </div>
+      <div class="card" style="font-size:13px; color:#7b7a9c; font-weight:600;">
+        💡 A medida que operas más, el mercado se vuelve más realista y volátil — se ajusta a tu experiencia.
+      </div>
+    </section>
+
+    <section class="screen" id="screen-quiz">
+      <div class="card">
+        <span class="qBadge">PREGUNTA <span id="qNum">1</span>/5</span>
+        <span class="tierBadge" id="tierBadge" style="background:var(--sky);">Básico</span>
+        <span class="comboBadge" id="comboBadge" style="display:none;">🔥 Combo x<span id="comboNum">0</span></span>
+        <h3 id="qText" style="font-size:17px; margin-bottom:4px;"></h3>
+        <div id="qOptions"></div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-mission">
+      <div class="card">
+        <span class="qBadge" style="background:var(--sky);">MISIÓN: SALVA EL PUESTO DE LIMONADA</span>
+        <h3 style="font-size:17px;">Tu puesto de limonada necesita $50 para comprar más limones. Tienes $30 ahorrados y una acción de MOONCO que compraste a $20.</h3>
+        <p id="missionText" style="font-weight:600; color:#5f5e82;">MOONCO ahora vale $35. ¿Qué haces?</p>
+        <div id="missionOptions"></div>
+      </div>
+    </section>
+  </main>
+
+  <nav>
+    <button class="navBtn active" onclick="showScreen('sim',this)"><span class="ic">📊</span>Simulador</button>
+    <button class="navBtn" onclick="showScreen('quiz',this)"><span class="ic">🧠</span>Aprende</button>
+    <button class="navBtn" onclick="showScreen('mission',this)"><span class="ic">🍋</span>Misión</button>
+  </nav>
+
+  <!-- CHAT MODAL -->
+  <div class="modalOverlay" id="chatModal">
+    <div class="modalSheet" style="height:80%;">
+      <div class="modalHeader"><h2>💬 Chat con Toro</h2><button class="closeBtn" onclick="closeModal('chatModal')">✕</button></div>
+      <div id="chatMessages"></div>
+      <div class="chatInputRow">
+        <input id="chatInput" type="text" placeholder="Pregúntale algo a Toro..." onkeydown="if(event.key==='Enter')sendChat();">
+        <button id="chatSendBtn" onclick="sendChat()">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REELS MODAL -->
+  <div class="modalOverlay" id="reelsModal">
+    <div class="modalSheet">
+      <div class="modalHeader"><h2>📱 Micro-lecciones</h2><button class="closeBtn" onclick="closeModal('reelsModal')">✕</button></div>
+      <div class="reelProgress" id="reelProgress"></div>
+      <div id="reelCardWrap"></div>
+      <div class="reelNavBtns">
+        <button class="bigBtn" style="background:var(--line); color:var(--ink);" onclick="reelNav(-1)">◀ Anterior</button>
+        <button class="bigBtn" style="background:var(--purple);" onclick="reelNav(1)">Siguiente ▶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACHIEVEMENTS -->
+  <div class="modalOverlay" id="achModal">
+    <div class="modalSheet">
+      <div class="modalHeader"><h2>🏆 Logros</h2><button class="closeBtn" onclick="closeModal('achModal')">✕</button></div>
+      <div class="badgeGrid" id="badgeGrid"></div>
+    </div>
+  </div>
+
+  <!-- SHOP -->
+  <div class="modalOverlay" id="shopModal">
+    <div class="modalSheet">
+      <div class="modalHeader"><h2>🛍️ Tienda</h2><button class="closeBtn" onclick="closeModal('shopModal')">✕</button></div>
+      <div class="shopSection"><h3>Skins de Toro</h3><div class="shopGrid" id="skinGrid"></div></div>
+      <div class="shopSection"><h3>Temas de color</h3><div class="shopGrid" id="themeGrid"></div></div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD + SOCIAL -->
+  <div class="modalOverlay" id="lbModal">
+    <div class="modalSheet">
+      <div class="modalHeader"><h2>📶 Ranking</h2><button class="closeBtn" onclick="closeModal('lbModal')">✕</button></div>
+      <div class="challengeCard">
+        <h3>🤝 Reto semanal vs Ana Wall Street</h3>
+        <div class="vsRow"><span>Tú</span><div class="vsBarBg"><div class="vsBarFill" id="vsMeBar" style="background:var(--mint-dark); width:0%;"></div></div><span id="vsMeVal">0</span></div>
+        <div class="vsRow" style="margin-top:6px;"><span>Ana</span><div class="vsBarBg"><div class="vsBarFill" style="background:var(--coral-dark); width:60%;"></div></div><span>60🪙</span></div>
+      </div>
+      <div id="lbList"></div>
+    </div>
+  </div>
+
+  <!-- STREAK -->
+  <div class="modalOverlay" id="streakModal">
+    <div class="modalSheet">
+      <div class="modalHeader"><h2>🔥 Racha diaria</h2><button class="closeBtn" onclick="closeModal('streakModal')">✕</button></div>
+      <p style="font-weight:600; color:#6b6a8d;">Reclama tu racha cada día para ganar monedas y XP extra.</p>
+      <div class="streakDayRow" id="streakDayRow"></div>
+      <button class="claimBtn" id="claimBtn" onclick="claimStreak()">Reclamar racha de hoy</button>
+    </div>
+  </div>
+
+  <!-- AD -->
+  <div class="modalOverlay" id="adModal">
+    <div class="modalSheet">
+      <div class="modalHeader"><h2>🎬 Anuncio (opcional)</h2><button class="closeBtn" onclick="closeModal('adModal')">✕</button></div>
+      <div id="adOverlayInner">
+        <div style="font-size:40px;">📺</div>
+        <p style="font-weight:700;">Mirando anuncio para ganar 30 monedas extra...</p>
+        <div id="adBarBg"><div id="adBarFill"></div></div>
+        <p style="font-size:12px; color:#8b89b3;" id="adStatusText">Esto es 100% opcional. Nunca es obligatorio para avanzar.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- AUDIO ---------------- */
+let audioCtx;
+function ensureAudio(){
+  if(!audioCtx){ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }
+  if(audioCtx.state === 'suspended'){ audioCtx.resume(); }
+}
+function tone(freq, dur, type, delay, peak){
+  ensureAudio();
+  const t0 = audioCtx.currentTime + (delay||0);
+  const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+  osc.type = type||'sine'; osc.frequency.setValueAtTime(freq, t0);
+  gain.gain.setValueAtTime(0.0001, t0);
+  gain.gain.exponentialRampToValueAtTime(peak||0.08, t0+0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+  osc.connect(gain); gain.connect(audioCtx.destination); osc.start(t0); osc.stop(t0+dur);
+}
+function playCascade(freqs, noteDur, gap, type, peak){ freqs.forEach((f,i)=> tone(f, noteDur, type||'triangle', i*gap, peak||0.09)); }
+
+/* click tactil ligero, tipo "candy crush" al tocar botones */
+function playClick(){ tone(300,0.045,'square',0,0.045); }
+
+/* monedas: cascada brillante ascendente, más notas si ganas más */
+function playCoin(amount){
+  const scale=[784,880,988,1046,1175,1318];
+  const n = amount>=25 ? 4 : amount>=15 ? 3 : 2;
+  playCascade(scale.slice(0,n), 0.09, 0.055, 'triangle', 0.1);
+}
+/* respuesta correcta: chispa ascendente */
+function playCorrect(){ playCascade([659,880,1046], 0.09, 0.07, 'triangle', 0.11); }
+/* combo grande en el quiz: cascada más larga y brillante */
+function playComboBig(streak){
+  const scale=[523,659,784,988,1175,1396,1568];
+  playCascade(scale.slice(0, Math.min(scale.length, streak)), 0.08, 0.05, 'triangle', 0.12);
+}
+/* respuesta incorrecta: gruñido de oso/bear suave, no agresivo */
+function playWrong(){
+  ensureAudio();
+  const t0=audioCtx.currentTime;
+  const osc=audioCtx.createOscillator(); const gain=audioCtx.createGain();
+  osc.type='sawtooth';
+  osc.frequency.setValueAtTime(180,t0);
+  osc.frequency.exponentialRampToValueAtTime(90,t0+0.32);
+  gain.gain.setValueAtTime(0.0001,t0);
+  gain.gain.exponentialRampToValueAtTime(0.06,t0+0.03);
+  gain.gain.exponentialRampToValueAtTime(0.0001,t0+0.36);
+  osc.connect(gain); gain.connect(audioCtx.destination); osc.start(t0); osc.stop(t0+0.4);
+}
+/* subir de nivel: fanfarria + moo de celebración */
+function playLevelUp(){
+  playCascade([523,659,784,1046,1318], 0.13, 0.09, 'triangle', 0.12);
+  setTimeout(playMoo, 560);
+}
+/* logro desbloqueado: chispa distinta + mini-moo */
+function playAchievement(){
+  playCascade([880,1046,1318,1568], 0.09, 0.07, 'triangle', 0.12);
+  setTimeout(playMooShort, 420);
+}
+/* moo largo y expresivo (sintetizado), usado como respaldo si el audio real no carga */
+function playMooSynth(){
+  ensureAudio();
+  const t0=audioCtx.currentTime; const dur=1.15;
+  const osc=audioCtx.createOscillator(); osc.type='sawtooth';
+  /* contorno de tono: arranca cerrado (mmm), abre a "oo", baja como un mugido real, y se apaga */
+  osc.frequency.setValueAtTime(115,t0);
+  osc.frequency.linearRampToValueAtTime(150,t0+0.18);
+  osc.frequency.linearRampToValueAtTime(100,t0+0.55);
+  osc.frequency.linearRampToValueAtTime(125,t0+0.85);
+  osc.frequency.linearRampToValueAtTime(85,t0+dur);
+  /* vibrato natural */
+  const lfo=audioCtx.createOscillator(); lfo.type='sine'; lfo.frequency.value=5.5;
+  const lfoGain=audioCtx.createGain(); lfoGain.gain.value=7;
+  lfo.connect(lfoGain); lfoGain.connect(osc.detune);
+  /* dos formantes tipo vocal "oo" para que suene a mugido y no a bocina */
+  const f1=audioCtx.createBiquadFilter(); f1.type='bandpass'; f1.frequency.value=350; f1.Q.value=6;
+  const f2=audioCtx.createBiquadFilter(); f2.type='bandpass'; f2.frequency.value=850; f2.Q.value=4;
+  const g1=audioCtx.createGain(); g1.gain.value=1.0;
+  const g2=audioCtx.createGain(); g2.gain.value=0.45;
+  const master=audioCtx.createGain();
+  master.gain.setValueAtTime(0.0001,t0);
+  master.gain.exponentialRampToValueAtTime(0.4,t0+0.14);
+  master.gain.setValueAtTime(0.36,t0+0.6);
+  master.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  osc.connect(f1); f1.connect(g1); g1.connect(master);
+  osc.connect(f2); f2.connect(g2); g2.connect(master);
+  master.connect(audioCtx.destination);
+  osc.start(t0); lfo.start(t0);
+  osc.stop(t0+dur+0.05); lfo.stop(t0+dur+0.05);
+}
+/* moo cortito (sintetizado), usado como respaldo si el audio real no carga */
+function playMooShortSynth(){
+  ensureAudio();
+  const t0=audioCtx.currentTime; const dur=0.5;
+  const osc=audioCtx.createOscillator(); osc.type='sawtooth';
+  osc.frequency.setValueAtTime(120,t0);
+  osc.frequency.linearRampToValueAtTime(150,t0+0.1);
+  osc.frequency.linearRampToValueAtTime(95,t0+dur);
+  const lfo=audioCtx.createOscillator(); lfo.type='sine'; lfo.frequency.value=6;
+  const lfoGain=audioCtx.createGain(); lfoGain.gain.value=6;
+  lfo.connect(lfoGain); lfoGain.connect(osc.detune);
+  const f1=audioCtx.createBiquadFilter(); f1.type='bandpass'; f1.frequency.value=360; f1.Q.value=6;
+  const f2=audioCtx.createBiquadFilter(); f2.type='bandpass'; f2.frequency.value=860; f2.Q.value=4;
+  const g1=audioCtx.createGain(); g1.gain.value=1.0;
+  const g2=audioCtx.createGain(); g2.gain.value=0.4;
+  const master=audioCtx.createGain();
+  master.gain.setValueAtTime(0.0001,t0);
+  master.gain.exponentialRampToValueAtTime(0.34,t0+0.06);
+  master.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+  osc.connect(f1); f1.connect(g1); g1.connect(master);
+  osc.connect(f2); f2.connect(g2); g2.connect(master);
+  master.connect(audioCtx.destination);
+  osc.start(t0); lfo.start(t0);
+  osc.stop(t0+dur+0.05); lfo.stop(t0+dur+0.05);
+}
+
+/* ---- MOO REAL DE TORO (grabación real, no sintetizado) ----
+   Archivos locales en sounds/, recortados de "ANMLFarm Cow moos (ID 0546) - BigSoundBank.com".
+   Licencia: CC0 (dominio público) — sin obligación de atribución.
+   Se cargan desde disco, no desde internet, así que funcionan sin conexión y no dependen
+   de que un navegador permita o bloquee dominios externos. */
+function playMoo(){
+  try{
+    const a = new Audio('sounds/toro_moo_long.mp3');
+    a.volume = 0.9;
+    let fell = false;
+    const fallback = ()=>{ if(!fell){ fell=true; playMooSynth(); } };
+    a.addEventListener('error', fallback, {once:true});
+    const p = a.play();
+    if(p && p.catch) p.catch(fallback);
+  }catch(e){ playMooSynth(); }
+}
+function playMooShort(){
+  try{
+    const a = new Audio('sounds/toro_moo_short.mp3');
+    a.volume = 0.85;
+    let fell = false;
+    const fallback = ()=>{ if(!fell){ fell=true; playMooShortSynth(); } };
+    a.addEventListener('error', fallback, {once:true});
+    const p = a.play();
+    if(p && p.catch) p.catch(fallback);
+  }catch(e){ playMooShortSynth(); }
+}
+
+
+
+
+function playSnort(){
+  ensureAudio();
+  const t0=audioCtx.currentTime;
+  const bufferSize=Math.floor(audioCtx.sampleRate*0.15);
+  const buffer=audioCtx.createBuffer(1,bufferSize,audioCtx.sampleRate);
+  const data=buffer.getChannelData(0);
+  for(let i=0;i<bufferSize;i++){ data[i]=(Math.random()*2-1)*Math.exp(-i/bufferSize*6); }
+  const noise=audioCtx.createBufferSource(); noise.buffer=buffer;
+  const filter=audioCtx.createBiquadFilter(); filter.type='lowpass'; filter.frequency.value=350;
+  const gain=audioCtx.createGain();
+  gain.gain.setValueAtTime(0.16,t0); gain.gain.exponentialRampToValueAtTime(0.001,t0+0.18);
+  noise.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination); noise.start(t0);
+  const osc=audioCtx.createOscillator(); osc.type='square';
+  osc.frequency.setValueAtTime(90,t0); osc.frequency.exponentialRampToValueAtTime(60,t0+0.15);
+  const g2=audioCtx.createGain();
+  g2.gain.setValueAtTime(0.0001,t0); g2.gain.exponentialRampToValueAtTime(0.08,t0+0.03); g2.gain.exponentialRampToValueAtTime(0.0001,t0+0.18);
+  osc.connect(g2); g2.connect(audioCtx.destination); osc.start(t0); osc.stop(t0+0.2);
+}
+/* rugido grande, para hitos importantes (racha de varios días, etc.) */
+function playBigRoar(){ playMoo(); setTimeout(()=>playCascade([659,784,988,1175,1396,1568],0.1,0.06,'triangle',0.13), 200); }
+/* racha diaria: hito cada 3 días suena más grande */
+function playStreakClaim(day){ if(day%3===0){ playBigRoar(); } else { playLevelUp(); } }
+
+/* compra/venta: pop cortito + a veces un mini-moo sorpresa (compra = optimismo alcista) */
+function playBuy(){ playCascade([500,700],0.06,0.05,'square',0.07); if(Math.random()<0.35){ setTimeout(playMooShort,150); } }
+function playSell(){ playCascade([420,320],0.06,0.05,'square',0.06); }
+
+/* ---------------- CONFETTI ---------------- */
+const confettiCanvas = document.getElementById('confettiCanvas');
+const cctx = confettiCanvas.getContext('2d');
+function resizeCanvas(){ confettiCanvas.width = document.getElementById('app').clientWidth; confettiCanvas.height = document.getElementById('app').clientHeight; }
+resizeCanvas(); window.addEventListener('resize', resizeCanvas);
+let confettiParticles = []; let confettiRunning=false;
+const confettiColors = ['#3FD6A0','#FF6B6B','#9B5DE5','#FFC93C','#4EC5F1'];
+function fireConfetti(count){
+  count = count || 60;
+  for(let i=0;i<count;i++){
+    confettiParticles.push({x: confettiCanvas.width/2 + (Math.random()-0.5)*80, y: confettiCanvas.height*0.25,
+      vx:(Math.random()-0.5)*6, vy:Math.random()*-6-2, size:Math.random()*6+4,
+      color:confettiColors[Math.floor(Math.random()*confettiColors.length)], rot:Math.random()*360, vr:(Math.random()-0.5)*10, life:0});
+  }
+  if(!confettiRunning){ confettiRunning=true; requestAnimationFrame(animateConfetti); }
+}
+function animateConfetti(){
+  cctx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
+  confettiParticles.forEach(p=>{
+    p.vy+=0.22; p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; p.life++;
+    cctx.save(); cctx.translate(p.x,p.y); cctx.rotate(p.rot*Math.PI/180);
+    cctx.fillStyle=p.color; cctx.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6); cctx.restore();
+  });
+  confettiParticles = confettiParticles.filter(p=>p.life<130 && p.y<confettiCanvas.height+30);
+  if(confettiParticles.length>0){ requestAnimationFrame(animateConfetti); } else { confettiRunning=false; cctx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height); }
+}
+
+/* ---------------- TOAST ---------------- */
+function showToast(text, icon){
+  const wrap=document.getElementById('toastWrap');
+  const t=document.createElement('div'); t.className='toast';
+  t.innerHTML='<span>'+(icon||'✨')+'</span><span>'+text+'</span>';
+  wrap.appendChild(t); setTimeout(()=>t.remove(), 2600);
+}
+function popCoin(amount){
+  const stat=document.querySelector('.stat');
+  const el=document.createElement('span'); el.className='coinPop'; el.innerText='+'+amount;
+  stat.appendChild(el); setTimeout(()=>el.remove(), 800);
+}
+
+/* ---------------- STATE ---------------- */
+let state = {
+  coins: 150, xp: 0, level: 1, cash: 1000, shares: 0, qty: 1, price: 100, candles: [],
+  totalTrades: 0, correctAnswers: 0, missionsCompleted: 0, itemsBought: 0,
+  streak: 0, streakClaimedToday: false, quizStreak: 0, tierIndex: 0,
+  skin: 'toro', ownedSkins: ['toro'], theme: 'default', ownedThemes: ['default'],
+  unlocked: new Set(), adsWatched: 0
+};
+const eventEndsAt = Date.now() + 1000*60*60*50; // demo: 50h de evento
+
+/* ---------------- NAV / MODALS ---------------- */
+function showScreen(name, btn){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.querySelectorAll('.navBtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function openModal(id){
+  document.getElementById(id).classList.add('open');
+  if(id==='achModal') renderAchievements();
+  if(id==='shopModal') renderShop();
+  if(id==='lbModal') renderLeaderboard();
+  if(id==='streakModal') renderStreakModal();
+  if(id==='chatModal' && chatHistory.length===0) initChat();
+  if(id==='reelsModal') renderReel();
+}
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+/* ---------------- EVENT COUNTDOWN ---------------- */
+function updateEventTimer(){
+  const diff = eventEndsAt - Date.now();
+  if(diff<=0){ document.getElementById('eventTimer').innerText='Terminó'; return; }
+  const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
+  document.getElementById('eventTimer').innerText = h+'h '+m+'m '+s+'s';
+}
+setInterval(updateEventTimer, 1000); updateEventTimer();
+
+/* ---------------- MASCOT ---------------- */
+const skinEmojis = {toro:'🐂', vaquero:'🐮', unicornio:'🦄', dragon:'🐲', alien:'👽', toroDorado:'🐂✨'};
+function setMascot(text){
+  document.getElementById('mascotText').innerText = text;
+  const face=document.getElementById('mascotFace');
+  face.innerText = skinEmojis[state.skin] || '🐂';
+  face.classList.remove('shake'); void face.offsetWidth; face.classList.add('shake');
+}
+
+/* ---------------- ECONOMY / XP ---------------- */
+function addCoins(n){ state.coins+=n; document.getElementById('coinCount').innerText=state.coins; popCoin(n); playCoin(n); }
+function addXP(n){
+  state.xp+=n; const needed=state.level*100;
+  if(state.xp>=needed){
+    state.xp-=needed; state.level+=1;
+    setMascot('¡Subiste a Nivel '+state.level+'! Sigue así 🎉');
+    fireConfetti(90); playLevelUp(); showToast('¡Subiste a Nivel '+state.level+'!','⭐');
+  }
+  document.getElementById('levelNum').innerText=state.level;
+  document.getElementById('xpFill').style.width=Math.min(100,(state.xp/(state.level*100))*100)+'%';
+  checkAchievements();
+}
+function updateCashUI(){ document.getElementById('cashCount').innerText=state.cash.toLocaleString('en-US',{maximumFractionDigits:0}); }
+
+/* ---------------- ADAPTIVE VOLATILITY + CHART ---------------- */
+function volatilityFactor(){ return 1 + Math.min(state.totalTrades/15, 2); }
+function updateVolBadge(){
+  const f = volatilityFactor();
+  const label = f<1.4 ? 'Suave 🌤️' : f<2.2 ? 'Moderada ⛅' : 'Alta ⛈️';
+  document.getElementById('volBadge').innerText = 'Volatilidad: '+label+' (se adapta a tu experiencia)';
+}
+function genInitialCandles(n){
+  let p=100; const arr=[];
+  for(let i=0;i<n;i++){
+    const open=p; const change=(Math.random()-0.48)*6; const close=Math.max(5, open+change);
+    const high=Math.max(open,close)+Math.random()*2; const low=Math.min(open,close)-Math.random()*2;
+    arr.push({open,close,high,low}); p=close;
+  }
+  return arr;
+}
+state.candles = genInitialCandles(18);
+state.price = state.candles[state.candles.length-1].close;
+
+function drawChart(){
+  const svg=document.getElementById('chartSvg'); svg.innerHTML='';
+  const data=state.candles.slice(-18);
+  const w=320,h=190,padTop=10,padBottom=10;
+  const prices=data.flatMap(c=>[c.high,c.low]);
+  const max=Math.max(...prices), min=Math.min(...prices); const range=(max-min)||1;
+  const cw=w/data.length;
+  data.forEach((c,i)=>{
+    const x=i*cw+cw/2;
+    const yHigh=padTop+(max-c.high)/range*(h-padTop-padBottom);
+    const yLow=padTop+(max-c.low)/range*(h-padTop-padBottom);
+    const yOpen=padTop+(max-c.open)/range*(h-padTop-padBottom);
+    const yClose=padTop+(max-c.close)/range*(h-padTop-padBottom);
+    const up=c.close>=c.open; const bodyTop=Math.min(yOpen,yClose); const bodyH=Math.max(2,Math.abs(yClose-yOpen));
+    const wick=document.createElementNS('http://www.w3.org/2000/svg','line');
+    wick.setAttribute('x1',x); wick.setAttribute('x2',x); wick.setAttribute('y1',yHigh); wick.setAttribute('y2',yLow); wick.setAttribute('class','wick');
+    svg.appendChild(wick);
+    const body=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    body.setAttribute('x',x-cw*0.32); body.setAttribute('y',bodyTop); body.setAttribute('width',cw*0.64); body.setAttribute('height',bodyH);
+    body.setAttribute('rx',2.5); body.setAttribute('class', up?'candle-up':'candle-down');
+    svg.appendChild(body);
+  });
+  const priceEl=document.getElementById('tickerPrice'); priceEl.innerText='$'+state.price.toFixed(2);
+  const prevClose = data[data.length-2] ? data[data.length-2].close : state.price;
+  priceEl.className = state.price>=prevClose ? 'pricePos':'priceNeg';
+  updateVolBadge();
+}
+drawChart();
+setInterval(()=>{
+  const last=state.candles[state.candles.length-1];
+  const f=volatilityFactor();
+  const open=last.close; const change=(Math.random()-0.47)*5*f; const close=Math.max(5, open+change);
+  const high=Math.max(open,close)+Math.random()*1.6*f; const low=Math.min(open,close)-Math.random()*1.6*f;
+  state.candles.push({open,close,high,low}); state.price=close;
+  drawChart(); updateHoldingsUI();
+}, 2600);
+
+/* ---------------- TRADING ---------------- */
+function changeQty(d){ state.qty=Math.max(1,state.qty+d); document.getElementById('qtyDisplay').innerText=state.qty+(state.qty===1?' acción':' acciones'); }
+function trade(type){
+  const cost=state.price*state.qty;
+  if(type==='buy'){
+    if(cost>state.cash){ setMascot('¡No tienes suficiente dinero! Prueba con menos acciones 💸'); playSnort(); return; }
+    state.cash-=cost; state.shares+=state.qty; state.totalTrades++;
+    addCoins(5); addXP(10); playBuy(); setMascot('¡Buena compra! Ahora eres dueño de una parte de MOONCO 📈');
+  } else {
+    if(state.qty>state.shares){ setMascot('No puedes vender más acciones de las que tienes 🧐'); playSnort(); return; }
+    state.cash+=cost; state.shares-=state.qty; state.totalTrades++;
+    addCoins(5); addXP(10); playSell(); setMascot('¡Vendido! Asegurar ganancias también es una estrategia 💰');
+  }
+  updateCashUI(); updateHoldingsUI(); checkAchievements();
+}
+function updateHoldingsUI(){
+  document.getElementById('holdingsLabel').innerText='Tienes: '+state.shares+' acciones';
+  document.getElementById('valueLabel').innerText='Valor: $'+(state.shares*state.price).toFixed(0);
+}
+
+/* ---------------- QUIZ ADAPTATIVO ---------------- */
+const tiers = ['Básico','Intermedio','Avanzado'];
+const tierColors = ['var(--sky)','var(--purple)','var(--coral-dark)'];
+const quizBank = {
+  0:[
+    {q:'¿Qué significa "comprar en corto" (short selling)?', opts:['Apostar a que un precio va a bajar','Comprar una acción muy barata','Comprar por poco tiempo','Vender todo tu portafolio'], correct:0},
+    {q:'Si una vela es verde, ¿qué significa?', opts:['El precio bajó','El precio cerró más alto de lo que abrió','La empresa quebró','No cambió nada'], correct:1},
+    {q:'¿Qué es el "ticker" de una acción?', opts:['El precio final del día','El código corto que identifica a una empresa','Un tipo de gráfico','El nombre del broker'], correct:1},
+  ],
+  1:[
+    {q:'¿Qué es "diversificar" tu inversión?', opts:['Invertir todo en una sola acción','Repartir tu dinero en varias inversiones distintas','Vender todo rápido','Pedir dinero prestado para invertir'], correct:1},
+    {q:'Si compras a $50 y vendes a $70, ¿qué obtuviste?', opts:['Una pérdida de $20','Una ganancia de $20','Un dividendo','Nada, el precio no importa'], correct:1},
+    {q:'¿Qué mide la "volatilidad" de una acción?', opts:['Qué tanto sube y baja su precio','El número de accionistas','El color del logo','La cantidad de empleados'], correct:0},
+  ],
+  2:[
+    {q:'¿Qué representa una "media móvil" en un gráfico?', opts:['El precio promedio de un período reciente','El precio máximo histórico','El nombre del CEO','El número total de acciones'], correct:0},
+    {q:'¿Qué es un "dividendo"?', opts:['Una multa por vender rápido','Un pago que la empresa reparte a sus accionistas','El precio de salida a bolsa','Un tipo de impuesto'], correct:1},
+    {q:'¿Qué indica un RSI muy alto (sobrecompra)?', opts:['Que el precio podría estar por corregir a la baja','Que la empresa va a quebrar','Que debes comprar más de inmediato','Nada relevante'], correct:0},
+  ]
+};
+let qIndex=0, qNumCounter=1;
+function currentQuestion(){ const pool=quizBank[state.tierIndex]; return pool[qIndex % pool.length]; }
+function renderQuiz(){
+  const q=currentQuestion();
+  document.getElementById('qNum').innerText=qNumCounter;
+  document.getElementById('qText').innerText=q.q;
+  const tb=document.getElementById('tierBadge'); tb.innerText=tiers[state.tierIndex]; tb.style.background=tierColors[state.tierIndex];
+  const combo=document.getElementById('comboBadge');
+  if(state.quizStreak>=2){ combo.style.display='inline-block'; document.getElementById('comboNum').innerText=state.quizStreak; } else { combo.style.display='none'; }
+  const box=document.getElementById('qOptions'); box.innerHTML='';
+  q.opts.forEach((opt,i)=>{
+    const btn=document.createElement('button'); btn.className='qOption'; btn.innerText=opt;
+    btn.onclick=()=>answerQuiz(i,btn,box); box.appendChild(btn);
+  });
+}
+function answerQuiz(i,btn,box){
+  const q=currentQuestion();
+  const buttons=box.querySelectorAll('.qOption'); buttons.forEach(b=>b.onclick=null);
+  if(i===q.correct){
+    btn.classList.add('correct'); state.quizStreak++; state.correctAnswers++;
+    const bonus=15+Math.min(state.quizStreak*5,30);
+    addCoins(bonus); addXP(20); playCorrect();
+    if(state.quizStreak>=3){ fireConfetti(40); setTimeout(()=>playComboBig(state.quizStreak),140); if(state.quizStreak%3===0) state.tierIndex=Math.min(2,state.tierIndex+1); }
+    setMascot(state.quizStreak>=3 ? '¡Racha de '+state.quizStreak+'! Subo la dificultad 🔥' : '¡Correcto! +'+bonus+' monedas 🎉');
+  } else {
+    btn.classList.add('wrong'); buttons[q.correct].classList.add('correct');
+    state.quizStreak=0; state.tierIndex=Math.max(0,state.tierIndex-1); playWrong();
+    setMascot('Casi. Bajemos un poco la dificultad para reforzar 🤓');
+  }
+  checkAchievements();
+  setTimeout(()=>{ qIndex++; qNumCounter++; renderQuiz(); }, 1600);
+}
+renderQuiz();
+
+/* ---------------- MISIÓN ---------------- */
+const missionBox=document.getElementById('missionOptions');
+const missionChoices=[
+  {label:'Vender tu acción de MOONCO ahora por $35 y usar el dinero', outcome:'¡Perfecto! Vendes con $15 de ganancia y llegas a $65. Compras los limones 🍋. ¡Puesto salvado!'},
+  {label:'Esperar a que suba más antes de vender', outcome:'MOONCO baja a $28 al día siguiente. Ahora tienes menos dinero disponible que antes 😬'},
+  {label:'Pedir prestado en vez de vender la acción', outcome:'Consigues el dinero, pero ahora debes pagar intereses y tu deuda crece 📉'},
+];
+missionChoices.forEach(c=>{
+  const btn=document.createElement('button'); btn.className='missionChoice'; btn.innerText=c.label;
+  btn.onclick=()=>{
+    document.getElementById('missionText').innerText=c.outcome;
+    setMascot(c.outcome.split('.')[0]+'.');
+    addXP(15); addCoins(10); state.missionsCompleted++; fireConfetti(50);
+    missionBox.querySelectorAll('.missionChoice').forEach(b=>b.onclick=null);
+    checkAchievements();
+  };
+  missionBox.appendChild(btn);
+});
+
+/* ---------------- LOGROS ---------------- */
+const achievements = [
+  {id:'firstTrade', icon:'🥇', name:'Primera Operación', desc:'Compra o vende por primera vez', check:()=>state.totalTrades>=1},
+  {id:'activeTrader', icon:'📈', name:'Trader Activo', desc:'Completa 10 operaciones', check:()=>state.totalTrades>=10},
+  {id:'brainy', icon:'🧠', name:'Cerebrito', desc:'Responde 5 preguntas bien', check:()=>state.correctAnswers>=5},
+  {id:'comboKing', icon:'🔥', name:'Rey del Combo', desc:'Logra una racha de 3 en el quiz', check:()=>state.quizStreak>=3},
+  {id:'missionHero', icon:'🍋', name:'Héroe de la Limonada', desc:'Completa una misión', check:()=>state.missionsCompleted>=1},
+  {id:'level5', icon:'⭐', name:'Nivel 5', desc:'Alcanza el nivel 5', check:()=>state.level>=5},
+  {id:'shopper', icon:'🛍️', name:'Coleccionista', desc:'Compra un ítem en la tienda', check:()=>state.itemsBought>=1},
+  {id:'streak3', icon:'📅', name:'Racha de Fuego', desc:'Reclama 3 días de racha', check:()=>state.streak>=3},
+  {id:'chatty', icon:'💬', name:'Amigo de Toro', desc:'Chatea con Toro por primera vez', check:()=>chatHistory.length>0},
+  {id:'reelWatcher', icon:'📱', name:'Estudioso Express', desc:'Revisa 3 micro-lecciones', check:()=>reelIndex>=3},
+];
+function checkAchievements(){
+  achievements.forEach(a=>{
+    if(!state.unlocked.has(a.id) && a.check()){
+      state.unlocked.add(a.id);
+      showToast('Logro desbloqueado: '+a.name, a.icon);
+      fireConfetti(70); playAchievement();
+    }
+  });
+}
+function renderAchievements(){
+  const grid=document.getElementById('badgeGrid'); grid.innerHTML='';
+  achievements.forEach(a=>{
+    const unlocked=state.unlocked.has(a.id);
+    const div=document.createElement('div'); div.className='badgeCard'+(unlocked?' unlocked':'');
+    div.innerHTML='<div class="bIcon">'+a.icon+'</div><div class="bName">'+a.name+'</div><div class="bDesc">'+a.desc+'</div>';
+    grid.appendChild(div);
+  });
+}
+
+/* ---------------- TIENDA ---------------- */
+const skins=[
+  {id:'toro', name:'Toro Clásico', emoji:'🐂', cost:0},
+  {id:'vaquero', name:'Toro Vaquero', emoji:'🐮', cost:100},
+  {id:'unicornio', name:'Unicornio Financiero', emoji:'🦄', cost:250},
+  {id:'dragon', name:'Dragón del Mercado', emoji:'🐲', cost:400},
+  {id:'alien', name:'Alien Inversor', emoji:'👽', cost:600},
+  {id:'toroDorado', name:'Toro Dorado', emoji:'🐂✨', cost:300, event:true},
+];
+const themes=[
+  {id:'default', name:'Clásico', purple:'#9B5DE5', sky:'#4EC5F1', cost:0},
+  {id:'sunset', name:'Atardecer', purple:'#FF8C42', sky:'#FFC93C', cost:150},
+  {id:'ocean', name:'Océano', purple:'#118AB2', sky:'#06D6A0', cost:150},
+];
+function renderShop(){
+  const skinGrid=document.getElementById('skinGrid'); skinGrid.innerHTML='';
+  skins.forEach(s=>{
+    const owned=state.ownedSkins.includes(s.id); const equipped=state.skin===s.id;
+    const div=document.createElement('div'); div.className='shopItem';
+    div.innerHTML=(s.event?'<div class="eventTag">EVENTO</div>':'')+'<div class="sIcon">'+s.emoji+'</div><div class="sName">'+s.name+'</div>'+
+      '<button class="shopBtn '+(equipped?'equipped':owned?'owned':'buy')+'">'+(equipped?'Equipado':owned?'Usar':'🪙 '+s.cost)+'</button>';
+    div.querySelector('button').onclick=()=>buySkin(s);
+    skinGrid.appendChild(div);
+  });
+  const themeGrid=document.getElementById('themeGrid'); themeGrid.innerHTML='';
+  themes.forEach(t=>{
+    const owned=state.ownedThemes.includes(t.id); const equipped=state.theme===t.id;
+    const div=document.createElement('div'); div.className='shopItem';
+    div.innerHTML='<div class="sIcon" style="color:'+t.purple+'">🎨</div><div class="sName">'+t.name+'</div>'+
+      '<button class="shopBtn '+(equipped?'equipped':owned?'owned':'buy')+'">'+(equipped?'Equipado':owned?'Usar':'🪙 '+t.cost)+'</button>';
+    div.querySelector('button').onclick=()=>buyTheme(t);
+    themeGrid.appendChild(div);
+  });
+}
+function buySkin(s){
+  const owned=state.ownedSkins.includes(s.id);
+  if(!owned){
+    if(state.coins<s.cost){ showToast('Te faltan monedas 🪙','😅'); return; }
+    state.coins-=s.cost; state.ownedSkins.push(s.id); state.itemsBought++;
+    document.getElementById('coinCount').innerText=state.coins;
+    showToast('¡Desbloqueaste '+s.name+'!','🎉'); fireConfetti(40); checkAchievements();
+  }
+  state.skin=s.id; setMascot('¡Nuevo look activado! ¿Qué tal me veo?'); renderShop();
+}
+function buyTheme(t){
+  const owned=state.ownedThemes.includes(t.id);
+  if(!owned){
+    if(state.coins<t.cost){ showToast('Te faltan monedas 🪙','😅'); return; }
+    state.coins-=t.cost; state.ownedThemes.push(t.id); state.itemsBought++;
+    document.getElementById('coinCount').innerText=state.coins;
+    showToast('¡Nuevo tema desbloqueado!','🎨'); fireConfetti(40); checkAchievements();
+  }
+  state.theme=t.id;
+  document.documentElement.style.setProperty('--purple', t.purple);
+  document.documentElement.style.setProperty('--sky', t.sky);
+  renderShop();
+}
+
+/* ---------------- RANKING + RETO SOCIAL ---------------- */
+const bots=[{name:'Sofía Inversora', coins:520},{name:'Max Trader', coins:340},{name:'Lucía 🦄', coins:210},{name:'Pipo el Ahorrador', coins:90},{name:'Ana Wall Street', coins:60}];
+function renderLeaderboard(){
+  const list=[...bots, {name:'Tú', coins:state.coins, me:true}].sort((a,b)=>b.coins-a.coins);
+  const wrap=document.getElementById('lbList'); wrap.innerHTML='';
+  const medals=['🥇','🥈','🥉'];
+  list.forEach((p,i)=>{
+    const row=document.createElement('div'); row.className='lbRow'+(p.me?' me':'');
+    row.innerHTML='<div class="lbRank">'+(medals[i]||(i+1))+'</div><div class="lbName">'+p.name+'</div><div class="lbCoins">🪙 '+p.coins+'</div>';
+    wrap.appendChild(row);
+  });
+  const meVsAna = Math.min(100, (state.coins/60)*50);
+  document.getElementById('vsMeBar').style.width = meVsAna+'%';
+  document.getElementById('vsMeVal').innerText = state.coins+'🪙';
+}
+
+/* ---------------- RACHA ---------------- */
+function renderStreakModal(){
+  const row=document.getElementById('streakDayRow'); row.innerHTML='';
+  for(let i=1;i<=7;i++){ const d=document.createElement('div'); d.className='streakDay'+(i<=state.streak?' done':''); d.innerText=i<=state.streak?'🔥':i; row.appendChild(d); }
+  const btn=document.getElementById('claimBtn');
+  btn.disabled=state.streakClaimedToday;
+  btn.innerText=state.streakClaimedToday?'¡Ya reclamaste hoy! Vuelve mañana':'Reclamar racha de hoy (Día '+(state.streak+1)+')';
+}
+function claimStreak(){
+  if(state.streakClaimedToday) return;
+  state.streak++; state.streakClaimedToday=true;
+  document.getElementById('streakCount').innerText=state.streak;
+  const bonus=10+state.streak*5;
+  addCoins(bonus); addXP(15); fireConfetti(60); playStreakClaim(state.streak);
+  showToast('¡Racha día '+state.streak+'! +'+bonus+' monedas','🔥');
+  setMascot('¡'+state.streak+' días seguidos! Así se construye el hábito de invertir bien 💪');
+  renderStreakModal(); checkAchievements();
+}
+
+/* ---------------- CHAT CON TORO (Claude API) ---------------- */
+let chatHistory = [];
+const TORO_SYSTEM_PROMPT = `Eres "Toro", la mascota guía de un videojuego educativo llamado Bull Buddy que enseña conceptos de bolsa a principiantes, incluidos niños, usando una acción y dinero completamente ficticios.
+Reglas estrictas:
+- Habla siempre en español, cálido, alentador, simple y nunca condescendiente.
+- Solo hablas de conceptos generales de bolsa e inversión de forma educativa (qué es diversificar, qué es una vela, qué es el riesgo, etc.) y del universo ficticio del juego (la acción "MOONCO", el dinero virtual del jugador).
+- NUNCA das consejos de inversión real, nunca mencionas acciones, empresas o tickers reales, nunca sugieres comprar o vender activos con dinero real.
+- Si te preguntan sobre inversión real, dinero real, o algo fuera del juego, redirige amablemente al propósito educativo del juego.
+- Mantente siempre en personaje como Toro. Respuestas cortas (2-4 oraciones), apropiadas para todas las edades.`;
+
+function initChat(){
+  addChatBubble('toro', '¡Hola! Soy Toro 🐂 Puedes preguntarme sobre trading, sobre MOONCO, o pedirme un consejo para tu próxima jugada. ¿Qué quieres saber?');
+}
+function addChatBubble(sender, text){
+  const wrap=document.getElementById('chatMessages');
+  const div=document.createElement('div'); div.className='chatMsg '+sender; div.innerText=text;
+  wrap.appendChild(div); wrap.scrollTop=wrap.scrollHeight;
+  return div;
+}
+async function sendChat(){
+  const input=document.getElementById('chatInput');
+  const msg=input.value.trim();
+  if(!msg) return;
+  addChatBubble('user', msg);
+  chatHistory.push({role:'user', content: msg});
+  input.value='';
+  const typingDiv = addChatBubble('toro', '');
+  typingDiv.innerHTML = '<span class="typingDots">●<span>●</span><span>●</span></span>';
+
+  try{
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 300,
+        system: TORO_SYSTEM_PROMPT,
+        messages: chatHistory
+      })
+    });
+    const data = await response.json();
+    const text = (data.content || []).map(b=>b.text||'').join('\\n').trim();
+    typingDiv.remove();
+    const finalText = text || 'Perdona, se me trabó la lengua 😅 ¿me lo repites?';
+    addChatBubble('toro', finalText);
+    chatHistory.push({role:'assistant', content: finalText});
+  }catch(err){
+    typingDiv.remove();
+    const fallback = mascotFallback(msg);
+    addChatBubble('toro', fallback);
+    chatHistory.push({role:'assistant', content: fallback});
+  }
+  checkAchievements();
+}
+function mascotFallback(msg){
+  const canned = [
+    'Ahora mismo no puedo conectarme bien, pero recuerda: diversificar tus operaciones en MOONCO reduce el riesgo 📊',
+    'Se me cortó la señal 📡 mientras tanto, ¿ya viste cómo lucen las velas verdes vs rojas en el simulador?',
+    'No pude procesar eso ahora, pero un buen hábito es no invertir todo tu dinero virtual de una sola vez 💡'
+  ];
+  return canned[Math.floor(Math.random()*canned.length)];
+}
+
+/* ---------------- REELS ---------------- */
+const reelSlides = [
+  {icon:'🕯️', title:'Las velas japonesas', text:'Cada vela te dice 4 cosas: apertura, cierre, máximo y mínimo del precio en ese período.'},
+  {icon:'🟢', title:'Vela verde vs roja', text:'Verde = el precio cerró más alto de lo que abrió. Roja = cerró más bajo. ¡Así de simple!'},
+  {icon:'🧠', title:'Mini quiz', text:'QUIZ:¿Qué significa una vela roja?|El precio subió|El precio bajó|1'},
+  {icon:'🥚', title:'No pongas todos los huevos en una canasta', text:'Diversificar significa repartir tu dinero en varias inversiones distintas, así un mal resultado no te afecta tanto.'},
+  {icon:'📈', title:'¿Qué es una tendencia alcista?', text:'Cuando el precio de algo sube de forma sostenida durante un tiempo, se dice que está en tendencia alcista.'},
+  {icon:'🧠', title:'Mini quiz', text:'QUIZ:¿Qué es diversificar?|Invertir todo en una sola acción|Repartir tu dinero en varias inversiones|2'},
+  {icon:'💰', title:'¿Qué es un dividendo?', text:'Algunas empresas reparten parte de sus ganancias a quienes tienen sus acciones. A eso se le llama dividendo.'},
+  {icon:'⚖️', title:'Riesgo y recompensa', text:'Generalmente, a mayor posible ganancia, mayor es también el riesgo de perder. ¡Nunca inviertas más de lo que puedes permitirte!'},
+  {icon:'🧠', title:'Mini quiz', text:'QUIZ:¿Qué relación existe entre riesgo y recompensa?|Van de la mano, a más posible ganancia, más riesgo|No tienen ninguna relación|1'},
+];
+let reelIndex=0;
+function renderReel(){
+  const s=reelSlides[reelIndex];
+  const wrap=document.getElementById('reelCardWrap');
+  const prog=document.getElementById('reelProgress'); prog.innerHTML='';
+  reelSlides.forEach((_,i)=>{ const sp=document.createElement('span'); if(i<=reelIndex) sp.classList.add('done'); prog.appendChild(sp); });
+
+  if(s.text.startsWith('QUIZ:')){
+    const parts = s.text.replace('QUIZ:','').split('|');
+    const question=parts[0], opt1=parts[1], opt2=parts[2], correctIdx=parseInt(parts[3]);
+    wrap.innerHTML = '<div class="rIcon">'+s.icon+'</div><h3>'+question+'</h3>';
+    [opt1,opt2].forEach((opt,i)=>{
+      const btn=document.createElement('button'); btn.className='qOption'; btn.innerText=opt;
+      btn.onclick=()=>{
+        if((i+1)===correctIdx){ btn.classList.add('correct'); addCoins(10); addXP(10); playCorrect(); fireConfetti(25); }
+        else{ btn.classList.add('wrong'); playWrong(); }
+      };
+      wrap.appendChild(btn);
+    });
+  } else {
+    wrap.innerHTML = '<div class="rIcon">'+s.icon+'</div><h3>'+s.title+'</h3><p>'+s.text+'</p>';
+  }
+  checkAchievements();
+}
+function reelNav(dir){
+  reelIndex = Math.max(0, Math.min(reelSlides.length-1, reelIndex+dir));
+  renderReel();
+}
+
+/* ---------------- ANUNCIO RECOMPENSADO (opcional, simulado) ---------------- */
+function openAd(){
+  openModal('adModal');
+  const bar=document.getElementById('adBarFill');
+  const status=document.getElementById('adStatusText');
+  bar.style.width='0%';
+  let pct=0;
+  status.innerText='Esto es 100% opcional. Nunca es obligatorio para avanzar.';
+  const iv = setInterval(()=>{
+    pct+=4; bar.style.width=Math.min(100,pct)+'%';
+    if(pct>=100){
+      clearInterval(iv);
+      state.adsWatched++;
+      addCoins(30); addXP(5);
+      status.innerText='¡Gracias! +30 monedas añadidas 🎉';
+      fireConfetti(30);
+      setTimeout(()=>closeModal('adModal'), 900);
+    }
+  }, 120);
+}
+
+updateCashUI();
+updateHoldingsUI();
+
+/* click táctil ligero en botones, para que todo se sienta "juguetón" al tocar */
+document.addEventListener('click', function(e){
+  const el = e.target.closest('.qtyBtn, .iconBtn, .navBtn, .closeBtn, .qOption, .missionChoice, .shopBtn, .claimBtn, .bigBtn, #chatSendBtn');
+  if(el){ try{ playClick(); }catch(err){} }
+}, true);
+</script>
+</body>
+</html>

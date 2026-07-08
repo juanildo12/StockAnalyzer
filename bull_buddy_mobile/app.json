@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Bull Buddy",
+    "slug": "bull-buddy",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "bullbuddy",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#0D1117"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.bullbuddy.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF6E5"
+      },
+      "package": "com.bullbuddy.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-asset"
+    ]
+  }
+}

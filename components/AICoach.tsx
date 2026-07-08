@@ -138,7 +138,6 @@ export default function AICoach({
         const sym = detectSymbol(finalContent);
         if (sym && sym !== symbol) {
           setCurrentTicker(sym);
-          if (onAnalyzeSymbol) onAnalyzeSymbol(sym);
         }
         return prev;
       });

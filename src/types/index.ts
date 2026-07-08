@@ -381,6 +381,141 @@ export interface NNWCInput {
 
 export type NNWCClassification = 'excelente' | 'cumple' | 'no-cumple' | 'negativo' | 'sin-datos';
 
+export type SignalAction = 'COMPRAR' | 'MANTENER' | 'VENDER';
+
+export type ConfidenceLevel = 'baja' | 'media' | 'alta';
+
+export type DifficultyTier = 'novato' | 'bronce' | 'plata' | 'oro' | 'platino' | 'diamante';
+
+export interface GameHint {
+  label: string;
+  key: string;
+  value: string;
+  revealed: boolean;
+}
+
+export interface CandleData {
+  t: number;
+  o: number;
+  h: number;
+  l: number;
+  c: number;
+  v: number;
+}
+
+export interface DailyChallenge {
+  id: string;
+  symbol: string;
+  name: string;
+  price: number;
+  hints: GameHint[];
+  maxScore: number;
+  chartData?: CandleData[];
+  sma50?: number[];
+  support?: number;
+  resistance?: number;
+  trend?: string;
+}
+
+export interface VerifyResponse {
+  correct: boolean;
+  userGuess: SignalAction;
+  correctSignal: SignalAction;
+  score: number;
+  totalScore: number;
+  streak: number;
+  explanation: string;
+}
+
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlockedAt?: string;
+}
+
+export interface DifficultyConfig {
+  id: DifficultyTier;
+  name: string;
+  icon: string;
+  minLevel: number;
+  hintsRevealed: number;
+  timerSeconds: number;
+  sessionSize: number;
+  scoreMultiplier: number;
+}
+
+export interface SessionChallenge {
+  index: number;
+  symbol: string;
+  name: string;
+  price: number;
+  hints: GameHint[];
+  chartData: CandleData[];
+  sma50: number[];
+  support: number;
+  resistance: number;
+  trend: string;
+}
+
+export interface TeachingPoint {
+  metric: string;
+  value: string;
+  impact: 'positivo' | 'negativo' | 'neutral';
+  lesson: string;
+}
+
+export interface ChallengeResult {
+  index: number;
+  symbol: string;
+  userGuess: SignalAction;
+  correctSignal: SignalAction;
+  correct: boolean;
+  confidence: ConfidenceLevel;
+  score: number;
+  timeSeconds: number;
+  hintsUsed: number;
+  teachingPoints: TeachingPoint[];
+}
+
+export interface SessionResult {
+  totalScore: number;
+  maxScore: number;
+  correct: number;
+  total: number;
+  accuracy: number;
+  averageTime: number;
+  difficulty: DifficultyTier;
+  levelUp: boolean;
+  newLevel: number;
+  streak: number;
+  bestStreak: number;
+  results: ChallengeResult[];
+}
+
+export interface GameLevel {
+  name: string;
+  icon: string;
+  minScore: number;
+  minStreak: number;
+}
+
+export interface GameState {
+  totalScore: number;
+  streak: number;
+  bestStreak: number;
+  challengesCompleted: number;
+  challengesCorrect: number;
+  todayCompleted: boolean;
+  lastChallengeDate: string;
+  achievements: Achievement[];
+  level: number;
+  history: { date: string; symbol: string; correct: boolean; score: number }[];
+  sessionsCompleted: number;
+  totalTimePlayed: number;
+}
+
 export interface NNWCResult {
   nnwc: number;
   discountPercent: number;

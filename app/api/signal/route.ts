@@ -62,12 +62,43 @@ async function computeSignal(sym: string) {
     if (isValueTrap) activeScenarios.push('value_trap');
     if (isBomba) activeScenarios.push('bomba');
 
+    // ---- Technical boost ----
+    let techScore = 0;
+    if (t?.trend === 'alcista') techScore += 2;
+    else if (t?.trend === 'bajista') techScore -= 1;
+    if (t?.rsi && t.rsi < 30) techScore += 2;
+    else if (t?.rsi && t.rsi > 70) techScore -= 1;
+
+    // ---- Analyst target boost ----
+    const analystUpside = data.priceTarget?.targetMean && q.regularMarketPrice
+      ? ((data.priceTarget.targetMean - q.regularMarketPrice) / q.regularMarketPrice) * 100
+      : 0;
+    let analystScore = 0;
+    if (analystUpside > 20) analystScore += 2;
+    else if (analystUpside > 10) analystScore += 1;
+    else if (analystUpside < -20) analystScore -= 1;
+
+    // ---- Start with fundamental signal ----
     let signal: 'BUY' | 'HOLD' | 'SELL';
     if (frameworkScore >= 8) signal = 'BUY';
     else if (frameworkScore >= 5) signal = 'HOLD';
     else signal = 'SELL';
 
-    const overallScore = Math.round((frameworkScore / 10) * 100);
+    // ---- Modulate by technical + analyst (can shift one notch) ----
+    const modulation = techScore + analystScore;
+    if (modulation >= 4) {
+      if (signal === 'SELL') signal = 'HOLD';
+      else if (signal === 'HOLD') signal = 'BUY';
+    } else if (modulation >= 2) {
+      if (signal === 'SELL') signal = 'HOLD';
+    } else if (modulation <= -2) {
+      if (signal === 'BUY') signal = 'HOLD';
+      else if (signal === 'HOLD') signal = 'SELL';
+    }
+
+    const compositeScore = frameworkScore + techScore + analystScore;
+    const displayScore = Math.max(0, Math.min(10, compositeScore));
+    const overallScore = Math.round((displayScore / 10) * 100);
 
     let conviction: 'HIGH' | 'MEDIUM' | 'LOW';
     if (overallScore >= 80 || overallScore <= 20) conviction = 'HIGH';
@@ -97,14 +128,15 @@ async function computeSignal(sym: string) {
         profitMargin: Math.round(margin * 10) / 10,
         fcfPositive: isFCFPositive ? 100 : 0,
         frameworkScore,
-        analystTarget: data.priceTarget?.targetMean && q.regularMarketPrice
-          ? Math.round(((data.priceTarget.targetMean - q.regularMarketPrice) / q.regularMarketPrice) * 100)
-          : 0,
+        analystTarget: Math.round(analystUpside),
+        techScore,
+        analystScore,
+        compositeScore,
       },
       framework: {
         fcfYield: Math.round(fcfYield * 10) / 10,
         fcfPositive: isFCFPositive,
-        score: frameworkScore,
+        score: Math.round(displayScore),
         activeScenarios,
         scenarios: [
           { id: 'joyas', name: 'Joyas Ocultas', icon: '💎', match: isJoyas,

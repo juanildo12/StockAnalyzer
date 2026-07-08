@@ -1,0 +1,100 @@
+import type { Skin, Theme } from '../types';
+
+export const SKINS: Skin[] = [
+  {
+    id: 'classic',
+    name: 'Toro Clásico',
+    emoji: '🐂',
+    description: 'El Toro original, elegante y clásico',
+    price: 0,
+    colors: { bg: '#2B2A4C', primary: '#3FD6A0', secondary: '#9B5DE5' },
+  },
+  {
+    id: 'vaquero',
+    name: 'Toro Vaquero',
+    emoji: '🤠',
+    description: 'Con sombrero y botas, listo para el rodeo',
+    price: 200,
+    colors: { bg: '#8B4513', primary: '#D2691E', secondary: '#FFD700' },
+  },
+  {
+    id: 'unicornio',
+    name: 'Toro Unicornio',
+    emoji: '🦄',
+    description: 'Brillante, mágico y lleno de color',
+    price: 500,
+    colors: { bg: '#FF69B4', primary: '#DA70D6', secondary: '#FFD700' },
+  },
+  {
+    id: 'dragon',
+    name: 'Toro Dragón',
+    emoji: '🐉',
+    description: 'Escamas de fuego, mirada feroz',
+    price: 800,
+    colors: { bg: '#DC143C', primary: '#FF4500', secondary: '#FFD700' },
+  },
+  {
+    id: 'alien',
+    name: 'Toro Alienígena',
+    emoji: '👽',
+    description: 'Llegó del espacio exterior para tradear',
+    price: 1200,
+    colors: { bg: '#00FF7F', primary: '#7B68EE', secondary: '#00CED1' },
+  },
+  {
+    id: 'toroDorado',
+    name: 'Toro Dorado',
+    emoji: '🐂✨',
+    description: 'Edición limitada — brilla como el oro',
+    price: 300,
+    eventTag: 'EVENTO',
+    colors: { bg: '#FFD700', primary: '#DAA520', secondary: '#B8860B' },
+  },
+  {
+    id: 'fantasma',
+    name: 'Toro Fantasma',
+    emoji: '👻',
+    description: 'Edición Halloween — asusta al mercado',
+    price: 250,
+    eventTag: 'EVENTO',
+    colors: { bg: '#E8E8F0', primary: '#9B9BC0', secondary: '#6C6C8A' },
+  },
+];
+
+export const THEMES: Theme[] = [
+  {
+    id: 'default',
+    name: 'Tema Clásico',
+    description: 'Crema y morado, el original',
+    price: 0,
+    colors: { accent: '#9B5DE5', accentLight: '#F5EDFF', accent2: '#4EC5F1', accent2Light: '#E6F9FF' },
+  },
+  {
+    id: 'oceano',
+    name: 'Océano Profundo',
+    description: 'Tonos azules y turquesa',
+    price: 300,
+    colors: { accent: '#0077B6', accentLight: '#E6F4FF', accent2: '#00B4D8', accent2Light: '#E0F7FF' },
+  },
+  {
+    id: 'noche',
+    name: 'Noche Estrellada',
+    description: 'Fondo oscuro con estrellas',
+    price: 400,
+    colors: { accent: '#6C63FF', accentLight: '#EEEAFF', accent2: '#FF6584', accent2Light: '#FFE8ED' },
+  },
+  {
+    id: 'bosque',
+    name: 'Bosque Encantado',
+    description: 'Verdes profundos y dorado',
+    price: 350,
+    colors: { accent: '#2D6A4F', accentLight: '#E8F5EE', accent2: '#D4A373', accent2Light: '#F5EDE0' },
+  },
+  {
+    id: 'sunset',
+    name: 'Atardecer',
+    description: 'Naranjas cálidos y amarillo atardecer',
+    price: 150,
+    colors: { accent: '#FF8C42', accentLight: '#FFF0E6', accent2: '#FFC93C', accent2Light: '#FFF8E0' },
+  },
+];

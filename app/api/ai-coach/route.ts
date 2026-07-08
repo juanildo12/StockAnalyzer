@@ -1,26 +1,29 @@
 import { NextRequest } from 'next/server';
 import { getStockData, getStockNews } from '@/src/services/yahooFinance';
+import { getQuote, getCompanyProfile, getInsiderTransactions, getSocialSentiment, getPeerGroups, getRecommendationTrends } from '@/src/services/finnhubClient';
+import { getTipRanksData } from '@/src/services/dataSources';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
 type RequestType = 'full' | 'stats' | 'trend' | 'news' | 'company';
 
-const SYSTEM_PROMPT = `You are a FinRobot AI Agent — multi-perspective financial analyst using Chain-of-Thought reasoning (AI4Finance Foundation methodology).
+const SYSTEM_PROMPT = `Eres un analista financiero senior que habla español. Tu personalidad: directo, sin rodeos, con criterio propio.
 
-RULES (follow strictly):
-- Every claim MUST be tagged: [Seguro] (proven), [Probable] (strong inference), [Suponiendo] (educated guess)
-- NEVER start with agreement. Challenge assumptions first.
-- NEVER say you lack real-time data — it's in the data block above
-- If a field says N/A, DO NOT use it or mention it
-- NO legal disclaimers
-- Output in Spanish, plain markdown
+REGLAS:
+- Tus datos vienen de MÚLTIPLES fuentes en tiempo real (Yahoo Finance, Finnhub, Polygon, TipRanks).
+- Combínalos con tu conocimiento general del mercado para dar una visión completa.
+- Sé crítico, no estés de acuerdo automáticamente. Pero tampoco fuerces ser negativo.
+- Si un dato no está disponible, dilo normal ("no disponible") sin darle importancia.
+- Nada de etiquetas [Seguro]/[Probable]. Habla natural.
+- Sin disclaimer legales.
+- Markdown plano.
 
-PROCESS (execute in order):
-1. **Riesgo Clave:** The biggest risk being overlooked
-2. **Análisis:** Step-by-step walkthrough of the data, tagged with confidence levels
-3. **Oportunidad:** What the upside depends on
-4. **Veredicto:** Buy/Hold/Sell + price context + confidence`;
+ESTRUCTURA:
+1. **Riesgo Clave:** El mayor riesgo que muchos pasan por alto
+2. **Análisis:** Paso a paso con los datos de múltiples fuentes
+3. **Oportunidad:** De qué depende el potencial
+4. **Veredicto:** Compra/Mantiene/Vende + contexto de precio + confianza`;
 
 function extractTicker(text: string): string | null {
   const match = text.match(/\b[A-Z]{1,5}\b/);
@@ -49,6 +52,23 @@ function fmtUSD(n: number | null | undefined): string {
   return `$${n.toFixed(2)}`;
 }
 
+async function scrapeGoogleFinancePrice(symbol: string): Promise<number | null> {
+  const exchanges = ['NASDAQ', 'NYSE'];
+  for (const exchange of exchanges) {
+    try {
+      const url = `https://www.google.com/finance/quote/${symbol}:${exchange}`;
+      const res = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+      });
+      if (!res.ok) continue;
+      const html = await res.text();
+      const match = html.match(/data-last-price="([\d.]+)"/);
+      if (match) return parseFloat(match[1]);
+    } catch { continue; }
+  }
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { messages, model } = await request.json();
@@ -65,26 +85,47 @@ export async function POST(request: NextRequest) {
     if (ticker) {
       console.log(`[FinRobot] ${requestType} for ${ticker}...`);
 
-      const stockData = await getStockData(ticker);
-      const q = stockData.quote;
-      const s = stockData.summary;
-      const t = stockData.technical;
+      // Fetch ALL sources in parallel — each catches its own errors
+      const [yahooData, finnhubQuote, finnhubProfile, insiderTxns, sentiment, peers, recTrends, tipranks, googlePrice] = await Promise.all([
+        getStockData(ticker),
+        getQuote(ticker).catch(() => null),
+        getCompanyProfile(ticker).catch(() => null),
+        getInsiderTransactions(ticker, 15).catch(() => []),
+        getSocialSentiment(ticker).catch(() => null),
+        getPeerGroups(ticker).catch(() => []),
+        getRecommendationTrends(ticker).catch(() => []),
+        getTipRanksData(ticker).catch(() => null),
+        scrapeGoogleFinancePrice(ticker),
+      ]);
+
+      const q = yahooData.quote;
+      const s = yahooData.summary;
+      const t = yahooData.technical;
 
       if (q && q.regularMarketPrice) {
-        const usePostMarket = q.postMarketPrice && q.postMarketPrice !== 0;
-        const currPrice = usePostMarket ? q.postMarketPrice : q.regularMarketPrice;
-        const change = usePostMarket ? (q.postMarketChange || 0) : (q.regularMarketChange || 0);
-        const changePct = usePostMarket ? ((q as any).postMarketChangePercent || 0) : (q.regularMarketChangePercent || 0);
         const shortName = q.shortName || q.longName || ticker;
 
-        const forwardPE = s?.epsForward && s?.epsForward > 0 ? currPrice / s.epsForward : null;
+        // ---- REAL-TIME PRICE from multiple sources ----
+        // Finnhub and Google are uncached — freshest possible
+        const yahooPrice = q.regularMarketPrice || 0;
+        const finnhubPrice = finnhubQuote?.c || 0;
+        const googleRtPrice = googlePrice ?? 0;
+
+        // Use the median of available prices as the "best estimate"
+        const availablePrices = [yahooPrice, finnhubPrice, googleRtPrice].filter(p => p > 0);
+        const sorted = [...availablePrices].sort((a, b) => a - b);
+        const bestPrice = sorted.length >= 3 ? sorted[1] : (sorted[0] || yahooPrice);
+        const bestChange = finnhubQuote?.d || (q.regularMarketChange || 0);
+        const bestChangePct = finnhubQuote?.dp ?? (q.regularMarketChangePercent || 0);
+
+        const forwardPE = s?.epsForward && s?.epsForward > 0 ? bestPrice / s.epsForward : null;
         const fcfYield = (q.marketCap && s?.freeCashflow) ? (s.freeCashflow / q.marketCap) * 100 : null;
         const netCash = (s?.totalCash != null && s?.totalDebt != null) ? s.totalCash - s.totalDebt : null;
         const currentRatio = (s?.currentAssets && s?.currentLiabilities) ? s.currentAssets / s.currentLiabilities : null;
         const earningsGrowth = s?.earningsGrowth ? s.earningsGrowth * 100 : null;
         const high52w = q.fiftyTwoWeekHigh;
         const low52w = q.fiftyTwoWeekLow;
-        const pctFromLow = high52w > low52w ? ((currPrice - low52w) / (high52w - low52w)) * 100 : 50;
+        const pctFromLow = high52w > low52w ? ((bestPrice - low52w) / (high52w - low52w)) * 100 : 50;
 
         const fcf = s?.freeCashflow || 0;
         const isFCFPositive = fcf >= 0;
@@ -104,6 +145,58 @@ export async function POST(request: NextRequest) {
         const isValueTrap = (fcfYield && fcfYield > 8) && pe > 0 && pe < 15 && revGrowth < 5 && margin < 10;
         const isBomba = (fcfYield && fcfYield < 0) && pe > 25 && revGrowth < 0 && margin < 0;
 
+        // ----- All real-time prices side by side -----
+        let pricesSection = `\n[PRICES] Yahoo:$${fmt(yahooPrice)}`;
+        if (finnhubPrice > 0) pricesSection += ` | Finnhub:$${fmt(finnhubPrice)}`;
+        if (googleRtPrice > 0) pricesSection += ` | Google:$${fmt(googleRtPrice)}`;
+        pricesSection += ` | Best:$${fmt(bestPrice)} | Change:${fmt(bestChange)}(${fmt(bestChangePct)}%) | Vol:${(q.regularMarketVolume || 0).toLocaleString()}`;
+
+        // ----- Finnhub profile & real-time quote detail -----
+        let finnhubSection = '';
+        if (finnhubQuote && finnhubQuote.c) {
+          finnhubSection = `\n[FINNHUB_RT] O:$${fmt(finnhubQuote.o)} | H:$${fmt(finnhubQuote.h)} | L:$${fmt(finnhubQuote.l)} | PrevClose:$${fmt(finnhubQuote.pc)}`;
+        }
+        if (finnhubProfile) {
+          finnhubSection += ` | Exchange:${finnhubProfile.exchange || ''} | Industry:${finnhubProfile.finnhubIndustry || ''}`;
+        }
+
+        // ----- Insider summary -----
+        let insiderSection = '';
+        if (insiderTxns.length > 0) {
+          const buys = insiderTxns.filter(t => t.transactionCode === 'P').length;
+          const sells = insiderTxns.filter(t => t.transactionCode === 'S').length;
+          const totalShares = insiderTxns.reduce((sum, t) => sum + (t.change || 0), 0);
+          insiderSection = `\n[INSIDERS] Buys:${buys} | Sells:${sells} | NetShares:${totalShares.toLocaleString()} | Latest:${insiderTxns[0]?.name || ''} at $${fmt(insiderTxns[0]?.transactionPrice)}`;
+        }
+
+        // ----- Social sentiment -----
+        let sentimentSection = '';
+        if (sentiment?.reddit) {
+          sentimentSection = `\n[SENTIMENT] Reddit:${sentiment.reddit.score} (${sentiment.reddit.mention} mentions) | Twitter:${sentiment.twitter?.score || 'N/A'}`;
+        }
+
+        // ----- Peer groups -----
+        let peersSection = '';
+        if (peers.length > 0) {
+          peersSection = `\n[PEERS] ${peers.slice(0, 6).join(', ')}`;
+        }
+
+        // ----- Recommendation trends -----
+        let recSection = '';
+        if (recTrends.length > 0) {
+          const latest = recTrends[0];
+          recSection = `\n[RECOMMENDATIONS] StrongBuy:${latest.strongBuy || 0} | Buy:${latest.buy || 0} | Hold:${latest.hold || 0} | Sell:${latest.sell || 0} | StrongSell:${latest.strongSell || 0}`;
+        }
+
+        // ----- TipRanks -----
+        let tipranksSection = '';
+        if (tipranks) {
+          const trConsensus = tipranks.analystConsensus || 'N/A';
+          const trTarget = tipranks.priceTarget || 0;
+          const trScore = tipranks.smartScore ?? null;
+          tipranksSection = `\n[TIPRANKS] Consensus:${trConsensus} | Target:$${fmt(trTarget)} | SmartScore:${trScore !== null ? fmt(trScore) : 'N/A'} | Buys:${tipranks.buyCount || 0} | Holds:${tipranks.holdCount || 0} | Sells:${tipranks.sellCount || 0}`;
+        }
+
         let newsBlock = '';
         if (requestType === 'news') {
           const newsItems = await getStockNews(ticker).catch(() => []);
@@ -112,22 +205,23 @@ export async function POST(request: NextRequest) {
             : '\n[NEWS] No recent news.';
         }
 
-        dataBlock = `== ${shortName} (${ticker}) — FinRobot Analysis ==`
-          + `\n[MARKET] Price:$${fmt(currPrice)} | Change:${fmt(change)}(${fmt(changePct)}%) | Vol:${(q.regularMarketVolume || 0).toLocaleString()} | 52W:$${fmt(low52w)}-$${fmt(high52w)} | 52W_Pos:${fmt(pctFromLow)}%`
-          + `\n[VALUATION] MktCap:${fmtUSD(q.marketCap)} | PE:${pe ? fmt(pe) : 'N/A'} | FwdPE:${forwardPE ? fmt(forwardPE) : 'N/A'} | PB:${s?.priceToBook ? fmt(s.priceToBook, 2) : 'N/A'}`
+        dataBlock = `== ${shortName} (${ticker}) — FinRobot Multi-Source Analysis ==`
+          + pricesSection
+          + `\n[YAHOO_SUMMARY] 52W:$${fmt(low52w)}-$${fmt(high52w)} | 52W_Pos:${fmt(pctFromLow)}% | MktCap:${fmtUSD(q.marketCap)} | PE:${pe ? fmt(pe) : 'N/A'} | FwdPE:${forwardPE ? fmt(forwardPE) : 'N/A'} | PB:${s?.priceToBook ? fmt(s.priceToBook, 2) : 'N/A'}`
           + `\n[FUNDAMENTALS] Rev:${fmtUSD(s?.totalRevenue)} | RevGrowth:${revGrowth > 0 ? '+' : ''}${fmt(revGrowth)}% | Margin:${fmt(margin)}% | EPS:$${s?.epsTrailingTwelveMonths ? fmt(s.epsTrailingTwelveMonths) : 'N/A'} | FCF:${fmtUSD(fcf)} | FCF_Yield:${fcfYield != null ? fmt(fcfYield) + '%' : 'N/A'}`
           + `\n[BALANCE] Cash:${fmtUSD(s?.totalCash)} | Debt:${fmtUSD(s?.totalDebt)} | NetCash:${netCash != null ? fmtUSD(netCash) : 'N/A'} | CurrentRatio:${currentRatio ? fmt(currentRatio, 2) : 'N/A'}`
           + `\n[TECHNICAL] RSI(14):${t?.rsi ? fmt(t.rsi) : 'N/A'} | Trend:${t?.trend || 'N/A'} | SMA50:$${fmt(t?.sma50)} | SMA200:$${fmt(t?.sma200)} | Support:$${fmt(t?.support)} | Resistance:$${fmt(t?.resistance)}`
-          + `\n[ANALYST] Target:$${fmt(stockData.priceTarget?.targetMean)} | High:$${fmt(stockData.priceTarget?.targetHigh)} | Low:$${fmt(stockData.priceTarget?.targetLow)} | Analysts:${stockData.priceTarget?.numberOfAnalysts || 'N/A'}`
+          + `\n[ANALYST] Target:$${fmt(yahooData.priceTarget?.targetMean)} | High:$${fmt(yahooData.priceTarget?.targetHigh)} | Low:$${fmt(yahooData.priceTarget?.targetLow)} | Analysts:${yahooData.priceTarget?.numberOfAnalysts || 'N/A'}`
           + `\n[FRAMEWORK] Score:${frameworkScore}/10 | FCF+:${isFCFPositive ? 'YES' : 'NO'} | Joyas:${isJoyas ? 'YES' : 'NO'} | Growth:${isGrowth ? 'YES' : 'NO'} | ValueTrap:${isValueTrap ? 'YES' : 'NO'} | Bomba:${isBomba ? 'YES' : 'NO'}`
-          + `\n[SECTOR] ${q.sector || ''}${newsBlock}`;
+          + `\n[SECTOR] ${q.sector || ''}`
+          + `${finnhubSection}${insiderSection}${sentimentSection}${peersSection}${recSection}${tipranksSection}${newsBlock}`;
       } else {
         dataBlock = `[ERROR] No data for ticker: ${ticker}`;
       }
     }
 
     const userContent = ticker
-      ? `DATOS_EN_VIVO:\n${dataBlock}\n\nCONSULTA: "${lastMsg}"\n\nEjecuta el proceso FinRobot: IDENTIFY → ANALYZE → SYNTHESIS → VERDICT`
+      ? `DATOS_EN_VIVO:\n${dataBlock}\n\nCONSULTA: "${lastMsg}"\n\nAnaliza usando los datos y tu conocimiento del mercado.`
       : lastMsg;
 
     const history = messages.slice(0, -1).slice(-4);

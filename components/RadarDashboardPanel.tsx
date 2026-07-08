@@ -98,7 +98,7 @@ function RadarColumn({
     <div style={{
       background: '#FFFFFF',
       borderRadius: '20px',
-      padding: '28px',
+      padding: '16px',
       border: '1px solid #E8E8ED',
     }}>
       <h3 style={{
@@ -162,7 +162,7 @@ export default function RadarDashboardPanel({ symbol }: RadarDashboardPanelProps
     <div style={{
       background: '#F5F5F7',
       borderRadius: '24px',
-      padding: '32px',
+      padding: '20px',
       border: '1px solid #E8E8ED',
     }}>
       {/* Header */}
@@ -203,7 +203,7 @@ export default function RadarDashboardPanel({ symbol }: RadarDashboardPanelProps
       {/* Two columns */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
         gap: '24px',
       }}>
         <RadarColumn

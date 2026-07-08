@@ -1,0 +1,27 @@
+import type { Achievement } from '../types';
+
+export const ACHIEVEMENTS: Achievement[] = [
+  { id: 'ach_first_trade', title: 'Primer Trade', description: 'Realiza tu primera compra', icon: '🎯', category: 'trading', requirement: { type: 'trades', target: 1, }, coinsReward: 50, xpReward: 100, },
+  { id: 'ach_profit_10', title: 'Ganancia de $10', description: 'Obtén $10 de ganancia en una operación', icon: '💰', category: 'trading', requirement: { type: 'profit_single', target: 10, }, coinsReward: 100, xpReward: 200, },
+  { id: 'ach_profit_100', title: 'Benjamín', description: 'Gana $100 en una sola operación', icon: '💵', category: 'trading', requirement: { type: 'profit_single', target: 100, }, coinsReward: 300, xpReward: 500, },
+  { id: 'ach_10_trades', title: 'Rutina de Trading', description: 'Realiza 10 trades', icon: '🔄', category: 'trading', requirement: { type: 'trades', target: 10, }, coinsReward: 150, xpReward: 300, },
+  { id: 'ach_50_trades', title: 'Trader Experimentado', description: 'Realiza 50 trades', icon: '📊', category: 'trading', requirement: { type: 'trades', target: 50, }, coinsReward: 500, xpReward: 1000, },
+  { id: 'ach_quiz_5', title: 'Curioso', description: 'Responde 5 preguntas de quiz', icon: '🤔', category: 'aprender', requirement: { type: 'quiz_answered', target: 5, }, coinsReward: 75, xpReward: 150, },
+  { id: 'ach_quiz_20', title: 'Estudioso', description: 'Responde 20 preguntas de quiz', icon: '📚', category: 'aprender', requirement: { type: 'quiz_answered', target: 20, }, coinsReward: 200, xpReward: 400, },
+  { id: 'ach_quiz_perfect', title: 'Perfect Score', description: 'Responde 5 preguntas seguidas correctas', icon: '🌟', category: 'aprender', requirement: { type: 'quiz_streak', target: 5, }, coinsReward: 250, xpReward: 500, },
+  { id: 'ach_streak_3', title: 'Racha', description: 'Mantén una racha de 3 días', icon: '🔥', category: 'social', requirement: { type: 'streak', target: 3, }, coinsReward: 100, xpReward: 150, },
+  { id: 'ach_streak_7', title: 'Semana de Toro', description: 'Mantén una racha de 7 días', icon: '📅', category: 'social', requirement: { type: 'streak', target: 7, }, coinsReward: 300, xpReward: 500, },
+  { id: 'ach_streak_30', title: 'Mes de Trading', description: 'Mantén una racha de 30 días', icon: '🏆', category: 'social', requirement: { type: 'streak', target: 30, }, coinsReward: 1000, xpReward: 2000, },
+  { id: 'ach_missions_3', title: 'Misionero', description: 'Completa 3 misiones', icon: '🎪', category: 'aprender', requirement: { type: 'missions_completed', target: 3, }, coinsReward: 200, xpReward: 400, },
+  { id: 'ach_level_5', title: 'Nivel 5', description: 'Alcanza el nivel 5', icon: '⬆️', category: 'social', requirement: { type: 'level', target: 5, }, coinsReward: 200, xpReward: 300, },
+  { id: 'ach_level_10', title: 'Nivel 10', description: 'Alcanza el nivel 10', icon: '💎', category: 'social', requirement: { type: 'level', target: 10, }, coinsReward: 500, xpReward: 1000, },
+  { id: 'ach_level_25', title: 'Leyenda', description: 'Alcanza el nivel 25', icon: '👑', category: 'social', requirement: { type: 'level', target: 25, }, coinsReward: 2000, xpReward: 5000, },
+  { id: 'ach_rank_1', title: 'Número 1', description: 'Alcanza el puesto #1 en el ranking', icon: '🥇', category: 'social', requirement: { type: 'rank', target: 1, }, coinsReward: 1000, xpReward: 2000, },
+  { id: 'ach_networth_1000', title: 'Primer Miles', description: 'Tu portafolio vale $1,000', icon: '💼', category: 'trading', requirement: { type: 'networth', target: 1000, }, coinsReward: 200, xpReward: 300, },
+  { id: 'ach_networth_5000', title: 'Inversionista Serio', description: 'Tu portafolio vale $5,000', icon: '📈', category: 'trading', requirement: { type: 'networth', target: 5000, }, coinsReward: 600, xpReward: 1000, },
+  { id: 'ach_networth_10000', title: 'Toro Millonario', description: 'Tu portafolio vale $10,000', icon: '🚀', category: 'trading', requirement: { type: 'networth', target: 10000, }, coinsReward: 1500, xpReward: 3000, },
+  { id: 'ach_5_losses', title: 'Cicatrices de Guerra', description: 'No rendirse tras 5 pérdidas', icon: '⚔️', category: 'trading', requirement: { type: 'losses', target: 5, }, coinsReward: 100, xpReward: 150, },
+  { id: 'ach_all_missions', title: 'Completista', description: 'Completa todas las misiones', icon: '🏅', category: 'aprender', requirement: { type: 'missions_completed', target: 0, }, coinsReward: 1000, xpReward: 2000, },
+  { id: 'ach_shark', title: 'Tiburón', description: 'Haz 3 trades en un minuto', icon: '🦈', category: 'trading', requirement: { type: 'trades', target: 3, }, coinsReward: 150, xpReward: 250, },
+  { id: 'ach_all_reels', title: 'Binge Watcher', description: 'Mira todos los reels educativos', icon: '🎬', category: 'aprender', requirement: { type: 'reels_watched', target: 4, }, coinsReward: 300, xpReward: 500, },
+];

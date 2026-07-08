@@ -3,43 +3,43 @@
 import { useEffect, useState } from 'react';
 import { colors as C, radius as R, font as F, transition as T } from '@/src/utils/webTheme';
 
+interface DetailDataField {
+  signal?: string;
+  score?: number;
+  conviction?: string;
+  riskLevel?: string;
+  price?: number;
+  change?: number;
+  changePercent?: number;
+  details?: {
+    trend?: string;
+    rsi?: number;
+    sector?: string;
+  };
+  framework?: {
+    activeScenarios?: string[];
+    scenarios?: Array<{
+      id: string;
+      name: string;
+      icon: string;
+      match: boolean;
+      verdict: string | null;
+    }>;
+    score?: number;
+  };
+  components?: Record<string, number>;
+}
+
 interface VeredictoPanelProps {
   symbol: string;
-  detailData: {
-    signal: string;
-    score: number;
-    conviction: string;
-    riskLevel: string;
-    price: number;
-    change: number;
-    changePercent: number;
-    details: {
-      trend: string;
-      rsi: number;
-      sector: string;
-    };
-    framework: {
-      activeScenarios: string[];
-      scenarios: {
-        id: string;
-        name: string;
-        icon: string;
-        match: boolean;
-        verdict: string | null;
-      }[];
-      score: number;
-    };
-    components: {
-      analystTarget: number;
-    };
-  };
+  detailData: DetailDataField;
   summary: {
-    buyZoneLow: number;
-    buyZoneHigh: number;
-    target1: number;
-    target2: number;
-    stopLoss: number;
-    potentialReturn: number;
+    buyZoneLow?: number;
+    buyZoneHigh?: number;
+    target1?: number;
+    target2?: number;
+    stopLoss?: number;
+    potentialReturn?: number;
     peClassification?: string;
     cashClassification?: string;
     debtClassification?: string;
@@ -47,6 +47,20 @@ interface VeredictoPanelProps {
     targetMeanPrice?: number;
     targetHighPrice?: number;
     targetLowPrice?: number;
+  } | null;
+  quote?: {
+    regularMarketVolume?: number;
+    averageTradingVolume?: number;
+    regularMarketPrice?: number;
+  } | null;
+  technical?: {
+    trend?: string;
+    rsi?: number;
+    sma50?: number;
+    sma200?: number;
+    support?: number;
+    resistance?: number;
+    signal?: string;
   } | null;
 }
 
@@ -130,7 +144,7 @@ function getEntryAdvice(price: number, buyLow: number, buyHigh: number): { label
   return { label: '📉 Fuera de zona, esperar confirmación', color: '#78716C' };
 }
 
-export default function VeredictoPanel({ symbol, detailData, summary }: VeredictoPanelProps) {
+export default function VeredictoPanel({ symbol, detailData, summary, quote, technical }: VeredictoPanelProps) {
   const signal = detailData?.signal || 'HOLD';
   const score = detailData?.score ?? 0;
   const conviction = detailData?.conviction || 'LOW';
@@ -140,14 +154,108 @@ export default function VeredictoPanel({ symbol, detailData, summary }: Veredict
   const changePercent = detailData?.changePercent ?? 0;
   const details = detailData?.details || {};
   const framework = detailData?.framework || { activeScenarios: [], scenarios: [], score: 0 };
-  const components = detailData?.components || { analystTarget: 0 };
-  const trend = details.trend || 'lateral';
-  const rsi = details.rsi || 50;
+  const trend = details?.trend || 'lateral';
+  const rsi = details?.rsi ?? 50;
   const vColor = getVerdictColor(signal);
 
   const [optionsData, setOptionsData] = useState<any>(null);
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [expIndex, setExpIndex] = useState(0);
+
+  // ─── Pre-entry Checklist ────────────────────────────────────
+  const itemTrend = trend ?? technical?.trend ?? 'lateral';
+  const isBullish = itemTrend === 'alcista';
+  const vol = quote?.regularMarketVolume ?? 0;
+  const avgVol = quote?.averageTradingVolume ?? vol;
+  const volumeAboveAvg = avgVol > 0 && vol > avgVol;
+  const isBreakout = price >= (technical?.resistance ?? price * 1.05) * 0.985;
+  const resLeveL = technical?.resistance ?? price * 1.08;
+  const noResistanceNear = price < resLeveL * 0.97;
+  const rrRatio = (() => {
+    const isBearish = signal === 'SELL';
+    const effTp1 = isBearish ? price * 0.85 : (summary?.target1 ?? price * 1.15);
+    const effSl = isBearish ? price * 1.15 : (summary?.stopLoss ?? price * 0.85);
+    const gain = Math.abs(effTp1 - price);
+    const loss = Math.abs(effSl - price);
+    return loss > 0 ? gain / loss : 0;
+  })();
+  const rrOk = rrRatio >= 2;
+
+  const optContracts = optionsData?.nextExpirations?.[0];
+  const bestCall = optContracts ? bestContract(optContracts.calls, true) : null;
+  const bestPut = optContracts ? bestContract(optContracts.puts, false) : null;
+  const bestOpt = bestCall?.delta >= 0.2 && bestCall?.delta <= 0.75 ? bestCall : bestPut?.delta <= -0.2 && bestPut?.delta >= -0.75 ? bestPut : null;
+  const deltaIdeal = bestOpt != null && Math.abs(bestOpt.delta ?? 0) >= 0.20 && Math.abs(bestOpt.delta ?? 0) <= 0.75;
+  const oiSuficiente = (bestOpt?.openInterest ?? 0) >= 100;
+
+  interface ChecklistItem {
+    id: string;
+    label: string;
+    auto: boolean;
+    check: boolean;
+  }
+
+  const defaultChecks: ChecklistItem[] = [
+    { id: 'bullish', label: 'Mercado alcista', auto: true, check: isBullish },
+    { id: 'ema8', label: 'Precio sobre EMA 8', auto: false, check: false },
+    { id: 'ema8-21', label: 'EMA 8 > EMA 21', auto: false, check: false },
+    { id: 'volume', label: 'Volumen superior al promedio', auto: true, check: volumeAboveAvg },
+    { id: 'breakout', label: 'Breakout confirmado', auto: true, check: isBreakout },
+    { id: 'rr', label: 'Riesgo/Recompensa > 1:2', auto: true, check: rrOk },
+    { id: 'delta', label: 'Delta ideal', auto: true, check: deltaIdeal },
+    { id: 'oi', label: 'OI suficiente', auto: true, check: oiSuficiente },
+    { id: 'resistance', label: 'Sin resistencia inmediata', auto: true, check: noResistanceNear },
+  ];
+
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(defaultChecks);
+
+  // Sync auto items when data changes
+  useEffect(() => {
+    setChecklist(prev => prev.map(item => {
+      if (!item.auto) return item;
+      switch (item.id) {
+        case 'bullish': return { ...item, check: isBullish };
+        case 'volume': return { ...item, check: volumeAboveAvg };
+        case 'breakout': return { ...item, check: isBreakout };
+        case 'rr': return { ...item, check: rrOk };
+        case 'delta': return { ...item, check: deltaIdeal };
+        case 'oi': return { ...item, check: oiSuficiente };
+        case 'resistance': return { ...item, check: noResistanceNear };
+        default: return item;
+      }
+    }));
+  }, [isBullish, volumeAboveAvg, isBreakout, rrOk, deltaIdeal, oiSuficiente, noResistanceNear, optionsData]);
+
+  const checkedCount = checklist.filter(i => i.check).length;
+  const totalItems = checklist.length;
+
+  const checklistResult = (() => {
+    if (checkedCount >= 9) return { emoji: '🟢', label: 'Entraría', color: '#22C55E' };
+    if (checkedCount >= 7) return { emoji: '🟡', label: 'Esperaría confirmación', color: '#F59E0B' };
+    return { emoji: '🔴', label: 'No operaría', color: '#EF4444' };
+  })();
+
+  const toggleChecklist = (id: string) => {
+    setChecklist(prev => prev.map(item =>
+      item.id === id ? { ...item, check: !item.check } : item
+    ));
+  };
+
+  const resetChecklist = () => {
+    setChecklist(defaultChecks.map(item => {
+      if (!item.auto) return { ...item, check: false };
+      switch (item.id) {
+        case 'bullish': return { ...item, check: isBullish };
+        case 'volume': return { ...item, check: volumeAboveAvg };
+        case 'breakout': return { ...item, check: isBreakout };
+        case 'rr': return { ...item, check: rrOk };
+        case 'delta': return { ...item, check: deltaIdeal };
+        case 'oi': return { ...item, check: oiSuficiente };
+        case 'resistance': return { ...item, check: noResistanceNear };
+        default: return item;
+      }
+    }));
+  };
 
   useEffect(() => {
     if (!symbol) return;
@@ -235,13 +343,13 @@ export default function VeredictoPanel({ symbol, detailData, summary }: Veredict
   const tp1 = rawTp1 > 0 && rawTp1 < price * 5 ? rawTp1 : price * 1.15;
   const tp2 = rawTp2 > 0 && rawTp2 < price * 10 ? rawTp2 : tp1 * 1.25;
   const sl = rawSl > 0 && rawSl < price ? rawSl : price * 0.85;
-  const potRet = summary?.potentialReturn ?? 0;
+  const potRet = price > 0 ? ((tp1 - price) / price) * 100 : 0;
 
   const call = calcCallScore(signal, trend, rsi);
   const put = calcPutScore(signal, trend, rsi);
   const entry = getEntryAdvice(price, buyLow, buyHigh);
 
-  const hasVerdicts = framework.scenarios.some(s => s.match && s.verdict);
+  const hasVerdicts = (framework.scenarios ?? []).some(s => s.match && s.verdict);
 
   const signalLabel = signal === 'BUY' ? 'COMPRAR' : signal === 'SELL' ? 'VENDER' : 'MANTENER';
   const changeStr = change >= 0 ? `+${change.toFixed(2)}` : change.toFixed(2);
@@ -322,85 +430,129 @@ export default function VeredictoPanel({ symbol, detailData, summary }: Veredict
           </div>
         </div>
 
-        {/* Row 2: Entry Zone + TP/SL */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
-          {/* Entry Zone */}
-          <div style={{
-            background: C.bg, borderRadius: R.md, padding: 12,
-            border: `1px solid ${entry.color}30`,
-          }}>
-            <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Zona de Entrada
-            </div>
-            <div style={{ fontSize: F.sizeSm, fontWeight: 600, color: C.textPrimary }}>
-              ${buyLow.toFixed(2)} — ${buyHigh.toFixed(2)}
-            </div>
-            <div style={{ fontSize: F.sizeXs, color: entry.color, marginTop: 4, fontWeight: 500 }}>
-              {entry.label}
-            </div>
-            <div style={{ marginTop: 6 }}>
-              <div style={{ position: 'relative', height: 4, background: C.divider, borderRadius: 2 }}>
-                <div style={{
-                  position: 'absolute', left: 0, top: 0, height: '100%',
-                  width: `${Math.min(100, ((price - buyLow) / (buyHigh - buyLow)) * 100)}%`,
-                  background: entry.color, borderRadius: 2,
-                }} />
-              </div>
-            </div>
-          </div>
+        {/* Row 2: Entry Zone + TP/SL (direction-aware) */}
+        {(() => {
+          const isBearish = signal === 'SELL';
+          const effTp1 = isBearish ? price * 0.85 : tp1;
+          const effTp2 = isBearish ? price * 0.80 : tp2;
+          const effSl = isBearish ? price * 1.15 : sl;
+          const effPotRet = isBearish
+            ? ((price - effTp1) / price) * 100
+            : ((effTp1 - price) / price) * 100;
+          const effRiskPct = isBearish
+            ? ((effSl - price) / price) * 100
+            : ((price - effSl) / price) * 100;
+          const riskBarPct = Math.min(100, Math.max(0, effRiskPct));
+          const tpLabel = isBearish ? 'Cover Target' : 'Take Profit';
+          const tpColor = isBearish ? '#EF4444' : '#22C55E';
+          const entryLabel = isBearish ? 'Zona de Venta' : 'Zona de Entrada';
 
-          {/* TP */}
-          <div style={{
-            background: C.bg, borderRadius: R.md, padding: 12,
-            border: '1px solid #22C55E30',
-          }}>
-            <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Take Profit
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <div>
-                <span style={{ fontSize: F.sizeXs, color: C.textMuted }}>TP1</span>
-                <div style={{ fontSize: F.sizeSm, fontWeight: 600, color: '#22C55E' }}>
-                  ${tp1.toFixed(2)}
+          return (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, marginBottom: 16 }}>
+              {/* Entry Zone — same original style for BUY/HOLD */}
+              <div style={{
+                background: C.bg, borderRadius: R.md, padding: 12,
+                border: isBearish ? '1px solid #EF444430' : `1px solid ${entry.color}30`,
+              }}>
+                <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  {entryLabel}
+                </div>
+                {isBearish ? (
+                  <>
+                    <div style={{ fontSize: F.sizeSm, fontWeight: 600, color: C.textPrimary }}>
+                      <span style={{ color: '#EF4444' }}>Short</span> @ ${price.toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: F.sizeXs, color: '#EF4444', marginTop: 4, fontWeight: 500 }}>
+                      Vender en corto ahora
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: F.sizeSm, fontWeight: 600, color: C.textPrimary }}>
+                      ${buyLow.toFixed(2)} — ${buyHigh.toFixed(2)}
+                    </div>
+                    <div style={{ fontSize: F.sizeXs, color: entry.color, marginTop: 4, fontWeight: 500 }}>
+                      {entry.label}
+                    </div>
+                    <div style={{ marginTop: 6 }}>
+                      <div style={{ position: 'relative', height: 4, background: C.divider, borderRadius: 2 }}>
+                        <div style={{
+                          position: 'absolute', left: 0, top: 0, height: '100%',
+                          width: `${Math.min(100, ((price - buyLow) / (buyHigh - buyLow)) * 100)}%`,
+                          background: entry.color, borderRadius: 2,
+                        }} />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* TP / Cover Target */}
+              <div style={{
+                background: C.bg, borderRadius: R.md, padding: 12,
+                border: `1px solid ${tpColor}30`,
+              }}>
+                <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  {tpLabel}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <div>
+                    <span style={{ fontSize: F.sizeXs, color: C.textMuted }}>TP1</span>
+                    <div style={{ fontSize: F.sizeSm, fontWeight: 600, color: tpColor }}>
+                      ${effTp1.toFixed(2)}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: F.sizeXs, color: C.textMuted }}>TP2</span>
+                    <div style={{ fontSize: F.sizeSm, fontWeight: 600, color: tpColor }}>
+                      ${effTp2.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginTop: 4 }}>
+                  {isBearish ? 'Ganancia' : 'Retorno'}: +{effPotRet.toFixed(1)}% (TP1)
                 </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ fontSize: F.sizeXs, color: C.textMuted }}>TP2</span>
-                <div style={{ fontSize: F.sizeSm, fontWeight: 600, color: '#16A34A' }}>
-                  ${tp2.toFixed(2)}
+
+              {/* SL */}
+              <div style={{
+                background: C.bg, borderRadius: R.md, padding: 12,
+                border: '1px solid #EF444430',
+              }}>
+                <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Stop Loss
+                </div>
+                <div style={{ fontSize: F.sizeSm, fontWeight: 600, color: '#EF4444' }}>
+                  ${effSl.toFixed(2)}
+                </div>
+                <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginTop: 4 }}>
+                  Riesgo: {price > 0 ? `-${effRiskPct.toFixed(1)}%` : '—'}
+                </div>
+                <div style={{ marginTop: 6 }}>
+                  <div style={{ position: 'relative', height: 4, background: C.divider, borderRadius: 2 }}>
+                    <div style={{
+                      position: 'absolute', left: 0, top: 0, height: '100%',
+                      width: `${riskBarPct}%`,
+                      background: '#EF4444', borderRadius: 2,
+                    }} />
+                  </div>
                 </div>
               </div>
             </div>
-            <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginTop: 4 }}>
-              Retorno: +{potRet.toFixed(1)}% (TP1)
-            </div>
-          </div>
-
-          {/* SL */}
+          );
+        })()}
+        {/* Nota informativa: zona de compra para portafolio */}
+        {signal === 'SELL' && (
           <div style={{
-            background: C.bg, borderRadius: R.md, padding: 12,
-            border: '1px solid #EF444430',
+            fontSize: F.sizeXs, color: C.textMuted, textAlign: 'center',
+            padding: '6px 12px', marginBottom: 12,
+            border: `1px dashed ${C.divider}`, borderRadius: R.md,
           }}>
-            <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Stop Loss
-            </div>
-            <div style={{ fontSize: F.sizeSm, fontWeight: 600, color: '#EF4444' }}>
-              ${sl.toFixed(2)}
-            </div>
-            <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginTop: 4 }}>
-              Riesgo: {price > 0 ? `-${(((price - sl) / price) * 100).toFixed(1)}%` : '—'}
-            </div>
-            <div style={{ marginTop: 6 }}>
-              <div style={{ position: 'relative', height: 4, background: C.divider, borderRadius: 2 }}>
-                <div style={{
-                  position: 'absolute', left: 0, top: 0, height: '100%',
-                  width: `${Math.min(100, Math.max(0, ((price - sl) / price) * 100))}%`,
-                  background: '#EF4444', borderRadius: 2,
-                }} />
-              </div>
-            </div>
+            💡 Si deseas comprar la acción para portafolio, la zona de compra recomendada es
+            {' '}<strong style={{ color: C.accent }}>${buyLow.toFixed(2)} — ${buyHigh.toFixed(2)}</strong>
+            {' '}(esperar pullback). El veredicto VENDER aplica para trading direccional de corto plazo.
           </div>
-        </div>
+        )}
 
         {/* Row 3: Options Contracts (CALL | PUT) */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
@@ -513,7 +665,7 @@ export default function VeredictoPanel({ symbol, detailData, summary }: Veredict
               Escenarios
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {framework.scenarios.filter(s => s.match && s.verdict).map(s => (
+              {(framework.scenarios ?? []).filter(s => s.match && s.verdict).map(s => (
                 <div key={s.id} style={{
                   display: 'flex', alignItems: 'center', gap: 8, fontSize: F.sizeXs,
                   color: C.textSecondary,
@@ -526,6 +678,111 @@ export default function VeredictoPanel({ symbol, detailData, summary }: Veredict
             </div>
           </div>
         )}
+
+        {/* ─── CHECKLIST PRE-ENTRY ─── */}
+        <div style={{
+          background: C.bg, borderRadius: R.lg, padding: 14, marginTop: 16,
+          border: `1px solid ${checklistResult.color}40`,
+        }}>
+          {/* Header */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            marginBottom: 10,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 16 }}>📋</span>
+              <span style={{ fontSize: F.sizeSm, fontWeight: 700, color: C.textPrimary }}>
+                CHECKLIST PRE-ENTRADA
+              </span>
+            </div>
+            <button
+              onClick={resetChecklist}
+              style={{
+                background: 'none', border: 'none', color: C.textMuted, cursor: 'pointer',
+                fontSize: '11px', padding: '2px 6px',
+              }}
+              title="Resetear checklist"
+            >
+              ↻ Reset
+            </button>
+          </div>
+
+          {/* Items */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {checklist.map(item => {
+              const bgColor = item.check ? '#22C55E15' : 'transparent';
+              const borderColor = item.check ? '#22C55E30' : C.border;
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => toggleChecklist(item.id)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '6px 10px', borderRadius: R.sm,
+                    background: bgColor, border: `1px solid ${borderColor}`,
+                    cursor: 'pointer', transition: T.normal,
+                    userSelect: 'none',
+                  }}
+                >
+                  <span style={{
+                    fontSize: '14px', flexShrink: 0,
+                    color: item.check ? '#22C55E' : C.textMuted,
+                  }}>
+                    {item.check ? '☑' : '☐'}
+                  </span>
+                  <span style={{
+                    flex: 1, fontSize: F.sizeSm,
+                    color: item.check ? C.textPrimary : C.textSecondary,
+                    fontWeight: item.check ? 600 : 400,
+                  }}>
+                    {item.label}
+                  </span>
+                  {item.auto && (
+                    <span style={{
+                      fontSize: '10px', color: C.textMuted,
+                      background: C.divider, padding: '1px 5px',
+                      borderRadius: R.full,
+                    }}>
+                      auto
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Summary */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.divider}`,
+          }}>
+            <span style={{
+              fontSize: F.sizeSm, fontWeight: 700, color: C.textPrimary,
+            }}>
+              {checkedCount}/{totalItems}
+            </span>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <span style={{
+                fontSize: F.sizeSm, fontWeight: 700,
+                color: checklistResult.color,
+              }}>
+                {checklistResult.emoji} {checklistResult.label}
+              </span>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div style={{ marginTop: 8, position: 'relative', height: 4, background: C.divider, borderRadius: 2 }}>
+            <div style={{
+              position: 'absolute', left: 0, top: 0, height: '100%',
+              width: `${(checkedCount / totalItems) * 100}%`,
+              background: checklistResult.color, borderRadius: 2,
+              transition: T.normal,
+            }} />
+          </div>
+        </div>
 
         {optionsLoading && (
           <div style={{ fontSize: F.sizeXs, color: C.textMuted, textAlign: 'center', padding: 12 }}>

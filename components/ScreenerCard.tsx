@@ -17,6 +17,7 @@ interface ScreenerCardProps {
   updatedAt: string;
   formulas: string[];
   rankings: RankingRow[];
+  onExpand?: () => void;
 }
 
 const DARK = {
@@ -35,18 +36,25 @@ function totalBadgeColor(total: number): string {
 
 const formulaColors = ['#B64DFF', '#1FD18A', '#F59E0B', '#3B82F6', '#EC4899', '#06B6D4'];
 
-export default function ScreenerCard({ icon, name, description, updatedAt, formulas, rankings }: ScreenerCardProps) {
+export default function ScreenerCard({ icon, name, description, updatedAt, formulas, rankings, onExpand }: ScreenerCardProps) {
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
 
   return (
-    <div style={{
-      background: DARK.card,
-      borderRadius: '20px',
-      padding: '28px',
-      border: '1px solid #2A2A2A',
-      fontFamily: 'Inter, system-ui, sans-serif',
-      animation: 'fadeIn 400ms ease-out',
-    }}>
+    <div
+      onClick={onExpand}
+      style={{
+        background: DARK.card,
+        borderRadius: '20px',
+        padding: '20px',
+        border: '1px solid #2A2A2A',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        animation: 'fadeIn 400ms ease-out',
+        cursor: onExpand ? 'pointer' : undefined,
+        transition: 'border-color 150ms, box-shadow 150ms',
+      }}
+      onMouseEnter={e => { if (onExpand) { e.currentTarget.style.borderColor = DARK.primary; e.currentTarget.style.boxShadow = '0 0 0 1px #B64DFF40'; } }}
+      onMouseLeave={e => { if (onExpand) { e.currentTarget.style.borderColor = '#2A2A2A'; e.currentTarget.style.boxShadow = 'none'; } }}
+    >
       {/* Header row: icon + info */}
       <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
         <div style={{
@@ -108,8 +116,16 @@ export default function ScreenerCard({ icon, name, description, updatedAt, formu
       <div style={{ height: '1px', background: DARK.divider, marginBottom: '16px' }} />
 
       {/* Rankings table */}
+      {/* Expand hint */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
+        <span style={{ color: DARK.primary, fontSize: '12px', fontWeight: 600, opacity: 0.7 }}>
+          {onExpand ? 'Click para ver detalle →' : ''}
+        </span>
+      </div>
+
       {rankings.length > 0 ? (
         <div style={{
+          overflowX: 'auto',
           overflowY: 'auto',
           maxHeight: '400px',
         }}>
@@ -156,7 +172,7 @@ export default function ScreenerCard({ icon, name, description, updatedAt, formu
                       <ScoreBar
                         value={row.scores[f] || 0}
                         label=""
-                        barWidth={80}
+                        barWidth={60}
                         showValue={false}
                       />
                     </td>

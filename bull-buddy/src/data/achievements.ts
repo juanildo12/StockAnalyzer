@@ -1,0 +1,98 @@
+import type { Achievement, GameState } from '../types';
+
+function hasAchievement(state: GameState, id: string): boolean {
+  return state.unlockedAchievements.includes(id);
+}
+
+export const ACHIEVEMENTS: Achievement[] = [
+  {
+    id: 'first_trade',
+    title: 'Primer Trade',
+    description: 'Realiza tu primera compra o venta',
+    icon: '📈',
+    condition: (s: GameState) => s.totalBuys + s.totalSells >= 1 && !hasAchievement(s, 'first_trade'),
+    coinsReward: 20,
+    xpReward: 30,
+  },
+  {
+    id: 'ten_trades',
+    title: 'Trader Novato',
+    description: 'Realiza 10 operaciones',
+    icon: '💼',
+    condition: (s: GameState) => s.totalBuys + s.totalSells >= 10 && !hasAchievement(s, 'ten_trades'),
+    coinsReward: 50,
+    xpReward: 80,
+  },
+  {
+    id: 'quiz_5',
+    title: 'Estudiante Aplicado',
+    description: 'Responde 5 preguntas correctas en el quiz',
+    icon: '🧠',
+    condition: (s: GameState) => s.completedQuizIds.length >= 5 && !hasAchievement(s, 'quiz_5'),
+    coinsReward: 30,
+    xpReward: 40,
+  },
+  {
+    id: 'combo_3',
+    title: 'En Racha',
+    description: 'Consigue un combo de 3 aciertos seguidos en el quiz',
+    icon: '🔥',
+    condition: (s: GameState) => s.maxQuizCombo >= 3 && !hasAchievement(s, 'combo_3'),
+    coinsReward: 40,
+    xpReward: 60,
+  },
+  {
+    id: 'first_mission',
+    title: 'Aventurero',
+    description: 'Completa tu primera misión',
+    icon: '🍋',
+    condition: (s: GameState) => s.completedMissionIds.length >= 1 && !hasAchievement(s, 'first_mission'),
+    coinsReward: 40,
+    xpReward: 60,
+  },
+  {
+    id: 'level_5',
+    title: 'Nivel 5',
+    description: 'Alcanza el nivel 5',
+    icon: '⭐',
+    condition: (s: GameState) => s.level >= 5 && !hasAchievement(s, 'level_5'),
+    coinsReward: 100,
+    xpReward: 150,
+  },
+  {
+    id: 'buy_skin',
+    title: 'A la Moda',
+    description: 'Compra tu primer skin en la tienda',
+    icon: '🛍️',
+    condition: (s: GameState) => s.ownedSkins.length > 1 && !hasAchievement(s, 'buy_skin'),
+    coinsReward: 30,
+    xpReward: 50,
+  },
+  {
+    id: 'streak_3',
+    title: 'Racha de 3 Días',
+    description: 'Reclama la racha diaria 3 días seguidos',
+    icon: '📅',
+    condition: (s: GameState) => s.streakCount >= 3 && !hasAchievement(s, 'streak_3'),
+    coinsReward: 60,
+    xpReward: 90,
+  },
+  {
+    id: 'chatty',
+    title: 'Amigo de Toro',
+    description: 'Chatea con Toro por primera vez',
+    icon: '💬',
+    condition: (s: GameState) => s.chatCount >= 1 && !hasAchievement(s, 'chatty'),
+    coinsReward: 20,
+    xpReward: 30,
+  },
+  {
+    id: 'reel_watcher',
+    title: 'Estudioso Express',
+    description: 'Revisa 3 micro-lecciones en Reels',
+    icon: '📱',
+    condition: (s: GameState) => s.reelsViewed >= 3 && !hasAchievement(s, 'reel_watcher'),
+    coinsReward: 30,
+    xpReward: 50,
+  },
+];

@@ -185,8 +185,14 @@ export async function GET(request: NextRequest) {
         stopLoss,
         verdict: analysis.recommendation.action,
         peClassification: analysis.fundamentals.principle1.description,
-        cashClassification: analysis.fundamentals.principle2.description,
-        debtClassification: analysis.fundamentals.principle2.description,
+        cashClassification: (() => {
+          const cr = totalCash / (marketCap || 1);
+          return cr >= 0.1 ? 'Excelente' : cr >= 0.05 ? 'Adecuado' : 'Malo';
+        })(),
+        debtClassification: (() => {
+          const dr = totalDebt / (marketCap || 1);
+          return dr <= 0.3 ? 'Excelente' : dr <= 0.6 ? 'Adecuado' : 'Malo';
+        })(),
         totalRevenue,
         freeCashflow: fm.freeCashFlow ?? summary?.freeCashflow ?? 0,
         marketCap,
