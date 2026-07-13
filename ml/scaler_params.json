@@ -1,0 +1,38 @@
+{
+  "mean": [
+    25.0,
+    3.0,
+    12.0,
+    15.0,
+    50.0,
+    30.0,
+    1.2,
+    0.0,
+    10.5,
+    80.0
+  ],
+  "scale": [
+    20.0,
+    4.0,
+    15.0,
+    12.0,
+    18.0,
+    20.0,
+    0.6,
+    4.0,
+    1.5,
+    60.0
+  ],
+  "feature_names": [
+    "pe_ratio",
+    "fcf_yield",
+    "revenue_growth",
+    "profit_margin",
+    "rsi_14",
+    "dist_52w_high",
+    "volume_ratio",
+    "change_5d",
+    "log_market_cap",
+    "debt_to_equity"
+  ]
+}

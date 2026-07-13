@@ -82,3 +82,6 @@ yarn-error.log
 .next/
 .next/
 .env.local
+
+# LiteRT WASM (copied from node_modules at build time)
+public/litert-wasm/

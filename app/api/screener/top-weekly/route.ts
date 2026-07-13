@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
+import { getQuote as finnhubQuote } from '@/src/services/finnhubClient';
 
 const yf = new YahooFinance();
 
@@ -337,10 +338,27 @@ export async function GET() {
       .sort((a, b) => b.compositeScore - a.compositeScore)
       .slice(0, 4);
 
+    // Enrich top picks with real-time prices from Finnhub
+    const enrichedTop4 = await Promise.all(
+      top4.map(async (pick) => {
+        try {
+          const fh = await finnhubQuote(pick.symbol);
+          if (fh && fh.c > 0) {
+            return {
+              ...pick,
+              price: fh.c,
+              changePercent: fh.dp || pick.changePercent,
+            };
+          }
+        } catch {}
+        return pick;
+      })
+    );
+
     const now = new Date();
     const fmt = now.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-    return NextResponse.json({ updatedAt: fmt, picks: top4 });
+    return NextResponse.json({ updatedAt: fmt, picks: enrichedTop4 });
   } catch (error) {
     console.error('Top weekly error:', error);
     return NextResponse.json({ updatedAt: '', picks: [] });

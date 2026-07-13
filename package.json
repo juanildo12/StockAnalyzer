@@ -4,12 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "cp -r node_modules/@litertjs/core/wasm public/litert-wasm && next build",
+    "postinstall": "cp -r node_modules/@litertjs/core/wasm public/litert-wasm",
     "start": "next start",
     "lint": "echo 'lint disabled'"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.83",
+    "@litertjs/core": "^2.5.2",
     "@react-native-async-storage/async-storage": "^3.0.1",
     "ai": "^6.0.209",
     "finnhub": "^2.0.13",

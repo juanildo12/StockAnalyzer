@@ -1,6 +1,8 @@
 'use client';
 
 import { colors as C, radius as R, font as F } from '@/src/utils/webTheme';
+import { useMLSignal } from '@/src/hooks/useMLSignal';
+import MLSignalBadge from './MLSignalBadge';
 
 interface FrameworkScenario {
   id: string;
@@ -70,6 +72,7 @@ export default function StockDetailPanel({ data, onClose, onAnalyze, analyzing }
   const c = detailSignalColors[data.signal] || fallbackDetailSignal;
   const fw = data.framework;
   const fp = data.components;
+  const { mlResult, loading: mlLoading, agreesWithRuleBased } = useMLSignal(data, data.signal);
 
   return (
     <div style={{ background: C.bgCard, borderRadius: '12px', border: '1px solid ' + C.border, overflow: 'hidden' }}>
@@ -126,6 +129,10 @@ export default function StockDetailPanel({ data, onClose, onAnalyze, analyzing }
         <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
           <ConvictionBadge level={data.conviction} />
           <RiskBadge level={data.riskLevel} />
+        </div>
+
+        <div style={{ marginTop: '12px' }}>
+          <MLSignalBadge mlResult={mlResult} loading={mlLoading} agreesWithRuleBased={agreesWithRuleBased} />
         </div>
       </div>
 

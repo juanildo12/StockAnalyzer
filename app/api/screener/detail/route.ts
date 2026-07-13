@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
+import { getQuote as finnhubQuote } from '@/src/services/finnhubClient';
 
 const yf = new YahooFinance();
 
@@ -49,13 +50,14 @@ export async function GET(request: Request) {
     const batch = symbols.slice(i, i + BATCH_SIZE);
     const batchResults = await Promise.all(batch.map(async (sym) => {
       try {
-        const [quote, hist] = await Promise.all([
+        const [quote, hist, fh] = await Promise.all([
           yf.quote(sym).catch(() => null),
           yf.historical(sym, {
             period1: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
             period2: new Date(),
             interval: '1d',
           }).catch(() => []),
+          finnhubQuote(sym).catch(() => null),
         ]);
 
         if (!quote) return null;
@@ -67,15 +69,19 @@ export async function GET(request: Request) {
           ? (rsi > 60 ? 'alcista' : rsi < 40 ? 'bajista' : 'neutral')
           : 'neutral';
 
+        const realPrice = fh && fh.c > 0 ? fh.c : (quote.regularMarketPrice || 0);
+        const realChange = fh && fh.c > 0 ? fh.d : (quote.regularMarketChange || 0);
+        const realChangePct = fh && fh.c > 0 ? fh.dp : (quote.regularMarketChangePercent || 0);
+
         return {
           symbol: sym,
-          price: quote.regularMarketPrice || 0,
-          change: quote.regularMarketChange || 0,
-          changePercent: quote.regularMarketChangePercent || 0,
+          price: realPrice,
+          change: realChange,
+          changePercent: realChangePct,
           volume: quote.regularMarketVolume || 0,
-          high: quote.regularMarketDayHigh || 0,
-          low: quote.regularMarketDayLow || 0,
-          open: quote.regularMarketOpen || 0,
+          high: fh && fh.h > 0 ? fh.h : (quote.regularMarketDayHigh || 0),
+          low: fh && fh.l > 0 ? fh.l : (quote.regularMarketDayLow || 0),
+          open: fh && fh.o > 0 ? fh.o : (quote.regularMarketOpen || 0),
           closes: lastCloses,
           rsi: rsi !== null ? Math.round(rsi * 10) / 10 : null,
           trend,
