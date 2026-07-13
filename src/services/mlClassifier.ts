@@ -162,7 +162,7 @@ export function extractFeatures(data: {
   components: Record<string, number>;
   details?: { marketCap?: number; peRatio?: number; rsi?: number; fcf?: number };
 }): StockFeatures {
-  const c = data.components;
+  const c = data.components || {};
   const d = data.details || {};
   return {
     peRatio: c.peRatio || d.peRatio || 0,

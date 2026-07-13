@@ -21,24 +21,31 @@ export function useMLSignal(signalData: SignalData | null): UseMLSignalResult {
   const abortRef = useRef(0);
 
   useEffect(() => {
-    if (!signalData) { setMlResult(null); return; }
+    if (!signalData?.components) { setMlResult(null); return; }
 
     const runId = ++abortRef.current;
     setLoading(true);
     setError(null);
 
-    const features = extractFeatures(signalData);
+    try {
+      const features = extractFeatures(signalData);
 
-    predictML(features)
-      .then(result => {
-        if (runId === abortRef.current) { setMlResult(result); setLoading(false); }
-      })
-      .catch(err => {
-        if (runId === abortRef.current) {
-          setError(err instanceof Error ? err.message : 'ML inference failed');
-          setLoading(false);
-        }
-      });
+      predictML(features)
+        .then(result => {
+          if (runId === abortRef.current) { setMlResult(result); setLoading(false); }
+        })
+        .catch(err => {
+          if (runId === abortRef.current) {
+            setError(err instanceof Error ? err.message : 'ML inference failed');
+            setLoading(false);
+          }
+        });
+    } catch (err) {
+      if (runId === abortRef.current) {
+        setError(err instanceof Error ? err.message : 'Feature extraction failed');
+        setLoading(false);
+      }
+    }
   }, [
     signalData?.components?.peRatio,
     signalData?.components?.fcfYield,
