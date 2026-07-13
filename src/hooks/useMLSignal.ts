@@ -5,35 +5,23 @@ import { predictML, extractFeatures, type MLResult } from '@/src/services/mlClas
 
 interface SignalData {
   components: Record<string, number>;
-  details?: {
-    marketCap?: number;
-    peRatio?: number;
-    rsi?: number;
-    fcf?: number;
-  };
+  details?: { marketCap?: number; peRatio?: number; rsi?: number; fcf?: number };
 }
 
 interface UseMLSignalResult {
   mlResult: MLResult | null;
   loading: boolean;
   error: string | null;
-  agreesWithRuleBased: boolean | null;
 }
 
-export function useMLSignal(
-  signalData: SignalData | null,
-  ruleBasedSignal: 'BUY' | 'HOLD' | 'SELL' | null
-): UseMLSignalResult {
+export function useMLSignal(signalData: SignalData | null): UseMLSignalResult {
   const [mlResult, setMlResult] = useState<MLResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef(0);
 
   useEffect(() => {
-    if (!signalData) {
-      setMlResult(null);
-      return;
-    }
+    if (!signalData) { setMlResult(null); return; }
 
     const runId = ++abortRef.current;
     setLoading(true);
@@ -43,10 +31,7 @@ export function useMLSignal(
 
     predictML(features)
       .then(result => {
-        if (runId === abortRef.current) {
-          setMlResult(result);
-          setLoading(false);
-        }
+        if (runId === abortRef.current) { setMlResult(result); setLoading(false); }
       })
       .catch(err => {
         if (runId === abortRef.current) {
@@ -63,10 +48,5 @@ export function useMLSignal(
     signalData?.details?.marketCap,
   ]);
 
-  const agreesWithRuleBased =
-    mlResult && ruleBasedSignal
-      ? mlResult.signal === ruleBasedSignal
-      : null;
-
-  return { mlResult, loading, error, agreesWithRuleBased };
+  return { mlResult, loading, error };
 }

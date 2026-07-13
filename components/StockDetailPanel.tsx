@@ -72,7 +72,7 @@ export default function StockDetailPanel({ data, onClose, onAnalyze, analyzing }
   const c = detailSignalColors[data.signal] || fallbackDetailSignal;
   const fw = data.framework;
   const fp = data.components;
-  const { mlResult, loading: mlLoading, agreesWithRuleBased } = useMLSignal(data, data.signal);
+  const { mlResult, loading: mlLoading } = useMLSignal(data);
 
   return (
     <div style={{ background: C.bgCard, borderRadius: '12px', border: '1px solid ' + C.border, overflow: 'hidden' }}>
@@ -132,7 +132,7 @@ export default function StockDetailPanel({ data, onClose, onAnalyze, analyzing }
         </div>
 
         <div style={{ marginTop: '12px' }}>
-          <MLSignalBadge mlResult={mlResult} loading={mlLoading} agreesWithRuleBased={agreesWithRuleBased} />
+          <MLSignalBadge mlResult={mlResult} loading={mlLoading} ruleBasedSignal={data.signal} />
         </div>
       </div>
 

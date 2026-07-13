@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Generate a pre-trained TFLite stock classifier model.
+Generate a dual-head TFLite stock classifier model.
 
-Creates a small 3-layer neural network (10->32->16->3) with pre-computed
-weights that encode general stock analysis heuristics, then exports
-to TFLite format.
+Architecture: 10 inputs → 32 hidden → 16 hidden → 2 output heads
+  Head 1 (day):  BUY/HOLD/SELL for daytrading (1-5 days)
+  Head 2 (swing): BUY/HOLD/SELL for swing trading (weeks)
 
 Usage:
     pip install tflite numpy flatbuffers
@@ -33,64 +33,112 @@ def softmax(x):
 
 
 def generate_heuristic_weights():
+    """
+    Dual-head MLP: shared hidden layers + specialized output heads.
+
+    Daytrading head focuses on: RSI, volume, momentum, dist_52w_high
+    Swing head focuses on: PE, FCF yield, revenue growth, profit margin
+    """
     np.random.seed(42)
 
+    # Shared Layer 1: 10 inputs -> 32 hidden
     w1 = np.random.randn(10, 32).astype(np.float32) * 0.2
     b1 = np.zeros(32, dtype=np.float32)
 
+    # Value neurons
     w1[0, 0] = -0.9; w1[1, 0] = 1.0; b1[0] = -0.1
     w1[0, 1] = -1.2; w1[1, 1] = 0.8; w1[8, 1] = 0.3; b1[1] = 0.2
 
+    # Growth neurons
     w1[2, 2] = 0.9; w1[3, 2] = 0.7; w1[9, 2] = -0.4; b1[2] = -0.5
     w1[2, 3] = -0.8; w1[3, 3] = -0.6; b1[3] = 0.3
 
-    w1[4, 4] = -1.0; w1[6, 4] = 0.3; b1[4] = 0.5
-    w1[4, 5] = 1.1; w1[7, 5] = 0.4; b1[5] = -0.4
-    w1[7, 6] = 0.7; w1[5, 6] = -0.5; b1[6] = 0.0
-    w1[7, 7] = -0.8; w1[5, 7] = 0.3; b1[7] = 0.0
+    # Technical neurons (important for daytrading)
+    w1[4, 4] = -1.0; w1[6, 4] = 0.3; b1[4] = 0.5      # Oversold -> BUY
+    w1[4, 5] = 1.1; w1[7, 5] = 0.4; b1[5] = -0.4       # Overbought -> SELL
+    w1[7, 6] = 0.7; w1[5, 6] = -0.5; b1[6] = 0.0        # Momentum up
+    w1[7, 7] = -0.8; w1[5, 7] = 0.3; b1[7] = 0.0        # Momentum down
 
+    # Risk neurons (important for swing)
     w1[9, 8] = 0.9; w1[8, 8] = -0.4; b1[8] = -0.8
     w1[9, 9] = -0.7; w1[3, 9] = 0.5; b1[9] = 0.2
 
+    # Market cap / volume neurons
     w1[8, 10] = 0.6; w1[4, 10] = -0.2; b1[10] = 0.0
     w1[8, 11] = -0.5; w1[6, 11] = 0.3; b1[11] = 0.1
-
     w1[6, 12] = 0.8; w1[7, 12] = 0.3; b1[12] = 0.0
     w1[6, 13] = -0.6; b1[13] = 0.1
 
+    # Shared Layer 2: 32 -> 16
     w2 = np.random.randn(32, 16).astype(np.float32) * 0.25
     b2 = np.zeros(16, dtype=np.float32)
 
-    w3 = np.random.randn(16, 3).astype(np.float32) * 0.3
-    b3 = np.zeros(3, dtype=np.float32)
+    # === DAYTRADING HEAD (technical signals) ===
+    w3_day = np.random.randn(16, 3).astype(np.float32) * 0.3
+    b3_day = np.zeros(3, dtype=np.float32)
 
-    w3[0, 0] = 0.9; w3[1, 0] = 0.7; w3[4, 0] = 0.8
-    w3[2, 0] = 0.5; w3[10, 0] = 0.4
-    b3[0] = -0.3
+    # Day BUY: oversold RSI + momentum + volume spike
+    w3_day[4, 0] = 1.0   # oversold neuron
+    w3_day[6, 0] = 0.8   # momentum up
+    w3_day[12, 0] = 0.7  # volume up
+    w3_day[0, 0] = 0.3   # cheap value helps
+    b3_day[0] = -0.3
 
-    w3[6, 1] = 0.5; w3[7, 1] = 0.5; w3[12, 1] = 0.4
-    w3[11, 1] = 0.3
-    b3[1] = 0.4
+    # Day HOLD
+    w3_day[7, 1] = 0.6   # neutral momentum
+    w3_day[12, 1] = 0.3  # normal volume
+    b3_day[1] = 0.5
 
-    w3[5, 2] = 0.9; w3[3, 2] = 0.7; w3[8, 2] = 0.8
-    w3[9, 2] = 0.5; w3[13, 2] = 0.4
-    b3[2] = -0.2
+    # Day SELL: overbought + negative momentum
+    w3_day[5, 2] = 1.0   # overbought neuron
+    w3_day[13, 2] = 0.7  # volume down
+    w3_day[9, 2] = 0.4   # risk
+    b3_day[2] = -0.2
 
-    return w1, b1, w2, b2, w3, b3
+    # === SWING HEAD (fundamental signals) ===
+    w3_swing = np.random.randn(16, 3).astype(np.float32) * 0.3
+    b3_swing = np.zeros(3, dtype=np.float32)
+
+    # Swing BUY: value + growth + low risk
+    w3_swing[0, 0] = 0.9   # value neuron
+    w3_swing[1, 0] = 0.7   # growth neuron
+    w3_swing[2, 0] = 0.6   # growth neuron
+    w3_swing[10, 0] = 0.4  # market cap
+    b3_swing[0] = -0.3
+
+    # Swing HOLD
+    w3_swing[6, 1] = 0.5
+    w3_swing[11, 1] = 0.3
+    b3_swing[1] = 0.4
+
+    # Swing SELL: overvalued + risk + declining
+    w3_swing[5, 2] = 0.5   # overbought
+    w3_swing[3, 2] = 0.7   # growth declining
+    w3_swing[8, 2] = 0.8   # high risk
+    w3_swing[9, 2] = 0.5   # high debt
+    b3_swing[2] = -0.2
+
+    return w1, b1, w2, b2, w3_day, b3_day, w3_swing, b3_swing
 
 
-def forward_pass(features, w1, b1, w2, b2, w3, b3):
+def forward_pass(features, w1, b1, w2, b2, w3_day, b3_day, w3_swing, b3_swing):
     h1 = relu(features @ w1 + b1)
     h2 = relu(h1 @ w2 + b2)
-    out = softmax(h2 @ w3 + b3)
-    return out
+    day_out = softmax(h2 @ w3_day + b3_day)
+    swing_out = softmax(h2 @ w3_swing + b3_swing)
+    return day_out, swing_out
 
 
-def create_tflite_model(w1, b1, w2, b2, w3, b3):
+def create_tflite_model(w1, b1, w2, b2, w3_day, b3_day, w3_swing, b3_swing):
     """
-    Create a TFLite float32 model.
-    Key rule: ALL child offsets must be created BEFORE the parent table/vector
-    that references them.
+    Create a dual-head TFLite model with float32 weights.
+    Network: input(10) -> FC(32) -> FC(16) -> Concat(day_out=3, swing_out=3) -> output(6)
+
+    Actually, simpler: two separate FC ops from h2 to produce two output tensors,
+    then we return both. The model has subgraph outputs = [day_tensor, swing_tensor].
+
+    For simplicity, we do: FC(h2, w3_day, b3_day) -> day_out, FC(h2, w3_swing, b3_swing) -> swing_out.
+    Model outputs both tensors.
     """
     import tflite
     import flatbuffers
@@ -137,56 +185,58 @@ def create_tflite_model(w1, b1, w2, b2, w3, b3):
         tflite.OperatorAddOutputs(builder, outputs)
         return tflite.OperatorEnd(builder)
 
-    # =========================================================================
-    # STEP 1: Create all scalar/string data buffers
-    # =========================================================================
-    empty_buf   = make_buffer(b'')
-    input_buf   = make_buffer(np.zeros(10, dtype=np.float32).tobytes())
-    w1_buf      = make_buffer(w1.tobytes())
-    b1_buf      = make_buffer(b1.tobytes())
-    w2_buf      = make_buffer(w2.tobytes())
-    b2_buf      = make_buffer(b2.tobytes())
-    w3_buf      = make_buffer(w3.tobytes())
-    b3_buf      = make_buffer(b3.tobytes())
+    # Buffers: 0=empty, 1=input, 2=w1, 3=b1, 4=w2, 5=b2, 6=w3_day, 7=b3_day, 8=w3_swing, 9=b3_swing
+    bufs = [
+        make_buffer(b''),                                              # 0
+        make_buffer(np.zeros(10, dtype=np.float32).tobytes()),        # 1
+        make_buffer(w1.tobytes()),                                     # 2
+        make_buffer(b1.tobytes()),                                     # 3
+        make_buffer(w2.tobytes()),                                     # 4
+        make_buffer(b2.tobytes()),                                     # 5
+        make_buffer(w3_day.tobytes()),                                 # 6
+        make_buffer(b3_day.tobytes()),                                 # 7
+        make_buffer(w3_swing.tobytes()),                               # 8
+        make_buffer(b3_swing.tobytes()),                               # 9
+    ]
 
-    # =========================================================================
-    # STEP 2: Create all tensors (they reference buffers by index, not offset)
-    # =========================================================================
-    input_t  = make_tensor('input',  [1, 10], 1)
-    w1_t     = make_tensor('w1',     [10, 32], 2)
-    b1_t     = make_tensor('b1',     [32], 3)
-    h1_t     = make_tensor('h1_out', [1, 32], 0)  # output buffer = empty
-    w2_t     = make_tensor('w2',     [32, 16], 4)
-    b2_t     = make_tensor('b2',     [16], 5)
-    h2_t     = make_tensor('h2_out', [1, 16], 0)
-    w3_t     = make_tensor('w3',     [16, 3], 6)
-    b3_t     = make_tensor('b3',     [3], 7)
-    output_t = make_tensor('output', [1, 3], 0)
+    # Tensors
+    # 0=input, 1=w1, 2=b1, 3=h1_out, 4=w2, 5=b2, 6=h2_out, 7=w3_day, 8=b3_day, 9=day_out, 10=w3_swing, 11=b3_swing, 12=swing_out
+    t_input   = make_tensor('input',    [1, 10], 1)
+    t_w1      = make_tensor('w1',       [10, 32], 2)
+    t_b1      = make_tensor('b1',       [32], 3)
+    t_h1      = make_tensor('h1_out',   [1, 32], 0)
+    t_w2      = make_tensor('w2',       [32, 16], 4)
+    t_b2      = make_tensor('b2',       [16], 5)
+    t_h2      = make_tensor('h2_out',   [1, 16], 0)
+    t_w3d     = make_tensor('w3_day',   [16, 3], 6)
+    t_b3d     = make_tensor('b3_day',   [3], 7)
+    t_day     = make_tensor('day_out',  [1, 3], 0)
+    t_w3s     = make_tensor('w3_swing', [16, 3], 8)
+    t_b3s     = make_tensor('b3_swing', [3], 9)
+    t_swing   = make_tensor('swing_out',[1, 3], 0)
 
-    # =========================================================================
-    # STEP 3: Create all operators (they reference tensors by index)
-    # =========================================================================
-    # Tensor indices: input=0, w1=1, b1=2, h1_out=3, w2=4, b2=5, h2_out=6,
-    #                 w3=7, b3=8, output=9
-    # Opcode indices: 0=FULLY_CONNECTED, 1=SOFTMAX
-    op_fc1    = make_op(0, [0, 1, 2], [3])
-    op_fc2    = make_op(0, [3, 4, 5], [6])
-    op_fc3    = make_op(0, [6, 7, 8], [9])
-    op_softmax = make_op(1, [9], [9])
+    # Operators: FC only + SOFTMAX
+    # op_codes: 0=FULLY_CONNECTED, 1=SOFTMAX
+    tensors_vec = offset_vec([
+        t_input, t_w1, t_b1, t_h1,
+        t_w2, t_b2, t_h2,
+        t_w3d, t_b3d, t_day,
+        t_w3s, t_b3s, t_swing,
+    ])
 
-    # =========================================================================
-    # STEP 4: Create vectors of offsets (must be done before subgraph/model)
-    # =========================================================================
-    tensors_vec = offset_vec([input_t, w1_t, b1_t, h1_t,
-                              w2_t, b2_t, h2_t,
-                              w3_t, b3_t, output_t])
-    ops_vec     = offset_vec([op_fc1, op_fc2, op_fc3, op_softmax])
+    op_fc1     = make_op(0, [0, 1, 2], [3])       # input -> h1
+    op_fc2     = make_op(0, [3, 4, 5], [6])       # h1 -> h2
+    op_fc_day  = make_op(0, [6, 7, 8], [9])       # h2 -> day_out
+    op_fc_swing= make_op(0, [6, 10, 11], [12])    # h2 -> swing_out
+    op_sm_day  = make_op(1, [9], [9])              # softmax day
+    op_sm_swing= make_op(1, [12], [12])            # softmax swing
+
+    ops_vec = offset_vec([op_fc1, op_fc2, op_fc_day, op_sm_day, op_fc_swing, op_sm_swing])
+
     inputs_vec  = int32_vec([0])
-    outputs_vec = int32_vec([9])
+    outputs_vec = int32_vec([9, 12])  # day_out and swing_out
 
-    # =========================================================================
-    # STEP 5: Create subgraph (references tensors_vec, ops_vec, inputs, outputs)
-    # =========================================================================
+    # Subgraph
     tflite.SubGraphStart(builder)
     tflite.SubGraphAddTensors(builder, tensors_vec)
     tflite.SubGraphAddInputs(builder, inputs_vec)
@@ -194,28 +244,20 @@ def create_tflite_model(w1, b1, w2, b2, w3, b3):
     tflite.SubGraphAddOperators(builder, ops_vec)
     subgraph = tflite.SubGraphEnd(builder)
 
-    # =========================================================================
-    # STEP 6: Create operator codes
-    # =========================================================================
+    # Op codes
     def make_op_code(builtin):
         tflite.OperatorCodeStart(builder)
         tflite.OperatorCodeAddBuiltinCode(builder, builtin)
         return tflite.OperatorCodeEnd(builder)
 
-    op_code_fc  = make_op_code(tflite.BuiltinOperator.FULLY_CONNECTED)
-    op_code_sm  = make_op_code(tflite.BuiltinOperator.SOFTMAX)
-    op_codes_vec = offset_vec([op_code_fc, op_code_sm])
+    op_codes_vec = offset_vec([
+        make_op_code(tflite.BuiltinOperator.FULLY_CONNECTED),
+        make_op_code(tflite.BuiltinOperator.SOFTMAX),
+    ])
 
-    # =========================================================================
-    # STEP 7: Create buffers vector (must be after all individual buffers)
-    # =========================================================================
-    buffers_vec = offset_vec([empty_buf, input_buf, w1_buf, b1_buf,
-                              w2_buf, b2_buf, w3_buf, b3_buf])
-
-    # =========================================================================
-    # STEP 8: Create model (references everything above)
-    # =========================================================================
-    desc_off = builder.CreateString('Stock Classifier v1')
+    # Model
+    buffers_vec = offset_vec(bufs)
+    desc_off = builder.CreateString('DualHead Stock Classifier v2')
     subgraphs_vec = offset_vec([subgraph])
 
     tflite.ModelStart(builder)
@@ -232,31 +274,36 @@ def create_tflite_model(w1, b1, w2, b2, w3, b3):
 
 def main():
     print("=" * 60)
-    print("Stock Classifier - TFLite Model Generator")
+    print("Dual-Head Stock Classifier - TFLite Model Generator")
     print("=" * 60)
 
-    w1, b1, w2, b2, w3, b3 = generate_heuristic_weights()
+    w1, b1, w2, b2, w3d, b3d, w3s, b3s = generate_heuristic_weights()
     print(f"\nWeight shapes:")
-    print(f"  Layer 1: W={w1.shape}, b={b1.shape}")
-    print(f"  Layer 2: W={w2.shape}, b={b2.shape}")
-    print(f"  Layer 3: W={w3.shape}, b={b3.shape}")
+    print(f"  Shared L1: W={w1.shape}, b={b1.shape}")
+    print(f"  Shared L2: W={w2.shape}, b={b2.shape}")
+    print(f"  Day head:   W={w3d.shape}, b={b3d.shape}")
+    print(f"  Swing head: W={w3s.shape}, b={b3s.shape}")
 
     print("\n--- Forward pass verification ---")
     test_cases = [
-        ("Value stock", np.array([12, 8, 15, 20, 35, 20, 1.2, 2, 11, 40])),
-        ("Growth stock", np.array([45, 2, 30, 10, 55, 5, 1.8, 3, 12, 60])),
-        ("Overbought", np.array([30, 3, 5, 8, 78, 2, 2.0, 5, 10, 80])),
-        ("Oversold gem", np.array([8, 12, 20, 25, 25, 40, 1.5, -3, 11, 30])),
-        ("Danger zone", np.array([80, -2, -10, -5, 70, 1, 0.5, -8, 9, 200])),
+        ("Value stock",      np.array([12, 8, 15, 20, 35, 20, 1.2, 2, 11, 40])),
+        ("Oversold + cheap", np.array([10, 10, 10, 15, 25, 35, 1.8, -2, 11, 50])),
+        ("Overbought growth",np.array([50, 2, 25, 10, 78, 2, 2.0, 5, 12, 80])),
+        ("Danger zone",      np.array([80, -2, -10, -5, 70, 1, 0.5, -8, 9, 200])),
+        ("Momentum play",    np.array([30, 3, 5, 8, 45, 10, 2.5, 6, 10, 60])),
     ]
 
     for name, features in test_cases:
-        probs = forward_pass(features, w1, b1, w2, b2, w3, b3)
-        pred = LABELS[np.argmax(probs)]
-        print(f"  {name:20s}: BUY={probs[0]:.3f} HOLD={probs[1]:.3f} SELL={probs[2]:.3f} -> {pred}")
+        day, swing = forward_pass(features, w1, b1, w2, b2, w3d, b3d, w3s, b3s)
+        day_pred = LABELS[np.argmax(day)]
+        swing_pred = LABELS[np.argmax(swing)]
+        print(f"  {name:20s}:")
+        print(f"    Day:   BUY={day[0]:.3f} HOLD={day[1]:.3f} SELL={day[2]:.3f} -> {day_pred}")
+        print(f"    Swing: BUY={swing[0]:.3f} HOLD={swing[1]:.3f} SELL={swing[2]:.3f} -> {swing_pred}")
 
+    # Generate TFLite model
     print("\n--- Generating TFLite model ---")
-    model_bytes = create_tflite_model(w1, b1, w2, b2, w3, b3)
+    model_bytes = create_tflite_model(w1, b1, w2, b2, w3d, b3d, w3s, b3s)
 
     output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'public', 'models')
     os.makedirs(output_dir, exist_ok=True)
