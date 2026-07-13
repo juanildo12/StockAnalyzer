@@ -69,7 +69,7 @@ export default function MLSignalBadge({ mlResult, loading, agreesWithRuleBased }
             color: C.textMuted, fontSize: '10px',
             background: C.bgCard, padding: '1px 6px', borderRadius: '4px',
           }}>
-            LiteRT.js
+            Neural Network
           </span>
         </div>
         <span style={{ color: agreementColor, fontSize: '11px', fontWeight: '600' }}>
