@@ -73,8 +73,10 @@ interface DetailData {
 
 export default function Dashboard({
   onNavigateToAICoach,
+  initialSection,
 }: {
   onNavigateToAICoach?: (symbol: string) => void;
+  initialSection?: 'briefing' | 'signals' | 'bullsbears' | 'market' | 'opciones' | 'screeners';
 }) {
   const [signals, setSignals] = useState<SignalData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,7 +90,7 @@ export default function Dashboard({
   const [quoteData, setQuoteData] = useState<any>(null);
   const [technicalData, setTechnicalData] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
-  const [dashboardSection, setDashboardSection] = useState<'briefing' | 'signals' | 'bullsbears' | 'market' | 'opciones' | 'screeners'>('briefing');
+  const [dashboardSection, setDashboardSection] = useState<'briefing' | 'signals' | 'bullsbears' | 'market' | 'opciones' | 'screeners'>(initialSection || 'briefing');
   const [showLearningGuide, setShowLearningGuide] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
 
