@@ -1,5 +1,3 @@
-import satori from "satori";
-import { Resvg } from "@resvg/resvg-js";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { ShareTrigger } from "./types";
@@ -353,6 +351,9 @@ function buildSatoriJson(trigger: ShareTrigger) {
 }
 
 export async function generateShareCard(trigger: ShareTrigger): Promise<Buffer> {
+  const satori = (await import("satori")).default;
+  const { Resvg } = await import("@resvg/resvg-js");
+
   loadFonts();
 
   const fonts = [
