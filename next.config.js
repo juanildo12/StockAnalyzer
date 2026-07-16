@@ -8,6 +8,12 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   webpack: (config, { isServer }) => {
+    if (isServer) {
+      config.externals.push({
+        '@resvg/resvg-js': 'commonjs @resvg/resvg-js',
+        'satori': 'commonjs satori',
+      });
+    }
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
