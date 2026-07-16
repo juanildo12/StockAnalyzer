@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   Rocket, LayoutDashboard, Filter, BarChart3, Target,
   Watch, FlaskConical, Brain, Bot, Gamepad2,
-  ChevronDown, ChevronRight, Zap, LineChart,
+  ChevronDown, ChevronRight, Zap, LineChart, Bell,
 } from 'lucide-react';
 import { colors as C, radius as R, font as F, spacing as S, transition as T } from '@/src/utils/webTheme';
 
@@ -40,6 +40,7 @@ const NAV_GROUPS: NavGroup[] = [
     id: 'trading',
     label: 'Trading',
     items: [
+      { view: 'alerts', label: 'Smart Alerts', icon: <Bell size={18} />, badge: 'NEW' },
       { view: 'options', label: 'Opciones', icon: <Target size={18} /> },
       { view: 'watchlist', label: 'Watchlist', icon: <Watch size={18} /> },
       { view: 'backtest', label: 'Backtest', icon: <FlaskConical size={18} /> },
@@ -50,6 +51,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Análisis',
     items: [
       { view: 'analyzer', label: 'Analizador', icon: <LineChart size={18} /> },
+      { view: 'framework', label: 'Framework', icon: <Brain size={18} /> },
       { view: 'ai-coach', label: 'AI Coach', icon: <Bot size={18} /> },
       { view: 'inversor-inteligente', label: 'Value Investing', icon: <Brain size={18} /> },
     ],

@@ -5,8 +5,20 @@
   "outputDirectory": ".next",
   "crons": [
     {
-      "path": "/api/check-alerts",
-      "schedule": "0 9 * * *"
+      "path": "/api/v1/jobs?job=alerts",
+      "schedule": "0 9 * * 1-5"
+    },
+    {
+      "path": "/api/v1/jobs?job=all",
+      "schedule": "30 9 * * 1-5"
+    },
+    {
+      "path": "/api/v1/jobs?job=alerts",
+      "schedule": "*/5 13-21 * * 1-5"
+    },
+    {
+      "path": "/api/v1/jobs?job=tp_hits",
+      "schedule": "*/5 13-21 * * 1-5"
     }
   ]
 }

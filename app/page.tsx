@@ -28,6 +28,9 @@ import BacktestPanel from '@/components/BacktestPanel';
 import ScreenerGraham from '@/components/ScreenerGraham';
 import ScreenerPage from '@/app/screener/page';
 import TradingTrainer from '@/components/TradingTrainer';
+import AIAnalysisPanel from '@/components/AIAnalysisPanel';
+import ScorePanel from '@/components/ScorePanel';
+import SmartAlertsPanel from '@/components/SmartAlertsPanel';
 
 
 interface StockQuote {
@@ -485,7 +488,7 @@ export default function Home() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [view, setView] = useState<'briefing' | 'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'framework' | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard' | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer'>('briefing');
+  const [view, setView] = useState<'briefing' | 'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'framework' | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard' | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer' | 'alerts'>('briefing');
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -1301,6 +1304,16 @@ export default function Home() {
                     </p>
                   </div>
                 </div>
+
+                {/* Quantitative Score */}
+                <div style={{ marginTop: '8px' }}>
+                  <ScorePanel symbol={data.quote.symbol} />
+                </div>
+
+                {/* AI Analysis */}
+                <div style={{ marginTop: '8px' }}>
+                  <AIAnalysisPanel symbol={data.quote.symbol} />
+                </div>
               </div>
             )}
 
@@ -1894,6 +1907,13 @@ export default function Home() {
       {/* Vista de Trading Trainer */}
       {view === 'trading-trainer' && (
         <TradingTrainer />
+      )}
+
+      {/* Vista de Smart Alerts */}
+      {view === 'alerts' && (
+        <div style={{ padding: '24px', maxWidth: 900, margin: '0 auto', width: '100%' }}>
+          <SmartAlertsPanel />
+        </div>
       )}
 
       {/* Modal para agregar a Watchlist */}
@@ -3979,7 +3999,6 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
     return Math.max(0, Math.min(100, Math.round(score)));
   })();
   const gaugeScore = 100 - strengthScore;
-  const gaugeAngle = -90 + (gaugeScore / 100) * 180;
   const riskLabel = gaugeScore <= 30 ? 'Low Risk' : gaugeScore <= 60 ? 'Medium Risk' : 'High Risk';
   const riskColor = gaugeScore <= 30 ? '#22c55e' : gaugeScore <= 60 ? '#f59e0b' : '#ef4444';
 
@@ -4029,18 +4048,24 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
             </div>
           </div>
 
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', color: '#8b949e', marginBottom: '16px' }}>Risk Score</div>
-            <div style={{ position: 'relative', display: 'inline-block' }}>
-              <svg width="200" height="120" viewBox="0 0 200 120">
-                <defs><linearGradient id="gGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="#22c55e"/><stop offset="30%" stopColor="#f59e0b"/><stop offset="60%" stopColor="#f97316"/><stop offset="100%" stopColor="#ef4444"/></linearGradient></defs>
-                <path d="M 20 95 A 80 80 0 0 1 180 95" fill="none" stroke="#21262d" strokeWidth="14" strokeLinecap="round"/>
-                <path d="M 20 95 A 80 80 0 0 1 180 95" fill="none" stroke="url(#gGrad)" strokeWidth="14" strokeLinecap="round" strokeDasharray="201" strokeDashoffset="0"/>
-                <line x1="100" y1="95" x2={100 + 55 * Math.cos((gaugeAngle - 90) * Math.PI / 180)} y2={95 + 55 * Math.sin((gaugeAngle - 90) * Math.PI / 180)} stroke="#e8eaed" strokeWidth="2" strokeLinecap="round"/>
-                <circle cx="100" cy="95" r="4" fill="#e8eaed"/>
-              </svg>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '32px', fontWeight: '700', color: '#f0f6fc', marginTop: '-16px' }}>{gaugeScore}</div>
-              <div style={{ fontSize: '11px', color: '#8b949e' }}>{riskLabel} · Score: <span style={{ fontWeight: '600', color: riskColor }}>{gaugeScore}/100</span></div>
+          <div style={{ marginBottom: '32px' }}>
+            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', color: '#8b949e', marginBottom: '12px' }}>Risk Score</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '28px', fontWeight: '700', color: riskColor, minWidth: '60px', textAlign: 'right' }}>{gaugeScore}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ height: '12px', background: '#21262d', borderRadius: '6px', overflow: 'hidden', position: 'relative' }}>
+                  <div style={{ height: '100%', width: `${gaugeScore}%`, background: riskColor, borderRadius: '6px', transition: 'width 0.8s ease-out' }} />
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', fontWeight: '700', color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>{gaugeScore}%</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', padding: '0 2px' }}>
+                  <span style={{ fontSize: '9px', color: '#22c55e' }}>Low</span>
+                  <span style={{ fontSize: '9px', color: '#f59e0b' }}>Medium</span>
+                  <span style={{ fontSize: '9px', color: '#ef4444' }}>High</span>
+                </div>
+              </div>
+              <span style={{ fontSize: '11px', color: '#8b949e', minWidth: '70px' }}>{riskLabel}</span>
             </div>
           </div>
 

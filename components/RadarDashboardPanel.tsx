@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import RadarChart from './RadarChart';
 import { colors as C, radius as R } from '@/src/utils/webTheme';
 
 interface RadarMetricSet {
@@ -92,8 +91,6 @@ function RadarColumn({
   labels: { key: string; label: string }[];
   color?: string;
 }) {
-  const chartMetrics = labels.map(l => ({ label: l.label, value: metrics[l.key] ?? 50 }));
-
   return (
     <div style={{
       background: '#FFFFFF',
@@ -107,10 +104,7 @@ function RadarColumn({
       }}>
         {icon} {title}
       </h3>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <RadarChart metrics={chartMetrics} size={260} color={color || ACCENT} />
-      </div>
-      <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {labels.map(l => (
           <MetricBar key={l.key} label={l.label} value={metrics[l.key] ?? 50} color={color || ACCENT} />
         ))}

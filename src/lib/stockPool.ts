@@ -1,0 +1,17 @@
+export const STOCK_POOL = [
+  'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'AMD', 'CRM',
+  'ORCL', 'ADBE', 'KO', 'PEP', 'WMT', 'COST', 'MCD', 'NKE', 'DIS',
+  'BA', 'CAT', 'GE', 'GS', 'MS', 'BAC', 'JPM', 'V', 'MA', 'AXP',
+  'T', 'VZ', 'CMCSA', 'PM', 'MDT', 'BMY', 'GILD', 'AMGN', 'TXN',
+  'QCOM', 'AVGO', 'NOW', 'INTU', 'MU', 'AMAT', 'UBER', 'IBM',
+  'SHOP', 'SQ', 'PYPL', 'SE', 'PLTR', 'COIN', 'HOOD', 'SNOW',
+  'PANW', 'CRWD', 'NET', 'DDOG', 'MDB', 'ZS', 'OKTA', 'TWLO',
+  'MRNA', 'VRTX', 'REGN', 'ILMN', 'ISRG', 'UNH', 'ABBV', 'LLY',
+  'MRK', 'PFE', 'ABT', 'NFLX', 'SPGI', 'BLK', 'SCHW', 'ICE',
+  'FDX', 'UPS', 'LUV', 'DAL', 'RCL', 'CCL', 'MGM', 'LVS',
+  'MAR', 'HLT', 'AZO', 'ORLY', 'ROST', 'BBY', 'DG', 'DLTR',
+  'CMG', 'SBUX', 'MELI', 'CPRT', 'FAST', 'PAYX', 'CTAS',
+  'SNPS', 'CDNS', 'FTNT', 'ANSS', 'WDAY', 'TEAM', 'TTD', 'HUBS',
+  'GDDY', 'SMAR', 'FIVN', 'WK', 'BR', 'TORO', 'ESTC', 'MNDY',
+  'STNE', 'PAGS', 'NU', 'SOFI', 'UPST', 'RKT', 'LC', 'ENV',
+];

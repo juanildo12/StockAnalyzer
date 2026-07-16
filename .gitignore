@@ -76,12 +76,12 @@ yarn-error.log
 .vercel
 
 # Environment variables
+.env
 .env.local
 .env.production.local
 .env.development.local
 .next/
 .next/
-.env.local
 
 # LiteRT WASM (copied from node_modules at build time)
 public/litert-wasm/
