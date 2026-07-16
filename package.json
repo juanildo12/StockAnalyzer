@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "cp -r node_modules/@litertjs/core/wasm public/litert-wasm && next build",
+    "build": "prisma generate && cp -r node_modules/@litertjs/core/wasm public/litert-wasm && next build",
     "postinstall": "cp -r node_modules/@litertjs/core/wasm public/litert-wasm",
     "start": "next start",
     "lint": "echo 'lint disabled'"
