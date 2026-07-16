@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
 import { getOptionsAnalysis, evaluateStockForOptions } from '../../../src/services/options';
 import { getStockQuote, getTechnicalAnalysis, getHistoricalData } from '../../../src/services/yahooFinance';
+import { getQuote as getFinnhubQuote } from '../../../src/services/finnhubClient';
 
 const yf = new YahooFinance();
 
@@ -114,9 +115,10 @@ export async function GET(request: NextRequest) {
       const results = await Promise.all(
         dailyStocks.map(async (sym) => {
           try {
-            const [quote, analysis] = await Promise.all([
+            const [quote, analysis, finnhubQuote] = await Promise.all([
               yf.quote(sym).catch(() => null),
               getOptionsAnalysis(sym).catch(() => null),
+              getFinnhubQuote(sym).catch(() => null),
             ]);
 
             if (!analysis) return null;
@@ -155,9 +157,9 @@ export async function GET(request: NextRequest) {
             return {
               symbol: sym,
               name: quote?.shortName || sym,
-              price: analysis.currentPrice,
-              change: quote?.regularMarketChange || 0,
-              changePercent: quote?.regularMarketChangePercent || 0,
+              price: finnhubQuote?.c || analysis.currentPrice,
+              change: finnhubQuote?.d ?? quote?.regularMarketChange ?? 0,
+              changePercent: finnhubQuote?.dp ?? quote?.regularMarketChangePercent ?? 0,
               sector: quote?.sector || 'Unknown',
               marketCap: quote?.marketCap || 0,
               volume: quote?.regularMarketVolume || 0,
