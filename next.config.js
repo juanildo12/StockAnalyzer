@@ -7,6 +7,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  serverExternalPackages: ['@resvg/resvg-js', 'satori'],
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
