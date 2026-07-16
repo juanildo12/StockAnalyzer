@@ -1,30 +1,44 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc, collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
+import { initializeApp, FirebaseApp } from "firebase/app";
+import { getFirestore, Firestore, doc, setDoc, getDoc, collection, query, where, getDocs, deleteDoc } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, User } from "firebase/auth";
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
-};
+let _app: FirebaseApp | null = null;
+let _db: Firestore | null = null;
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+function getApp(): FirebaseApp {
+  if (!_app) {
+    const firebaseConfig = {
+      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
+      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
+      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+    };
+    _app = initializeApp(firebaseConfig);
+  }
+  return _app;
+}
+
+function getDb(): Firestore {
+  if (!_db) {
+    _db = getFirestore(getApp());
+  }
+  return _db;
+}
+
+const auth = typeof window !== "undefined" ? getAuth(getApp()) : null;
 const googleProvider = new GoogleAuthProvider();
 
-export { db, auth, googleProvider };
+export { auth, googleProvider };
 
 export async function saveUserEmail(userId: string, email: string): Promise<void> {
-  const userDocRef = doc(db, "users", userId);
+  const userDocRef = doc(getDb(), "users", userId);
   await setDoc(userDocRef, { email, updatedAt: new Date().toISOString() });
 }
 
 export async function getUserEmail(userId: string): Promise<string | null> {
-  const userDocRef = doc(db, "users", userId);
+  const userDocRef = doc(getDb(), "users", userId);
   const docSnap = await getDoc(userDocRef);
   if (docSnap.exists()) {
     return docSnap.data().email || null;
@@ -33,7 +47,7 @@ export async function getUserEmail(userId: string): Promise<string | null> {
 }
 
 export async function getAllWatchlistUsers(): Promise<{ userId: string; email: string }[]> {
-  const usersRef = collection(db, "users");
+  const usersRef = collection(getDb(), "users");
   const snapshot = await getDocs(usersRef);
   const users: { userId: string; email: string }[] = [];
   snapshot.forEach((doc) => {
@@ -46,7 +60,7 @@ export async function getAllWatchlistUsers(): Promise<{ userId: string; email: s
 }
 
 export async function getAlertedSymbols(userId: string): Promise<string[]> {
-  const userDocRef = doc(db, "alerted", userId);
+  const userDocRef = doc(getDb(), "alerted", userId);
   const docSnap = await getDoc(userDocRef);
   if (docSnap.exists()) {
     return docSnap.data().symbols || [];
@@ -58,7 +72,7 @@ export async function addAlertedSymbol(userId: string, symbol: string): Promise<
   const alerted = await getAlertedSymbols(userId);
   if (!alerted.includes(symbol)) {
     alerted.push(symbol);
-    const userDocRef = doc(db, "alerted", userId);
+    const userDocRef = doc(getDb(), "alerted", userId);
     await setDoc(userDocRef, { symbols: alerted, updatedAt: new Date().toISOString() });
   }
 }
@@ -66,7 +80,7 @@ export async function addAlertedSymbol(userId: string, symbol: string): Promise<
 export async function clearAlertedSymbol(userId: string, symbol: string): Promise<void> {
   const alerted = await getAlertedSymbols(userId);
   const filtered = alerted.filter(s => s !== symbol);
-  const userDocRef = doc(db, "alerted", userId);
+  const userDocRef = doc(getDb(), "alerted", userId);
   await setDoc(userDocRef, { symbols: filtered, updatedAt: new Date().toISOString() });
 }
 
@@ -81,12 +95,12 @@ export interface PortfolioItem {
 }
 
 export async function savePortfolioToFirestore(userId: string, portfolio: PortfolioItem[]): Promise<void> {
-  const userDocRef = doc(db, "portfolios", userId);
+  const userDocRef = doc(getDb(), "portfolios", userId);
   await setDoc(userDocRef, { portfolio, updatedAt: new Date().toISOString() });
 }
 
 export async function getPortfolioFromFirestore(userId: string): Promise<PortfolioItem[]> {
-  const userDocRef = doc(db, "portfolios", userId);
+  const userDocRef = doc(getDb(), "portfolios", userId);
   const docSnap = await getDoc(userDocRef);
   
   if (docSnap.exists()) {
@@ -147,12 +161,12 @@ export interface WatchlistItem {
 }
 
 export async function saveWatchlistToFirestore(userId: string, watchlist: WatchlistItem[]): Promise<void> {
-  const userDocRef = doc(db, "watchlists", userId);
+  const userDocRef = doc(getDb(), "watchlists", userId);
   await setDoc(userDocRef, { watchlist, updatedAt: new Date().toISOString() });
 }
 
 export async function getWatchlistFromFirestore(userId: string): Promise<WatchlistItem[]> {
-  const userDocRef = doc(db, "watchlists", userId);
+  const userDocRef = doc(getDb(), "watchlists", userId);
   const docSnap = await getDoc(userDocRef);
   
   if (docSnap.exists()) {
