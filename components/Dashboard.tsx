@@ -16,6 +16,7 @@ import VeredictoPanel from './VeredictoPanel';
 import OptionsScreenerPanel from './OptionsScreenerPanel';
 import ScreenerRankingsPanel from './ScreenerRankingsPanel';
 import TopWeeklyPicks from './TopWeeklyPicks';
+import MorningBriefing from './MorningBriefing';
 import { colors as C, radius as R, font as F, transition as T } from '@/src/utils/webTheme';
 
 const TOP_N_SIGNALS = 30;
@@ -87,7 +88,7 @@ export default function Dashboard({
   const [quoteData, setQuoteData] = useState<any>(null);
   const [technicalData, setTechnicalData] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
-  const [dashboardSection, setDashboardSection] = useState<'signals' | 'bullsbears' | 'market' | 'opciones' | 'screeners'>('signals');
+  const [dashboardSection, setDashboardSection] = useState<'briefing' | 'signals' | 'bullsbears' | 'market' | 'opciones' | 'screeners'>('briefing');
   const [showLearningGuide, setShowLearningGuide] = useState(false);
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
 
@@ -252,6 +253,8 @@ export default function Dashboard({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {loading ? (
               <LoadingState />
+            ) : dashboardSection === 'briefing' ? (
+              <MorningBriefing onSelectStock={handleStockClick} />
             ) : dashboardSection === 'bullsbears' ? (
               <BullsBearsSection signals={sortedSignals} onStockClick={handleStockClick} />
             ) : dashboardSection === 'market' ? (
@@ -286,7 +289,7 @@ function Header({
   searchQuery, onSearchChange, section, onSectionChange, onLearnClick,
 }: {
   searchQuery: string; onSearchChange: (q: string) => void;
-  section: string; onSectionChange: (s: 'signals' | 'bullsbears' | 'market' | 'opciones' | 'screeners') => void; onLearnClick: () => void;
+  section: string;   onSectionChange: (s: 'briefing' | 'signals' | 'bullsbears' | 'market' | 'opciones' | 'screeners') => void; onLearnClick: () => void;
 }) {
   return (
     <div style={{ marginBottom: '24px', background: C.gradientHero, borderRadius: R.lg, padding: '20px' }}>
@@ -320,6 +323,7 @@ function Header({
             />
             <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: C.textMuted }}>🔍</span>
           </div>
+          <TabButton active={section === 'briefing'} onClick={() => onSectionChange('briefing')}>🚀 Briefing</TabButton>
           <TabButton active={section === 'signals'} onClick={() => onSectionChange('signals')}>📶 Señales</TabButton>
           <TabButton active={section === 'bullsbears'} onClick={() => onSectionChange('bullsbears')}>🐂🐻 B&B</TabButton>
           <TabButton active={section === 'market'} onClick={() => onSectionChange('market')}>📊 Mercado</TabButton>
