@@ -7,7 +7,7 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 
 const checkoutSchema = z.object({
-  plan: z.enum(["starter", "pro", "enterprise"]),
+  plan: z.enum(["pro", "elite", "enterprise"]),
 });
 
 export async function POST(req: NextRequest) {

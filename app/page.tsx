@@ -912,7 +912,7 @@ export default function Home() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', width: '100%', maxWidth: '100%', background: '#0d1117', color: '#c9d1d9', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      {!isMobile && <Sidebar view={view} onViewChange={setView} />}
+      {!isMobile && <Sidebar view={view} onViewChange={setView} userPlan={(session?.user as any)?.plan || 'free'} />}
       <div style={{ flex: 1, minWidth: 0, width: '100%', maxWidth: '100%', marginLeft: isMobile ? 0 : 220, display: 'flex', flexDirection: 'column' }}>
       <header style={{ display: 'flex', alignItems: 'center', padding: '12px 24px', borderBottom: '1px solid #30363d', background: '#0d1117', position: isMobile ? 'sticky' : undefined, top: 0, zIndex: isMobile ? 100 : undefined }}>
         {isMobile && (

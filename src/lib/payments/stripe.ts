@@ -16,93 +16,167 @@ export function getStripe(): Stripe {
   return _stripe;
 }
 
+// ─── Plan Configuration ──────────────────────────────────────────────────────
+// Tier hierarchy: free(0) → pro(1) → elite(2) → enterprise(3)
+// Pricing optimized for LTV: Free builds habit → Pro creates dependency → Elite maximizes ARPU
+
 export const PLANS = {
   free: {
     name: "Free",
     price: 0,
     stripePriceId: null,
     features: [
-      "Basic screener access",
-      "Morning briefing",
-      "5 watchlist items",
-      "3 alerts",
+      "5 stock scores/day",
+      "Morning briefing (30min delay)",
+      "Basic screener",
+      "3 watchlist slots",
+      "2 price alerts",
+      "Market overview",
+      "Earnings calendar",
+      "Daily trading challenge",
     ],
     limits: {
-      watchlist: 5,
-      alerts: 3,
+      dailyScores: 5,
+      watchlist: 3,
+      alerts: 2,
+      smartAlerts: 0,
       screeners: "basic",
       aiAnalysis: false,
+      aiCoach: false,
       options: false,
-    },
-  },
-  starter: {
-    name: "Starter",
-    price: 29,
-    stripePriceId: process.env.STRIPE_STARTER_PRICE_ID || "",
-    features: [
-      "All Free features",
-      "Unlimited watchlist",
-      "Unlimited alerts",
-      "Options chain access",
-      "7 screener models",
-      "Email notifications",
-    ],
-    limits: {
-      watchlist: Infinity,
-      alerts: Infinity,
-      screeners: "all",
-      aiAnalysis: false,
-      options: true,
+      backtest: false,
+      socialShare: false,
+      breakoutScreener: false,
+      enrichedData: false,
+      portfolio: false,
+      customAlerts: false,
+      grahamAnalysis: false,
+      nnwcAnalysis: false,
+      mlClassification: false,
     },
   },
   pro: {
     name: "Pro",
-    price: 59,
+    price: 49,
     stripePriceId: process.env.STRIPE_PRO_PRICE_ID || "",
     features: [
-      "All Starter features",
-      "AI stock analysis",
-      "AI trading coach",
-      "Backtesting",
-      "Priority support",
-      "API access",
+      "Unlimited stock scores",
+      "AI stock analysis (verdict + conviction)",
+      "AI trading coach (unlimited chat)",
+      "Smart alerts with email delivery",
+      "Breakout screener (multi-timeframe)",
+      "Auto-share TP hits (Twitter + LinkedIn + Discord)",
+      "Full backtesting suite",
+      "Real-time morning briefing",
+      "50 watchlist slots",
+      "20 active alerts + smart alerts",
+      "All 6 training difficulty tiers",
+      "120 req/min API rate",
     ],
     limits: {
-      watchlist: Infinity,
-      alerts: Infinity,
+      dailyScores: Infinity,
+      watchlist: 50,
+      alerts: 20,
+      smartAlerts: 5,
       screeners: "all",
       aiAnalysis: true,
+      aiCoach: true,
+      options: false,
+      backtest: true,
+      socialShare: true,
+      breakoutScreener: true,
+      enrichedData: false,
+      portfolio: false,
+      customAlerts: false,
+      grahamAnalysis: false,
+      nnwcAnalysis: false,
+      mlClassification: false,
+    },
+  },
+  elite: {
+    name: "Elite",
+    price: 99,
+    stripePriceId: process.env.STRIPE_ELITE_PRICE_ID || "",
+    features: [
+      "Everything in Pro",
+      "Options analysis (12+ strategies)",
+      "Options screener (IV, Greeks, unusual volume)",
+      "Graham value analysis",
+      "Net-net working capital screeners",
+      "Enriched data (sentiment, insider, institutional)",
+      "ML signal classification (neural network)",
+      "Portfolio tracker (multi-position P&L)",
+      "Custom alert strategies (define your rules)",
+      "Unlimited smart alerts",
+      "Unlimited social share",
+      "300 req/min API rate",
+      "Weekly performance report",
+    ],
+    limits: {
+      dailyScores: Infinity,
+      watchlist: Infinity,
+      alerts: Infinity,
+      smartAlerts: Infinity,
+      screeners: "all",
+      aiAnalysis: true,
+      aiCoach: true,
       options: true,
+      backtest: true,
+      socialShare: true,
+      breakoutScreener: true,
+      enrichedData: true,
+      portfolio: true,
+      customAlerts: true,
+      grahamAnalysis: true,
+      nnwcAnalysis: true,
+      mlClassification: true,
     },
   },
   enterprise: {
     name: "Enterprise",
-    price: 99,
+    price: 0,
     stripePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || "",
     features: [
-      "All Pro features",
-      "Custom screeners",
-      "Webhook access",
-      "Dedicated support",
-      "SLA guarantee",
+      "Everything in Elite",
+      "White-label API",
+      "Multi-seat (up to 20)",
+      "Custom scoring models",
+      "Historical data export",
+      "Priority support (2h SLA)",
+      "Custom integrations (TradeStation, IBKR, webhooks)",
+      "Compliance dashboard",
+      "Dedicated infrastructure",
     ],
     limits: {
+      dailyScores: Infinity,
       watchlist: Infinity,
       alerts: Infinity,
+      smartAlerts: Infinity,
       screeners: "all",
       aiAnalysis: true,
+      aiCoach: true,
       options: true,
+      backtest: true,
+      socialShare: true,
+      breakoutScreener: true,
+      enrichedData: true,
+      portfolio: true,
+      customAlerts: true,
+      grahamAnalysis: true,
+      nnwcAnalysis: true,
+      mlClassification: true,
     },
   },
 } as const;
 
 export type PlanTier = keyof typeof PLANS;
 
+// ─── Stripe Customer ─────────────────────────────────────────────────────────
+
 export async function getOrCreateStripeCustomer(
   userId: string,
   email: string
 ): Promise<string> {
-  // Check if user already has a Stripe customer ID
   const subscription = await prisma.subscriptions.findUnique({
     where: { userId },
   });
@@ -111,13 +185,11 @@ export async function getOrCreateStripeCustomer(
     return subscription.stripeCustomerId;
   }
 
-  // Create new Stripe customer
   const customer = await getStripe().customers.create({
     email,
     metadata: { userId },
   });
 
-  // Store in DB
   await prisma.subscriptions.upsert({
     where: { userId },
     update: { stripeCustomerId: customer.id },
@@ -131,6 +203,8 @@ export async function getOrCreateStripeCustomer(
 
   return customer.id;
 }
+
+// ─── Checkout & Portal ───────────────────────────────────────────────────────
 
 export async function createCheckoutSession(
   userId: string,
@@ -180,6 +254,8 @@ export async function createPortalSession(
 
   return session.url;
 }
+
+// ─── Webhook Handler ─────────────────────────────────────────────────────────
 
 export async function handleWebhook(
   event: Stripe.Event
@@ -257,7 +333,6 @@ export async function handleWebhook(
         const priceId = subscription.items.data[0]?.price.id;
         let plan: PlanTier = "free";
 
-        // Map price ID to plan
         for (const [key, config] of Object.entries(PLANS)) {
           if (config.stripePriceId === priceId) {
             plan = key as PlanTier;

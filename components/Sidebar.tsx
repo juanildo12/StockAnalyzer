@@ -5,12 +5,14 @@ import {
   Rocket, LayoutDashboard, Filter, BarChart3, Target,
   Watch, FlaskConical, Brain, Bot, Gamepad2,
   ChevronDown, ChevronRight, Zap, LineChart, Bell,
+  Lock, Crown, Gem, Building2,
 } from 'lucide-react';
 import { colors as C, radius as R, font as F, spacing as S, transition as T } from '@/src/utils/webTheme';
 
 interface SidebarProps {
   view: string;
   onViewChange: (v: string) => void;
+  userPlan?: string;
 }
 
 interface NavItem {
@@ -18,6 +20,7 @@ interface NavItem {
   label: string;
   icon: React.ReactNode;
   badge?: string;
+  minPlan?: 'pro' | 'elite' | 'enterprise';
 }
 
 interface NavGroup {
@@ -25,6 +28,22 @@ interface NavGroup {
   label: string;
   items: NavItem[];
 }
+
+const PLAN_HIERARCHY: Record<string, number> = { free: 0, pro: 1, elite: 2, enterprise: 3 };
+
+const PLAN_COLORS: Record<string, string> = {
+  free: C.textMuted,
+  pro: C.accent,
+  elite: C.warning,
+  enterprise: C.positive,
+};
+
+const PLAN_ICONS: Record<string, React.ReactNode> = {
+  free: <Zap size={10} />,
+  pro: <Crown size={10} />,
+  elite: <Gem size={10} />,
+  enterprise: <Building2 size={10} />,
+};
 
 const NAV_GROUPS: NavGroup[] = [
   {
@@ -40,20 +59,20 @@ const NAV_GROUPS: NavGroup[] = [
     id: 'trading',
     label: 'Trading',
     items: [
-      { view: 'alerts', label: 'Smart Alerts', icon: <Bell size={18} />, badge: 'NEW' },
-      { view: 'options', label: 'Opciones', icon: <Target size={18} /> },
+      { view: 'alerts', label: 'Smart Alerts', icon: <Bell size={18} />, badge: 'PRO', minPlan: 'pro' },
+      { view: 'options', label: 'Opciones', icon: <Target size={18} />, badge: 'ELITE', minPlan: 'elite' },
       { view: 'watchlist', label: 'Watchlist', icon: <Watch size={18} /> },
-      { view: 'backtest', label: 'Backtest', icon: <FlaskConical size={18} /> },
+      { view: 'backtest', label: 'Backtest', icon: <FlaskConical size={18} />, badge: 'PRO', minPlan: 'pro' },
     ],
   },
   {
     id: 'analysis',
     label: 'Análisis',
     items: [
-      { view: 'analyzer', label: 'Analizador', icon: <LineChart size={18} /> },
+      { view: 'analyzer', label: 'Analizador', icon: <LineChart size={18} />, badge: 'PRO', minPlan: 'pro' },
       { view: 'framework', label: 'Framework', icon: <Brain size={18} /> },
-      { view: 'ai-coach', label: 'AI Coach', icon: <Bot size={18} /> },
-      { view: 'inversor-inteligente', label: 'Value Investing', icon: <Brain size={18} /> },
+      { view: 'ai-coach', label: 'AI Coach', icon: <Bot size={18} />, badge: 'PRO', minPlan: 'pro' },
+      { view: 'inversor-inteligente', label: 'Value Investing', icon: <Brain size={18} />, badge: 'ELITE', minPlan: 'elite' },
     ],
   },
   {
@@ -65,10 +84,12 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-export default function Sidebar({ view, onViewChange }: SidebarProps) {
+export default function Sidebar({ view, onViewChange, userPlan = 'free' }: SidebarProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-
   const toggle = (id: string) => setCollapsed(prev => ({ ...prev, [id]: !prev[id] }));
+  const userLevel = PLAN_HIERARCHY[userPlan] ?? 0;
+
+  const planLabel = userPlan.charAt(0).toUpperCase() + userPlan.slice(1);
 
   return (
     <aside style={{
@@ -120,7 +141,6 @@ export default function Sidebar({ view, onViewChange }: SidebarProps) {
       }}>
         {NAV_GROUPS.map(group => (
           <div key={group.id} style={{ marginBottom: group.label ? S.md : S.lg }}>
-            {/* Group label */}
             {group.label && (
               <button
                 onClick={() => toggle(group.id)}
@@ -148,15 +168,23 @@ export default function Sidebar({ view, onViewChange }: SidebarProps) {
               </button>
             )}
 
-            {/* Items */}
             {!collapsed[group.id] && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {group.items.map(item => {
                   const active = view === item.view;
+                  const isLocked = item.minPlan && userLevel < PLAN_HIERARCHY[item.minPlan];
+                  const badgeColor = item.minPlan ? PLAN_COLORS[item.minPlan] : C.positive;
+
                   return (
                     <button
                       key={item.view}
-                      onClick={() => onViewChange(item.view)}
+                      onClick={() => {
+                        if (isLocked) {
+                          onViewChange('billing');
+                        } else {
+                          onViewChange(item.view);
+                        }
+                      }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: S.md,
                         width: '100%',
@@ -164,7 +192,7 @@ export default function Sidebar({ view, onViewChange }: SidebarProps) {
                         border: 'none',
                         borderRadius: R.md,
                         background: active ? C.accentGlow : 'transparent',
-                        color: active ? C.accentLight : C.textSecondary,
+                        color: active ? C.accentLight : isLocked ? C.textMuted : C.textSecondary,
                         cursor: 'pointer',
                         fontWeight: active ? 600 : 400,
                         fontSize: F.sizeBase,
@@ -173,6 +201,7 @@ export default function Sidebar({ view, onViewChange }: SidebarProps) {
                         transition: T.fast,
                         position: 'relative',
                         borderLeft: active ? `2px solid ${C.accent}` : '2px solid transparent',
+                        opacity: isLocked ? 0.7 : 1,
                       }}
                       onMouseEnter={e => {
                         if (!active) {
@@ -183,7 +212,7 @@ export default function Sidebar({ view, onViewChange }: SidebarProps) {
                       onMouseLeave={e => {
                         if (!active) {
                           e.currentTarget.style.background = 'transparent';
-                          e.currentTarget.style.color = C.textSecondary;
+                          e.currentTarget.style.color = isLocked ? C.textMuted : C.textSecondary;
                         }
                       }}
                     >
@@ -195,12 +224,16 @@ export default function Sidebar({ view, onViewChange }: SidebarProps) {
                         {item.icon}
                       </span>
                       {item.label}
-                      {item.badge && (
+                      {isLocked && (
+                        <Lock size={12} color={C.textMuted} style={{ marginLeft: 'auto', opacity: 0.6 }} />
+                      )}
+                      {item.badge && !isLocked && (
                         <span style={{
                           fontSize: 9, fontWeight: 700,
                           padding: '1px 5px', borderRadius: R.full,
-                          background: C.positiveBg, color: C.positive,
-                          border: `1px solid ${C.positiveBorder}`,
+                          background: badgeColor + '20',
+                          color: badgeColor,
+                          border: `1px solid ${badgeColor}40`,
                           marginLeft: 'auto',
                           letterSpacing: '0.02em',
                         }}>
@@ -215,6 +248,26 @@ export default function Sidebar({ view, onViewChange }: SidebarProps) {
           </div>
         ))}
       </nav>
+
+      {/* Plan badge + Upgrade CTA */}
+      {userPlan === 'free' && (
+        <div style={{
+          padding: `${S.sm} ${S.md}`,
+          margin: `0 ${S.sm} ${S.sm}`,
+          borderRadius: R.md,
+          background: 'linear-gradient(135deg, #ff00ff15, #00d4ff15)',
+          border: '1px solid #ff00ff30',
+          cursor: 'pointer',
+        }} onClick={() => onViewChange('billing')}>
+          <div style={{
+            fontSize: F.sizeXs, fontWeight: 700, color: '#ff00ff',
+            marginBottom: 2,
+          }}>Unlock Pro — $49/mo</div>
+          <div style={{
+            fontSize: 10, color: C.textMuted, lineHeight: 1.3,
+          }}>AI Analysis + Smart Alerts + Backtest</div>
+        </div>
+      )}
 
       {/* User section */}
       <div style={{
@@ -237,10 +290,16 @@ export default function Sidebar({ view, onViewChange }: SidebarProps) {
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>Juanildo</div>
             <div style={{
-              fontSize: F.sizeXs, color: C.textMuted, lineHeight: 1.2,
-            }}>Pro Plan</div>
+              fontSize: F.sizeXs, color: PLAN_COLORS[userPlan] || C.textMuted, lineHeight: 1.2,
+              fontWeight: 600,
+            }}>{planLabel} Plan</div>
           </div>
-          <Zap size={14} color={C.warning} />
+          {userPlan !== 'free' && (
+            <span style={{ color: PLAN_COLORS[userPlan] }}>
+              {PLAN_ICONS[userPlan]}
+            </span>
+          )}
+          {userPlan === 'free' && <Zap size={14} color={C.warning} />}
         </div>
       </div>
     </aside>
