@@ -27,10 +27,27 @@ function getDb(): Firestore {
   return _db;
 }
 
-const auth = typeof window !== "undefined" ? getAuth(getApp()) : null;
-const googleProvider = new GoogleAuthProvider();
+function isFirebaseConfigured(): boolean {
+  return !!(
+    process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
+    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN &&
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+  );
+}
 
-export { auth, googleProvider };
+function getAuthSafe() {
+  if (typeof window === "undefined" || !isFirebaseConfigured()) return null;
+  try {
+    return getAuth(getApp());
+  } catch {
+    return null;
+  }
+}
+
+const auth = getAuthSafe();
+const googleProvider = isFirebaseConfigured() ? new GoogleAuthProvider() : null;
+
+export { auth, googleProvider, isFirebaseConfigured };
 
 export async function saveUserEmail(userId: string, email: string): Promise<void> {
   const userDocRef = doc(getDb(), "users", userId);
