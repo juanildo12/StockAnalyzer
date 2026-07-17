@@ -79,6 +79,14 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async jwt({ token, user }) {
+      // Admin bypass: specific emails get enterprise plan
+      const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+      const email = (token.email || user?.email || "").toLowerCase();
+      if (adminEmails.includes(email)) {
+        token.plan = "enterprise";
+        return token;
+      }
+
       // On first sign-in, populate plan from DB
       if (user) {
         const sub = await prisma.subscriptions.findUnique({
