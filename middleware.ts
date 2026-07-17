@@ -81,7 +81,7 @@ function getTokenFromRequest(req: NextRequest): Record<string, any> | null {
 }
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Skip NextAuth internal routes entirely — let NextAuth handle its own flow
@@ -112,7 +112,7 @@ export function middleware(req: NextRequest) {
         prefix: `breakoutfinder:ratelimit:${userId}`,
       });
 
-      const rlResult = ratelimit.limit(`rl_${userId}`);
+      const rlResult = await ratelimit.limit(`rl_${userId}`);
       remaining = rlResult.remaining;
       reset = rlResult.reset;
       rlLimit = rlResult.limit;
