@@ -18,6 +18,17 @@ const TIER_RATE_LIMITS: Record<string, [number, string]> = {
   enterprise:[500, "60 s"],
 };
 
+let _redis: Redis | null = null;
+function getRedis(): Redis | null {
+  if (_redis) return _redis;
+  try {
+    if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+      _redis = Redis.fromEnv();
+    }
+  } catch {}
+  return _redis;
+}
+
 // ─── Route → minimum plan mapping ────────────────────────────────────────────
 // Options = Elite (deep analysis tools)
 // AI + Backtest + Social Share = Pro (the "I can't trade without it" tier)
@@ -56,33 +67,48 @@ export default withAuth(
     const userId = token?.sub ?? ip;
     const [limit, window] = TIER_RATE_LIMITS[userPlan] || TIER_RATE_LIMITS.free;
 
-    const ratelimit = new Ratelimit({
-      redis: Redis.fromEnv(),
-      limiter: Ratelimit.slidingWindow(limit, window as any),
-      analytics: true,
-      prefix: `breakoutfinder:ratelimit:${userId}`,
-    });
+    let rlLimit = limit;
+    let remaining = limit;
+    let reset = Math.floor(Date.now() / 1000) + 60;
 
-    const { success, limit: rlLimit, reset, remaining } = await ratelimit.limit(`rl_${userId}`);
+    const redis = getRedis();
+    if (redis) {
+      try {
+        const ratelimit = new Ratelimit({
+          redis,
+          limiter: Ratelimit.slidingWindow(limit, window as any),
+          analytics: true,
+          prefix: `breakoutfinder:ratelimit:${userId}`,
+        });
 
-    if (!success) {
-      return NextResponse.json(
-        {
-          error: "Rate limit exceeded",
-          limit: rlLimit,
-          remaining,
-          reset: new Date(reset * 1000).toISOString(),
-          upgradeHint: userPlan === "free" ? "Upgrade to Pro for 120 req/min" : undefined,
-        },
-        {
-          status: 429,
-          headers: {
-            "X-RateLimit-Limit": rlLimit.toString(),
-            "X-RateLimit-Remaining": remaining.toString(),
-            "X-RateLimit-Reset": reset.toString(),
-          },
+        const rlResult = await ratelimit.limit(`rl_${userId}`);
+        remaining = rlResult.remaining;
+        reset = rlResult.reset;
+        rlLimit = rlResult.limit;
+
+        if (!rlResult.success) {
+          return NextResponse.json(
+            {
+              error: "Rate limit exceeded",
+              limit: rlLimit,
+              remaining,
+              reset: new Date(reset * 1000).toISOString(),
+              upgradeHint: userPlan === "free" ? "Upgrade to Pro for 120 req/min" : undefined,
+            },
+            {
+              status: 429,
+              headers: {
+                "X-RateLimit-Limit": rlLimit.toString(),
+                "X-RateLimit-Remaining": remaining.toString(),
+                "X-RateLimit-Reset": reset.toString(),
+              },
+            }
+          );
         }
-      );
+      } catch (err) {
+        // Redis error — allow request through
+        console.error("[Middleware] Rate limit error:", err);
+      }
     }
 
     // ─── API Route Protection ────────────────────────────────────────────────
