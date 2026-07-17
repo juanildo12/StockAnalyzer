@@ -85,3 +85,4 @@ yarn-error.log
 
 # LiteRT WASM (copied from node_modules at build time)
 public/litert-wasm/
+.env*

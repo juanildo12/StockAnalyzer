@@ -1,20 +1,5 @@
-import Stripe from "stripe";
 import { prisma } from "@/src/lib/prisma";
-
-let _stripe: Stripe | null = null;
-
-export function getStripe(): Stripe {
-  if (!_stripe) {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error("[Stripe] STRIPE_SECRET_KEY not configured");
-    }
-    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-      apiVersion: "2024-12-18.acacia",
-      typescript: true,
-    });
-  }
-  return _stripe;
-}
+import crypto from "crypto";
 
 // ─── Plan Configuration ──────────────────────────────────────────────────────
 // Tier hierarchy: free(0) → pro(1) → elite(2) → enterprise(3)
@@ -24,7 +9,7 @@ export const PLANS = {
   free: {
     name: "Free",
     price: 0,
-    stripePriceId: null,
+    variantId: null,
     features: [
       "5 stock scores/day",
       "Morning briefing (30min delay)",
@@ -58,7 +43,7 @@ export const PLANS = {
   pro: {
     name: "Pro",
     price: 49,
-    stripePriceId: process.env.STRIPE_PRO_PRICE_ID || "",
+    variantId: process.env.LEMONSQUEEZY_PRO_VARIANT_ID || "",
     features: [
       "Unlimited stock scores",
       "AI stock analysis (verdict + conviction)",
@@ -96,7 +81,7 @@ export const PLANS = {
   elite: {
     name: "Elite",
     price: 99,
-    stripePriceId: process.env.STRIPE_ELITE_PRICE_ID || "",
+    variantId: process.env.LEMONSQUEEZY_ELITE_VARIANT_ID || "",
     features: [
       "Everything in Pro",
       "Options analysis (12+ strategies)",
@@ -135,7 +120,7 @@ export const PLANS = {
   enterprise: {
     name: "Enterprise",
     price: 0,
-    stripePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || "",
+    variantId: process.env.LEMONSQUEEZY_ENTERPRISE_VARIANT_ID || "",
     features: [
       "Everything in Elite",
       "White-label API",
@@ -171,40 +156,31 @@ export const PLANS = {
 
 export type PlanTier = keyof typeof PLANS;
 
-// ─── Stripe Customer ─────────────────────────────────────────────────────────
+// ─── LemonSqueezy API Client ─────────────────────────────────────────────────
 
-export async function getOrCreateStripeCustomer(
-  userId: string,
-  email: string
-): Promise<string> {
-  const subscription = await prisma.subscriptions.findUnique({
-    where: { userId },
-  });
+const LS_API = "https://api.lemonsqueezy.com/v1";
 
-  if (subscription?.stripeCustomerId) {
-    return subscription.stripeCustomerId;
-  }
-
-  const customer = await getStripe().customers.create({
-    email,
-    metadata: { userId },
-  });
-
-  await prisma.subscriptions.upsert({
-    where: { userId },
-    update: { stripeCustomerId: customer.id },
-    create: {
-      userId,
-      stripeCustomerId: customer.id,
-      plan: "free",
-      status: "active",
-    },
-  });
-
-  return customer.id;
+function lsHeaders() {
+  return {
+    Authorization: `Bearer ${process.env.LEMONSQUEEZY_API_KEY}`,
+    "Content-Type": "application/json",
+    Accept: "application/vnd.api+json",
+  };
 }
 
-// ─── Checkout & Portal ───────────────────────────────────────────────────────
+async function lsFetch(path: string, options?: RequestInit) {
+  const res = await fetch(`${LS_API}${path}`, {
+    ...options,
+    headers: { ...lsHeaders(), ...options?.headers },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`LemonSqueezy API error ${res.status}: ${body}`);
+  }
+  return res.json();
+}
+
+// ─── Checkout ────────────────────────────────────────────────────────────────
 
 export async function createCheckoutSession(
   userId: string,
@@ -212,164 +188,203 @@ export async function createCheckoutSession(
   plan: PlanTier
 ): Promise<string> {
   const planConfig = PLANS[plan];
-  if (!planConfig.stripePriceId) {
-    throw new Error(`No Stripe price ID for plan: ${plan}`);
+  if (!planConfig.variantId) {
+    throw new Error(`No LemonSqueezy variant ID for plan: ${plan}`);
   }
 
-  const customerId = await getOrCreateStripeCustomer(userId, email);
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://stock-analyzer-new.vercel.app";
 
-  const session = await getStripe().checkout.sessions.create({
-    customer: customerId,
-    mode: "subscription",
-    payment_method_types: ["card"],
-    line_items: [
-      {
-        price: planConfig.stripePriceId,
-        quantity: 1,
+  const data = await lsFetch("/checkouts", {
+    method: "POST",
+    body: JSON.stringify({
+      data: {
+        type: "checkouts",
+        attributes: {
+          checkout_data: {
+            email,
+            custom: {
+              userId,
+              plan,
+            },
+          },
+          product_options: {
+            redirect_url: `${appUrl}/settings/billing?success=true`,
+            cancel_url: `${appUrl}/settings/billing?canceled=true`,
+          },
+        },
+        relationships: {
+          store: {
+            data: {
+              type: "stores",
+              id: process.env.LEMONSQUEEZY_STORE_ID,
+            },
+          },
+          variant: {
+            data: {
+              type: "variants",
+              id: planConfig.variantId,
+            },
+          },
+        },
       },
-    ],
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL || "https://stock-analyzer-new.vercel.app"}/settings/billing?success=true`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "https://stock-analyzer-new.vercel.app"}/settings/billing?canceled=true`,
-    metadata: { userId, plan },
+    }),
   });
 
-  return session.url!;
+  return data.data.attributes.url;
 }
 
-export async function createPortalSession(
-  userId: string
-): Promise<string> {
+// ─── Customer Portal ─────────────────────────────────────────────────────────
+
+export async function createPortalSession(userId: string): Promise<string> {
   const subscription = await prisma.subscriptions.findUnique({
     where: { userId },
   });
 
-  if (!subscription?.stripeCustomerId) {
-    throw new Error("No Stripe customer found");
+  if (!subscription?.lemonSqueezySubscriptionId) {
+    throw new Error("No LemonSqueezy subscription found");
   }
 
-  const session = await getStripe().billingPortal.sessions.create({
-    customer: subscription.stripeCustomerId,
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL || "https://stock-analyzer-new.vercel.app"}/settings/billing`,
-  });
+  const data = await lsFetch(
+    `/subscriptions/${subscription.lemonSqueezySubscriptionId}/portal`
+  );
 
-  return session.url;
+  return data.data.attributes.urls.customer_portal;
+}
+
+// ─── Webhook Verification ────────────────────────────────────────────────────
+
+export function verifyWebhookSignature(
+  body: string,
+  signature: string | null
+): boolean {
+  if (!signature) return false;
+  const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
+  if (!secret) return false;
+
+  const hmac = crypto.createHmac("sha256", secret);
+  hmac.update(body);
+  const digest = hmac.digest("hex");
+  return crypto.timingSafeEqual(Buffer.from(digest), Buffer.from(signature));
 }
 
 // ─── Webhook Handler ─────────────────────────────────────────────────────────
 
-export async function handleWebhook(
-  event: Stripe.Event
-): Promise<void> {
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.metadata?.userId;
-      const plan = session.metadata?.plan as PlanTier;
+export async function handleWebhook(event: any): Promise<void> {
+  const eventName = event.meta?.event_name;
+  const attrs = event.data?.attributes;
 
-      if (userId && plan) {
+  if (!eventName || !attrs) {
+    console.error("[LemonSqueezy Webhook] Invalid event structure");
+    return;
+  }
+
+  console.log(`[LemonSqueezy Webhook] Event: ${eventName}`);
+
+  // Extract userId from custom_data
+  const userId = attrs.custom_data?.userId || attrs.user_email;
+  const subscriptionId = event.data?.id;
+  const variantId = String(attrs.variant_id);
+
+  // Map variant ID to plan
+  let plan: PlanTier = "free";
+  for (const [key, config] of Object.entries(PLANS)) {
+    if (config.variantId === variantId) {
+      plan = key as PlanTier;
+      break;
+    }
+  }
+
+  switch (eventName) {
+    case "subscription_created":
+    case "subscription_updated": {
+      const status = attrs.status;
+      let dbStatus = "active";
+      if (status === "past_due") dbStatus = "past_due";
+      else if (status === "cancelled") dbStatus = "canceled";
+      else if (status === "expired") dbStatus = "canceled";
+      else if (status === "paused") dbStatus = "paused";
+
+      if (userId) {
         await prisma.subscriptions.upsert({
           where: { userId },
           update: {
-            stripeSubscriptionId: session.subscription as string,
+            lemonSqueezySubscriptionId: subscriptionId,
+            lemonSqueezyProductId: String(attrs.product_id),
             plan,
-            status: "active",
-            currentPeriodStart: new Date(),
+            status: dbStatus,
+            currentPeriodStart: attrs.renews_at ? new Date(attrs.renews_at) : null,
+            currentPeriodEnd: attrs.ends_at ? new Date(attrs.ends_at) : null,
           },
           create: {
             userId,
-            stripeCustomerId: session.customer as string,
-            stripeSubscriptionId: session.subscription as string,
+            lemonSqueezySubscriptionId: subscriptionId,
+            lemonSqueezyProductId: String(attrs.product_id),
             plan,
-            status: "active",
-            currentPeriodStart: new Date(),
+            status: dbStatus,
+            currentPeriodStart: attrs.renews_at ? new Date(attrs.renews_at) : null,
+            currentPeriodEnd: attrs.ends_at ? new Date(attrs.ends_at) : null,
           },
         });
-
-        console.log(`[Stripe] User ${userId} subscribed to ${plan}`);
+        console.log(`[LemonSqueezy] User ${userId} → plan: ${plan}, status: ${dbStatus}`);
       }
       break;
     }
 
-    case "invoice.payment_succeeded": {
-      const invoice = event.data.object as Stripe.Invoice;
-      const subscriptionId = invoice.subscription as string;
-
-      if (subscriptionId) {
-        const stripeSub = await getStripe().subscriptions.retrieve(subscriptionId);
-        const userId = stripeSub.metadata?.userId;
-
-        if (userId) {
-          await prisma.subscriptions.updateMany({
-            where: { stripeSubscriptionId: subscriptionId },
-            data: {
-              status: "active",
-              currentPeriodStart: new Date(stripeSub.current_period_start * 1000),
-              currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
-            },
-          });
-        }
-      }
-      break;
-    }
-
-    case "invoice.payment_failed": {
-      const invoice = event.data.object as Stripe.Invoice;
-      const subscriptionId = invoice.subscription as string;
-
-      if (subscriptionId) {
-        await prisma.subscriptions.updateMany({
-          where: { stripeSubscriptionId: subscriptionId },
-          data: { status: "past_due" },
-        });
-      }
-      break;
-    }
-
-    case "customer.subscription.updated": {
-      const subscription = event.data.object as Stripe.Subscription;
-      const userId = subscription.metadata?.userId;
-
-      if (userId) {
-        const priceId = subscription.items.data[0]?.price.id;
-        let plan: PlanTier = "free";
-
-        for (const [key, config] of Object.entries(PLANS)) {
-          if (config.stripePriceId === priceId) {
-            plan = key as PlanTier;
-            break;
-          }
-        }
-
-        await prisma.subscriptions.updateMany({
-          where: { stripeSubscriptionId: subscription.id },
-          data: {
-            plan,
-            status: subscription.status === "active" ? "active" : subscription.status,
-            currentPeriodStart: new Date(subscription.current_period_start * 1000),
-            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-          },
-        });
-      }
-      break;
-    }
-
-    case "customer.subscription.deleted": {
-      const subscription = event.data.object as Stripe.Subscription;
-      const userId = subscription.metadata?.userId;
-
+    case "subscription_cancelled": {
       if (userId) {
         await prisma.subscriptions.updateMany({
-          where: { stripeSubscriptionId: subscription.id },
+          where: { lemonSqueezySubscriptionId: subscriptionId },
           data: {
             plan: "free",
             status: "canceled",
-            stripeSubscriptionId: null,
+            cancelAt: attrs.ends_at ? new Date(attrs.ends_at) : new Date(),
           },
         });
-
-        console.log(`[Stripe] User ${userId} subscription canceled`);
+        console.log(`[LemonSqueezy] User ${userId} subscription cancelled`);
       }
       break;
     }
+
+    case "subscription_expired": {
+      if (userId) {
+        await prisma.subscriptions.updateMany({
+          where: { lemonSqueezySubscriptionId: subscriptionId },
+          data: {
+            plan: "free",
+            status: "canceled",
+            lemonSqueezySubscriptionId: null,
+          },
+        });
+        console.log(`[LemonSqueezy] User ${userId} subscription expired`);
+      }
+      break;
+    }
+
+    case "subscription_payment_failed": {
+      if (userId) {
+        await prisma.subscriptions.updateMany({
+          where: { lemonSqueezySubscriptionId: subscriptionId },
+          data: { status: "past_due" },
+        });
+        console.log(`[LemonSqueezy] User ${userId} payment failed`);
+      }
+      break;
+    }
+
+    case "subscription_payment_success": {
+      if (userId) {
+        await prisma.subscriptions.updateMany({
+          where: { lemonSqueezySubscriptionId: subscriptionId },
+          data: {
+            status: "active",
+            currentPeriodStart: attrs.renews_at ? new Date(attrs.renews_at) : null,
+          },
+        });
+      }
+      break;
+    }
+
+    default:
+      console.log(`[LemonSqueezy] Unhandled event: ${eventName}`);
   }
 }

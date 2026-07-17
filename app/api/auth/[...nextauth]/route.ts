@@ -7,14 +7,18 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      authorization: {
+        params: {
+          prompt: "select_account",
+          access_type: "offline",
+        },
+      },
     }),
   ],
   session: {
     strategy: "jwt",
   },
-  pages: {
-    signIn: "/api/auth/signin",
-  },
+
   callbacks: {
     async signIn({ user, account }) {
       if (!user.email) return false;
