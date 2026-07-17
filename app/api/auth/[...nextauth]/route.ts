@@ -19,62 +19,67 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account }) {
       if (!user.email) return false;
 
-      // Upsert user in PostgreSQL
-      await prisma.users.upsert({
-        where: { email: user.email },
-        update: {
-          name: user.name,
-          image: user.image,
-        },
-        create: {
-          id: user.id!,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-          emailVerified: new Date(),
-        },
-      });
-
-      // Upsert account link
-      if (account) {
-        await prisma.accounts.upsert({
-          where: {
-            provider_providerAccountId: {
-              provider: account.provider,
-              providerAccountId: account.providerAccountId,
-            },
-          },
+      try {
+        // Upsert user in PostgreSQL
+        await prisma.users.upsert({
+          where: { email: user.email },
           update: {
-            access_token: account.access_token,
-            refresh_token: account.refresh_token,
-            expires_at: account.expires_at,
+            name: user.name,
+            image: user.image,
           },
           create: {
-            userId: user.id!,
-            type: account.type,
-            provider: account.provider,
-            providerAccountId: account.providerAccountId,
-            access_token: account.access_token,
-            refresh_token: account.refresh_token,
-            expires_at: account.expires_at,
-            token_type: account.token_type,
-            scope: account.scope,
-            id_token: account.id_token,
-            session_state: account.session_state,
+            id: user.id!,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+            emailVerified: new Date(),
           },
         });
-      }
 
-      // Ensure subscription record exists
-      await prisma.subscriptions.upsert({
-        where: { userId: user.id! },
-        update: {},
-        create: {
-          userId: user.id!,
-          plan: "free",
-          status: "active",
-        },
-      });
+        // Upsert account link
+        if (account) {
+          await prisma.accounts.upsert({
+            where: {
+              provider_providerAccountId: {
+                provider: account.provider,
+                providerAccountId: account.providerAccountId,
+              },
+            },
+            update: {
+              access_token: account.access_token,
+              refresh_token: account.refresh_token,
+              expires_at: account.expires_at,
+            },
+            create: {
+              userId: user.id!,
+              type: account.type,
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+              access_token: account.access_token,
+              refresh_token: account.refresh_token,
+              expires_at: account.expires_at,
+              token_type: account.token_type,
+              scope: account.scope,
+              id_token: account.id_token,
+              session_state: account.session_state,
+            },
+          });
+        }
+
+        // Ensure subscription record exists
+        await prisma.subscriptions.upsert({
+          where: { userId: user.id! },
+          update: {},
+          create: {
+            userId: user.id!,
+            plan: "free",
+            status: "active",
+          },
+        });
+      } catch (err) {
+        console.error("[Auth] signIn error:", err);
+        // Allow sign-in even if DB save fails
+      }
 
       return true;
     },
