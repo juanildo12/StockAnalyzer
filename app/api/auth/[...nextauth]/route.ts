@@ -24,7 +24,6 @@ export const authOptions: NextAuthOptions = {
       if (!user.email) return false;
 
       try {
-        // Upsert user in PostgreSQL
         await prisma.users.upsert({
           where: { email: user.email },
           update: {
@@ -40,8 +39,12 @@ export const authOptions: NextAuthOptions = {
           },
         });
 
-        // Upsert account link
         if (account) {
+          const dbUser = await prisma.users.findUnique({
+            where: { email: user.email },
+            select: { id: true },
+          });
+
           await prisma.accounts.upsert({
             where: {
               provider_providerAccountId: {
@@ -55,7 +58,7 @@ export const authOptions: NextAuthOptions = {
               expires_at: account.expires_at,
             },
             create: {
-              userId: user.id!,
+              userId: dbUser?.id || user.id!,
               type: account.type,
               provider: account.provider,
               providerAccountId: account.providerAccountId,
@@ -68,41 +71,56 @@ export const authOptions: NextAuthOptions = {
               session_state: account.session_state,
             },
           });
-        }
 
-        // Ensure subscription record exists
-        await prisma.subscriptions.upsert({
-          where: { userId: user.id! },
-          update: {},
-          create: {
-            userId: user.id!,
-            plan: "free",
-            status: "active",
-          },
-        });
+          if (dbUser) {
+            await prisma.subscriptions.upsert({
+              where: { userId: dbUser.id },
+              update: {},
+              create: {
+                userId: dbUser.id,
+                plan: "free",
+                status: "active",
+              },
+            });
+          }
+        }
       } catch (err) {
         console.error("[Auth] signIn error:", err);
-        // Allow sign-in even if DB save fails
       }
 
       return true;
     },
     async jwt({ token, user }) {
-      // Admin bypass: specific emails get enterprise plan
-      const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
-      const email = (token.email || user?.email || "").toLowerCase();
-      if (adminEmails.includes(email)) {
-        token.plan = "enterprise";
-        return token;
-      }
+      try {
+        const adminEmails = (process.env.ADMIN_EMAILS || "")
+          .split(",")
+          .map((e) => e.trim().toLowerCase())
+          .filter(Boolean);
+        const email = (token.email || user?.email || "").toLowerCase();
 
-      // On first sign-in, populate plan from DB
-      if (user) {
-        const sub = await prisma.subscriptions.findUnique({
-          where: { userId: user.id! },
-          select: { plan: true },
-        });
-        token.plan = sub?.plan ?? "free";
+        if (adminEmails.includes(email)) {
+          token.plan = "enterprise";
+          return token;
+        }
+
+        if (user) {
+          const dbUser = await prisma.users.findUnique({
+            where: { email: user.email! },
+            select: { id: true },
+          });
+          if (dbUser) {
+            const sub = await prisma.subscriptions.findUnique({
+              where: { userId: dbUser.id },
+              select: { plan: true },
+            });
+            token.plan = sub?.plan ?? "free";
+          } else {
+            token.plan = "free";
+          }
+        }
+      } catch (err) {
+        console.error("[Auth] jwt error:", err);
+        token.plan = token.plan || "free";
       }
       return token;
     },
