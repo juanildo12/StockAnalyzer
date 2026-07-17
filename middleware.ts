@@ -1,5 +1,4 @@
-import { withAuth } from "next-auth/middleware";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
@@ -30,8 +29,6 @@ function getRedis(): Redis | null {
 }
 
 // ─── Route → minimum plan mapping ────────────────────────────────────────────
-// Options = Elite (deep analysis tools)
-// AI + Backtest + Social Share = Pro (the "I can't trade without it" tier)
 const PLAN_ROUTES: Record<string, string[]> = {
   pro: [
     "/api/v1/ai",
@@ -55,151 +52,171 @@ function getRequiredPlan(pathname: string): string | null {
   return null;
 }
 
-export default withAuth(
-  async function middleware(req) {
-    const { pathname } = req.nextUrl;
-    const token = req.nextauth.token;
-    const userPlan = (token as any)?.plan || "free";
-    const userLevel = PLAN_HIERARCHY[userPlan] ?? 0;
+// ─── Simple JWT decode (no library needed) ───────────────────────────────────
+function decodeJwtPayload(token: string): Record<string, any> | null {
+  try {
+    const base64 = token.split(".")[1];
+    const padded = base64.replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(padded)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
 
-    // ─── Rate Limiting (plan-based) ──────────────────────────────────────────
-    const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
-    const userId = token?.sub ?? ip;
-    const [limit, window] = TIER_RATE_LIMITS[userPlan] || TIER_RATE_LIMITS.free;
+function getTokenFromRequest(req: NextRequest): Record<string, any> | null {
+  const sessionToken =
+    req.cookies.get("next-auth.session-token")?.value ||
+    req.cookies.get("__Secure-next-auth.session-token")?.value;
+  if (!sessionToken) return null;
+  const payload = decodeJwtPayload(sessionToken);
+  if (!payload) return null;
+  if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+  return payload;
+}
 
-    let rlLimit = limit;
-    let remaining = limit;
-    let reset = Math.floor(Date.now() / 1000) + 60;
+// ─── Middleware ───────────────────────────────────────────────────────────────
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
 
-    const redis = getRedis();
-    if (redis) {
-      try {
-        const ratelimit = new Ratelimit({
-          redis,
-          limiter: Ratelimit.slidingWindow(limit, window as any),
-          analytics: true,
-          prefix: `breakoutfinder:ratelimit:${userId}`,
-        });
+  // Skip NextAuth internal routes entirely — let NextAuth handle its own flow
+  if (pathname.startsWith("/api/auth")) {
+    return NextResponse.next();
+  }
 
-        const rlResult = await ratelimit.limit(`rl_${userId}`);
-        remaining = rlResult.remaining;
-        reset = rlResult.reset;
-        rlLimit = rlResult.limit;
+  const token = getTokenFromRequest(req);
+  const userPlan = (token as any)?.plan || "free";
+  const userLevel = PLAN_HIERARCHY[userPlan] ?? 0;
 
-        if (!rlResult.success) {
-          return NextResponse.json(
-            {
-              error: "Rate limit exceeded",
-              limit: rlLimit,
-              remaining,
-              reset: new Date(reset * 1000).toISOString(),
-              upgradeHint: userPlan === "free" ? "Upgrade to Pro for 120 req/min" : undefined,
-            },
-            {
-              status: 429,
-              headers: {
-                "X-RateLimit-Limit": rlLimit.toString(),
-                "X-RateLimit-Remaining": remaining.toString(),
-                "X-RateLimit-Reset": reset.toString(),
-              },
-            }
-          );
-        }
-      } catch (err) {
-        // Redis error — allow request through
-        console.error("[Middleware] Rate limit error:", err);
-      }
-    }
+  // ─── Rate Limiting (plan-based) ──────────────────────────────────────────
+  const ip = req.headers.get("x-forwarded-for") ?? "anonymous";
+  const userId = token?.sub ?? ip;
+  const [limit, window] = TIER_RATE_LIMITS[userPlan] || TIER_RATE_LIMITS.free;
 
-    // ─── API Route Protection ────────────────────────────────────────────────
-    if (pathname.startsWith("/api/v1/")) {
-      // Public v1 routes — no auth required
-      const isPublicV1 =
-        pathname.startsWith("/api/v1/stock") ||
-        pathname.startsWith("/api/v1/market") ||
-        pathname.startsWith("/api/v1/score") ||
-        pathname.startsWith("/api/v1/screener") ||
-        pathname.startsWith("/api/v1/morning-briefing") ||
-        pathname === "/api/v1/jobs";
+  let rlLimit = limit;
+  let remaining = limit;
+  let reset = Math.floor(Date.now() / 1000) + 60;
 
-      if (!isPublicV1 && !token) {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const ratelimit = new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(limit, window as any),
+        analytics: true,
+        prefix: `breakoutfinder:ratelimit:${userId}`,
+      });
+
+      const rlResult = ratelimit.limit(`rl_${userId}`);
+      remaining = rlResult.remaining;
+      reset = rlResult.reset;
+      rlLimit = rlResult.limit;
+
+      if (!rlResult.success) {
         return NextResponse.json(
-          { error: "Authentication required" },
-          { status: 401 }
+          {
+            error: "Rate limit exceeded",
+            limit: rlLimit,
+            remaining,
+            reset: new Date(reset * 1000).toISOString(),
+            upgradeHint: userPlan === "free" ? "Upgrade to Pro for 120 req/min" : undefined,
+          },
+          {
+            status: 429,
+            headers: {
+              "X-RateLimit-Limit": rlLimit.toString(),
+              "X-RateLimit-Remaining": remaining.toString(),
+              "X-RateLimit-Reset": reset.toString(),
+            },
+          }
         );
       }
+    } catch (err) {
+      console.error("[Middleware] Rate limit error:", err);
+    }
+  }
 
-      // Plan-based access control (only for authenticated users)
-      if (token) {
-        const requiredPlan = getRequiredPlan(pathname);
-        if (requiredPlan) {
-          const requiredLevel = PLAN_HIERARCHY[requiredPlan] || 0;
+  // ─── API Route Protection ────────────────────────────────────────────────
+  if (pathname.startsWith("/api/v1/")) {
+    const isPublicV1 =
+      pathname.startsWith("/api/v1/stock") ||
+      pathname.startsWith("/api/v1/market") ||
+      pathname.startsWith("/api/v1/score") ||
+      pathname.startsWith("/api/v1/screener") ||
+      pathname.startsWith("/api/v1/morning-briefing") ||
+      pathname === "/api/v1/jobs";
 
-          if (userLevel < requiredLevel) {
-            return NextResponse.json(
-              {
-                error: "Subscription required",
-                required: requiredPlan,
-                current: userPlan,
-                upgradeUrl: "/settings/billing",
-                message: `This feature requires the ${requiredPlan.charAt(0).toUpperCase() + requiredPlan.slice(1)} plan or higher.`,
-              },
-              { status: 403 }
-            );
-          }
+    if (!isPublicV1 && !token) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    if (token) {
+      const requiredPlan = getRequiredPlan(pathname);
+      if (requiredPlan) {
+        const requiredLevel = PLAN_HIERARCHY[requiredPlan] || 0;
+
+        if (userLevel < requiredLevel) {
+          return NextResponse.json(
+            {
+              error: "Subscription required",
+              required: requiredPlan,
+              current: userPlan,
+              upgradeUrl: "/settings/billing",
+              message: `This feature requires the ${requiredPlan.charAt(0).toUpperCase() + requiredPlan.slice(1)} plan or higher.`,
+            },
+            { status: 403 }
+          );
         }
       }
     }
-
-    // ─── Add headers ─────────────────────────────────────────────────────────
-    const response = NextResponse.next();
-    response.headers.set("X-RateLimit-Limit", rlLimit.toString());
-    response.headers.set("X-RateLimit-Remaining", remaining.toString());
-    response.headers.set("X-User-Plan", userPlan);
-
-    return response;
-  },
-  {
-    callbacks: {
-      authorized: ({ token, req }) => {
-        const { pathname } = req.nextUrl;
-
-        // Public routes — no auth required
-        if (
-          pathname.startsWith("/api/auth") ||
-          pathname.startsWith("/api/stock") ||
-          pathname.startsWith("/api/signal") ||
-          pathname.startsWith("/api/screener") ||
-          pathname.startsWith("/api/market") ||
-          pathname.startsWith("/api/morning-briefing") ||
-          pathname === "/api/health"
-        ) {
-          return true;
-        }
-
-        // v1 stock/market/jobs/score/screener are public (read-only data)
-        if (
-          pathname.startsWith("/api/v1/stock") ||
-          pathname.startsWith("/api/v1/market") ||
-          pathname.startsWith("/api/v1/score") ||
-          pathname.startsWith("/api/v1/screener") ||
-          pathname.startsWith("/api/v1/morning-briefing") ||
-          pathname === "/api/v1/jobs"
-        ) {
-          return true;
-        }
-
-        // AI, alerts, signals, payments — require auth
-        if (pathname.startsWith("/api/")) {
-          return !!token;
-        }
-
-        // All page routes are public
-        return true;
-      },
-    },
   }
-);
+
+  // ─── Legacy API routes that require auth ─────────────────────────────────
+  if (pathname.startsWith("/api/") && !pathname.startsWith("/api/v1/")) {
+    const publicLegacy =
+      pathname.startsWith("/api/stock") ||
+      pathname.startsWith("/api/signal") ||
+      pathname.startsWith("/api/screener") ||
+      pathname.startsWith("/api/market") ||
+      pathname.startsWith("/api/morning-briefing") ||
+      pathname === "/api/health" ||
+      pathname.startsWith("/api/search") ||
+      pathname.startsWith("/api/calendar") ||
+      pathname.startsWith("/api/game") ||
+      pathname.startsWith("/api/radar") ||
+      pathname.startsWith("/api/scraper") ||
+      pathname.startsWith("/api/options-screener") ||
+      pathname.startsWith("/api/options-chain") ||
+      pathname.startsWith("/api/pro-signals") ||
+      pathname.startsWith("/api/historical-metrics") ||
+      pathname.startsWith("/api/watchlist") ||
+      pathname.startsWith("/api/tradestation") ||
+      pathname.startsWith("/api/check-alerts");
+
+    if (!publicLegacy && !token) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+  }
+
+  // ─── Add headers ─────────────────────────────────────────────────────────
+  const response = NextResponse.next();
+  response.headers.set("X-RateLimit-Limit", rlLimit.toString());
+  response.headers.set("X-RateLimit-Remaining", remaining.toString());
+  response.headers.set("X-User-Plan", userPlan);
+
+  return response;
+}
 
 export const config = {
   matcher: [
