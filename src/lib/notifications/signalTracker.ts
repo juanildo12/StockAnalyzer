@@ -196,7 +196,6 @@ export async function getSignalStats(): Promise<{
     };
   }
 
-  let losses = 0;
   return {
     totalSignals: total,
     pending,

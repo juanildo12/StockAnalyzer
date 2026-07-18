@@ -13,6 +13,7 @@ interface SidebarProps {
   view: string;
   onViewChange: (v: string) => void;
   userPlan?: string;
+  userName?: string;
 }
 
 interface NavItem {
@@ -84,7 +85,7 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-export default function Sidebar({ view, onViewChange, userPlan = 'free' }: SidebarProps) {
+export default function Sidebar({ view, onViewChange, userPlan = 'free', userName }: SidebarProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const toggle = (id: string) => setCollapsed(prev => ({ ...prev, [id]: !prev[id] }));
   const userLevel = PLAN_HIERARCHY[userPlan] ?? 0;
@@ -283,12 +284,12 @@ export default function Sidebar({ view, onViewChange, userPlan = 'free' }: Sideb
             background: C.gradientAccent,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: F.sizeSm, fontWeight: 700, color: '#fff',
-          }}>J</div>
+          }}>{(userName || 'U').charAt(0).toUpperCase()}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
               fontSize: F.sizeSm, fontWeight: 600, color: C.textPrimary,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>Juanildo</div>
+            }}>{userName || 'User'}</div>
             <div style={{
               fontSize: F.sizeXs, color: PLAN_COLORS[userPlan] || C.textMuted, lineHeight: 1.2,
               fontWeight: 600,

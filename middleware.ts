@@ -139,6 +139,8 @@ export async function middleware(req: NextRequest) {
     } catch (err) {
       console.error("[Middleware] Rate limit error:", err);
     }
+  } else {
+    console.warn("[Middleware] Redis unavailable — rate limiting bypassed");
   }
 
   // ─── API Route Protection ────────────────────────────────────────────────
@@ -191,16 +193,13 @@ export async function middleware(req: NextRequest) {
       pathname === "/api/health" ||
       pathname.startsWith("/api/search") ||
       pathname.startsWith("/api/calendar") ||
-      pathname.startsWith("/api/game") ||
       pathname.startsWith("/api/radar") ||
       pathname.startsWith("/api/scraper") ||
       pathname.startsWith("/api/options-screener") ||
       pathname.startsWith("/api/options-chain") ||
       pathname.startsWith("/api/pro-signals") ||
       pathname.startsWith("/api/historical-metrics") ||
-      pathname.startsWith("/api/watchlist") ||
-      pathname.startsWith("/api/tradestation") ||
-      pathname.startsWith("/api/check-alerts");
+      pathname.startsWith("/api/watchlist");
 
     if (!publicLegacy && !token) {
       return NextResponse.json(

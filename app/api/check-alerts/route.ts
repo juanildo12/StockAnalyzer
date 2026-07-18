@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getWatchlistFromFirestore, getAllWatchlistUsers, addAlertedSymbol, getAlertedSymbols } from '@/src/services/firebase';
 import { getStockQuote } from '@/src/services/yahooFinance';
 
@@ -22,7 +22,7 @@ async function sendEmail(to: string, symbol: string, currentPrice: number, targe
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Stock Analyzer <onboarding@resend.dev>',
+        from: 'BreakoutFinder <alerts@resend.dev>',
         to: to,
         subject: `${emoji} Alerta: ${symbol} ha ${direction} tu precio objetivo`,
         html: `
@@ -55,7 +55,16 @@ async function sendEmail(to: string, symbol: string, currentPrice: number, targe
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authHeader = request.headers.get('authorization');
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    const sessionToken = request.cookies.get('next-auth.session-token')?.value || request.cookies.get('__Secure-next-auth.session-token')?.value;
+    if (!sessionToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+  }
+
   const logs: string[] = [];
   const results: any[] = [];
   

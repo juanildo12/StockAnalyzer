@@ -521,17 +521,10 @@ export default function Home() {
   useEffect(() => {
     if (session?.user?.email) {
       saveUserEmail(session.user.email, session.user.email);
-      loadPortfolio();
-      loadWatchlist();
-    } else {
-      loadPortfolio();
-      loadWatchlist();
     }
-  }, [session]);
-
-  useEffect(() => {
     loadPortfolio();
-  }, []);
+    loadWatchlist();
+  }, [session]);
 
   // Daily refresh of watchlist prices at 8PM Bolivia time (UTC-4)
   useEffect(() => {
@@ -902,9 +895,10 @@ export default function Home() {
     return {
       totalInvested: acc.totalInvested + invested,
       totalCurrent: acc.totalCurrent + current,
-      profitLoss: acc.totalCurrent + current - acc.totalInvested - invested + acc.profitLoss,
+      profitLoss: 0,
     };
   }, { totalInvested: 0, totalCurrent: 0, profitLoss: 0 });
+  portfolioSummary.profitLoss = portfolioSummary.totalCurrent - portfolioSummary.totalInvested;
 
   const portfolioReturn = portfolioSummary.totalInvested > 0 
     ? (portfolioSummary.profitLoss / portfolioSummary.totalInvested) * 100 
@@ -912,7 +906,7 @@ export default function Home() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', width: '100%', maxWidth: '100%', background: '#0d1117', color: '#c9d1d9', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      {!isMobile && <Sidebar view={view} onViewChange={setView} userPlan={(session?.user as any)?.plan || 'free'} />}
+      {!isMobile && <Sidebar view={view} onViewChange={setView} userPlan={(session?.user as any)?.plan || 'free'} userName={session?.user?.name || session?.user?.email?.split('@')[0] || 'User'} />}
       <div style={{ flex: 1, minWidth: 0, width: '100%', maxWidth: '100%', marginLeft: isMobile ? 0 : 220, display: 'flex', flexDirection: 'column' }}>
       <header style={{ display: 'flex', alignItems: 'center', padding: '12px 24px', borderBottom: '1px solid #30363d', background: '#0d1117', position: isMobile ? 'sticky' : undefined, top: 0, zIndex: isMobile ? 100 : undefined }}>
         {isMobile && (
@@ -1891,7 +1885,18 @@ export default function Home() {
 
       {/* Vista de AI Coach */}
       {view === 'ai-coach' && (
-        <AICoach symbol={symbol} onAnalyzeSymbol={(sym) => setSymbol(sym)} />
+        (['pro', 'elite', 'enterprise'].includes((session?.user as any)?.plan || 'free')) ? (
+          <AICoach symbol={symbol} onAnalyzeSymbol={(sym) => setSymbol(sym)} />
+        ) : (
+          <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(135deg, #ff00ff15, #00d4ff15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '36px' }}>🤖</div>
+            <h2 style={{ color: '#f0f6fc', fontSize: '24px', marginBottom: '8px' }}>AI Coach</h2>
+            <p style={{ color: '#8b949e', marginBottom: '24px' }}>This feature requires a Pro plan or higher.</p>
+            <button onClick={() => window.location.href = '/settings/billing'} style={{ padding: '12px 32px', borderRadius: '50px', border: 'none', background: 'linear-gradient(135deg, #ff00ff, #00d4ff)', color: '#fff', fontWeight: '600', fontSize: '15px', cursor: 'pointer' }}>
+              Upgrade to Pro — $49/mo
+            </button>
+          </div>
+        )
       )}
 
       {/* Vista de Backtest */}

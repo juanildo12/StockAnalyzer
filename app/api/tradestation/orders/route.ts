@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 const TRADESTATION_API_BASE = process.env.TRADESTATION_API_URL || 'https://api.tradestation.com/v3';
 const TRADESTATION_SIM_URL = process.env.TRADESTATION_SIM_URL || 'https://sim-api.tradestation.com/v3';
@@ -57,6 +59,11 @@ interface OrderPayload {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const accessToken = await getAccessToken();
   
   if (!accessToken) {
@@ -148,6 +155,11 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const searchParams = request.nextUrl.searchParams;
   const orderID = searchParams.get('orderID');
 

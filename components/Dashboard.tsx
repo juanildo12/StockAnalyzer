@@ -302,7 +302,7 @@ function Header({
             P
           </div>
           <h1 style={{ margin: 0, color: C.textPrimary, fontSize: '22px', fontWeight: '800', letterSpacing: '-0.02em' }}>
-            Prospector
+            BreakoutFinder
           </h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', whiteSpace: 'nowrap', WebkitOverflowScrolling: 'touch', flex: '1 1 auto', justifyContent: 'flex-end' }}>
