@@ -1,5 +1,5 @@
 'use client';
-import { colors as C, radius as R, font as F, spacing as S, shadow } from '@/src/utils/webTheme';
+import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 import { useState, useEffect, useCallback } from 'react';
 import Card from '@/src/components/ui/Card';
 import Badge from '@/src/components/ui/Badge';
@@ -88,51 +88,68 @@ const VIX_COLORS: Record<string, string> = {
   BAJA: C.positive,
 };
 
-// ─── Pick Card ───────────────────────────────────────────────────────────────
+function getScoreColor(score: number): string {
+  if (score >= 80) return C.positive;
+  if (score >= 60) return C.warning;
+  if (score >= 40) return C.info;
+  return C.textMuted;
+}
 
-function PickCard({ pick, rank, onSelect }: { pick: BriefingPick; rank: number; onSelect: (sym: string) => void }) {
+// ─── Research Card ───────────────────────────────────────────────────────────
+
+function ResearchCard({ pick, rank, onSelect, isPro }: { pick: BriefingPick; rank: number; onSelect: (sym: string) => void; isPro: boolean }) {
   const [expanded, setExpanded] = useState(false);
+  const scoreColor = getScoreColor(pick.breakoutScore);
 
   return (
     <Card padding="0" hover glow={pick.confidence === 'HIGH'}>
-      <div style={{ padding: S.lg }}>
-        {/* Header row: rank + symbol + confidence + score */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: S.md, marginBottom: S.sm }}>
-          {/* Rank badge */}
+      <div style={{ padding: `${S.lg} ${S.xl}` }}>
+        {/* Row 1: Rank + Symbol + Confidence + Score */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: S.md, marginBottom: S.md }}>
+          {/* Rank */}
           <div style={{
-            width: 28, height: 28,
-            borderRadius: R.sm,
+            width: 32, height: 32, borderRadius: R.sm,
             background: rank <= 3 ? C.gradientPrimary : C.bgElevated,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: F.sizeSm, fontWeight: 800, color: rank <= 3 ? '#fff' : C.textSecondary,
+            fontSize: F.sizeMd, fontWeight: 800, color: rank <= 3 ? '#fff' : C.textSecondary,
             fontFamily: F.mono, flexShrink: 0,
           }}>
             {rank}
           </div>
 
-          {/* Symbol + Name */}
+          {/* Symbol + Name + Confidence */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: S.sm }}>
-              <span style={{ fontSize: F.sizeLg, fontWeight: 800, color: C.textPrimary }}>{pick.symbol}</span>
-              <Badge variant={CONFIDENCE_VARIANT[pick.confidence]} size="sm">{pick.confidence}</Badge>
+            <div style={{ display: 'flex', alignItems: 'center', gap: S.sm, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: F.sizeXl, fontWeight: 800, color: C.textPrimary, fontFamily: F.mono, letterSpacing: '-0.02em' }}>
+                {pick.symbol}
+              </span>
+              <Badge variant={CONFIDENCE_VARIANT[pick.confidence]} size="sm" dot>{pick.confidence}</Badge>
+              {pick.setup && (
+                <span style={{
+                  fontSize: F.sizeXs, padding: '1px 6px', borderRadius: R.sm,
+                  background: C.accentGlow, color: C.accentLight, fontWeight: 500,
+                }}>
+                  {pick.setup}
+                </span>
+              )}
             </div>
-            <div style={{ fontSize: F.sizeSm, color: C.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: F.sizeSm, color: C.textMuted, marginTop: 1 }}>
               {pick.name}
             </div>
           </div>
 
           {/* Score */}
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontSize: F.sizeXl, fontWeight: 800, color: C.textPrimary, fontFamily: F.mono, lineHeight: 1 }}>
+            <div style={{ fontSize: '28px', fontWeight: 800, color: scoreColor, fontFamily: F.mono, lineHeight: 1, letterSpacing: '-0.03em' }}>
               {pick.breakoutScore}
             </div>
-            <div style={{ fontSize: F.sizeXs, color: C.textMuted }}>/100</div>
+            <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginTop: 2 }}>/100</div>
           </div>
         </div>
 
-        {/* Price + Change */}
+        {/* Row 2: Price + Change */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: S.sm, marginBottom: S.md }}>
-          <span style={{ fontSize: F.sizeHero, fontWeight: 700, color: C.textPrimary, fontFamily: F.mono }}>
+          <span style={{ fontSize: F.sizeHero, fontWeight: 700, color: C.textPrimary, fontFamily: F.mono, letterSpacing: '-0.01em' }}>
             {fmtPrice(pick.price)}
           </span>
           <span style={{
@@ -142,23 +159,19 @@ function PickCard({ pick, rank, onSelect }: { pick: BriefingPick; rank: number; 
           }}>
             {fmtChange(pick.changePercent)}
           </span>
-          <span style={{
-            fontSize: F.sizeXs, padding: '2px 8px', borderRadius: R.full,
-            background: C.accentGlow, color: C.accentLight, fontWeight: 500,
-            marginLeft: 'auto',
-          }}>
-            {pick.setup}
+          <span style={{ fontSize: F.sizeXs, color: C.textMuted, marginLeft: 'auto' }}>
+            {fmtMarketCap(pick.marketCap)}
           </span>
         </div>
 
-        {/* Score breakdown */}
+        {/* Row 3: Score Bar */}
         <div style={{ marginBottom: S.md }}>
-          <ScoreBar score={pick.breakoutScore} label="Total" />
+          <ScoreBar score={pick.breakoutScore} label="Score" />
         </div>
 
-        {/* Levels grid */}
+        {/* Row 4: Key Levels — always visible */}
         <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
           gap: S.xs, marginBottom: S.md,
         }}>
           <LevelCell label="ENTRY" value={fmtPrice(pick.levels.entry)} color={C.accentLight} />
@@ -166,100 +179,173 @@ function PickCard({ pick, rank, onSelect }: { pick: BriefingPick; rank: number; 
           <LevelCell label="STOP LOSS" value={fmtPrice(pick.levels.stopLoss)} color={C.negative} />
         </div>
 
-        {/* Technical pills */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: S.xs, marginBottom: S.sm }}>
+        {/* Row 5: Technical Pills */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: S.xs, marginBottom: S.md }}>
           <Pill label="R/R" value={`${pick.levels.riskReward.toFixed(1)}:1`} color={pick.levels.riskReward >= 2 ? C.positive : C.warning} />
           <Pill label="Vol" value={`${pick.technicals.volRatio}x`} color={pick.technicals.volRatio > 2 ? C.positive : C.textSecondary} />
           {pick.technicals.rsi !== null && (
             <Pill label="RSI" value={`${pick.technicals.rsi}`} color={pick.technicals.rsi > 70 ? C.negative : pick.technicals.rsi < 30 ? C.positive : C.textSecondary} />
           )}
-          {pick.sector && <Pill label="Sector" value={pick.sector} color={C.textMuted} />}
+          {pick.sector && <Pill label="" value={pick.sector} color={C.textMuted} />}
         </div>
 
-        {/* Reasons */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: S.xxs, marginBottom: expanded ? S.md : 0 }}>
-          {pick.reasons.map((r, i) => (
-            <span key={i} style={{
-              fontSize: F.sizeXs, padding: '2px 6px', borderRadius: R.sm,
-              background: C.bgElevated, color: C.textMuted,
-            }}>{r}</span>
-          ))}
-        </div>
-
-        {/* Expand button */}
-        <button
-          onClick={() => setExpanded(!expanded)}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: S.xs,
-            width: '100%', padding: `${S.xs} 0`, marginTop: S.sm,
-            background: 'none', border: 'none', borderRadius: R.sm,
-            color: C.textMuted, cursor: 'pointer',
-            fontSize: F.sizeSm, fontWeight: 500, fontFamily: F.family,
-            transition: 'color 0.15s',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = C.textPrimary)}
-          onMouseLeave={e => (e.currentTarget.style.color = C.textMuted)}
-        >
-          {expanded ? 'Ocultar detalles' : 'Ver niveles completos'}
-          <span style={{ fontSize: 10, transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'rotate(0)' }}>▼</span>
-        </button>
-
-        {/* Expanded details */}
-        {expanded && (
-          <div style={{
-            borderTop: `1px solid ${C.border}`,
-            paddingTop: S.md, marginTop: S.sm,
-          }}>
-            {/* Full levels */}
-            <div style={{ marginBottom: S.md }}>
-              <div style={{ fontSize: F.sizeXs, fontWeight: 600, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: S.sm }}>
-                Niveles Clave
+        {/* ─── Free / Pro Split ────────────────────────────────────── */}
+        {!isPro ? (
+          /* FREE: Blurred teaser + upgrade CTA */
+          <div style={{ position: 'relative' }}>
+            {/* Blurred content preview */}
+            <div style={{
+              filter: 'blur(6px)',
+              pointerEvents: 'none',
+              userSelect: 'none',
+              marginBottom: S.sm,
+            }}>
+              {/* Reasons preview */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: S.xxs, marginBottom: S.sm }}>
+                {pick.reasons.slice(0, 4).map((r, i) => (
+                  <span key={i} style={{
+                    fontSize: F.sizeXs, padding: '2px 6px', borderRadius: R.sm,
+                    background: C.bgElevated, color: C.textMuted,
+                  }}>{r}</span>
+                ))}
               </div>
+              {/* Hidden levels preview */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: S.xs }}>
-                <LevelRow label="Entrada" value={fmtPrice(pick.levels.entry)} color={C.accentLight} />
                 <LevelRow label="Resistencia" value={fmtPrice(pick.levels.resistance)} color={C.warning} />
                 <LevelRow label="Soporte" value={fmtPrice(pick.levels.support)} color={C.info} />
                 <LevelRow label="Target 2" value={fmtPrice(pick.levels.target2)} color={C.positive} />
-                <LevelRow label="Stop Loss" value={fmtPrice(pick.levels.stopLoss)} color={C.negative} />
-                <LevelRow label="Market Cap" value={fmtMarketCap(pick.marketCap)} color={C.textSecondary} />
+                <LevelRow label="R/R" value={`${pick.levels.riskReward.toFixed(1)}:1`} color={C.textSecondary} />
               </div>
             </div>
 
-            {/* Technicals */}
-            <div style={{ marginBottom: S.md }}>
-              <div style={{ fontSize: F.sizeXs, fontWeight: 600, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: S.sm }}>
-                Técnicos
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: S.xs }}>
-                <LevelRow label="RSI" value={pick.technicals.rsi !== null ? `${pick.technicals.rsi}` : 'N/A'} color={pick.technicals.rsi !== null && pick.technicals.rsi > 70 ? C.negative : C.textPrimary} />
-                <LevelRow label="SMA 50" value={pick.technicals.sma50 !== null ? fmtPrice(pick.technicals.sma50) : 'N/A'} color={C.textSecondary} />
-                <LevelRow label="SMA 200" value={pick.technicals.sma200 !== null ? fmtPrice(pick.technicals.sma200) : 'N/A'} color={C.textSecondary} />
-                <LevelRow label="Volume Ratio" value={`${pick.technicals.volRatio}x`} color={pick.technicals.volRatio > 2 ? C.positive : C.textSecondary} />
-              </div>
-            </div>
-
-            {/* Risk note */}
+            {/* Upgrade CTA overlay */}
             <div style={{
-              padding: S.sm, borderRadius: R.sm,
-              background: C.bgElevated, fontSize: F.sizeSm, color: C.textSecondary,
-              lineHeight: 1.4,
+              position: 'absolute', bottom: 0, left: 0, right: 0,
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              padding: `${S.xl} ${S.lg} ${S.md}`,
+              background: `linear-gradient(180deg, transparent 0%, ${C.bgCard} 30%)`,
             }}>
-              {pick.riskNote}
+              <div style={{
+                fontSize: F.sizeSm, color: C.textMuted, marginBottom: S.sm,
+                textAlign: 'center', lineHeight: 1.4,
+              }}>
+                Full AI analysis, levels & risk assessment
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => window.location.href = '/settings/billing'}
+              >
+                Unlock Full Analysis — Pro
+              </Button>
             </div>
+          </div>
+        ) : (
+          /* PRO: Full content */
+          <div>
+            {/* Reasons */}
+            {pick.reasons.length > 0 && (
+              <div style={{ marginBottom: S.md }}>
+                <div style={{
+                  fontSize: F.sizeXs, fontWeight: 600, color: C.textMuted,
+                  textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: S.sm,
+                }}>
+                  Key Signals
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: S.xs }}>
+                  {pick.reasons.map((r, i) => (
+                    <span key={i} style={{
+                      fontSize: F.sizeSm, padding: '3px 8px', borderRadius: R.sm,
+                      background: C.bgElevated, color: C.textSecondary, lineHeight: 1.3,
+                    }}>{r}</span>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            {/* CTA */}
-            <Button
-              variant="primary"
-              fullWidth
-              style={{ marginTop: S.md }}
-              onClick={() => onSelect(pick.symbol)}
+            {/* Expand toggle for full details */}
+            <button
+              onClick={() => setExpanded(!expanded)}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: S.xs,
+                width: '100%', padding: `${S.xs} 0`, marginBottom: expanded ? 0 : S.xs,
+                background: 'none', border: 'none', borderRadius: R.sm,
+                color: C.accentLight, cursor: 'pointer',
+                fontSize: F.sizeSm, fontWeight: 500, fontFamily: F.family,
+                transition: T.fast,
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = C.textPrimary)}
+              onMouseLeave={e => (e.currentTarget.style.color = C.accentLight)}
             >
-              Ver Análisis Completo →
-            </Button>
+              {expanded ? 'Collapse details' : 'View full breakdown'}
+              <span style={{ fontSize: 10, transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'rotate(0)' }}>▼</span>
+            </button>
+
+            {/* Expanded details */}
+            {expanded && (
+              <div style={{
+                borderTop: `1px solid ${C.border}`,
+                paddingTop: S.md, marginTop: S.sm,
+              }}>
+                {/* Full Levels */}
+                <SectionTitle>Niveles Clave</SectionTitle>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: S.xs, marginBottom: S.lg }}>
+                  <LevelRow label="Entrada" value={fmtPrice(pick.levels.entry)} color={C.accentLight} />
+                  <LevelRow label="Resistencia" value={fmtPrice(pick.levels.resistance)} color={C.warning} />
+                  <LevelRow label="Soporte" value={fmtPrice(pick.levels.support)} color={C.info} />
+                  <LevelRow label="Target 1" value={fmtPrice(pick.levels.target1)} color={C.positive} />
+                  <LevelRow label="Target 2" value={fmtPrice(pick.levels.target2)} color={C.positive} />
+                  <LevelRow label="Stop Loss" value={fmtPrice(pick.levels.stopLoss)} color={C.negative} />
+                  <LevelRow label="R/R Ratio" value={`${pick.levels.riskReward.toFixed(1)}:1`} color={pick.levels.riskReward >= 2 ? C.positive : C.warning} />
+                  <LevelRow label="Market Cap" value={fmtMarketCap(pick.marketCap)} color={C.textSecondary} />
+                </div>
+
+                {/* Technicals */}
+                <SectionTitle>Técnicos</SectionTitle>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: S.xs, marginBottom: S.lg }}>
+                  <LevelRow label="RSI" value={pick.technicals.rsi !== null ? `${pick.technicals.rsi}` : 'N/A'} color={pick.technicals.rsi !== null && pick.technicals.rsi > 70 ? C.negative : C.textPrimary} />
+                  <LevelRow label="SMA 50" value={pick.technicals.sma50 !== null ? fmtPrice(pick.technicals.sma50) : 'N/A'} color={C.textSecondary} />
+                  <LevelRow label="SMA 200" value={pick.technicals.sma200 !== null ? fmtPrice(pick.technicals.sma200) : 'N/A'} color={C.textSecondary} />
+                  <LevelRow label="Volume Ratio" value={`${pick.technicals.volRatio}x`} color={pick.technicals.volRatio > 2 ? C.positive : C.textSecondary} />
+                </div>
+
+                {/* Risk Note */}
+                <SectionTitle>Risk Assessment</SectionTitle>
+                <div style={{
+                  padding: S.md, borderRadius: R.sm,
+                  background: C.bgElevated, fontSize: F.sizeSm, color: C.textSecondary,
+                  lineHeight: 1.5, marginBottom: S.lg,
+                }}>
+                  {pick.riskNote}
+                </div>
+
+                {/* CTA */}
+                <Button
+                  variant="primary"
+                  fullWidth
+                  onClick={() => onSelect(pick.symbol)}
+                >
+                  Open Full Analysis →
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
     </Card>
+  );
+}
+
+// ─── Section Title ───────────────────────────────────────────────────────────
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      fontSize: F.sizeXs, fontWeight: 600, color: C.textMuted,
+      textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: S.sm,
+    }}>
+      {children}
+    </div>
   );
 }
 
@@ -268,7 +354,8 @@ function PickCard({ pick, rank, onSelect }: { pick: BriefingPick; rank: number; 
 function LevelCell({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div style={{
-      padding: S.sm, background: C.bgInput, borderRadius: R.sm, textAlign: 'center',
+      padding: `${S.sm} ${S.xs}`, background: C.bgInput, borderRadius: R.sm, textAlign: 'center',
+      border: `1px solid ${C.border}`,
     }}>
       <div style={{ fontSize: 9, fontWeight: 600, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>
         {label}
@@ -284,7 +371,11 @@ function LevelCell({ label, value, color }: { label: string; value: string; colo
 
 function LevelRow({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0' }}>
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: `${S.xs} ${S.sm}`, borderRadius: R.sm, background: C.bgInput,
+      border: `1px solid ${C.border}`,
+    }}>
       <span style={{ fontSize: F.sizeSm, color: C.textMuted }}>{label}</span>
       <span style={{ fontSize: F.sizeSm, fontWeight: 600, color, fontFamily: F.mono }}>{value}</span>
     </div>
@@ -300,74 +391,83 @@ function Pill({ label, value, color }: { label: string; value: string; color: st
       fontSize: F.sizeXs, padding: '2px 8px', borderRadius: R.full,
       background: C.bgElevated, color, fontWeight: 500,
     }}>
-      <span style={{ color: C.textMuted }}>{label}</span>
+      {label && <span style={{ color: C.textMuted }}>{label}</span>}
       <span style={{ fontFamily: F.mono, fontWeight: 600 }}>{value}</span>
     </span>
   );
 }
 
-// ─── Market Bar ──────────────────────────────────────────────────────────────
+// ─── Market Bar (compact header) ─────────────────────────────────────────────
 
 function MarketBar({ market }: { market: MarketContext }) {
   if (!market.spy && !market.vix) return null;
   return (
-    <Card padding={`${S.sm} ${S.lg}`} hover={false}>
-      <div style={{ display: 'flex', gap: S.xl, alignItems: 'center' }}>
-        {market.spy && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: S.sm }}>
-            <span style={{ fontSize: F.sizeXs, color: C.textMuted, fontWeight: 500 }}>S&P 500</span>
-            <span style={{ fontSize: F.sizeMd, fontWeight: 600, color: C.textPrimary, fontFamily: F.mono }}>
-              {fmtPrice(market.spy.price)}
-            </span>
-            <span style={{
-              fontSize: F.sizeSm, fontWeight: 600,
-              color: market.spy.change >= 0 ? C.positive : C.negative,
-              fontFamily: F.mono,
-            }}>
-              {fmtChange(market.spy.change)}
-            </span>
-          </div>
-        )}
-        {market.vix && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: S.sm }}>
-            <span style={{ fontSize: F.sizeXs, color: C.textMuted, fontWeight: 500 }}>VIX</span>
-            <span style={{
-              fontSize: F.sizeMd, fontWeight: 600,
-              color: VIX_COLORS[market.vix.label] || C.textSecondary,
-              fontFamily: F.mono,
-            }}>
-              {market.vix.level.toFixed(2)}
-            </span>
-            <Badge
-              variant={market.vix.label === 'BAJA' ? 'positive' : market.vix.label === 'MEDIA' ? 'warning' : 'negative'}
-              size="sm"
-            >
-              {market.vix.label}
-            </Badge>
-          </div>
-        )}
-      </div>
-    </Card>
+    <div style={{ display: 'flex', gap: S.xl, alignItems: 'center' }}>
+      {market.spy && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: S.sm }}>
+          <span style={{ fontSize: F.sizeXs, color: C.textMuted, fontWeight: 500 }}>S&P 500</span>
+          <span style={{ fontSize: F.sizeMd, fontWeight: 600, color: C.textPrimary, fontFamily: F.mono }}>
+            {fmtPrice(market.spy.price)}
+          </span>
+          <span style={{
+            fontSize: F.sizeSm, fontWeight: 600,
+            color: market.spy.change >= 0 ? C.positive : C.negative,
+            fontFamily: F.mono,
+          }}>
+            {fmtChange(market.spy.change)}
+          </span>
+        </div>
+      )}
+      {market.vix && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: S.sm }}>
+          <span style={{ fontSize: F.sizeXs, color: C.textMuted, fontWeight: 500 }}>VIX</span>
+          <span style={{
+            fontSize: F.sizeMd, fontWeight: 600,
+            color: VIX_COLORS[market.vix.label] || C.textSecondary,
+            fontFamily: F.mono,
+          }}>
+            {market.vix.level.toFixed(2)}
+          </span>
+          <Badge
+            variant={market.vix.label === 'BAJA' ? 'positive' : market.vix.label === 'MEDIA' ? 'warning' : 'negative'}
+            size="sm"
+          >
+            {market.vix.label}
+          </Badge>
+        </div>
+      )}
+    </div>
   );
 }
 
-// ─── Summary Stats ───────────────────────────────────────────────────────────
+// ─── Summary Stats (compact) ─────────────────────────────────────────────────
 
-function SummaryStats({ summary }: { summary: BriefingData['summary'] }) {
+function SummaryStats({ summary, isPro }: { summary: BriefingData['summary']; isPro: boolean }) {
   const stats = [
-    { label: 'Escaneados', value: summary.totalScanned.toString(), color: C.textPrimary },
+    { label: 'Scanned', value: summary.totalScanned.toString(), color: C.textPrimary },
     { label: 'Breakouts', value: summary.totalBreakouts.toString(), color: C.accentLight },
-    { label: 'Alta Conf.', value: summary.highConfidence.toString(), color: C.positive },
-    { label: 'R/R Prom.', value: `${summary.avgRiskReward.toFixed(1)}:1`, color: summary.avgRiskReward >= 2 ? C.positive : C.warning },
+    { label: 'High Conv.', value: summary.highConfidence.toString(), color: C.positive },
+    { label: 'Avg R/R', value: `${summary.avgRiskReward.toFixed(1)}:1`, color: summary.avgRiskReward >= 2 ? C.positive : C.warning },
   ];
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: S.sm }}>
+    <div style={{
+      display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+      gap: S.sm,
+    }}>
       {stats.map((stat, i) => (
-        <Card key={i} padding={S.sm} hover={false} style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: 2, fontWeight: 500 }}>{stat.label}</div>
-          <div style={{ fontSize: F.sizeLg, fontWeight: 700, color: stat.color, fontFamily: F.mono }}>{stat.value}</div>
-        </Card>
+        <div key={i} style={{
+          padding: `${S.sm} ${S.md}`, borderRadius: R.sm,
+          background: C.bgCard, border: `1px solid ${C.border}`,
+          textAlign: 'center',
+        }}>
+          <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: 2, fontWeight: 500 }}>
+            {stat.label}
+          </div>
+          <div style={{ fontSize: F.sizeLg, fontWeight: 700, color: stat.color, fontFamily: F.mono }}>
+            {stat.value}
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -377,12 +477,15 @@ function SummaryStats({ summary }: { summary: BriefingData['summary'] }) {
 
 interface MorningBriefingProps {
   onSelectStock: (symbol: string) => void;
+  userPlan?: string;
 }
 
-export default function MorningBriefing({ onSelectStock }: MorningBriefingProps) {
+export default function MorningBriefing({ onSelectStock, userPlan = 'free' }: MorningBriefingProps) {
   const [data, setData] = useState<BriefingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const isPro = ['pro', 'elite', 'enterprise'].includes(userPlan);
 
   const fetchData = useCallback(async () => {
     try {
@@ -410,9 +513,9 @@ export default function MorningBriefing({ onSelectStock }: MorningBriefingProps)
       <EmptyState
         icon={<span style={{ fontSize: 28 }}>⚠</span>}
         iconColor={C.negative}
-        title="Error cargando briefing"
+        title="Error loading briefing"
         description={error}
-        actionLabel="Reintentar"
+        actionLabel="Retry"
         onAction={fetchData}
       />
     );
@@ -423,9 +526,9 @@ export default function MorningBriefing({ onSelectStock }: MorningBriefingProps)
     return (
       <EmptyState
         icon={<span style={{ fontSize: 28 }}>◆</span>}
-        title="No hay breakouts hoy"
-        description="El mercado no está presentando setups claros. Vuelve mañana para un nuevo escaneo."
-        actionLabel="Actualizar"
+        title="No breakouts today"
+        description="The market isn't showing clear setups right now. Check back tomorrow for a new scan."
+        actionLabel="Refresh"
         onAction={fetchData}
       />
     );
@@ -434,46 +537,93 @@ export default function MorningBriefing({ onSelectStock }: MorningBriefingProps)
   const { picks, summary, market, date, time } = data;
 
   return (
-    <div style={{ padding: `0 ${S.lg}` }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: S.xl }}>
+    <div style={{ padding: `0 ${S.lg}`, maxWidth: 900, margin: '0 auto', width: '100%' }}>
+      {/* ─── Header ──────────────────────────────────────────────── */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+        marginBottom: S.lg, flexWrap: 'wrap', gap: S.md,
+      }}>
         <div>
-          <h2 style={{ fontSize: F.sizeHero, fontWeight: 800, color: C.textPrimary, margin: 0, letterSpacing: '-0.02em' }}>
-            Morning Briefing
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: S.sm }}>
+            <h2 style={{
+              fontSize: F.sizeHero, fontWeight: 800, color: C.textPrimary,
+              margin: 0, letterSpacing: '-0.02em',
+            }}>
+              AI Briefing
+            </h2>
+            {!isPro && (
+              <span style={{
+                fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: R.full,
+                background: C.gradientPrimary, color: '#fff', letterSpacing: '0.04em',
+              }}>
+                PRO
+              </span>
+            )}
+          </div>
           <p style={{ fontSize: F.sizeSm, color: C.textMuted, margin: '4px 0 0' }}>
             {date} · {time}
           </p>
         </div>
-        <Button variant="ghost" size="sm" onClick={fetchData}>↻ Actualizar</Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: S.md }}>
+          <MarketBar market={market} />
+          <Button variant="ghost" size="sm" onClick={fetchData}>↻</Button>
+        </div>
       </div>
 
-      {/* Market Context */}
-      <div style={{ marginBottom: S.lg }}>
-        <MarketBar market={market} />
-      </div>
-
-      {/* Summary Stats */}
+      {/* ─── Summary Stats ──────────────────────────────────────── */}
       <div style={{ marginBottom: S.xl }}>
-        <SummaryStats summary={summary} />
+        <SummaryStats summary={summary} isPro={isPro} />
       </div>
 
-      {/* Pick Cards */}
+      {/* ─── Top Pick CTA (Free only) ──────────────────────────── */}
+      {!isPro && picks.length > 0 && (
+        <div style={{
+          marginBottom: S.xl, padding: `${S.md} ${S.lg}`,
+          borderRadius: R.lg,
+          background: `linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(6, 182, 212, 0.05))`,
+          border: `1px solid ${C.accentBorder}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          flexWrap: 'wrap', gap: S.md,
+        }}>
+          <div>
+            <div style={{ fontSize: F.sizeMd, fontWeight: 600, color: C.textPrimary, marginBottom: 2 }}>
+              Today's Top Pick: {picks[0].symbol}
+            </div>
+            <div style={{ fontSize: F.sizeSm, color: C.textMuted }}>
+              Score {picks[0].breakoutScore}/100 · {picks[0].setup} · R/R {picks[0].levels.riskReward.toFixed(1)}:1
+            </div>
+          </div>
+          <Button variant="primary" size="sm" onClick={() => window.location.href = '/settings/billing'}>
+            Upgrade to Pro
+          </Button>
+        </div>
+      )}
+
+      {/* ─── Pick Cards ────────────────────────────────────────── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: S.md }}>
         {picks.map((pick, i) => (
-          <PickCard key={pick.symbol} pick={pick} rank={i + 1} onSelect={onSelectStock} />
+          <ResearchCard
+            key={pick.symbol}
+            pick={pick}
+            rank={i + 1}
+            onSelect={onSelectStock}
+            isPro={isPro}
+          />
         ))}
       </div>
 
-      {/* Footer */}
-      <Card padding={S.md} hover={false} style={{ marginTop: S.xl, textAlign: 'center' }}>
+      {/* ─── Footer ────────────────────────────────────────────── */}
+      <div style={{
+        marginTop: S.xl, padding: S.md, textAlign: 'center',
+        borderRadius: R.sm, background: C.bgCard, border: `1px solid ${C.border}`,
+      }}>
         <span style={{ fontSize: F.sizeXs, color: C.textMuted }}>
-          Datos: Yahoo Finance + Finnhub · Score: Trend (30) + Volume (30) + Structure (20) + Safety (20)
+          Data: Yahoo Finance + Finnhub · Score: Trend (30) + Volume (30) + Structure (20) + Safety (20)
           {summary.topSectors.length > 0 && (
-            <> · Sectores: {summary.topSectors.join(', ')}</>
+            <> · Sectors: {summary.topSectors.join(', ')}</>
           )}
         </span>
-      </Card>
+      </div>
     </div>
   );
 }

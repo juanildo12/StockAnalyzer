@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSession } from 'next-auth/react';
 import SignalCard from './SignalCard';
 import StockRow from './StockRow';
 import StockDetailPanel from './StockDetailPanel';
@@ -78,6 +79,7 @@ export default function Dashboard({
   onNavigateToAICoach?: (symbol: string) => void;
   initialSection?: 'briefing' | 'signals' | 'bullsbears' | 'market' | 'opciones' | 'screeners';
 }) {
+  const { data: session } = useSession();
   const [signals, setSignals] = useState<SignalData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -256,7 +258,7 @@ export default function Dashboard({
             {loading ? (
               <LoadingState />
             ) : dashboardSection === 'briefing' ? (
-              <MorningBriefing onSelectStock={handleStockClick} />
+              <MorningBriefing onSelectStock={handleStockClick} userPlan={(session?.user as any)?.plan || 'free'} />
             ) : dashboardSection === 'bullsbears' ? (
               <BullsBearsSection signals={sortedSignals} onStockClick={handleStockClick} />
             ) : dashboardSection === 'market' ? (
