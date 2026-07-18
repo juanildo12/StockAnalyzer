@@ -180,7 +180,7 @@ export default function Sidebar({ view, onViewChange, userPlan = 'free' }: Sideb
                       key={item.view}
                       onClick={() => {
                         if (isLocked) {
-                          onViewChange('billing');
+                          window.location.href = '/settings/billing';
                         } else {
                           onViewChange(item.view);
                         }
@@ -258,7 +258,7 @@ export default function Sidebar({ view, onViewChange, userPlan = 'free' }: Sideb
           background: 'linear-gradient(135deg, #ff00ff15, #00d4ff15)',
           border: '1px solid #ff00ff30',
           cursor: 'pointer',
-        }} onClick={() => onViewChange('billing')}>
+        }} onClick={() => window.location.href = '/settings/billing'}>
           <div style={{
             fontSize: F.sizeXs, fontWeight: 700, color: '#ff00ff',
             marginBottom: 2,
