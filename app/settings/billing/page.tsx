@@ -1,9 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Card from "@/src/components/ui/Card";
-import Badge from "@/src/components/ui/Badge";
-import Button from "@/src/components/ui/Button";
 
 const PLANS = [
   {
@@ -11,6 +8,9 @@ const PLANS = [
     name: "Free",
     price: 0,
     tagline: "See the Signal",
+    icon: "📊",
+    gradient: "linear-gradient(135deg, #334155 0%, #1e293b 100%)",
+    accent: "#64748b",
     features: [
       "5 stock scores/day",
       "Morning briefing (30min delay)",
@@ -19,7 +19,6 @@ const PLANS = [
       "2 price alerts",
       "Market overview",
       "Earnings calendar",
-      "Daily trading challenge",
     ],
   },
   {
@@ -27,7 +26,10 @@ const PLANS = [
     name: "Pro",
     price: 49,
     tagline: "Trade with AI",
+    icon: "🤖",
     popular: true,
+    gradient: "linear-gradient(135deg, #7C3AED 0%, #6366F1 50%, #3B82F6 100%)",
+    accent: "#8B5CF6",
     features: [
       "Unlimited stock scores",
       "AI stock analysis (verdict + conviction)",
@@ -37,8 +39,7 @@ const PLANS = [
       "Auto-share TP hits (Twitter/LinkedIn/Discord)",
       "Full backtesting suite",
       "Real-time morning briefing",
-      "50 watchlist slots",
-      "20 active alerts + smart alerts",
+      "50 watchlist + 20 active alerts",
       "All 6 training difficulty tiers",
       "120 req/min API rate",
     ],
@@ -48,20 +49,21 @@ const PLANS = [
     name: "Elite",
     price: 99,
     tagline: "Maximum Edge",
+    icon: "⚡",
+    gradient: "linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)",
+    accent: "#F59E0B",
     features: [
       "Everything in Pro",
       "Options analysis (12+ strategies)",
-      "Options screener (IV, Greeks, unusual volume)",
+      "Options screener (IV, Greeks)",
       "Graham value analysis",
       "Net-net working capital screeners",
-      "Enriched data (sentiment, insider, institutional)",
-      "ML signal classification (neural network)",
+      "Enriched data (sentiment, insider)",
+      "ML signal classification (neural net)",
       "Portfolio tracker (multi-position P&L)",
-      "Custom alert strategies (define your rules)",
-      "Unlimited smart alerts",
-      "Unlimited social share",
+      "Custom alert strategies",
+      "Unlimited smart alerts + social share",
       "300 req/min API rate",
-      "Weekly performance report",
     ],
   },
   {
@@ -69,7 +71,10 @@ const PLANS = [
     name: "Enterprise",
     price: 0,
     tagline: "Platform as Infrastructure",
+    icon: "🏢",
     customPricing: true,
+    gradient: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
+    accent: "#10B981",
     features: [
       "Everything in Elite",
       "White-label API",
@@ -88,6 +93,7 @@ export default function BillingPage() {
   const [currentPlan, setCurrentPlan] = useState<string>("free");
   const [loading, setLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -160,110 +166,323 @@ export default function BillingPage() {
   const currentLevel = planHierarchy[currentPlan] ?? 0;
 
   return (
-    <div className="min-h-screen bg-[#0a0e17] text-white p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold mb-2">Choose Your Edge</h1>
-          <p className="text-gray-400 max-w-2xl mx-auto">
-            Free traders see the signals. Paid traders act on them. Pick the plan that matches how seriously you trade.
+    <div style={{
+      minHeight: "100vh",
+      background: "#07080A",
+      color: "#e5e7eb",
+      fontFamily: "system-ui, -apple-system, 'Segoe UI', sans-serif",
+      padding: "40px 24px",
+      position: "relative",
+      overflow: "hidden",
+    }}>
+      {/* Background glow effects */}
+      <div style={{
+        position: "absolute", top: "-200px", left: "50%", transform: "translateX(-50%)",
+        width: "800px", height: "600px",
+        background: "radial-gradient(ellipse, rgba(124,58,237,0.08) 0%, transparent 70%)",
+        pointerEvents: "none",
+      }} />
+      <div style={{
+        position: "absolute", top: "50%", right: "-200px",
+        width: "600px", height: "600px",
+        background: "radial-gradient(ellipse, rgba(59,130,246,0.06) 0%, transparent 70%)",
+        pointerEvents: "none",
+      }} />
+
+      <div style={{ maxWidth: "1200px", margin: "0 auto", position: "relative", zIndex: 1 }}>
+        {/* Header */}
+        <div style={{ textAlign: "center", marginBottom: "56px" }}>
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: "8px",
+            padding: "6px 16px", borderRadius: "20px",
+            background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.2)",
+            fontSize: "12px", fontWeight: 600, color: "#a78bfa",
+            marginBottom: "20px", letterSpacing: "0.5px", textTransform: "uppercase",
+          }}>
+            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#a78bfa" }} />
+            Pricing
+          </div>
+          <h1 style={{
+            fontSize: "48px", fontWeight: 800, margin: "0 0 12px",
+            background: "linear-gradient(135deg, #f0f6fc 0%, #8b949e 100%)",
+            WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+            lineHeight: 1.1, letterSpacing: "-1px",
+          }}>
+            Choose Your Edge
+          </h1>
+          <p style={{
+            fontSize: "18px", color: "#8b949e", maxWidth: "560px",
+            margin: "0 auto", lineHeight: 1.6,
+          }}>
+            Free traders see the signals. Paid traders act on them.
           </p>
         </div>
 
+        {/* Messages */}
         {message && (
-          <div className="mb-6 p-4 bg-green-900/30 border border-green-700 rounded-lg text-green-300 text-center">
+          <div style={{
+            marginBottom: "32px", padding: "14px 20px",
+            borderRadius: "12px",
+            background: message.includes("successfully")
+              ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)",
+            border: `1px solid ${message.includes("successfully") ? "rgba(16,185,129,0.3)" : "rgba(239,68,68,0.3)"}`,
+            color: message.includes("successfully") ? "#6ee7b7" : "#fca5a5",
+            textAlign: "center", fontSize: "14px", fontWeight: 500,
+            backdropFilter: "blur(10px)",
+          }}>
             {message}
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Plan cards */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          gap: "20px",
+          alignItems: "start",
+        }}>
           {PLANS.map((plan) => {
             const isActive = currentPlan === plan.id;
             const isDowngrade = planHierarchy[plan.id] < currentLevel;
             const isUpgrade = planHierarchy[plan.id] > currentLevel;
+            const isHovered = hoveredPlan === plan.id;
+            const isPopular = plan.popular;
 
             return (
-              <Card
+              <div
                 key={plan.id}
-                className={`relative p-6 flex flex-col ${
-                  isActive
-                    ? "border-[#00d4ff] shadow-[0_0_20px_rgba(0,212,255,0.2)]"
-                    : ""
-                } ${plan.popular ? "border-[#ff00ff] shadow-[0_0_20px_rgba(255,0,255,0.15)]" : ""}`}
+                onMouseEnter={() => setHoveredPlan(plan.id)}
+                onMouseLeave={() => setHoveredPlan(null)}
+                style={{
+                  position: "relative",
+                  borderRadius: "16px",
+                  padding: "1px",
+                  background: isActive
+                    ? plan.gradient
+                    : isPopular
+                    ? "linear-gradient(135deg, rgba(124,58,237,0.5), rgba(99,102,241,0.3), rgba(59,130,246,0.5))"
+                    : isHovered
+                    ? "rgba(255,255,255,0.1)"
+                    : "rgba(255,255,255,0.05)",
+                  transition: "all 0.3s ease",
+                  transform: isHovered ? "translateY(-4px)" : "none",
+                  boxShadow: isActive
+                    ? `0 0 30px ${plan.accent}30`
+                    : isPopular
+                    ? "0 0 40px rgba(124,58,237,0.15)"
+                    : isHovered
+                    ? "0 20px 60px rgba(0,0,0,0.4)"
+                    : "0 4px 20px rgba(0,0,0,0.2)",
+                }}
               >
-                {plan.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-[#ff00ff] text-white text-xs px-3 py-1">MOST POPULAR</Badge>
+                {/* Popular badge */}
+                {isPopular && !isActive && (
+                  <div style={{
+                    position: "absolute", top: "-12px", left: "50%", transform: "translateX(-50%)",
+                    padding: "4px 14px", borderRadius: "12px",
+                    background: "linear-gradient(135deg, #7C3AED, #6366F1)",
+                    fontSize: "11px", fontWeight: 700, color: "#fff",
+                    letterSpacing: "0.8px", textTransform: "uppercase",
+                    boxShadow: "0 4px 12px rgba(124,58,237,0.4)",
+                    zIndex: 2,
+                  }}>
+                    MOST POPULAR
                   </div>
                 )}
 
-                <div className="text-center mb-6">
-                  <h3 className="text-xl font-bold mb-1">{plan.name}</h3>
-                  <p className="text-xs text-gray-500 mb-3">{plan.tagline}</p>
-                  <div className="text-4xl font-bold">
+                {/* Active badge */}
+                {isActive && (
+                  <div style={{
+                    position: "absolute", top: "-12px", left: "50%", transform: "translateX(-50%)",
+                    padding: "4px 14px", borderRadius: "12px",
+                    background: plan.gradient,
+                    fontSize: "11px", fontWeight: 700, color: "#fff",
+                    letterSpacing: "0.8px", textTransform: "uppercase",
+                    boxShadow: `0 4px 12px ${plan.accent}40`,
+                    zIndex: 2,
+                  }}>
+                    CURRENT PLAN
+                  </div>
+                )}
+
+                <div style={{
+                  background: "#0d1117",
+                  borderRadius: "15px",
+                  padding: "32px 24px",
+                  display: "flex",
+                  flexDirection: "column",
+                  height: "100%",
+                }}>
+                  {/* Plan header */}
+                  <div style={{ textAlign: "center", marginBottom: "24px" }}>
+                    <div style={{
+                      fontSize: "32px", marginBottom: "12px",
+                    }}>{plan.icon}</div>
+                    <h3 style={{
+                      fontSize: "20px", fontWeight: 700, color: "#f0f6fc",
+                      margin: "0 0 4px",
+                    }}>{plan.name}</h3>
+                    <p style={{
+                      fontSize: "13px", color: "#6e7681", margin: 0,
+                    }}>{plan.tagline}</p>
+                  </div>
+
+                  {/* Price */}
+                  <div style={{
+                    textAlign: "center", marginBottom: "28px",
+                    padding: "16px 0",
+                    borderTop: "1px solid rgba(255,255,255,0.05)",
+                    borderBottom: "1px solid rgba(255,255,255,0.05)",
+                  }}>
                     {plan.customPricing ? (
-                      <span className="text-2xl">Custom</span>
+                      <div>
+                        <span style={{ fontSize: "28px", fontWeight: 800, color: "#f0f6fc" }}>Custom</span>
+                        <p style={{ fontSize: "12px", color: "#6e7681", margin: "4px 0 0" }}>Tailored for your team</p>
+                      </div>
                     ) : (
-                      <>
-                        ${plan.price}
-                        <span className="text-lg text-gray-400">/mo</span>
-                      </>
+                      <div>
+                        <span style={{
+                          fontSize: "44px", fontWeight: 800, color: "#f0f6fc",
+                          lineHeight: 1,
+                        }}>${plan.price}</span>
+                        <span style={{
+                          fontSize: "16px", fontWeight: 500, color: "#6e7681",
+                          marginLeft: "2px",
+                        }}>/mo</span>
+                      </div>
                     )}
                   </div>
+
+                  {/* Features */}
+                  <ul style={{
+                    listStyle: "none", padding: 0, margin: 0,
+                    flex: 1, marginBottom: "24px",
+                  }}>
+                    {plan.features.map((feature, i) => (
+                      <li key={i} style={{
+                        display: "flex", alignItems: "flex-start", gap: "10px",
+                        padding: "7px 0",
+                        fontSize: "13px", color: "#c9d1d9", lineHeight: 1.4,
+                      }}>
+                        <svg
+                          width="16" height="16" viewBox="0 0 16 16" fill="none"
+                          style={{ flexShrink: 0, marginTop: "2px" }}
+                        >
+                          <circle cx="8" cy="8" r="8" fill={plan.accent} opacity="0.15" />
+                          <path
+                            d="M5 8l2 2 4-4"
+                            stroke={plan.accent}
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* CTA Button */}
+                  {isActive ? (
+                    <button
+                      onClick={handleManage}
+                      disabled={loading === "portal"}
+                      style={{
+                        width: "100%", padding: "13px 20px", borderRadius: "10px",
+                        border: `1px solid ${plan.accent}40`,
+                        background: `${plan.accent}15`,
+                        color: plan.accent,
+                        fontSize: "14px", fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        letterSpacing: "0.3px",
+                      }}
+                    >
+                      {loading === "portal" ? "Loading..." : "Manage Plan"}
+                    </button>
+                  ) : plan.customPricing ? (
+                    <button
+                      onClick={() => window.location.href = "mailto:sales@breakoutfinder.com"}
+                      style={{
+                        width: "100%", padding: "13px 20px", borderRadius: "10px",
+                        border: "1px solid rgba(16,185,129,0.3)",
+                        background: "rgba(16,185,129,0.1)",
+                        color: "#10B981",
+                        fontSize: "14px", fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      Contact Sales
+                    </button>
+                  ) : isDowngrade ? (
+                    <button
+                      disabled
+                      style={{
+                        width: "100%", padding: "13px 20px", borderRadius: "10px",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                        background: "rgba(255,255,255,0.02)",
+                        color: "#4b5563",
+                        fontSize: "14px", fontWeight: 600,
+                        cursor: "not-allowed",
+                      }}
+                    >
+                      Downgrade
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleUpgrade(plan.id)}
+                      disabled={loading === plan.id}
+                      style={{
+                        width: "100%", padding: "13px 20px", borderRadius: "10px",
+                        border: "none",
+                        background: isPopular
+                          ? "linear-gradient(135deg, #7C3AED, #6366F1, #3B82F6)"
+                          : plan.gradient,
+                        color: "#fff",
+                        fontSize: "14px", fontWeight: 600,
+                        cursor: loading === plan.id ? "wait" : "pointer",
+                        opacity: loading === plan.id ? 0.7 : 1,
+                        transition: "all 0.2s ease",
+                        boxShadow: isPopular
+                          ? "0 4px 20px rgba(124,58,237,0.4)"
+                          : `0 4px 20px ${plan.accent}30`,
+                        letterSpacing: "0.3px",
+                      }}
+                    >
+                      {loading === plan.id ? "Redirecting..." : isUpgrade ? `Upgrade to ${plan.name}` : `Get ${plan.name}`}
+                    </button>
+                  )}
                 </div>
-
-                <ul className="space-y-2.5 mb-6 flex-1">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <span className="text-[#00d4ff] mt-0.5 shrink-0">✓</span>
-                      <span className="text-gray-300">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                {isActive ? (
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleManage}
-                    disabled={loading === "portal"}
-                  >
-                    {loading === "portal" ? "Loading..." : "Current Plan"}
-                  </Button>
-                ) : plan.customPricing ? (
-                  <Button
-                    variant="outline"
-                    className="w-full border-[#ff00ff] text-[#ff00ff] hover:bg-[#ff00ff10]"
-                    onClick={() => window.location.href = "mailto:sales@breakoutfinder.com"}
-                  >
-                    Contact Sales
-                  </Button>
-                ) : isDowngrade ? (
-                  <Button variant="outline" className="w-full" disabled>
-                    Downgrade
-                  </Button>
-                ) : (
-                  <Button
-                    className={`w-full ${
-                      plan.popular
-                        ? "bg-[#ff00ff] text-white hover:bg-[#e600e6]"
-                        : "bg-[#00d4ff] text-black hover:bg-[#00b8e6]"
-                    }`}
-                    onClick={() => handleUpgrade(plan.id)}
-                    disabled={loading === plan.id}
-                  >
-                    {loading === plan.id ? "Loading..." : isUpgrade ? `Upgrade to ${plan.name}` : `Get ${plan.name}`}
-                  </Button>
-                )}
-              </Card>
+              </div>
             );
           })}
         </div>
 
-        {/* Feature comparison hint */}
-        <div className="mt-12 text-center">
-          <p className="text-gray-500 text-sm">
-            All paid plans include 7-day money-back guarantee. Cancel anytime.
-          </p>
+        {/* Footer */}
+        <div style={{
+          marginTop: "48px", textAlign: "center",
+          padding: "24px",
+          borderTop: "1px solid rgba(255,255,255,0.05)",
+        }}>
+          <div style={{
+            display: "flex", justifyContent: "center", gap: "32px",
+            flexWrap: "wrap",
+          }}>
+            {[
+              { icon: "🔒", text: "SSL encrypted" },
+              { icon: "💳", text: "Secure payments via LemonSqueezy" },
+              { icon: "↩️", text: "7-day money-back guarantee" },
+            ].map((item, i) => (
+              <div key={i} style={{
+                display: "flex", alignItems: "center", gap: "8px",
+                fontSize: "13px", color: "#6e7681",
+              }}>
+                <span>{item.icon}</span>
+                <span>{item.text}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
