@@ -149,6 +149,7 @@ export async function middleware(req: NextRequest) {
       pathname.startsWith("/api/v1/score") ||
       pathname.startsWith("/api/v1/screener") ||
       pathname.startsWith("/api/v1/morning-briefing") ||
+      pathname.startsWith("/api/v1/payments") ||
       pathname === "/api/v1/jobs";
 
     if (!isPublicV1 && !token) {
