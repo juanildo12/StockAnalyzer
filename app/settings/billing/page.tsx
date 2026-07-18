@@ -1,15 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Script from "next/script";
-
-declare global {
-  interface Window {
-    LemonSqueezy?: {
-      Url?: { Open?: (url: string) => void };
-    };
-  }
-}
 
 const PLANS = [
   {
@@ -131,26 +122,6 @@ export default function BillingPage() {
     fetchSubscription();
   }, []);
 
-  useEffect(() => {
-    function setupLemonEvents() {
-      // @ts-ignore
-      if (window.LemonSqueezy) {
-        // @ts-ignore
-        window.LemonSqueezy.Setup({
-          eventHandler: (event: any) => {
-            if (event.event === "Checkout.Success") {
-              setMessage("Subscription activated successfully!");
-              fetchSubscription();
-            }
-          },
-        });
-      } else {
-        setTimeout(setupLemonEvents, 500);
-      }
-    }
-    setupLemonEvents();
-  }, []);
-
   async function handleUpgrade(planId: string) {
     setLoading(planId);
     try {
@@ -162,11 +133,7 @@ export default function BillingPage() {
 
       const data = await res.json();
       if (data.url) {
-        if (window.LemonSqueezy?.Url?.Open) {
-          window.LemonSqueezy.Url.Open(data.url);
-        } else {
-          window.location.href = data.url;
-        }
+        window.location.href = data.url;
       } else {
         setMessage("Failed to create checkout session");
       }
@@ -518,17 +485,6 @@ export default function BillingPage() {
           </div>
         </div>
       </div>
-      <Script
-        src="https://app.lemonsqueezy.com/js/lemon.js"
-        strategy="lazyOnload"
-        onReady={() => {
-          // @ts-ignore
-          if (window.createLemonSqueezy) {
-            // @ts-ignore
-            window.createLemonSqueezy();
-          }
-        }}
-      />
     </div>
   );
 }
