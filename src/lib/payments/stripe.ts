@@ -196,6 +196,9 @@ export async function createCheckoutSession(
 
   const data = await lsFetch("/checkouts", {
     method: "POST",
+    headers: {
+      "Content-Type": "application/vnd.api+json",
+    },
     body: JSON.stringify({
       data: {
         type: "checkouts",
@@ -206,10 +209,6 @@ export async function createCheckoutSession(
               userId,
               plan,
             },
-          },
-          product_options: {
-            redirect_url: `${appUrl}/settings/billing?success=true`,
-            cancel_url: `${appUrl}/settings/billing?canceled=true`,
           },
         },
         relationships: {
