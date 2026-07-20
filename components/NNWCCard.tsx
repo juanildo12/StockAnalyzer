@@ -1,5 +1,5 @@
 'use client';
-import { colors as C, radius as R, font as F } from '@/src/utils/webTheme';
+import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 
 import { useState } from 'react';
 import type { NNWCResult } from '@/src/types';
@@ -79,11 +79,11 @@ export default function NNWCCard({ result, symbol, cash, receivables, inventory,
 
   if (!result) {
     return (
-      <div style={{ background: C.bgCard, borderRadius: '12px', padding: '24px', border: '1px solid ' + C.border }}>
+      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '24px', border: '1px solid ' + C.border }}>
         <div style={{ textAlign: 'center', padding: '40px 20px', color: C.textMuted }}>
           <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🧠</p>
-          <p style={{ fontSize: '16px', margin: '0 0 8px' }}>No hay datos disponibles</p>
-          <p style={{ fontSize: '13px', margin: 0 }}>
+          <p style={{ fontSize: F.sizeLg, margin: '0 0 8px' }}>No hay datos disponibles</p>
+          <p style={{ fontSize: F.sizeMd, margin: 0 }}>
             Analiza una acción para ver su análisis Net-Net
           </p>
         </div>
@@ -100,33 +100,33 @@ export default function NNWCCard({ result, symbol, cash, receivables, inventory,
   const barPercent = nnwc > 0 ? Math.min(Math.max((result.ratio * 100), 0), 100) : 0;
 
   return (
-    <div style={{ background: C.bgCard, borderRadius: '12px', padding: '24px', border: '1px solid ' + C.border, maxWidth: '600px' }}>
+    <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '24px', border: '1px solid ' + C.border, maxWidth: '600px' }}>
       <div style={{ marginBottom: '20px' }}>
         <h3 style={{ margin: '0', color: C.textPrimary, fontSize: '18px', fontWeight: '600' }}>
           🧠 Análisis Net-Net (Benjamin Graham)
         </h3>
         {symbol && (
-          <p style={{ margin: '4px 0 0', color: C.textMuted, fontSize: '13px' }}>
+          <p style={{ margin: '4px 0 0', color: C.textMuted, fontSize: F.sizeMd }}>
             {symbol}
           </p>
         )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '16px' }}>
-        <div style={{ background: C.bg, borderRadius: '8px', padding: '14px', textAlign: 'center' }}>
-          <p style={{ margin: '0 0 4px', fontSize: '11px', color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>NNWC</p>
+        <div style={{ background: C.bg, borderRadius: R.md, padding: '14px', textAlign: 'center' }}>
+          <p style={{ margin: '0 0 4px', fontSize: F.sizeXs, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>NNWC</p>
           <p style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: classification === 'excelente' ? C.positive : classification === 'cumple' ? C.accent : C.textPrimary }}>
             {formatNumber(nnwc)}
           </p>
         </div>
-        <div style={{ background: C.bg, borderRadius: '8px', padding: '14px', textAlign: 'center' }}>
-          <p style={{ margin: '0 0 4px', fontSize: '11px', color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Market Cap</p>
+        <div style={{ background: C.bg, borderRadius: R.md, padding: '14px', textAlign: 'center' }}>
+          <p style={{ margin: '0 0 4px', fontSize: F.sizeXs, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Market Cap</p>
           <p style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: C.textPrimary }}>
             {marketCap ? formatNumber(marketCap) : formatNumber(result.ratio > 0 ? nnwc * result.ratio : 0)}
           </p>
         </div>
-        <div style={{ background: C.bg, borderRadius: '8px', padding: '14px', textAlign: 'center' }}>
-          <p style={{ margin: '0 0 4px', fontSize: '11px', color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Descuento</p>
+        <div style={{ background: C.bg, borderRadius: R.md, padding: '14px', textAlign: 'center' }}>
+          <p style={{ margin: '0 0 4px', fontSize: F.sizeXs, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Descuento</p>
           <p style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: discount > 0 ? C.positive : C.negative }}>
             {discount > 0 ? `${discount}%` : '0%'}
           </p>
@@ -135,23 +135,23 @@ export default function NNWCCard({ result, symbol, cash, receivables, inventory,
 
       <div style={{
         background: config.bg,
-        borderRadius: '8px',
+        borderRadius: R.md,
         padding: '14px 16px',
         marginBottom: '16px',
         textAlign: 'center',
         border: `1px solid ${config.color}40`,
       }}>
-        <span style={{ fontSize: '16px', fontWeight: '600', color: config.color }}>
+        <span style={{ fontSize: F.sizeLg, fontWeight: '600', color: config.color }}>
           {config.icon} {config.label}
         </span>
       </div>
 
       <div style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-          <span style={{ fontSize: '12px', color: C.textMuted }}>Market Cap</span>
-          <span style={{ fontSize: '12px', color: C.textMuted }}>NNWC</span>
+          <span style={{ fontSize: F.sizeSm, color: C.textMuted }}>Market Cap</span>
+          <span style={{ fontSize: F.sizeSm, color: C.textMuted }}>NNWC</span>
         </div>
-        <div style={{ position: 'relative', height: '24px', background: C.bg, borderRadius: '12px', overflow: 'hidden' }}>
+        <div style={{ position: 'relative', height: '24px', background: C.bg, borderRadius: R.lg, overflow: 'hidden' }}>
           <div style={{
             position: 'absolute',
             left: 0,
@@ -159,7 +159,7 @@ export default function NNWCCard({ result, symbol, cash, receivables, inventory,
             height: '100%',
             width: `${barPercent}%`,
             background: barPercent < 67 ? C.positive : barPercent < 100 ? C.accent : C.negative,
-            borderRadius: '12px',
+            borderRadius: R.lg,
             transition: 'width 0.5s ease',
           }} />
           <div style={{
@@ -168,7 +168,7 @@ export default function NNWCCard({ result, symbol, cash, receivables, inventory,
             top: 0,
             height: '100%',
             width: '2px',
-            background: 'rgba(255,255,255,0.3)',
+            background: `${C.textPrimary}4D`,
           }} />
           <div style={{
             position: 'absolute',
@@ -176,7 +176,7 @@ export default function NNWCCard({ result, symbol, cash, receivables, inventory,
             top: 0,
             height: '100%',
             width: '2px',
-            background: 'rgba(255,255,255,0.5)',
+            background: `${C.textPrimary}80`,
           }} />
           <div style={{
             position: 'absolute',
@@ -184,7 +184,7 @@ export default function NNWCCard({ result, symbol, cash, receivables, inventory,
             top: '50%',
             transform: 'translate(-50%, -50%)',
             background: C.textPrimary,
-            borderRadius: '50%',
+            borderRadius: R.full,
             width: '16px',
             height: '16px',
             border: '2px solid ' + C.bg,
@@ -192,9 +192,9 @@ export default function NNWCCard({ result, symbol, cash, receivables, inventory,
           }} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-          <span style={{ fontSize: '11px', color: C.textMuted }}>0%</span>
-          <span style={{ fontSize: '11px', color: C.textMuted }}>67%</span>
-          <span style={{ fontSize: '11px', color: C.textMuted }}>100%</span>
+          <span style={{ fontSize: F.sizeXs, color: C.textMuted }}>0%</span>
+          <span style={{ fontSize: F.sizeXs, color: C.textMuted }}>67%</span>
+          <span style={{ fontSize: F.sizeXs, color: C.textMuted }}>100%</span>
         </div>
       </div>
 
@@ -204,12 +204,12 @@ export default function NNWCCard({ result, symbol, cash, receivables, inventory,
           style={{
             width: '100%',
             padding: '12px 16px',
-            borderRadius: '8px',
+            borderRadius: R.md,
             border: '1px solid ' + C.border,
             background: 'transparent',
             color: C.textSecondary,
             cursor: 'pointer',
-            fontSize: '14px',
+            fontSize: F.sizeBase,
             fontWeight: '500',
             textAlign: 'left',
             display: 'flex',
@@ -227,16 +227,16 @@ export default function NNWCCard({ result, symbol, cash, receivables, inventory,
             marginTop: '8px',
             padding: '16px',
             background: C.bg,
-            borderRadius: '8px',
-            fontSize: '13px',
+            borderRadius: R.md,
+            fontSize: F.sizeMd,
             color: C.textMuted,
             lineHeight: '1.6',
           }}>
-            <p style={{ margin: '0 0 12px', fontFamily: 'monospace', color: C.textSecondary, fontSize: '12px' }}>
+            <p style={{ margin: '0 0 12px', fontFamily: 'monospace', color: C.textSecondary, fontSize: F.sizeSm }}>
               NNWC = Cash + Receivables + (50% × Inventory) − Total Liabilities
             </p>
             {cash !== undefined && receivables !== undefined && inventory !== undefined && totalLiabilities !== undefined && (
-              <div style={{ margin: '0 0 12px', padding: '12px', background: C.bgCard, borderRadius: '6px', fontSize: '12px', fontFamily: 'monospace', color: C.textSecondary, lineHeight: '1.8' }}>
+              <div style={{ margin: '0 0 12px', padding: '12px', background: C.bgCard, borderRadius: R.sm, fontSize: F.sizeSm, fontFamily: 'monospace', color: C.textSecondary, lineHeight: '1.8' }}>
                 <div>Cash:                {formatCurrency(cash)}</div>
                 <div>Receivables:         {formatCurrency(receivables)}</div>
                 <div>Inventory × 50%:     {formatCurrency(inventory)} × 0.5 = {formatCurrency(Math.round(inventory * 0.5))}</div>
@@ -246,7 +246,7 @@ export default function NNWCCard({ result, symbol, cash, receivables, inventory,
                 </div>
               </div>
             )}
-            <p style={{ margin: '0 0 12px', fontSize: '12px' }}>
+            <p style={{ margin: '0 0 12px', fontSize: F.sizeSm }}>
               Benjamin Graham utilizaba este método para estimar cuánto valdría una empresa si se liquidaran sus activos corrientes de forma conservadora y se pagaran todas sus deudas.
             </p>
             <p style={{ margin: '0 0 8px', color: C.textSecondary, fontWeight: '600' }}>Criterios de clasificación:</p>

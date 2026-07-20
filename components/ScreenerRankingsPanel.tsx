@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import ScreenerCard from './ScreenerCard';
 import ScreenerDetailView from './ScreenerDetailView';
+import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 
 interface RankingRow {
   symbol: string;
@@ -24,15 +25,6 @@ interface RankingsResponse {
   lastUpdated: string;
   screeners: ScreenerData[];
 }
-
-const DARK = {
-  bg: '#0B0B0B',
-  card: '#1B1B1B',
-  text: '#FFFFFF',
-  muted: '#9A9A9A',
-  primary: '#B64DFF',
-  divider: '#343434',
-};
 
 const SCREENER_IDS = [
   'small-mid-rotation',
@@ -75,13 +67,13 @@ export default function ScreenerRankingsPanel({
   if (error) {
     return (
       <div style={{
-        background: DARK.card,
+        background: C.bgCard,
         borderRadius: '20px',
         padding: '48px',
         textAlign: 'center',
-        border: '1px solid #2A2A2A',
+        border: `1px solid ${C.border}`,
       }}>
-        <div style={{ color: '#EF4444', fontSize: '14px', fontFamily: 'Inter, system-ui, sans-serif' }}>
+        <div style={{ color: C.negative, fontSize: F.sizeBase, fontFamily: 'Inter, system-ui, sans-serif' }}>
           Error: {error}
         </div>
       </div>
@@ -91,13 +83,13 @@ export default function ScreenerRankingsPanel({
   if (!data || data.screeners.length === 0) {
     return (
       <div style={{
-        background: DARK.card,
+        background: C.bgCard,
         borderRadius: '20px',
         padding: '48px',
         textAlign: 'center',
-        border: '1px solid #2A2A2A',
+        border: `1px solid ${C.border}`,
       }}>
-        <div style={{ color: DARK.muted, fontSize: '14px', fontFamily: 'Inter, system-ui, sans-serif' }}>
+        <div style={{ color: C.textMuted, fontSize: F.sizeBase, fontFamily: 'Inter, system-ui, sans-serif' }}>
           No screener data available
         </div>
       </div>
@@ -124,10 +116,10 @@ export default function ScreenerRankingsPanel({
 
   return (
     <div style={{
-      background: DARK.bg,
+      background: C.bg,
       borderRadius: '24px',
       padding: '32px',
-      border: '1px solid #1F1F1F',
+      border: `1px solid ${C.border}`,
     }}>
       {/* Header */}
       <div style={{
@@ -139,8 +131,8 @@ export default function ScreenerRankingsPanel({
         <div>
           <h2 style={{
             margin: 0,
-            color: DARK.text,
-            fontSize: '28px',
+            color: C.textPrimary,
+            fontSize: F.sizeHero,
             fontWeight: 700,
             fontFamily: 'Inter, system-ui, sans-serif',
             letterSpacing: '-0.02em',
@@ -149,8 +141,8 @@ export default function ScreenerRankingsPanel({
           </h2>
           <p style={{
             margin: '4px 0 0',
-            color: DARK.muted,
-            fontSize: '13px',
+            color: C.textMuted,
+            fontSize: F.sizeMd,
             fontFamily: 'Inter, system-ui, sans-serif',
           }}>
             {data.lastUpdated ? `Last updated: ${data.lastUpdated}` : ''}
@@ -161,17 +153,17 @@ export default function ScreenerRankingsPanel({
             onClick={() => setVisible(prev => Math.min(prev + 3, sortedScreeners.length))}
             style={{
               background: 'transparent',
-              border: `1px solid ${DARK.divider}`,
-              borderRadius: '10px',
-              padding: '8px 16px',
-              color: DARK.primary,
-              fontSize: '13px',
+              border: `1px solid ${C.border}`,
+              borderRadius: R.md,
+              padding: `${S.sm} ${S.lg}`,
+              color: C.accent,
+              fontSize: F.sizeMd,
               fontWeight: 600,
               cursor: 'pointer',
               fontFamily: 'Inter, system-ui, sans-serif',
-              transition: 'background 150ms',
+              transition: `background ${T.fast}`,
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#252525')}
+            onMouseEnter={e => (e.currentTarget.style.background = C.bgElevated)}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
             Show more
@@ -183,7 +175,7 @@ export default function ScreenerRankingsPanel({
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        gap: '20px',
+        gap: S.xxl,
       }}>
         {sortedScreeners.slice(0, visible).map((s, i) => (
           <div key={s.id} style={{ animation: `fadeIn 400ms ${i * 80}ms ease-out both` }}>
@@ -206,17 +198,17 @@ export default function ScreenerRankingsPanel({
             onClick={() => setVisible(sortedScreeners.length)}
             style={{
               background: 'transparent',
-              border: `1px solid ${DARK.divider}`,
-              borderRadius: '10px',
-              padding: '10px 24px',
-              color: DARK.muted,
-              fontSize: '13px',
+              border: `1px solid ${C.border}`,
+              borderRadius: R.md,
+              padding: `${S.md} ${S.xxl}`,
+              color: C.textMuted,
+              fontSize: F.sizeMd,
               fontWeight: 500,
               cursor: 'pointer',
               fontFamily: 'Inter, system-ui, sans-serif',
-              transition: 'background 150ms',
+              transition: `background ${T.fast}`,
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#252525')}
+            onMouseEnter={e => (e.currentTarget.style.background = C.bgElevated)}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
             View all {sortedScreeners.length} screeners
@@ -237,65 +229,65 @@ export default function ScreenerRankingsPanel({
 function LoadingState() {
   return (
     <div style={{
-      background: '#0B0B0B',
+      background: C.bg,
       borderRadius: '24px',
-      padding: '20px',
-      border: '1px solid #1F1F1F',
+      padding: S.xxl,
+      border: `1px solid ${C.border}`,
     }}>
       <div style={{ marginBottom: '28px' }}>
         <div style={{
           width: '140px',
           height: '28px',
-          background: '#1B1B1B',
-          borderRadius: '6px',
-          marginBottom: '6px',
+          background: C.bgCard,
+          borderRadius: R.sm,
+          marginBottom: S.sm,
         }} />
         <div style={{
           width: '200px',
           height: '14px',
-          background: '#1B1B1B',
-          borderRadius: '6px',
+          background: C.bgCard,
+          borderRadius: R.sm,
         }} />
       </div>
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        gap: '20px',
+        gap: S.xxl,
       }}>
         {[1, 2, 3].map(i => (
           <div key={i} style={{
-            background: '#1B1B1B',
+            background: C.bgCard,
             borderRadius: '20px',
             padding: '28px',
             height: '320px',
           }}>
-            <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', gap: S.lg, marginBottom: S.xxl }}>
               <div style={{
                 width: '52px',
                 height: '52px',
-                borderRadius: '50%',
-                background: '#252525',
+                borderRadius: R.full,
+                background: C.bgElevated,
               }} />
               <div style={{ flex: 1 }}>
                 <div style={{
                   width: '100px',
                   height: '12px',
-                  background: '#252525',
-                  borderRadius: '6px',
-                  marginBottom: '8px',
+                  background: C.bgElevated,
+                  borderRadius: R.sm,
+                  marginBottom: S.sm,
                 }} />
                 <div style={{
                   width: '180px',
                   height: '18px',
-                  background: '#252525',
-                  borderRadius: '6px',
-                  marginBottom: '6px',
+                  background: C.bgElevated,
+                  borderRadius: R.sm,
+                  marginBottom: S.sm,
                 }} />
                 <div style={{
                   width: '280px',
                   height: '12px',
-                  background: '#252525',
-                  borderRadius: '6px',
+                  background: C.bgElevated,
+                  borderRadius: R.sm,
                 }} />
               </div>
             </div>

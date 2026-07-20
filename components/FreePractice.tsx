@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { SignalAction } from '@/src/types';
-import { colors as C, radius as R } from '@/src/utils/webTheme';
+import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 import ScoreBar from './ScoreBar';
 
 interface StockInfo {
@@ -22,9 +22,9 @@ interface StockInfo {
 }
 
 const SIGNAL_ACTIONS: { value: SignalAction; label: string; color: string }[] = [
-  { value: 'COMPRAR', label: 'COMPRAR', color: '#22C55E' },
-  { value: 'MANTENER', label: 'MANTENER', color: '#F59E0B' },
-  { value: 'VENDER', label: 'VENDER', color: '#EF4444' },
+  { value: 'COMPRAR', label: 'COMPRAR', color: C.positive },
+  { value: 'MANTENER', label: 'MANTENER', color: C.warning },
+  { value: 'VENDER', label: 'VENDER', color: C.negative },
 ];
 
 export default function FreePractice() {
@@ -89,7 +89,7 @@ export default function FreePractice() {
         <h3 style={{ margin: '0 0 8px', color: C.textPrimary, fontSize: '18px' }}>
           Práctica Libre
         </h3>
-        <p style={{ color: C.textSecondary, fontSize: '13px', marginBottom: '20px' }}>
+        <p style={{ color: C.textSecondary, fontSize: F.sizeMd, marginBottom: '20px' }}>
           Busca cualquier acción, da tu veredicto y compara con el motor de señales real.
         </p>
         <div style={{ display: 'flex', gap: '12px' }}>
@@ -106,7 +106,7 @@ export default function FreePractice() {
               border: `1px solid ${C.border}`,
               background: C.bgBase,
               color: C.textPrimary,
-              fontSize: '16px',
+              fontSize: F.sizeLg,
               outline: 'none',
             }}
           />
@@ -118,7 +118,7 @@ export default function FreePractice() {
               borderRadius: R.lg,
               border: 'none',
               background: C.gradientPrimary,
-              color: '#fff',
+              color: C.textPrimary,
               fontWeight: 600,
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.6 : 1,
@@ -128,7 +128,7 @@ export default function FreePractice() {
           </button>
         </div>
         {error && (
-          <p style={{ color: '#EF4444', fontSize: '13px', marginTop: '12px' }}>{error}</p>
+          <p style={{ color: C.negative, fontSize: F.sizeMd, marginTop: '12px' }}>{error}</p>
         )}
       </div>
     );
@@ -139,13 +139,13 @@ export default function FreePractice() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
         <div>
           <h3 style={{ margin: 0, color: C.textPrimary, fontSize: '20px' }}>{stock.symbol}</h3>
-          <p style={{ margin: '2px 0 0', color: C.textMuted, fontSize: '13px' }}>{stock.name}</p>
+          <p style={{ margin: '2px 0 0', color: C.textMuted, fontSize: F.sizeMd }}>{stock.name}</p>
         </div>
         <div style={{ textAlign: 'right' }}>
           <p style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: C.textPrimary }}>
             ${stock.price.toFixed(2)}
           </p>
-          <p style={{ margin: '2px 0 0', fontSize: '14px', color: stock.changePercent >= 0 ? '#22C55E' : '#EF4444' }}>
+          <p style={{ margin: '2px 0 0', fontSize: F.sizeBase, color: stock.changePercent >= 0 ? C.positive : C.negative }}>
             {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
           </p>
         </div>
@@ -153,13 +153,13 @@ export default function FreePractice() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', margin: '20px 0' }}>
         {[
-          { label: 'RSI', value: stock.rsi.toFixed(1), color: stock.rsi < 30 ? '#22C55E' : stock.rsi > 70 ? '#EF4444' : C.textPrimary },
+          { label: 'RSI', value: stock.rsi.toFixed(1), color: stock.rsi < 30 ? C.positive : stock.rsi > 70 ? C.negative : C.textPrimary },
           { label: 'Tendencia', value: stock.trend.charAt(0).toUpperCase() + stock.trend.slice(1),
-            color: stock.trend === 'alcista' ? '#22C55E' : stock.trend === 'bajista' ? '#EF4444' : '#F59E0B' },
-          { label: 'FCF Yield', value: `${stock.fcfYield.toFixed(1)}%`, color: stock.fcfYield > 5 ? '#22C55E' : C.textPrimary },
+            color: stock.trend === 'alcista' ? C.positive : stock.trend === 'bajista' ? C.negative : C.warning },
+          { label: 'FCF Yield', value: `${stock.fcfYield.toFixed(1)}%`, color: stock.fcfYield > 5 ? C.positive : C.textPrimary },
           { label: 'PE Ratio', value: stock.peRatio.toFixed(1), color: C.textPrimary },
-          { label: 'Target Upside', value: `${stock.targetUpside.toFixed(1)}%`, color: stock.targetUpside > 0 ? '#22C55E' : '#EF4444' },
-          { label: 'Score', value: `${stock.score}/100`, color: stock.score >= 70 ? '#22C55E' : stock.score >= 40 ? '#F59E0B' : '#EF4444' },
+          { label: 'Target Upside', value: `${stock.targetUpside.toFixed(1)}%`, color: stock.targetUpside > 0 ? C.positive : C.negative },
+          { label: 'Score', value: `${stock.score}/100`, color: stock.score >= 70 ? C.positive : stock.score >= 40 ? C.warning : C.negative },
         ].map(d => (
           <div key={d.label} style={{ background: C.bgBase, borderRadius: R.md, padding: '10px', textAlign: 'center' }}>
             <p style={{ margin: '0 0 2px', fontSize: '10px', color: C.textMuted, textTransform: 'uppercase' }}>{d.label}</p>
@@ -170,7 +170,7 @@ export default function FreePractice() {
 
       {!submitted ? (
         <>
-          <p style={{ fontSize: '13px', color: C.textSecondary, marginBottom: '12px', textAlign: 'center' }}>
+          <p style={{ fontSize: F.sizeMd, color: C.textSecondary, marginBottom: '12px', textAlign: 'center' }}>
             ¿Cuál es tu veredicto para {stock.symbol}?
           </p>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
@@ -183,7 +183,7 @@ export default function FreePractice() {
                   background: userGuess === action.value ? `${action.color}20` : 'transparent',
                   color: userGuess === action.value ? action.color : C.textSecondary,
                   fontWeight: userGuess === action.value ? 700 : 500,
-                  fontSize: '14px', cursor: 'pointer', transition: 'all 0.15s',
+                  fontSize: F.sizeBase, cursor: 'pointer', transition: 'all 0.15s',
                 }}
               >
                 {action.label}
@@ -195,8 +195,8 @@ export default function FreePractice() {
             disabled={!userGuess}
             style={{
               width: '100%', padding: '14px', borderRadius: R.lg, border: 'none',
-              background: !userGuess ? C.border : C.gradientPrimary, color: '#fff',
-              fontWeight: 700, fontSize: '16px', cursor: !userGuess ? 'not-allowed' : 'pointer',
+              background: !userGuess ? C.border : C.gradientPrimary, color: C.textPrimary,
+              fontWeight: 700, fontSize: F.sizeLg, cursor: !userGuess ? 'not-allowed' : 'pointer',
               opacity: !userGuess ? 0.5 : 1,
             }}
           >
@@ -208,18 +208,18 @@ export default function FreePractice() {
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: '16px',
             padding: '16px 24px', borderRadius: R.lg,
-            background: userGuess === stock.signal ? '#22C55E18' : '#EF444418',
+            background: userGuess === stock.signal ? '${C.positive}18' : '${C.negative}18',
             marginBottom: '16px',
           }}>
             <div>
-              <p style={{ margin: '0 0 2px', fontSize: '11px', color: C.textMuted }}>Tu veredicto</p>
+              <p style={{ margin: '0 0 2px', fontSize: F.sizeXs, color: C.textMuted }}>Tu veredicto</p>
               <p style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: SIGNAL_ACTIONS.find(a => a.value === userGuess)?.color }}>
                 {userGuess}
               </p>
             </div>
             <div style={{ fontSize: '32px', color: C.textMuted }}>{userGuess === stock.signal ? '✓' : '✗'}</div>
             <div>
-              <p style={{ margin: '0 0 2px', fontSize: '11px', color: C.textMuted }}>Señal real</p>
+              <p style={{ margin: '0 0 2px', fontSize: F.sizeXs, color: C.textMuted }}>Señal real</p>
               <p style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: SIGNAL_ACTIONS.find(a => a.value === stock.signal)?.color }}>
                 {stock.signal}
               </p>
@@ -228,7 +228,7 @@ export default function FreePractice() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center', marginBottom: '20px' }}>
             <ScoreBar value={stock.score} />
-            <span style={{ fontSize: '13px', color: C.textSecondary }}>
+            <span style={{ fontSize: F.sizeMd, color: C.textSecondary }}>
               Confianza: {stock.conviction}
             </span>
           </div>
@@ -238,7 +238,7 @@ export default function FreePractice() {
               onClick={() => { setStock(null); setQuery(''); }}
               style={{
                 padding: '10px 20px', borderRadius: R.lg, border: `1px solid ${C.border}`,
-                background: 'transparent', color: C.textSecondary, cursor: 'pointer', fontSize: '13px',
+                background: 'transparent', color: C.textSecondary, cursor: 'pointer', fontSize: F.sizeMd,
               }}
             >
               Buscar otra
@@ -247,7 +247,7 @@ export default function FreePractice() {
               onClick={() => fetchStock(stock.symbol)}
               style={{
                 padding: '10px 20px', borderRadius: R.lg, border: 'none',
-                background: C.gradientPrimary, color: '#fff', cursor: 'pointer', fontSize: '13px',
+                background: C.gradientPrimary, color: C.textPrimary, cursor: 'pointer', fontSize: F.sizeMd,
                 fontWeight: 600,
               }}
             >

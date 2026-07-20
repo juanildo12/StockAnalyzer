@@ -34,16 +34,16 @@ function fmtCompact(n: number) {
 }
 
 function scoreColor(s: number): string {
-  if (s >= 85) return '#22C55E';
-  if (s >= 70) return '#A3E635';
-  if (s >= 50) return '#F59E0B';
-  return '#EF4444';
+  if (s >= 85) return C.positive;
+  if (s >= 70) return C.positive;
+  if (s >= 50) return C.warning;
+  return C.negative;
 }
 
 function trendColor(t: string): string {
-  if (t === 'alcista') return '#22C55E';
-  if (t === 'bajista') return '#EF4444';
-  return '#78716C';
+  if (t === 'alcista') return C.positive;
+  if (t === 'bajista') return C.negative;
+  return C.textMuted;
 }
 
 function OptionsTable({ title, items, biasColor, biasLabel }: {
@@ -104,7 +104,7 @@ function OptionsTable({ title, items, biasColor, biasLabel }: {
                 </td>
                 <td style={{
                   padding: '8px 10px', textAlign: 'center', fontWeight: 600,
-                  color: s.signal === 'BUY' ? '#22C55E' : s.signal === 'SELL' ? '#EF4444' : '#F59E0B',
+                  color: s.signal === 'BUY' ? C.positive : s.signal === 'SELL' ? C.negative : C.warning,
                 }}>
                   {s.signal === 'BUY' ? 'COMPRAR' : s.signal === 'SELL' ? 'VENDER' : 'MANTENER'}
                 </td>
@@ -115,7 +115,7 @@ function OptionsTable({ title, items, biasColor, biasLabel }: {
                 </td>
                 <td style={{
                   padding: '8px 10px', textAlign: 'center', fontWeight: 600,
-                  color: s.rsi >= 70 ? '#EF4444' : s.rsi <= 30 ? '#22C55E' : C.textPrimary,
+                  color: s.rsi >= 70 ? C.negative : s.rsi <= 30 ? C.positive : C.textPrimary,
                 }}>
                   {s.rsi.toFixed(0)}
                 </td>
@@ -222,7 +222,7 @@ export default function OptionsScreenerPanel() {
         <OptionsTable
           title="🔥 TOP CALLS"
           items={data.bestCalls}
-          biasColor="#22C55E"
+          biasColor={C.positive}
           biasLabel="CALL"
         />
       )}
@@ -230,7 +230,7 @@ export default function OptionsScreenerPanel() {
         <OptionsTable
           title="🔻 TOP PUTS"
           items={data.bestPuts}
-          biasColor="#EF4444"
+          biasColor={C.negative}
           biasLabel="PUT"
         />
       )}
@@ -238,7 +238,7 @@ export default function OptionsScreenerPanel() {
         <OptionsTable
           title="⚖️ MIXED (alto score pero sin bias claro)"
           items={data.neutral}
-          biasColor="#F59E0B"
+          biasColor={C.warning}
           biasLabel="CALL"
         />
       )}

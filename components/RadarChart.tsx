@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState, useMemo } from 'react';
+import { colors as C, radius as R, font as F, spacing as S } from '@/src/utils/webTheme';
 
 interface Metric {
   label: string;

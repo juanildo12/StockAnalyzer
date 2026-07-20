@@ -1,11 +1,13 @@
 'use client';
 
+import { colors as C, radius as R, font as F, spacing as S } from '@/src/utils/webTheme';
+
 interface FormulaChipProps {
   label: string;
   color?: string;
 }
 
-const DEFAULT_COLORS = ['#B64DFF', '#1FD18A', '#F59E0B', '#3B82F6', '#EC4899', '#06B6D4'];
+const DEFAULT_COLORS = ['#B64DFF', '#1FD18A', C.warning, '#3B82F6', '#EC4899', C.info];
 
 let chipIndex = 0;
 

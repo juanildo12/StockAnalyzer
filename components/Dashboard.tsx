@@ -12,6 +12,7 @@ import MetricChartPanel from './MetricChartPanel';
 import VeredictoPanel from './VeredictoPanel';
 import ScreenerRankingsPanel from './ScreenerRankingsPanel';
 import TopWeeklyPicks from './TopWeeklyPicks';
+import MorningBriefing from './MorningBriefing';
 import Card from '@/src/components/ui/Card';
 import Badge from '@/src/components/ui/Badge';
 import Button from '@/src/components/ui/Button';
@@ -221,10 +222,21 @@ export default function Dashboard({
               &#8592; Back to dashboard
             </button>
             <StockDetailPanel
-              data={detailData}
+              symbol={detailData.symbol}
+              name={detailData.name}
+              price={detailData.price}
+              change={detailData.change}
+              changePercent={detailData.changePercent}
+              sector={detailData.details?.sector}
+              marketCap={detailData.details?.marketCap}
+              peRatio={detailData.details?.peRatio}
+              technical={technicalData}
+              score={detailData.score}
+              userPlan={userPlan}
               onClose={() => setSelectedSymbol(null)}
-              onAnalyze={handleAnalyze}
-              analyzing={analyzing}
+              onAddPortfolio={() => {}}
+              onAddWatchlist={() => {}}
+              inWatchlist={false}
             />
             <EnrichedDataPanel
               polygon={enrichedData?.polygon}
@@ -254,11 +266,7 @@ export default function Dashboard({
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: S.xl }}>
             {activeTab === 'dashboard' && (
-              <DashboardHome
-                signals={sortedSignals}
-                onStockClick={handleStockClick}
-                userPlan={userPlan}
-              />
+              <MorningBriefing onSelectStock={handleStockClick} userPlan={userPlan} />
             )}
             {activeTab === 'screener' && (
               <>
@@ -295,7 +303,7 @@ function DashboardHeader({
             width: 32, height: 32, borderRadius: R.sm,
             background: C.gradientPrimary,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: F.sizeLg, fontWeight: 800, color: '#fff',
+            fontSize: F.sizeLg, fontWeight: 800, color: C.textPrimary,
           }}>
             &#9670;
           </div>
@@ -357,363 +365,19 @@ function DashboardHeader({
   );
 }
 
-// ─── Dashboard Home (default view) ───────────────────────────────────────────
-
-function DashboardHome({
-  signals,
-  onStockClick,
-  userPlan,
-}: {
-  signals: SignalData[];
-  onStockClick: (s: string) => void;
-  userPlan: string;
-}) {
-  const isPro = ['pro', 'elite', 'enterprise'].includes(userPlan);
-  const topPicks = signals.filter(s => s.signal === 'BUY' && s.score >= 70);
-  const heroPick = topPicks[0];
-  const bestPicks = topPicks.slice(1, 5);
-
-  return (
-    <>
-      {/* ─── 1. Top Opportunity (Hero) ────────────────────── */}
-      {heroPick && (
-        <div>
-          <SectionHeader label="Top Opportunity" action={isPro ? { label: 'Open Full Analysis', onClick: () => onStockClick(heroPick.symbol) } : { label: 'Upgrade to Pro', onClick: () => { window.location.href = '/settings/billing'; } }} />
-          <HeroCard pick={heroPick} onClick={() => onStockClick(heroPick.symbol)} isPro={isPro} />
-        </div>
-      )}
-
-      {/* ─── 2. Best Opportunities ────────────────────────── */}
-      {bestPicks.length > 0 && (
-        <div>
-          <SectionHeader label="Best Opportunities" description={`${bestPicks.length} high-conviction picks`} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: S.md }}>
-            {bestPicks.map((pick, i) => (
-              <CompactPickCard key={pick.symbol} pick={pick} rank={i + 2} onClick={() => onStockClick(pick.symbol)} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ─── 3. All Signals (Watchlist) ──────────────────── */}
-      {signals.length > 0 && (
-        <div>
-          <SectionHeader label="All Signals" description={`${signals.length} assets monitored`} />
-          <Card padding="0" hover={false}>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {signals.map((s, i) => (
-                <div key={s.symbol}>
-                  {i > 0 && <div style={{ height: 1, background: C.border, marginLeft: S.md, marginRight: S.md }} />}
-                  <SignalRow signal={s} onClick={() => onStockClick(s.symbol)} />
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* ─── Empty state ─────────────────────────────────── */}
-      {signals.length === 0 && (
-        <div style={{ textAlign: 'center', padding: `${S.xxxl} 0` }}>
-          <div style={{ fontSize: 32, marginBottom: S.md }}>&#9670;</div>
-          <div style={{ color: C.textMuted, fontSize: F.sizeBase }}>No signals available right now.</div>
-        </div>
-      )}
-    </>
-  );
-}
-
-// ─── Section Header ──────────────────────────────────────────────────────────
-
-function SectionHeader({
-  label,
-  description,
-  action,
-}: {
-  label: string;
-  description?: string;
-  action?: { label: string; onClick: () => void };
-}) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: S.md }}>
-      <div>
-        <h2 style={{ margin: 0, color: C.textPrimary, fontSize: F.sizeLg, fontWeight: 700, letterSpacing: '-0.01em' }}>
-          {label}
-        </h2>
-        {description && (
-          <p style={{ margin: '2px 0 0', color: C.textMuted, fontSize: F.sizeSm }}>{description}</p>
-        )}
-      </div>
-      {action && (
-        <button
-          onClick={action.onClick}
-          style={{
-            fontSize: F.sizeSm, color: C.accentLight, fontWeight: 500,
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontFamily: F.family, padding: 0,
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = C.textPrimary)}
-          onMouseLeave={e => (e.currentTarget.style.color = C.accentLight)}
-        >
-          {action.label} &#8594;
-        </button>
-      )}
-    </div>
-  );
-}
-
-// ─── Hero Card ───────────────────────────────────────────────────────────────
-
-function HeroCard({
-  pick,
-  onClick,
-  isPro,
-}: {
-  pick: SignalData;
-  onClick: () => void;
-  isPro: boolean;
-}) {
-  const scoreColor = pick.score >= 80 ? C.positive : pick.score >= 60 ? C.warning : C.textMuted;
-
-  return (
-    <Card padding="0" hover glow>
-      <div style={{ padding: `${S.lg} ${S.xl}` }}>
-        {/* Top row: Symbol + Score */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: S.md }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: S.sm, marginBottom: 2 }}>
-              <span style={{ fontSize: '24px', fontWeight: 800, color: C.textPrimary, fontFamily: F.mono, letterSpacing: '-0.02em' }}>
-                {pick.symbol}
-              </span>
-              <Badge variant={pick.signal === 'BUY' ? 'positive' : pick.signal === 'SELL' ? 'negative' : 'warning'} size="sm" dot>
-                {pick.signal}
-              </Badge>
-              {pick.conviction && (
-                <Badge variant={pick.conviction === 'HIGH' ? 'positive' : pick.conviction === 'MEDIUM' ? 'warning' : 'neutral'} size="sm">
-                  {pick.conviction}
-                </Badge>
-              )}
-            </div>
-            <div style={{ fontSize: F.sizeSm, color: C.textMuted }}>{pick.name}</div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '36px', fontWeight: 800, color: scoreColor, fontFamily: F.mono, lineHeight: 1, letterSpacing: '-0.03em' }}>
-              {pick.score}
-            </div>
-            <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginTop: 2 }}>/100</div>
-          </div>
-        </div>
-
-        {/* Price + Change */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: S.sm, marginBottom: S.md }}>
-          <span style={{ fontSize: F.sizeHero, fontWeight: 700, color: C.textPrimary, fontFamily: F.mono }}>
-            ${pick.price.toFixed(2)}
-          </span>
-          <span style={{
-            fontSize: F.sizeMd, fontWeight: 600,
-            color: pick.change >= 0 ? C.positive : C.negative,
-            fontFamily: F.mono,
-          }}>
-            {pick.change >= 0 ? '+' : ''}{pick.changePercent.toFixed(2)}%
-          </span>
-        </div>
-
-        {/* Score Bar */}
-        <div style={{ marginBottom: S.md }}>
-          <ScoreBar score={pick.score} label="Score" />
-        </div>
-
-        {/* Details row */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: S.sm, marginBottom: S.md }}>
-          {pick.details?.sector && (
-            <span style={{ fontSize: F.sizeXs, padding: '3px 8px', borderRadius: R.full, background: C.bgElevated, color: C.textSecondary }}>
-              {pick.details.sector}
-            </span>
-          )}
-          {pick.details?.rsi !== undefined && (
-            <span style={{ fontSize: F.sizeXs, padding: '3px 8px', borderRadius: R.full, background: C.bgElevated, color: pick.details.rsi > 70 ? C.negative : pick.details.rsi < 30 ? C.positive : C.textSecondary }}>
-              RSI {pick.details.rsi}
-            </span>
-          )}
-          {pick.details?.trend && (
-            <span style={{ fontSize: F.sizeXs, padding: '3px 8px', borderRadius: R.full, background: C.bgElevated, color: C.textSecondary }}>
-              {pick.details.trend}
-            </span>
-          )}
-          <span style={{
-            fontSize: F.sizeXs, padding: '3px 8px', borderRadius: R.full,
-            background: pick.riskLevel === 'LOW' ? C.positiveBg : pick.riskLevel === 'HIGH' ? C.negativeBg : C.warningBg,
-            color: pick.riskLevel === 'LOW' ? C.positive : pick.riskLevel === 'HIGH' ? C.negative : C.warning,
-          }}>
-            Risk: {pick.riskLevel}
-          </span>
-        </div>
-
-        {/* Blurred preview for free users */}
-        {!isPro && (
-          <div style={{ position: 'relative' }}>
-            <div style={{ filter: 'blur(5px)', pointerEvents: 'none', userSelect: 'none' }}>
-              <div style={{ fontSize: F.sizeSm, color: C.textSecondary, lineHeight: 1.6 }}>
-                Detailed AI analysis with entry levels, support/resistance zones, momentum indicators, and risk assessment available with Pro plan.
-              </div>
-            </div>
-            <div style={{
-              position: 'absolute', bottom: -S.md, left: 0, right: 0,
-              display: 'flex', justifyContent: 'center',
-              background: `linear-gradient(180deg, transparent, ${C.bgCard})`,
-              paddingTop: S.xxl,
-            }}>
-              <Button variant="primary" size="sm" onClick={() => { window.location.href = '/settings/billing'; }}>
-                Unlock Full Analysis
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Pro: direct CTA */}
-        {isPro && (
-          <Button variant="primary" fullWidth onClick={onClick}>
-            Open Full Analysis &#8594;
-          </Button>
-        )}
-      </div>
-    </Card>
-  );
-}
-
-// ─── Compact Pick Card ───────────────────────────────────────────────────────
-
-function CompactPickCard({
-  pick,
-  rank,
-  onClick,
-}: {
-  pick: SignalData;
-  rank: number;
-  onClick: () => void;
-}) {
-  const scoreColor = pick.score >= 80 ? C.positive : pick.score >= 60 ? C.warning : C.textMuted;
-
-  return (
-    <Card padding={`${S.md} ${S.lg}`} hover onClick={onClick}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: S.md, marginBottom: S.sm }}>
-        <div style={{
-          width: 24, height: 24, borderRadius: R.sm,
-          background: rank <= 3 ? C.gradientPrimary : C.bgElevated,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: F.sizeXs, fontWeight: 800, color: rank <= 3 ? '#fff' : C.textSecondary,
-          fontFamily: F.mono, flexShrink: 0,
-        }}>
-          {rank}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: S.sm }}>
-            <span style={{ fontSize: F.sizeLg, fontWeight: 700, color: C.textPrimary, fontFamily: F.mono }}>{pick.symbol}</span>
-            <Badge variant={pick.signal === 'BUY' ? 'positive' : pick.signal === 'SELL' ? 'negative' : 'warning'} size="sm">
-              {pick.signal}
-            </Badge>
-          </div>
-          <div style={{ fontSize: F.sizeXs, color: C.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {pick.name}
-          </div>
-        </div>
-        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontSize: F.sizeXl, fontWeight: 800, color: scoreColor, fontFamily: F.mono, lineHeight: 1 }}>
-            {pick.score}
-          </div>
-        </div>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: S.sm }}>
-        <span style={{ fontSize: F.sizeLg, fontWeight: 600, color: C.textPrimary, fontFamily: F.mono }}>${pick.price.toFixed(2)}</span>
-        <span style={{ fontSize: F.sizeSm, fontWeight: 500, color: pick.change >= 0 ? C.positive : C.negative, fontFamily: F.mono }}>
-          {pick.change >= 0 ? '+' : ''}{pick.changePercent.toFixed(2)}%
-        </span>
-      </div>
-      <div style={{ marginTop: S.sm }}>
-        <ScoreBar score={pick.score} size="sm" />
-      </div>
-    </Card>
-  );
-}
-
-// ─── Signal Row ──────────────────────────────────────────────────────────────
-
-function SignalRow({
-  signal,
-  onClick,
-}: {
-  signal: SignalData;
-  onClick: () => void;
-}) {
-  const scoreColor = signal.score >= 80 ? C.positive : signal.score >= 60 ? C.warning : C.textMuted;
-
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        display: 'flex', alignItems: 'center', gap: S.md,
-        padding: `${S.md} ${S.lg}`,
-        cursor: 'pointer',
-        transition: T.fast,
-      }}
-      onMouseEnter={e => (e.currentTarget.style.background = C.bgCardHover)}
-      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-    >
-      {/* Symbol + Name */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: S.sm }}>
-          <span style={{ fontSize: F.sizeBase, fontWeight: 700, color: C.textPrimary, fontFamily: F.mono }}>{signal.symbol}</span>
-          <Badge
-            variant={signal.signal === 'BUY' ? 'positive' : signal.signal === 'SELL' ? 'negative' : 'warning'}
-            size="sm"
-          >
-            {signal.signal}
-          </Badge>
-        </div>
-        <div style={{ fontSize: F.sizeXs, color: C.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {signal.name}
-        </div>
-      </div>
-
-      {/* Price + Change */}
-      <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 90 }}>
-        <div style={{ fontSize: F.sizeBase, fontWeight: 600, color: C.textPrimary, fontFamily: F.mono }}>${signal.price.toFixed(2)}</div>
-        <div style={{ fontSize: F.sizeXs, fontWeight: 500, color: signal.change >= 0 ? C.positive : C.negative, fontFamily: F.mono }}>
-          {signal.change >= 0 ? '+' : ''}{signal.changePercent.toFixed(2)}%
-        </div>
-      </div>
-
-      {/* Score */}
-      <div style={{ width: 60, flexShrink: 0 }}>
-        <ScoreBar score={signal.score} size="sm" showValue />
-      </div>
-    </div>
-  );
-}
-
 // ─── Loading State ───────────────────────────────────────────────────────────
 
 function LoadingState() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: S.lg, paddingTop: S.xl }}>
-      {/* Skeleton hero card */}
-      <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: R.lg, padding: `${S.lg} ${S.xl}` }}>
-        <div style={{ display: 'flex', gap: S.md, marginBottom: S.md }}>
-          <div style={{ width: 120, height: 20, borderRadius: R.sm, background: C.bgElevated }} />
-          <div style={{ width: 60, height: 20, borderRadius: R.sm, background: C.bgElevated }} />
-        </div>
-        <div style={{ width: 180, height: 28, borderRadius: R.sm, background: C.bgElevated, marginBottom: S.sm }} />
-        <div style={{ width: 100, height: 16, borderRadius: R.sm, background: C.bgElevated, marginBottom: S.md }} />
-        <div style={{ height: 4, borderRadius: R.full, background: C.bgElevated }} />
-      </div>
-      {/* Skeleton rows */}
-      {[1, 2, 3, 4].map(i => (
+      {[1, 2, 3].map(i => (
         <div key={i} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: R.lg, padding: `${S.md} ${S.lg}`, display: 'flex', alignItems: 'center', gap: S.md }}>
+          <div style={{ width: 28, height: 28, borderRadius: R.sm, background: C.bgElevated }} />
           <div style={{ flex: 1 }}>
             <div style={{ width: 80, height: 14, borderRadius: R.sm, background: C.bgElevated, marginBottom: 4 }} />
             <div style={{ width: 160, height: 10, borderRadius: R.sm, background: C.bgElevated }} />
           </div>
-          <div style={{ width: 60, height: 14, borderRadius: R.sm, background: C.bgElevated }} />
+          <div style={{ width: 50, height: 14, borderRadius: R.sm, background: C.bgElevated }} />
         </div>
       ))}
     </div>

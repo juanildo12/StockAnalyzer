@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 
 const PLANS = [
   {
@@ -9,8 +10,8 @@ const PLANS = [
     price: 0,
     tagline: "See the Signal",
     icon: "📊",
-    gradient: "linear-gradient(135deg, #334155 0%, #1e293b 100%)",
-    accent: "#64748b",
+    gradient: `linear-gradient(135deg, ${C.bgElevated} 0%, ${C.bgElevated} 100%)`,
+    accent: C.textMuted,
     features: [
       "5 stock scores/day",
       "Morning briefing (30min delay)",
@@ -28,8 +29,8 @@ const PLANS = [
     tagline: "Trade with AI",
     icon: "🤖",
     popular: true,
-    gradient: "linear-gradient(135deg, #7C3AED 0%, #6366F1 50%, #3B82F6 100%)",
-    accent: "#8B5CF6",
+    gradient: `linear-gradient(135deg, ${C.accent} 0%, ${C.accentLight} 50%, ${C.info} 100%)`,
+    accent: C.accentLight,
     features: [
       "Unlimited stock scores",
       "AI stock analysis (verdict + conviction)",
@@ -50,8 +51,8 @@ const PLANS = [
     price: 99,
     tagline: "Maximum Edge",
     icon: "⚡",
-    gradient: "linear-gradient(135deg, #F59E0B 0%, #EF4444 100%)",
-    accent: "#F59E0B",
+    gradient: `linear-gradient(135deg, ${C.warning} 0%, ${C.negative} 100%)`,
+    accent: C.warning,
     features: [
       "Everything in Pro",
       "Options analysis (12+ strategies)",
@@ -73,8 +74,8 @@ const PLANS = [
     tagline: "Platform as Infrastructure",
     icon: "🏢",
     customPricing: true,
-    gradient: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
-    accent: "#10B981",
+    gradient: `linear-gradient(135deg, ${C.positive} 0%, ${C.positive} 100%)`,
+    accent: C.positive,
     features: [
       "Everything in Elite",
       "White-label API",
@@ -168,8 +169,8 @@ export default function BillingPage() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "#07080A",
-      color: "#e5e7eb",
+      background: C.bg,
+      color: C.textSecondary,
       fontFamily: "system-ui, -apple-system, 'Segoe UI', sans-serif",
       padding: "40px 24px",
       position: "relative",
@@ -196,22 +197,22 @@ export default function BillingPage() {
             display: "inline-flex", alignItems: "center", gap: "8px",
             padding: "6px 16px", borderRadius: "20px",
             background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.2)",
-            fontSize: "12px", fontWeight: 600, color: "#a78bfa",
+            fontSize: "12px", fontWeight: 600, color: C.accentLight,
             marginBottom: "20px", letterSpacing: "0.5px", textTransform: "uppercase",
           }}>
-            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#a78bfa" }} />
+            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: C.accentLight }} />
             Pricing
           </div>
           <h1 style={{
             fontSize: "48px", fontWeight: 800, margin: "0 0 12px",
-            background: "linear-gradient(135deg, #f0f6fc 0%, #8b949e 100%)",
+            background: `linear-gradient(135deg, ${C.textPrimary} 0%, ${C.textMuted} 100%)`,
             WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
             lineHeight: 1.1, letterSpacing: "-1px",
           }}>
             Choose Your Edge
           </h1>
           <p style={{
-            fontSize: "18px", color: "#8b949e", maxWidth: "560px",
+            fontSize: "18px", color: C.textMuted, maxWidth: "560px",
             margin: "0 auto", lineHeight: 1.6,
           }}>
             Free traders see the signals. Paid traders act on them.
@@ -280,8 +281,8 @@ export default function BillingPage() {
                   <div style={{
                     position: "absolute", top: "-12px", left: "50%", transform: "translateX(-50%)",
                     padding: "4px 14px", borderRadius: "12px",
-                    background: "linear-gradient(135deg, #7C3AED, #6366F1)",
-                    fontSize: "11px", fontWeight: 700, color: "#fff",
+                    background: `linear-gradient(135deg, ${C.accent}, ${C.accentLight})`,
+                    fontSize: "11px", fontWeight: 700, color: C.textPrimary,
                     letterSpacing: "0.8px", textTransform: "uppercase",
                     boxShadow: "0 4px 12px rgba(124,58,237,0.4)",
                     zIndex: 2,
@@ -296,7 +297,7 @@ export default function BillingPage() {
                     position: "absolute", top: "-12px", left: "50%", transform: "translateX(-50%)",
                     padding: "4px 14px", borderRadius: "12px",
                     background: plan.gradient,
-                    fontSize: "11px", fontWeight: 700, color: "#fff",
+                    fontSize: "11px", fontWeight: 700, color: C.textPrimary,
                     letterSpacing: "0.8px", textTransform: "uppercase",
                     boxShadow: `0 4px 12px ${plan.accent}40`,
                     zIndex: 2,
@@ -306,7 +307,7 @@ export default function BillingPage() {
                 )}
 
                 <div style={{
-                  background: "#0d1117",
+                  background: C.bgCard,
                   borderRadius: "15px",
                   padding: "32px 24px",
                   display: "flex",
@@ -319,11 +320,11 @@ export default function BillingPage() {
                       fontSize: "32px", marginBottom: "12px",
                     }}>{plan.icon}</div>
                     <h3 style={{
-                      fontSize: "20px", fontWeight: 700, color: "#f0f6fc",
+                      fontSize: "20px", fontWeight: 700, color: C.textPrimary,
                       margin: "0 0 4px",
                     }}>{plan.name}</h3>
                     <p style={{
-                      fontSize: "13px", color: "#6e7681", margin: 0,
+                      fontSize: "13px", color: C.textMuted, margin: 0,
                     }}>{plan.tagline}</p>
                   </div>
 
@@ -336,17 +337,17 @@ export default function BillingPage() {
                   }}>
                     {plan.customPricing ? (
                       <div>
-                        <span style={{ fontSize: "28px", fontWeight: 800, color: "#f0f6fc" }}>Custom</span>
-                        <p style={{ fontSize: "12px", color: "#6e7681", margin: "4px 0 0" }}>Tailored for your team</p>
+                        <span style={{ fontSize: "28px", fontWeight: 800, color: C.textPrimary }}>Custom</span>
+                        <p style={{ fontSize: "12px", color: C.textMuted, margin: "4px 0 0" }}>Tailored for your team</p>
                       </div>
                     ) : (
                       <div>
                         <span style={{
-                          fontSize: "44px", fontWeight: 800, color: "#f0f6fc",
+                          fontSize: "44px", fontWeight: 800, color: C.textPrimary,
                           lineHeight: 1,
                         }}>${plan.price}</span>
                         <span style={{
-                          fontSize: "16px", fontWeight: 500, color: "#6e7681",
+                          fontSize: "16px", fontWeight: 500, color: C.textMuted,
                           marginLeft: "2px",
                         }}>/mo</span>
                       </div>
@@ -362,7 +363,7 @@ export default function BillingPage() {
                       <li key={i} style={{
                         display: "flex", alignItems: "flex-start", gap: "10px",
                         padding: "7px 0",
-                        fontSize: "13px", color: "#c9d1d9", lineHeight: 1.4,
+                        fontSize: "13px", color: C.textSecondary, lineHeight: 1.4,
                       }}>
                         <svg
                           width="16" height="16" viewBox="0 0 16 16" fill="none"
@@ -407,7 +408,7 @@ export default function BillingPage() {
                         width: "100%", padding: "13px 20px", borderRadius: "10px",
                         border: "1px solid rgba(16,185,129,0.3)",
                         background: "rgba(16,185,129,0.1)",
-                        color: "#10B981",
+                        color: C.positive,
                         fontSize: "14px", fontWeight: 600,
                         cursor: "pointer",
                         transition: "all 0.2s ease",
@@ -422,7 +423,7 @@ export default function BillingPage() {
                         width: "100%", padding: "13px 20px", borderRadius: "10px",
                         border: "1px solid rgba(255,255,255,0.06)",
                         background: "rgba(255,255,255,0.02)",
-                        color: "#4b5563",
+                        color: C.textMuted,
                         fontSize: "14px", fontWeight: 600,
                         cursor: "not-allowed",
                       }}
@@ -437,9 +438,9 @@ export default function BillingPage() {
                         width: "100%", padding: "13px 20px", borderRadius: "10px",
                         border: "none",
                         background: isPopular
-                          ? "linear-gradient(135deg, #7C3AED, #6366F1, #3B82F6)"
+                          ? `linear-gradient(135deg, ${C.accent}, ${C.accentLight}, ${C.info})`
                           : plan.gradient,
-                        color: "#fff",
+                        color: C.textPrimary,
                         fontSize: "14px", fontWeight: 600,
                         cursor: loading === plan.id ? "wait" : "pointer",
                         opacity: loading === plan.id ? 0.7 : 1,
@@ -476,7 +477,7 @@ export default function BillingPage() {
             ].map((item, i) => (
               <div key={i} style={{
                 display: "flex", alignItems: "center", gap: "8px",
-                fontSize: "13px", color: "#6e7681",
+                fontSize: "13px", color: C.textMuted,
               }}>
                 <span>{item.icon}</span>
                 <span>{item.text}</span>

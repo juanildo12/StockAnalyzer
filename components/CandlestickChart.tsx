@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { colors as C } from '@/src/utils/webTheme';
+import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 
 interface Candle {
   t: number;
@@ -131,7 +131,7 @@ export default function CandlestickChart({ data, sma50, support, resistance, tre
 
   if (candlesRendered.length < 2) {
     return (
-      <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.textMuted, fontSize: '13px' }}>
+      <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.textMuted, fontSize: F.sizeMd }}>
         Cargando gráfico de velas...
       </div>
     );
@@ -160,7 +160,7 @@ export default function CandlestickChart({ data, sma50, support, resistance, tre
       {animate && animIdx >= data.length && (
         <div style={{
           position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
-          background: '#22C55E', borderRadius: '1px', zIndex: 5,
+          background: C.positive, borderRadius: '1px', zIndex: 5,
           animation: 'fadeOut 1.5s ease forwards',
         }} />
       )}
@@ -194,17 +194,17 @@ export default function CandlestickChart({ data, sma50, support, resistance, tre
 
         {/* SMA50 */}
         {smaPoints.length > 1 && (
-          <path d={smoothPath(smaPoints)} fill="none" stroke="#6366F1" strokeWidth="0.5"
-            strokeDasharray="1.5,1.5" opacity="0.6" />
+          <path d={smoothPath(smaPoints)} fill="none" stroke={C.accent} strokeWidth="0.5"
+            strokeDasharray="1.5,1.5" opacity="0.85" />
         )}
 
         {/* Support */}
         {support != null && (
           <>
             <line x1="0" y1={supY} x2={viewW} y2={supY}
-              stroke="#22C55E" strokeWidth="0.4" strokeDasharray="2,1.5" opacity="0.5" />
-            <text x={viewW - 0.5} y={supY - 0.5} fontSize="2.2" fill="#22C55E"
-              textAnchor="end" fontWeight="600" opacity="0.6">S ${support.toFixed(2)}</text>
+              stroke={C.positive} strokeWidth="0.4" strokeDasharray="2,1.5" opacity="0.75" />
+            <text x={viewW - 0.5} y={supY - 0.5} fontSize="2.2" fill={C.positive}
+              textAnchor="end" fontWeight="600" opacity="0.85">S ${support.toFixed(2)}</text>
           </>
         )}
 
@@ -212,9 +212,9 @@ export default function CandlestickChart({ data, sma50, support, resistance, tre
         {resistance != null && (
           <>
             <line x1="0" y1={resY} x2={viewW} y2={resY}
-              stroke="#EF4444" strokeWidth="0.4" strokeDasharray="2,1.5" opacity="0.5" />
-            <text x={viewW - 0.5} y={resY - 0.5} fontSize="2.2" fill="#EF4444"
-              textAnchor="end" fontWeight="600" opacity="0.6">R ${resistance.toFixed(2)}</text>
+              stroke={C.negative} strokeWidth="0.4" strokeDasharray="2,1.5" opacity="0.75" />
+            <text x={viewW - 0.5} y={resY - 0.5} fontSize="2.2" fill={C.negative}
+              textAnchor="end" fontWeight="600" opacity="0.85">R ${resistance.toFixed(2)}</text>
           </>
         )}
 
@@ -224,7 +224,7 @@ export default function CandlestickChart({ data, sma50, support, resistance, tre
           return (
             <rect key={`v${i}`} x={c.cx - candleWidth * 0.3} y={viewH - padB - barH}
               width={candleWidth * 0.6} height={barH}
-              fill={c.isUp ? '#22C55E20' : '#EF444420'} rx="0.2" />
+              fill={c.isUp ? `${C.positive}35` : `${C.negative}35`} rx="0.2" />
           );
         })}
 
@@ -232,10 +232,10 @@ export default function CandlestickChart({ data, sma50, support, resistance, tre
         {candlesRendered.map((c, i) => (
           <g key={`c${i}`}>
             <line x1={c.cx} y1={c.highY} x2={c.cx} y2={c.lowY}
-              stroke={c.isUp ? '#22C55E' : '#EF4444'} strokeWidth="0.4" />
+              stroke={c.isUp ? C.positive : C.negative} strokeWidth="0.4" />
             <rect x={c.cx - candleWidth / 2} y={c.bodyY}
               width={candleWidth} height={c.bodyH}
-              fill={c.isUp ? '#22C55E' : '#EF4444'}
+              fill={c.isUp ? C.positive : C.negative}
               rx="0.2" />
           </g>
         ))}
@@ -246,14 +246,14 @@ export default function CandlestickChart({ data, sma50, support, resistance, tre
             <line x1={hoverCandle.cx} y1="0" x2={hoverCandle.cx} y2={viewH}
               stroke={C.textMuted} strokeWidth="0.25" opacity="0.6" />
             <line x1="0" y1={hoverCandle.highY} x2={viewW} y2={hoverCandle.highY}
-              stroke={C.textMuted} strokeWidth="0.2" opacity="0.3" strokeDasharray="1,1" />
+              stroke={C.textMuted} strokeWidth="0.2" opacity="0.5" strokeDasharray="1,1" />
 
             {/* Hover tooltip */}
             <rect x={Math.min(hoverCandle.cx + 1, viewW - 18)} y="0.5"
               width="17" height="12" rx="0.8" fill={`${C.bgCard}F0`}
               stroke={C.borderLight} strokeWidth="0.3" />
             <text x={Math.min(hoverCandle.cx + 1.5, viewW - 17)} y="2.3"
-              fontSize="2.2" fill={hoverCandle.isUp ? '#22C55E' : '#EF4444'} fontWeight="700">
+              fontSize="2.2" fill={hoverCandle.isUp ? C.positive : C.negative} fontWeight="700">
               {hoverCandle.isUp ? '▲' : '▼'} ${hoverCandle.c.toFixed(2)}
             </text>
             <text x={Math.min(hoverCandle.cx + 1.5, viewW - 17)} y="4.5"

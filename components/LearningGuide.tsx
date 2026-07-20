@@ -136,7 +136,7 @@ export default function LearningGuide({ onClose }: LearningGuideProps) {
                 key={s.id}
                 onClick={() => setExpanded(expanded === s.id ? null : s.id)}
                 style={{
-                  background: expanded === s.id ? '#1a2332' : C.bg,
+                  background: expanded === s.id ? C.bgElevated : C.bg,
                   borderRadius: '10px',
                   border: expanded === s.id ? `1px solid ${s.color}40` : '1px solid ' + C.borderLight,
                   cursor: 'pointer',

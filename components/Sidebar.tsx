@@ -121,7 +121,7 @@ export default function Sidebar({ view, onViewChange, userPlan = 'free', userNam
           boxShadow: C.accent + '30',
           flexShrink: 0,
         }}>
-          <span style={{ fontSize: 16, fontWeight: 800, color: '#fff', fontFamily: F.mono }}>◆</span>
+          <span style={{ fontSize: 16, fontWeight: 800, color: C.textPrimary, fontFamily: F.mono }}>◆</span>
         </div>
         <div>
           <div style={{
@@ -256,12 +256,12 @@ export default function Sidebar({ view, onViewChange, userPlan = 'free', userNam
           padding: `${S.sm} ${S.md}`,
           margin: `0 ${S.sm} ${S.sm}`,
           borderRadius: R.md,
-          background: 'linear-gradient(135deg, #ff00ff15, #00d4ff15)',
-          border: '1px solid #ff00ff30',
+          background: `linear-gradient(135deg, ${C.accent}15, ${C.info}15)`,
+          border: `1px solid ${C.accent}30`,
           cursor: 'pointer',
         }} onClick={() => window.location.href = '/settings/billing'}>
           <div style={{
-            fontSize: F.sizeXs, fontWeight: 700, color: '#ff00ff',
+            fontSize: F.sizeXs, fontWeight: 700, color: C.accent,
             marginBottom: 2,
           }}>Unlock Pro — $49/mo</div>
           <div style={{
@@ -283,7 +283,7 @@ export default function Sidebar({ view, onViewChange, userPlan = 'free', userNam
             borderRadius: R.full,
             background: C.gradientAccent,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: F.sizeSm, fontWeight: 700, color: '#fff',
+            fontSize: F.sizeSm, fontWeight: 700, color: C.textPrimary,
           }}>{(userName || 'U').charAt(0).toUpperCase()}</div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{

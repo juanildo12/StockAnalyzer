@@ -294,7 +294,7 @@ export default function TradeStationPanel() {
             display: 'inline-block',
             width: '24px',
             height: '24px',
-            border: '3px solid #30363d',
+            border: `3px solid ${C.border}`,
             borderTopColor: C.accent,
             borderRadius: '50%',
             animation: 'spin 1s linear infinite',
@@ -352,7 +352,7 @@ export default function TradeStationPanel() {
                       </thead>
                       <tbody>
                         {positions.map((pos, i) => (
-                          <tr key={i} style={{ borderBottom: '1px solid #21262d' }}>
+                          <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
                             <td style={{ padding: '12px 8px', color: C.accent, fontWeight: '600' }}>{pos.Symbol}</td>
                             <td style={{ padding: '12px 8px', textAlign: 'right', color: C.textSecondary }}>{pos.Quantity}</td>
                             <td style={{ padding: '12px 8px', textAlign: 'right', color: C.textSecondary }}>${pos.AverageEntryPrice?.toFixed(2)}</td>
@@ -589,7 +589,7 @@ export default function TradeStationPanel() {
                   padding: '14px',
                   borderRadius: '8px',
                   border: 'none',
-                  background: loading ? C.borderLight : orderForm.side === 'Buy' ? `linear-gradient(135deg, ${C.accent} 0%, #2ea043 100%)` : `linear-gradient(135deg, #da3633 0%, ${C.negative} 100%)`,
+                      background: loading ? C.borderLight : orderForm.side === 'Buy' ? `linear-gradient(135deg, ${C.accent} 0%, ${C.positive} 100%)` : `linear-gradient(135deg, ${C.negative} 0%, ${C.negative} 100%)`,
                   color: 'white',
                   fontSize: '16px',
                   fontWeight: '600',

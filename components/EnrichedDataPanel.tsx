@@ -73,7 +73,7 @@ export default function EnrichedDataPanel({ polygon, finnhub, summary, loading }
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
             padding: '8px 14px', borderRadius: `${R.md} ${R.md} 0 0`, border: 'none',
             background: activeTab === tab.id ? C.accent : 'transparent',
-            color: activeTab === tab.id ? '#fff' : C.textSecondary,
+            color: activeTab === tab.id ? C.textPrimary : C.textSecondary,
             cursor: 'pointer', fontWeight: 500, fontSize: F.sizeSm, whiteSpace: 'nowrap',
             transition: T.normal,
           }}>
@@ -325,15 +325,15 @@ const INSIDER_CODE_MAP: Record<string, string> = {
 };
 
 const INSIDER_CODE_GROUPS: Record<string, { label: string; color: string }> = {
-  P: { label: 'P', color: '#22C55E' },
-  S: { label: 'S', color: '#EF4444' },
+  P: { label: 'P', color: C.positive },
+  S: { label: 'S', color: C.negative },
   A: { label: 'A', color: '#A78BFA' },
-  C: { label: 'C', color: '#F59E0B' },
+  C: { label: 'C', color: C.warning },
   D: { label: 'D', color: '#EC4899' },
   F: { label: 'F', color: '#EC4899' },
-  I: { label: 'I', color: '#06B6D4' },
-  M: { label: 'M', color: '#8B5CF6' },
-  X: { label: 'X', color: '#8B5CF6' },
+  I: { label: 'I', color: C.info },
+  M: { label: 'M', color: C.accentLight },
+  X: { label: 'X', color: C.accentLight },
   G: { label: 'G', color: '#10B981' },
   L: { label: 'L', color: '#6366F1' },
   W: { label: 'W', color: '#78716C' },
@@ -362,7 +362,7 @@ function InsiderTab({ finnhub }: any) {
             <span key={code} style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               width: 22, height: 22, borderRadius: 4, cursor: 'default', position: 'relative',
-              background: g?.color || C.textMuted, color: '#fff',
+              background: g?.color || C.textMuted, color: C.textPrimary,
               fontWeight: 700, fontSize: 11, lineHeight: '22px', textAlign: 'center',
               transition: 'transform 0.15s',
             }}
@@ -414,7 +414,7 @@ function InsiderTab({ finnhub }: any) {
                   <Td style={{ color: codeInfo?.color || C.textPrimary }}>
                     <span style={{
                       display: 'inline-block', width: 18, height: 18, borderRadius: 3,
-                      background: codeInfo?.color || C.textMuted, color: '#fff', textAlign: 'center',
+                      background: codeInfo?.color || C.textMuted, color: C.textPrimary, textAlign: 'center',
                       lineHeight: '18px', fontWeight: 700, fontSize: 10, marginRight: 4,
                     }}>{t.transactionCode || '?'}</span>
                     {INSIDER_CODE_MAP[t.transactionCode] || t.transactionCode || '—'}

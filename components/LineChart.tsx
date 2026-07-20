@@ -1,5 +1,6 @@
 'use client';
 
+import { colors as C, font as F } from '@/src/utils/webTheme';
 import { useRef, useEffect, useState } from 'react';
 
 interface LineChartProps {
@@ -44,7 +45,7 @@ function fmtDate(iso: string): string {
 
 export default function LineChart({
   data, data2, height = 200,
-  color = '#8B6BFF', color2 = '#F08AE8',
+  color = C.accent, color2 = C.accentLight,
   leftLabels, rightLabels,
   dateStart, dateEnd,
   animated = true,
@@ -107,12 +108,12 @@ export default function LineChart({
           y={pad.top + i * stripeH}
           width={chartW}
           height={stripeH}
-          fill={i % 2 === 0 ? '#F5F5F7' : 'transparent'}
+          fill={i % 2 === 0 ? `${C.textPrimary}08` : 'transparent'}
         />
       ))}
 
       {/* Baseline */}
-      <line x1={pad.left} y1={pad.top + chartH} x2={pad.left + chartW} y2={pad.top + chartH} stroke="#E8E8ED" strokeWidth={1} />
+      <line x1={pad.left} y1={pad.top + chartH} x2={pad.left + chartW} y2={pad.top + chartH} stroke={C.border} strokeWidth={1} />
 
       {/* Left axis labels */}
       {leftLabels && leftLabels.map((v, i) => (
@@ -121,7 +122,7 @@ export default function LineChart({
           x={pad.left - 8}
           y={pad.top + chartH - ((v - fixedMin) / fixedRange) * chartH + 4}
           textAnchor="end"
-          fill="#86868B"
+          fill={C.textMuted}
           fontSize={10}
           fontFamily="Inter, system-ui, sans-serif"
         >
@@ -136,7 +137,7 @@ export default function LineChart({
           x={pad.left + chartW + 8}
           y={pad.top + chartH - ((v - minVal2) / range2) * chartH + 4}
           textAnchor="start"
-          fill="#86868B"
+          fill={C.textMuted}
           fontSize={10}
           fontFamily="Inter, system-ui, sans-serif"
         >
@@ -146,12 +147,12 @@ export default function LineChart({
 
       {/* Date labels */}
       {dateStart && (
-        <text x={pad.left} y={h - 4} textAnchor="start" fill="#86868B" fontSize={10} fontFamily="Inter, system-ui, sans-serif">
+        <text x={pad.left} y={h - 4} textAnchor="start" fill={C.textMuted} fontSize={10} fontFamily="Inter, system-ui, sans-serif">
           {fmtDate(dateStart)}
         </text>
       )}
       {dateEnd && (
-        <text x={pad.left + chartW} y={h - 4} textAnchor="end" fill="#86868B" fontSize={10} fontFamily="Inter, system-ui, sans-serif">
+        <text x={pad.left + chartW} y={h - 4} textAnchor="end" fill={C.textMuted} fontSize={10} fontFamily="Inter, system-ui, sans-serif">
           {fmtDate(dateEnd)}
         </text>
       )}

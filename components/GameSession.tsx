@@ -13,9 +13,9 @@ interface Props {
 }
 
 const SIGNAL_ACTIONS: { value: SignalAction; label: string; color: string; glow: string }[] = [
-  { value: 'COMPRAR', label: 'COMPRAR', color: '#22C55E', glow: 'rgba(34,197,94,0.15)' },
-  { value: 'MANTENER', label: 'MANTENER', color: '#F59E0B', glow: 'rgba(245,158,11,0.15)' },
-  { value: 'VENDER', label: 'VENDER', color: '#EF4444', glow: 'rgba(239,68,68,0.15)' },
+  { value: 'COMPRAR', label: 'COMPRAR', color: C.positive, glow: 'rgba(34,197,94,0.15)' },
+  { value: 'MANTENER', label: 'MANTENER', color: C.warning, glow: 'rgba(245,158,11,0.15)' },
+  { value: 'VENDER', label: 'VENDER', color: C.negative, glow: 'rgba(239,68,68,0.15)' },
 ];
 
 const CONFIDENCE_LEVELS: { value: ConfidenceLevel; label: string; mult: number }[] = [
@@ -33,13 +33,13 @@ const DIFFICULTY_LABELS: Record<DifficultyTier, string> = {
 };
 
 const DIFFICULTY_COLORS: Record<DifficultyTier, string> = {
-  novato: '#22C55E', bronce: '#CD7F32', plata: '#94A3B8', oro: '#F59E0B', platino: '#06B6D4', diamante: '#8B5CF6',
+  novato: C.positive, bronce: '#CD7F32', plata: C.textSecondary, oro: C.warning, platino: C.info, diamante: C.accentLight,
 };
 
 function TimerBar({ seconds, running, onTimeout }: { seconds: number; running: boolean; onTimeout: () => void }) {
   const [remaining, setRemaining] = useState(seconds);
   const pct = seconds > 0 ? (remaining / seconds) * 100 : 100;
-  const color = remaining > seconds * 0.5 ? '#22C55E' : remaining > seconds * 0.25 ? '#F59E0B' : '#EF4444';
+  const color = remaining > seconds * 0.5 ? C.positive : remaining > seconds * 0.25 ? C.warning : C.negative;
 
   useEffect(() => {
     if (!running || seconds <= 0) return;
@@ -257,7 +257,7 @@ export default function GameSession({ difficulty, onComplete, onCancel, level }:
       <div style={{ background: C.bgCard, borderRadius: R.xl, padding: '60px 24px', textAlign: 'center' }}>
         <div style={{
           width: '48px', height: '48px', borderRadius: '50%',
-          border: '3px solid #30363d', borderTopColor: DIFFICULTY_COLORS[difficulty],
+          border: `3px solid ${C.border}`, borderTopColor: DIFFICULTY_COLORS[difficulty],
           animation: 'spin 1s linear infinite', margin: '0 auto 16px',
         }} />
         <p style={{ color: C.textSecondary, fontSize: '15px', marginBottom: '4px' }}>
@@ -274,11 +274,11 @@ export default function GameSession({ difficulty, onComplete, onCancel, level }:
     return (
       <div style={{ background: C.bgCard, borderRadius: R.xl, padding: '40px 24px', textAlign: 'center' }}>
         <div style={{ fontSize: '48px', marginBottom: '12px' }}>⚠️</div>
-        <p style={{ color: '#EF4444', fontSize: '14px', marginBottom: '20px' }}>{error}</p>
+        <p style={{ color: C.negative, fontSize: '14px', marginBottom: '20px' }}>{error}</p>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
           <button onClick={fetchSession} style={{
             padding: '12px 24px', borderRadius: R.lg, border: 'none',
-            background: C.gradientPrimary, color: '#fff', fontWeight: 600, cursor: 'pointer',
+            background: C.gradientPrimary, color: C.textPrimary, fontWeight: 600, cursor: 'pointer',
           }}>
             Reintentar
           </button>
@@ -299,7 +299,7 @@ export default function GameSession({ difficulty, onComplete, onCancel, level }:
         <p style={{ color: C.textSecondary }}>No hay retos disponibles.</p>
         <button onClick={fetchSession} style={{
           padding: '12px 24px', borderRadius: R.lg, border: 'none',
-          background: C.gradientPrimary, color: '#fff', fontWeight: 600, cursor: 'pointer', marginTop: '16px',
+          background: C.gradientPrimary, color: C.textPrimary, fontWeight: 600, cursor: 'pointer', marginTop: '16px',
         }}>
           Reintentar
         </button>
@@ -372,16 +372,16 @@ export default function GameSession({ difficulty, onComplete, onCancel, level }:
           }}>
             <div style={{
               width: '64px', height: '64px', borderRadius: '50%',
-              background: feedback.correct ? '#22C55E18' : '#EF444418',
+              background: feedback.correct ? `${C.positive}18` : `${C.negative}18`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto 12px', fontSize: '32px',
-              border: `2px solid ${feedback.correct ? '#22C55E40' : '#EF444440'}`,
+              border: `2px solid ${feedback.correct ? `${C.positive}40` : `${C.negative}40`}`,
             }}>
               {feedback.correct ? '✓' : '✗'}
             </div>
             <p style={{
               fontSize: '22px', fontWeight: 700,
-              color: feedback.correct ? '#22C55E' : '#EF4444',
+              color: feedback.correct ? C.positive : C.negative,
               margin: '0 0 4px',
             }}>
               {feedback.correct ? '¡Correcto!' : 'No esta vez'}
@@ -389,7 +389,7 @@ export default function GameSession({ difficulty, onComplete, onCancel, level }:
             <p style={{ color: C.textSecondary, fontSize: '13px', margin: '0 0 8px' }}>
               {feedback.symbol}: {feedback.correctSignal}
             </p>
-            <p style={{ fontSize: '28px', fontWeight: 800, color: '#F59E0B', margin: 0 }}>
+            <p style={{ fontSize: '28px', fontWeight: 800, color: C.warning, margin: 0 }}>
               +{feedback.score} pts
             </p>
           </div>
@@ -445,7 +445,7 @@ export default function GameSession({ difficulty, onComplete, onCancel, level }:
                     </p>
                     <p style={{
                       margin: 0, fontSize: '13px', fontWeight: 700,
-                      color: rev ? '#22C55E' : C.textMuted,
+                      color: rev ? C.positive : C.textMuted,
                     }}>
                       {rev ? hint.value : 'Tocar'}
                     </p>
@@ -505,7 +505,7 @@ export default function GameSession({ difficulty, onComplete, onCancel, level }:
               style={{
                 width: '100%', padding: '14px', borderRadius: R.lg, border: 'none',
                 background: !selectedAction ? C.border : C.gradientPrimary,
-                color: !selectedAction ? C.textMuted : '#fff',
+                color: !selectedAction ? C.textMuted : C.textPrimary,
                 fontWeight: 700, fontSize: '15px',
                 cursor: !selectedAction ? 'not-allowed' : 'pointer',
                 opacity: !selectedAction ? 0.5 : 1,

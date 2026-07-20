@@ -1,6 +1,6 @@
 'use client';
 
-import { colors as C, radius as R } from '@/src/utils/webTheme';
+import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 
 interface SignalData {
   symbol: string;
@@ -61,7 +61,7 @@ export default function SignalCard({ data, onClick, selected }: SignalCardProps)
       onClick={onClick}
       style={{
         background: selected ? C.bgCardHover : C.bgCard,
-        borderRadius: '12px',
+        borderRadius: R.lg,
         padding: '16px',
         border: selected ? '1px solid ' + C.accent : '1px solid ' + C.borderLight,
         cursor: onClick ? 'pointer' : 'default',
@@ -74,14 +74,14 @@ export default function SignalCard({ data, onClick, selected }: SignalCardProps)
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ color: C.textPrimary, fontWeight: '700', fontSize: '16px' }}>{data.symbol}</span>
+            <span style={{ color: C.textPrimary, fontWeight: '700', fontSize: F.sizeLg }}>{data.symbol}</span>
             {data.details.sector && (
-              <span style={{ color: C.textMuted, fontSize: '11px', background: C.bg, padding: '2px 6px', borderRadius: '4px' }}>
+              <span style={{ color: C.textMuted, fontSize: F.sizeXs, background: C.bg, padding: '2px 6px', borderRadius: R.sm }}>
                 {data.details.sector}
               </span>
             )}
           </div>
-          <p style={{ margin: 0, color: C.textMuted, fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <p style={{ margin: 0, color: C.textMuted, fontSize: F.sizeMd, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {data.name}
           </p>
         </div>
@@ -89,7 +89,7 @@ export default function SignalCard({ data, onClick, selected }: SignalCardProps)
           style={{
             background: c.bg,
             border: `1px solid ${c.border}`,
-            borderRadius: '8px',
+            borderRadius: R.md,
             padding: '6px 12px',
             textAlign: 'center',
             minWidth: '80px',
@@ -109,7 +109,7 @@ export default function SignalCard({ data, onClick, selected }: SignalCardProps)
           <span style={{ color: C.textPrimary, fontWeight: '600', fontSize: '18px' }}>
             ${toFixed(data.price, 2)}
           </span>
-          <span style={{ color: changeColor, fontSize: '13px', marginLeft: '8px' }}>
+          <span style={{ color: changeColor, fontSize: F.sizeMd, marginLeft: '8px' }}>
             {(data.change != null && data.change >= 0 ? '+' : '')}{toFixed(data.change, 2)} ({(data.changePercent != null && data.changePercent >= 0 ? '+' : '')}{toFixed(data.changePercent, 2)}%)
           </span>
         </div>
@@ -131,7 +131,7 @@ export default function SignalCard({ data, onClick, selected }: SignalCardProps)
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: C.textMuted, borderTop: '1px solid ' + C.borderLight, paddingTop: '8px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '16px', fontSize: F.sizeSm, color: C.textMuted, borderTop: '1px solid ' + C.borderLight, paddingTop: '8px', flexWrap: 'wrap' }}>
         {data.details && data.details.peRatio > 0 && <span>PE: {toFixed(data.details.peRatio, 1)}</span>}
         {data.details && data.details.marketCap > 0 && <span>MktCap: {fmtCompact(data.details.marketCap)}</span>}
         {data.details?.trend && <span>Trend: {data.details.trend}</span>}
@@ -147,11 +147,11 @@ function TooltipBadge({ label, color, tooltip }: { label: string; color: string;
       title={tooltip}
       style={{
         color,
-        fontSize: '11px',
+        fontSize: F.sizeXs,
         fontWeight: '600',
         background: `${color}15`,
         padding: '2px 8px',
-        borderRadius: '12px',
+        borderRadius: R.lg,
         border: `1px solid ${color}40`,
       }}
     >

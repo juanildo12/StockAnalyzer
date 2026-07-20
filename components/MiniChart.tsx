@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { colors as C } from '@/src/utils/webTheme';
+import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 
 interface Props {
   data: { t: number; c: number }[];
@@ -35,7 +35,7 @@ export default function MiniChart({ data, sma50, support, resistance, trend, hei
   const [hoverX, setHoverX] = useState<number | null>(null);
 
   const { points, lineColor, min, max, range, smaPoints, supY, resY, areaPath } = useMemo(() => {
-    if (data.length < 2) return { points: [], lineColor: '#64748B', min: 0, max: 1, range: 1, smaPoints: [], supY: 0, resY: 0, areaPath: '' };
+    if (data.length < 2) return { points: [], lineColor: C.textMuted, min: 0, max: 1, range: 1, smaPoints: [], supY: 0, resY: 0, areaPath: '' };
 
     const w = 100;
     const h = 100;
@@ -55,7 +55,7 @@ export default function MiniChart({ data, sma50, support, resistance, trend, hei
       y: h - padBot - ((d.c - yMin) / yRng) * (h - padTop - padBot),
     }));
 
-    const color = trend === 'alcista' ? '#22C55E' : trend === 'bajista' ? '#EF4444' : '#F59E0B';
+    const color = trend === 'alcista' ? C.positive : trend === 'bajista' ? C.negative : C.warning;
 
     let smaPts: { x: number; y: number }[] = [];
     if (sma50 && sma50.length === data.length) {
@@ -81,7 +81,7 @@ export default function MiniChart({ data, sma50, support, resistance, trend, hei
 
   if (data.length < 2) {
     return (
-      <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.textMuted, fontSize: '13px' }}>
+      <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.textMuted, fontSize: F.sizeMd }}>
         Datos insuficientes para el gráfico
       </div>
     );
@@ -115,7 +115,7 @@ export default function MiniChart({ data, sma50, support, resistance, trend, hei
         {/* Grid lines */}
         {[0.25, 0.5, 0.75].map(frac => (
           <line key={frac} x1="0" y1={viewH * frac} x2={viewW} y2={viewH * frac}
-            stroke={C.border} strokeWidth="0.3" strokeDasharray="1,1.5" />
+            stroke={C.border} strokeWidth="0.4" strokeOpacity="0.5" strokeDasharray="1,1.5" />
         ))}
 
         {/* Area fill */}
@@ -123,16 +123,16 @@ export default function MiniChart({ data, sma50, support, resistance, trend, hei
 
         {/* SMA50 */}
         {smaPoints.length > 1 && (
-          <path d={smoothPath(smaPoints)} fill="none" stroke="#6366F1" strokeWidth="0.6" strokeDasharray="1.5,1" opacity="0.7" />
+          <path d={smoothPath(smaPoints)} fill="none" stroke={C.accent} strokeWidth="0.7" strokeDasharray="1.5,1" opacity="0.85" />
         )}
 
         {/* Support */}
         {support != null && (
           <line x1="0" y1={supY} x2={viewW} y2={supY}
-            stroke="#22C55E" strokeWidth="0.5" strokeDasharray="2,1.5" opacity="0.6" />
+            stroke={C.positive} strokeWidth="0.5" strokeDasharray="2,1.5" opacity="0.8" />
         )}
         {support != null && (
-          <text x={viewW - 0.5} y={supY - 1} fontSize="2.5" fill="#22C55E" opacity="0.7"
+          <text x={viewW - 0.5} y={supY - 1} fontSize="2.5" fill={C.positive} opacity="0.9"
             textAnchor="end" fontWeight="600">
             S ${support.toFixed(2)}
           </text>
@@ -141,10 +141,10 @@ export default function MiniChart({ data, sma50, support, resistance, trend, hei
         {/* Resistance */}
         {resistance != null && (
           <line x1="0" y1={resY} x2={viewW} y2={resY}
-            stroke="#EF4444" strokeWidth="0.5" strokeDasharray="2,1.5" opacity="0.6" />
+            stroke={C.negative} strokeWidth="0.5" strokeDasharray="2,1.5" opacity="0.8" />
         )}
         {resistance != null && (
-          <text x={viewW - 0.5} y={resY - 1} fontSize="2.5" fill="#EF4444" opacity="0.7"
+          <text x={viewW - 0.5} y={resY - 1} fontSize="2.5" fill={C.negative} opacity="0.9"
             textAnchor="end" fontWeight="600">
             R ${resistance.toFixed(2)}
           </text>

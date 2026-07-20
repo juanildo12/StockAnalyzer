@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import FormulaChip from './FormulaChip';
 import ScoreBar from './ScoreBar';
+import { colors as C, radius as R, font as F, spacing as S } from '@/src/utils/webTheme';
 
 interface RankingRow {
   symbol: string;
@@ -30,11 +31,11 @@ const DARK = {
 
 function totalBadgeColor(total: number): string {
   if (total >= 220) return '#1FD18A';
-  if (total >= 160) return '#F59E0B';
-  return '#EF4444';
+  if (total >= 160) return C.warning;
+  return C.negative;
 }
 
-const formulaColors = ['#B64DFF', '#1FD18A', '#F59E0B', '#3B82F6', '#EC4899', '#06B6D4'];
+const formulaColors = ['#B64DFF', '#1FD18A', C.warning, '#3B82F6', '#EC4899', C.info];
 
 export default function ScreenerCard({ icon, name, description, updatedAt, formulas, rankings, onExpand }: ScreenerCardProps) {
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);

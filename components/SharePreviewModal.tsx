@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { colors as C, radius as R, font as F, spacing as S } from '@/src/utils/webTheme';
 
 interface SharePreviewModalProps {
   alertId: string;
@@ -91,7 +92,7 @@ export default function SharePreviewModal({
             <img src={cardUrl} alt="Share card" style={styles.cardImage} />
           ) : (
             <div style={styles.placeholder}>
-              <span style={{ color: "#ef4444", fontSize: 13 }}>Error generando card</span>
+              <span style={{ color: C.negative, fontSize: 13 }}>Error generando card</span>
             </div>
           )}
         </div>
@@ -102,7 +103,7 @@ export default function SharePreviewModal({
             {results.map((r: any, i: number) => (
               <div key={i} style={{
                 ...styles.resultRow,
-                borderLeftColor: r.success ? "#22c55e" : "#ef4444",
+                borderLeftColor: r.success ? C.positive : C.negative,
               }}>
                 <span style={styles.resultPlatform}>{r.platform}</span>
                 {r.success ? (
@@ -132,9 +133,9 @@ export default function SharePreviewModal({
                   onClick={() => toggle(p.id)}
                   style={{
                     ...styles.platformBtn,
-                    background: selected[p.id] ? "#0d948818" : "transparent",
-                    borderColor: selected[p.id] ? "#0d9488" : "#21262d",
-                    color: selected[p.id] ? "#0d9488" : "#8b949e",
+                    background: selected[p.id] ? `${C.positive}18` : "transparent",
+                    borderColor: selected[p.id] ? C.positive : C.border,
+                    color: selected[p.id] ? C.positive : C.textMuted,
                   }}
                 >
                   <span style={styles.platformIcon}>{p.icon}</span>
@@ -183,8 +184,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 20,
   },
   modal: {
-    background: "#0d1117",
-    border: "1px solid #21262d",
+    background: C.bg,
+    border: `1px solid ${C.border}`,
     borderRadius: 16,
     width: "100%",
     maxWidth: 640,
@@ -198,22 +199,22 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     alignItems: "flex-start",
     padding: "20px 24px 16px",
-    borderBottom: "1px solid #21262d",
+    borderBottom: `1px solid ${C.border}`,
   },
   title: {
     fontSize: 16,
     fontWeight: 700,
-    color: "#f0f6fc",
+    color: C.textPrimary,
   },
   subtitle: {
     fontSize: 12,
-    color: "#8b949e",
+    color: C.textMuted,
     marginTop: 4,
   },
   closeBtn: {
     background: "transparent",
     border: "none",
-    color: "#8b949e",
+    color: C.textMuted,
     fontSize: 18,
     cursor: "pointer",
     padding: 4,
@@ -226,14 +227,14 @@ const styles: Record<string, React.CSSProperties> = {
   cardImage: {
     width: "100%",
     borderRadius: 12,
-    border: "1px solid #21262d",
+    border: `1px solid ${C.border}`,
   },
   placeholder: {
     width: "100%",
     aspectRatio: "1200/630",
-    background: "#161b22",
+    background: C.bgCard,
     borderRadius: 12,
-    border: "1px solid #21262d",
+    border: `1px solid ${C.border}`,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -243,8 +244,8 @@ const styles: Record<string, React.CSSProperties> = {
   spinner: {
     width: 20,
     height: 20,
-    border: "2px solid #21262d",
-    borderTopColor: "#0d9488",
+    border: `2px solid ${C.border}`,
+    borderTopColor: C.positive,
     borderRadius: "50%",
     animation: "spin 0.8s linear infinite",
   },
@@ -259,24 +260,24 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "space-between",
     alignItems: "center",
     padding: "8px 12px",
-    background: "#161b22",
+    background: C.bgCard,
     borderRadius: 8,
     borderLeft: "3px solid",
     fontSize: 13,
   },
   resultPlatform: {
-    color: "#c9d1d9",
+    color: C.textSecondary,
     fontWeight: 600,
     textTransform: "capitalize" as const,
   },
   resultLink: {
-    color: "#0d9488",
+    color: C.positive,
     textDecoration: "none",
     fontSize: 12,
     fontWeight: 500,
   },
   resultError: {
-    color: "#ef4444",
+    color: C.negative,
     fontSize: 12,
   },
   platformArea: {
@@ -287,7 +288,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     textTransform: "uppercase" as const,
     letterSpacing: "0.05em",
-    color: "#8b949e",
+    color: C.textMuted,
     marginBottom: 8,
   },
   platformGrid: {
@@ -322,14 +323,14 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: "flex-end",
     gap: 8,
     padding: "16px 24px",
-    borderTop: "1px solid #21262d",
+    borderTop: `1px solid ${C.border}`,
   },
   cancelBtn: {
     padding: "8px 16px",
     borderRadius: 8,
-    border: "1px solid #30363d",
+    border: `1px solid ${C.border}`,
     background: "transparent",
-    color: "#8b949e",
+    color: C.textMuted,
     fontSize: 13,
     fontWeight: 500,
     cursor: "pointer",
@@ -338,8 +339,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: "8px 20px",
     borderRadius: 8,
     border: "none",
-    background: "#0d9488",
-    color: "#fff",
+    background: C.positive,
+    color: C.textPrimary,
     fontSize: 13,
     fontWeight: 600,
     cursor: "pointer",
@@ -347,9 +348,9 @@ const styles: Record<string, React.CSSProperties> = {
   doneBtn: {
     padding: "8px 20px",
     borderRadius: 8,
-    border: "1px solid #30363d",
+    border: `1px solid ${C.border}`,
     background: "transparent",
-    color: "#c9d1d9",
+    color: C.textSecondary,
     fontSize: 13,
     fontWeight: 500,
     cursor: "pointer",

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import SharePreviewModal from "./SharePreviewModal";
+import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 
 interface SmartAlert {
   id: string;
@@ -25,16 +26,16 @@ interface SmartAlert {
 }
 
 function gradeColor(grade: string): string {
-  if (grade.startsWith("A")) return "#0d9488";
-  if (grade.startsWith("B")) return "#0891b2";
-  if (grade.startsWith("C")) return "#d97706";
-  return "#dc2626";
+  if (grade.startsWith("A")) return C.positive;
+  if (grade.startsWith("B")) return C.info;
+  if (grade.startsWith("C")) return C.warning;
+  return C.negative;
 }
 
 function riskColor(level: string): string {
-  if (level === "Bajo") return "#0d9488";
-  if (level === "Medio") return "#d97706";
-  return "#dc2626";
+  if (level === "Bajo") return C.positive;
+  if (level === "Medio") return C.warning;
+  return C.negative;
 }
 
 function timeAgo(dateStr: string): string {
@@ -93,20 +94,20 @@ export default function SmartAlertsPanel() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <span style={styles.label}>Smart Alerts</span>
-            <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+            <div style={{ fontSize: F.sizeSm, color: C.textSecondary, marginTop: S.xs }}>
               Alertas confluencia basadas en 12 factores
             </div>
           </div>
-          <div style={{ display: "flex", gap: 4 }}>
+          <div style={{ display: "flex", gap: S.xs }}>
             {(["active", "triggered", "expired", "dismissed"] as const).map(s => (
               <button
                 key={s}
                 onClick={() => setFilter(s)}
                 style={{
                   ...styles.filterBtn,
-                  background: filter === s ? "#0d9488" : "transparent",
-                  color: filter === s ? "#fff" : "#94a3b8",
-                  borderColor: filter === s ? "#0d9488" : "#e2e8f0",
+                  background: filter === s ? C.positive : "transparent",
+                  color: filter === s ? C.textPrimary : C.textSecondary,
+                  borderColor: filter === s ? C.positive : "#e2e8f0",
                 }}
               >
                 {s === "active" ? "Activas" : s === "triggered" ? "Triggered" : s === "expired" ? "Expiradas" : "Descartadas"}
@@ -125,7 +126,7 @@ export default function SmartAlertsPanel() {
       ) : alerts.length === 0 ? (
         <div style={styles.empty}>
           <span style={{ fontSize: 32 }}>🔔</span>
-          <span style={{ color: "#64748b", fontSize: 13 }}>
+          <span style={{ color: C.textMuted, fontSize: F.sizeMd }}>
             {filter === "active" ? "No hay alertas activas" : "Sin alertas en este estado"}
           </span>
           <button onClick={createDemo} style={styles.demoBtn}>
@@ -145,40 +146,40 @@ export default function SmartAlertsPanel() {
                   onClick={() => setExpanded(isOpen ? null : alert.id)}
                   style={styles.alertTop}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: S.md, flex: 1, minWidth: 0 }}>
                     {/* Grade pill */}
                     <div style={{ ...styles.gradePill, borderColor: gc, color: gc, flexShrink: 0 }}>
-                      <span style={{ fontSize: 16, fontWeight: 700 }}>{alert.grade}</span>
+                      <span style={{ fontSize: F.sizeLg, fontWeight: 700 }}>{alert.grade}</span>
                     </div>
                     {/* Symbol + score */}
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-                        <span style={{ fontSize: 16, fontWeight: 700, color: "#f0f6fc" }}>{alert.symbol}</span>
-                        <span style={{ fontSize: 12, color: "#94a3b8" }}>{alert.score}/100</span>
+                        <span style={{ fontSize: F.sizeLg, fontWeight: 700, color: C.textPrimary }}>{alert.symbol}</span>
+                        <span style={{ fontSize: F.sizeSm, color: C.textSecondary }}>{alert.score}/100</span>
                       </div>
-                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
+                      <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginTop: 2 }}>
                         {timeAgo(alert.createdAt)} ago · {alert.tradeTime}
                       </div>
                     </div>
                   </div>
 
                   {/* Right side metrics */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: S.md, flexShrink: 0 }}>
                     <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 12, color: "#94a3b8" }}>Conf</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: alert.confidence >= 70 ? "#0d9488" : alert.confidence >= 50 ? "#d97706" : "#dc2626" }}>
+                      <div style={{ fontSize: F.sizeSm, color: C.textSecondary }}>Conf</div>
+                      <div style={{ fontSize: F.sizeBase, fontWeight: 700, color: alert.confidence >= 70 ? C.positive : alert.confidence >= 50 ? C.warning : C.negative }}>
                         {alert.confidence}%
                       </div>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 12, color: "#94a3b8" }}>R/R</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#f0f6fc" }}>{alert.riskReward.toFixed(1)}</div>
+                      <div style={{ fontSize: F.sizeSm, color: C.textSecondary }}>R/R</div>
+                      <div style={{ fontSize: F.sizeBase, fontWeight: 700, color: C.textPrimary }}>{alert.riskReward.toFixed(1)}</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 12, color: "#94a3b8" }}>Riesgo</div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: rc }}>{alert.riskLevel}</div>
+                      <div style={{ fontSize: F.sizeSm, color: C.textSecondary }}>Riesgo</div>
+                      <div style={{ fontSize: F.sizeMd, fontWeight: 600, color: rc }}>{alert.riskLevel}</div>
                     </div>
-                    <span style={{ color: "#64748b", fontSize: 12, transition: "transform 0.15s", transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}>▶</span>
+                    <span style={{ color: C.textMuted, fontSize: F.sizeSm, transition: "transform 0.15s", transform: isOpen ? "rotate(90deg)" : "rotate(0deg)" }}>▶</span>
                   </div>
                 </button>
 
@@ -190,20 +191,20 @@ export default function SmartAlertsPanel() {
                       <div style={styles.detailLabel}>Zona de Operacion</div>
                       <div style={styles.zoneGrid}>
                         <div style={styles.zoneItem}>
-                          <span style={{ fontSize: 11, color: "#94a3b8" }}>Entrada</span>
-                          <span style={{ fontSize: 15, fontWeight: 700, color: "#f0f6fc" }}>${alert.entry.toFixed(2)}</span>
+                          <span style={{ fontSize: F.sizeXs, color: C.textSecondary }}>Entrada</span>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: C.textPrimary }}>${alert.entry.toFixed(2)}</span>
                         </div>
                         <div style={styles.zoneItem}>
-                          <span style={{ fontSize: 11, color: "#94a3b8" }}>Stop</span>
-                          <span style={{ fontSize: 15, fontWeight: 700, color: "#dc2626" }}>${alert.stopLoss.toFixed(2)}</span>
+                          <span style={{ fontSize: F.sizeXs, color: C.textSecondary }}>Stop</span>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: C.negative }}>${alert.stopLoss.toFixed(2)}</span>
                         </div>
                         <div style={styles.zoneItem}>
-                          <span style={{ fontSize: 11, color: "#94a3b8" }}>TP1</span>
-                          <span style={{ fontSize: 15, fontWeight: 700, color: "#0d9488" }}>${alert.tp1.toFixed(2)}</span>
+                          <span style={{ fontSize: F.sizeXs, color: C.textSecondary }}>TP1</span>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: C.positive }}>${alert.tp1.toFixed(2)}</span>
                         </div>
                         <div style={styles.zoneItem}>
-                          <span style={{ fontSize: 11, color: "#94a3b8" }}>TP2</span>
-                          <span style={{ fontSize: 15, fontWeight: 700, color: "#0d9488" }}>${alert.tp2.toFixed(2)}</span>
+                          <span style={{ fontSize: F.sizeXs, color: C.textSecondary }}>TP2</span>
+                          <span style={{ fontSize: 15, fontWeight: 700, color: C.positive }}>${alert.tp2.toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
@@ -218,9 +219,9 @@ export default function SmartAlertsPanel() {
                           return (
                             <span key={i} style={{
                               ...styles.factorTag,
-                              background: s >= 70 ? "#0d948818" : s >= 50 ? "#0891b218" : "#d9770618",
-                              color: s >= 70 ? "#0d9488" : s >= 50 ? "#0891b2" : "#d97706",
-                              borderColor: s >= 70 ? "#0d948830" : s >= 50 ? "#0891b230" : "#d9770630",
+                              background: s >= 70 ? `${C.positive}18` : s >= 50 ? `${C.info}18` : `${C.warning}18`,
+                              color: s >= 70 ? C.positive : s >= 50 ? C.info : C.warning,
+                              borderColor: s >= 70 ? `${C.positive}30` : s >= 50 ? `${C.info}30` : `${C.warning}30`,
                             }}>
                               {label}: {score}
                             </span>
@@ -231,10 +232,10 @@ export default function SmartAlertsPanel() {
 
                     {/* Warnings */}
                     {alert.warnings.length > 0 && (
-                      <div style={{ ...styles.detailSection, background: "#f59e0b08" }}>
-                        <div style={{ ...styles.detailLabel, color: "#d97706" }}>Advertencias</div>
+                      <div style={{ ...styles.detailSection, background: `${C.warning}08` }}>
+                        <div style={{ ...styles.detailLabel, color: C.warning }}>Advertencias</div>
                         {alert.warnings.map((w, i) => (
-                          <div key={i} style={{ fontSize: 12, color: "#d97706", padding: "2px 0" }}>⚠ {w}</div>
+                          <div key={i} style={{ fontSize: F.sizeSm, color: C.warning, padding: "2px 0" }}>⚠ {w}</div>
                         ))}
                       </div>
                     )}
@@ -242,7 +243,7 @@ export default function SmartAlertsPanel() {
                     {/* Summary */}
                     <div style={{ ...styles.detailSection, borderBottom: "none" }}>
                       <div style={styles.detailLabel}>Resumen</div>
-                      <p style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6, margin: 0 }}>{alert.summary}</p>
+                      <p style={{ fontSize: F.sizeSm, color: C.textSecondary, lineHeight: 1.6, margin: 0 }}>{alert.summary}</p>
                     </div>
 
                     {/* Actions */}
@@ -254,7 +255,7 @@ export default function SmartAlertsPanel() {
                       </div>
                     )}
                     {alert.status === "triggered" && (
-                      <div style={{ padding: "0 20px 16px", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                      <div style={{ padding: "0 20px 16px", display: "flex", justifyContent: "flex-end", gap: S.sm }}>
                         <button onClick={() => setShareAlert(alert)} style={styles.shareBtn}>
                           Compartir resultado
                         </button>
@@ -285,49 +286,49 @@ export default function SmartAlertsPanel() {
 
 const styles: Record<string, React.CSSProperties> = {
   card: {
-    background: "#0d1117",
-    border: "1px solid #21262d",
-    borderRadius: 12,
+    background: C.bg,
+    border: `1px solid ${C.border}`,
+    borderRadius: R.lg,
     overflow: "hidden",
   },
   header: {
     padding: "20px 24px",
-    borderBottom: "1px solid #21262d",
+    borderBottom: `1px solid ${C.border}`,
   },
   label: {
-    fontSize: 12,
+    fontSize: F.sizeSm,
     fontWeight: 600,
     textTransform: "uppercase",
     letterSpacing: "0.05em",
-    color: "#8b949e",
+    color: C.textMuted,
   },
   filterBtn: {
     padding: "4px 10px",
-    borderRadius: 6,
-    border: "1px solid #21262d",
-    fontSize: 11,
+    borderRadius: R.sm,
+    border: `1px solid ${C.border}`,
+    fontSize: F.sizeXs,
     fontWeight: 500,
     cursor: "pointer",
-    transition: "all 0.15s",
+    transition: T.fast,
   },
   empty: {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: S.sm,
     padding: "48px 20px",
   },
   spinner: {
     width: 20,
     height: 20,
-    border: "2px solid #21262d",
-    borderTopColor: "#0d9488",
-    borderRadius: "50%",
+    border: `2px solid ${C.border}`,
+    borderTopColor: C.positive,
+    borderRadius: R.full,
     animation: "spin 0.8s linear infinite",
   },
   alertRow: {
-    borderBottom: "1px solid #21262d",
+    borderBottom: `1px solid ${C.border}`,
   },
   alertTop: {
     display: "flex",
@@ -339,7 +340,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: "none",
     cursor: "pointer",
     textAlign: "left",
-    gap: 12,
+    gap: S.md,
   },
   gradePill: {
     width: 44,
@@ -348,75 +349,75 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     justifyContent: "center",
     border: "1.5px solid",
-    borderRadius: 10,
-    background: "#0d1117",
+    borderRadius: R.lg,
+    background: C.bg,
     flexShrink: 0,
   },
   detail: {
-    background: "#161b22",
-    borderTop: "1px solid #21262d",
+    background: C.bgCard,
+    borderTop: `1px solid ${C.border}`,
   },
   detailSection: {
     padding: "14px 20px",
-    borderBottom: "1px solid #21262d",
+    borderBottom: `1px solid ${C.border}`,
   },
   detailLabel: {
-    fontSize: 11,
+    fontSize: F.sizeXs,
     fontWeight: 600,
     textTransform: "uppercase",
     letterSpacing: "0.05em",
-    color: "#8b949e",
-    marginBottom: 8,
+    color: C.textMuted,
+    marginBottom: S.sm,
   },
   zoneGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(4, 1fr)",
-    gap: 8,
+    gap: S.sm,
   },
   zoneItem: {
     display: "flex",
     flexDirection: "column" as const,
     gap: 2,
     padding: "8px 10px",
-    background: "#0d1117",
-    borderRadius: 8,
-    border: "1px solid #21262d",
+    background: C.bg,
+    borderRadius: R.md,
+    border: `1px solid ${C.border}`,
   },
   factorTag: {
     padding: "4px 10px",
-    borderRadius: 6,
+    borderRadius: R.sm,
     border: "1px solid",
-    fontSize: 12,
+    fontSize: F.sizeSm,
     fontWeight: 500,
   },
   dismissBtn: {
     padding: "6px 16px",
-    borderRadius: 6,
-    border: "1px solid #30363d",
+    borderRadius: R.sm,
+    border: `1px solid ${C.border}`,
     background: "transparent",
-    color: "#8b949e",
-    fontSize: 12,
+    color: C.textMuted,
+    fontSize: F.sizeSm,
     cursor: "pointer",
     fontWeight: 500,
   },
   shareBtn: {
     padding: "6px 16px",
-    borderRadius: 6,
+    borderRadius: R.sm,
     border: "none",
-    background: "#0d9488",
-    color: "#fff",
-    fontSize: 12,
+    background: C.positive,
+    color: C.textPrimary,
+    fontSize: F.sizeSm,
     cursor: "pointer",
     fontWeight: 600,
   },
   demoBtn: {
-    marginTop: 8,
+    marginTop: S.sm,
     padding: "8px 16px",
-    borderRadius: 8,
-    border: "1px solid #30363d",
+    borderRadius: R.md,
+    border: `1px solid ${C.border}`,
     background: "transparent",
-    color: "#8b949e",
-    fontSize: 12,
+    color: C.textMuted,
+    fontSize: F.sizeSm,
     cursor: "pointer",
     fontWeight: 500,
   },

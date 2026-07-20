@@ -1,5 +1,5 @@
 'use client';
-import { colors as C, radius as R, font as F } from '@/src/utils/webTheme';
+import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 
 import { useState, useEffect, useCallback } from 'react';
 import { evaluateTrade, TradeInput, TradeResult } from '@/src/services/tradeValidator';
@@ -295,7 +295,7 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
 
   const cardStyle: React.CSSProperties = {
     background: C.bgCard,
-    borderRadius: '12px',
+    borderRadius: R.lg,
     border: '1px solid ' + C.border,
     padding: '24px',
     marginBottom: '20px'
@@ -309,18 +309,18 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
     display: 'block',
     marginBottom: '8px',
     color: C.textMuted,
-    fontSize: '14px',
+    fontSize: F.sizeBase,
     fontWeight: '500'
   };
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
     padding: '12px',
-    borderRadius: '8px',
+    borderRadius: R.md,
     border: '1px solid ' + C.border,
     background: C.bg,
     color: C.textSecondary,
-    fontSize: '16px',
+    fontSize: F.sizeLg,
     boxSizing: 'border-box'
   };
 
@@ -333,14 +333,14 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
     <div style={containerStyle}>
       <div style={cardStyle}>
         <h2 style={{ color: C.textPrimary, fontSize: '24px', marginBottom: '8px' }}>🎯 Trade Validator</h2>
-        <p style={{ color: C.textMuted, fontSize: '14px', marginBottom: '24px' }}>
+        <p style={{ color: C.textMuted, fontSize: F.sizeBase, marginBottom: '24px' }}>
           Valida si un trade de opciones está bien estructurado según tiempo, setup y volatilidad
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           <div style={inputGroupStyle}>
             <label style={labelStyle}>
-              Ticker {loadingSymbol && <span style={{ color: C.accent, fontSize: '12px' }}>(cargando datos...)</span>}
+              Ticker {loadingSymbol && <span style={{ color: C.accent, fontSize: F.sizeSm }}>(cargando datos...)</span>}
             </label>
             <div style={{ position: 'relative' }}>
               <input
@@ -365,9 +365,9 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
                   display: 'inline-block',
                   width: '16px',
                   height: '16px',
-                  border: '2px solid rgba(255,255,255,0.3)',
+                  border: `2px solid ${C.textPrimary}4D`,
                   borderTopColor: C.accent,
-                  borderRadius: '50%',
+                  borderRadius: R.full,
                   animation: 'spin 1s linear infinite'
                 }} />
               )}
@@ -452,11 +452,11 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
           style={{
             width: '100%',
             padding: '14px',
-            borderRadius: '8px',
+            borderRadius: R.md,
             border: 'none',
-            background: loading ? C.borderLight : `linear-gradient(135deg, ${C.accent} 0%, #2ea043 100%)`,
-            color: 'white',
-            fontSize: '16px',
+            background: loading ? C.borderLight : `linear-gradient(135deg, ${C.accent} 0%, ${C.positive} 100%)`,
+            color: C.textPrimary,
+            fontSize: F.sizeLg,
             fontWeight: '600',
             cursor: loading ? 'not-allowed' : 'pointer',
             marginTop: '8px'
@@ -477,7 +477,7 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
               <h3 style={{ color: C.textPrimary, fontSize: '20px', margin: 0 }}>
                 Análisis de Mercado
               </h3>
-              <p style={{ color: C.textMuted, fontSize: '14px', margin: '4px 0 0' }}>
+              <p style={{ color: C.textMuted, fontSize: F.sizeBase, margin: '4px 0 0' }}>
                 {marketTiming.dayOfWeek} - {marketTiming.marketCondition}
               </p>
             </div>
@@ -488,7 +488,7 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
               background: marketTiming.validationBg,
               color: marketTiming.validationColor,
               fontWeight: '600',
-              fontSize: '14px',
+              fontSize: F.sizeBase,
               display: 'flex',
               alignItems: 'center',
               gap: '6px'
@@ -501,37 +501,37 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
           
           <div style={{
             padding: '16px',
-            borderRadius: '8px',
+            borderRadius: R.md,
             background: C.bg,
             marginBottom: '16px'
           }}>
-            <div style={{ color: marketTiming.validationColor, fontSize: '14px', fontWeight: '500' }}>
+            <div style={{ color: marketTiming.validationColor, fontSize: F.sizeBase, fontWeight: '500' }}>
               {marketTiming.message}
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginBottom: '16px' }}>
-            <div style={{ padding: '12px', borderRadius: '8px', background: C.bg, textAlign: 'center' }}>
-              <div style={{ color: C.textMuted, fontSize: '11px', marginBottom: '4px' }}>Tendencia</div>
-              <div style={{ color: C.textSecondary, fontSize: '14px', fontWeight: '500', textTransform: 'capitalize' }}>
+            <div style={{ padding: '12px', borderRadius: R.md, background: C.bg, textAlign: 'center' }}>
+              <div style={{ color: C.textMuted, fontSize: F.sizeXs, marginBottom: '4px' }}>Tendencia</div>
+              <div style={{ color: C.textSecondary, fontSize: F.sizeBase, fontWeight: '500', textTransform: 'capitalize' }}>
                 {marketTiming.details.tendencia}
               </div>
             </div>
-            <div style={{ padding: '12px', borderRadius: '8px', background: C.bg, textAlign: 'center' }}>
-              <div style={{ color: C.textMuted, fontSize: '11px', marginBottom: '4px' }}>Volumen</div>
-              <div style={{ color: C.textSecondary, fontSize: '14px', fontWeight: '500' }}>
+            <div style={{ padding: '12px', borderRadius: R.md, background: C.bg, textAlign: 'center' }}>
+              <div style={{ color: C.textMuted, fontSize: F.sizeXs, marginBottom: '4px' }}>Volumen</div>
+              <div style={{ color: C.textSecondary, fontSize: F.sizeBase, fontWeight: '500' }}>
                 {marketTiming.details.volumen}
               </div>
             </div>
-            <div style={{ padding: '12px', borderRadius: '8px', background: C.bg, textAlign: 'center' }}>
-              <div style={{ color: C.textMuted, fontSize: '11px', marginBottom: '4px' }}>Estructura</div>
-              <div style={{ color: C.textSecondary, fontSize: '14px', fontWeight: '500' }}>
+            <div style={{ padding: '12px', borderRadius: R.md, background: C.bg, textAlign: 'center' }}>
+              <div style={{ color: C.textMuted, fontSize: F.sizeXs, marginBottom: '4px' }}>Estructura</div>
+              <div style={{ color: C.textSecondary, fontSize: F.sizeBase, fontWeight: '500' }}>
                 {marketTiming.details.estructura}
               </div>
             </div>
-            <div style={{ padding: '12px', borderRadius: '8px', background: C.bg, textAlign: 'center' }}>
-              <div style={{ color: C.textMuted, fontSize: '11px', marginBottom: '4px' }}>Ubicación</div>
-              <div style={{ color: C.textSecondary, fontSize: '14px', fontWeight: '500' }}>
+            <div style={{ padding: '12px', borderRadius: R.md, background: C.bg, textAlign: 'center' }}>
+              <div style={{ color: C.textMuted, fontSize: F.sizeXs, marginBottom: '4px' }}>Ubicación</div>
+              <div style={{ color: C.textSecondary, fontSize: F.sizeBase, fontWeight: '500' }}>
                 {marketTiming.details.ubicacionPrecio}
               </div>
             </div>
@@ -540,12 +540,12 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
           {marketTiming.details.eventosCercanos !== 'Sin eventos cercanos' && (
             <div style={{
               padding: '12px',
-              borderRadius: '8px',
+              borderRadius: R.md,
               background: `${C.warning}20`,
               border: `1px solid ${C.warning}40`,
               marginBottom: '16px'
             }}>
-              <span style={{ color: C.warning, fontSize: '13px' }}>
+              <span style={{ color: C.warning, fontSize: F.sizeMd }}>
                 ⚠️ {marketTiming.details.eventosCercanos}
               </span>
             </div>
@@ -556,14 +556,14 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
             alignItems: 'center',
             gap: '12px',
             padding: '16px',
-            borderRadius: '8px',
+            borderRadius: R.md,
             background: `${C.accent}20`,
             border: `1px solid ${C.accent}40`
           }}>
             <span style={{ fontSize: '24px' }}>🎯</span>
             <div>
-              <div style={{ color: C.textMuted, fontSize: '12px' }}>Estrategia recomendada</div>
-              <div style={{ color: C.positive, fontSize: '16px', fontWeight: '600' }}>
+              <div style={{ color: C.textMuted, fontSize: F.sizeSm }}>Estrategia recomendada</div>
+              <div style={{ color: C.positive, fontSize: F.sizeLg, fontWeight: '600' }}>
                 {marketTiming.strategy}
               </div>
             </div>
@@ -581,8 +581,8 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
               <div style={{
                 width: '60px',
                 height: '60px',
-                borderRadius: '50%',
-                background: result.tradeValid ? '#3fb95020' : '#f8514920',
+                borderRadius: R.full,
+                background: result.tradeValid ? `${C.positive}20` : `${C.negative}20`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -594,7 +594,7 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
                 <h3 style={{ color: C.textPrimary, fontSize: '20px', margin: 0 }}>
                   {result.tradeValid ? 'Trade Válido' : 'Trade No Recomendado'}
                 </h3>
-                <p style={{ color: C.textMuted, fontSize: '14px', margin: '4px 0 0' }}>
+                <p style={{ color: C.textMuted, fontSize: F.sizeBase, margin: '4px 0 0' }}>
                   Score: {result.score}/3
                 </p>
               </div>
@@ -602,10 +602,10 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
                 marginLeft: 'auto',
                 padding: '8px 16px',
                 borderRadius: '20px',
-                background: result.score === 3 ? '#3fb95020' : result.score === 2 ? `${C.accent}20` : '#f8514920',
+                background: result.score === 3 ? `${C.positive}20` : result.score === 2 ? `${C.accent}20` : `${C.negative}20`,
                 color: result.score === 3 ? C.positive : result.score === 2 ? C.accent : C.negative,
                 fontWeight: '600',
-                fontSize: '14px'
+                fontSize: F.sizeBase
               }}>
                 {result.score === 3 ? 'Excelente' : result.score === 2 ? 'Bueno' : 'Débil'}
               </div>
@@ -613,10 +613,10 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
 
             <div style={{
               padding: '16px',
-              borderRadius: '8px',
+              borderRadius: R.md,
               background: C.bg,
               color: result.tradeValid ? C.positive : C.negative,
-              fontSize: '14px',
+              fontSize: F.sizeBase,
               fontWeight: '500'
             }}>
               {result.messages.overall}
@@ -625,8 +625,8 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
             <div style={cardStyle}>
-              <h4 style={{ color: C.textPrimary, fontSize: '16px', marginBottom: '12px' }}>📊 Análisis de Tiempo</h4>
-              <div style={{ fontSize: '14px', color: result.messages.timeOk ? C.positive : C.negative }}>
+              <h4 style={{ color: C.textPrimary, fontSize: F.sizeLg, marginBottom: '12px' }}>📊 Análisis de Tiempo</h4>
+              <div style={{ fontSize: F.sizeBase, color: result.messages.timeOk ? C.positive : C.negative }}>
                 <p style={{ margin: '0 0 8px' }}>{result.messages.timeValidation}</p>
                 <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
                   <div>
@@ -642,8 +642,8 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
             </div>
 
             <div style={cardStyle}>
-              <h4 style={{ color: C.textPrimary, fontSize: '16px', marginBottom: '12px' }}>📈 Expiración</h4>
-              <div style={{ fontSize: '14px', color: result.messages.expirationOk ? C.positive : C.negative }}>
+              <h4 style={{ color: C.textPrimary, fontSize: F.sizeLg, marginBottom: '12px' }}>📈 Expiración</h4>
+              <div style={{ fontSize: F.sizeBase, color: result.messages.expirationOk ? C.positive : C.negative }}>
                 <p style={{ margin: '0 0 8px' }}>{result.messages.expirationValidation}</p>
                 <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
                   <div>
@@ -656,8 +656,8 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
 
             {result.messages.volatilityValidation && (
               <div style={cardStyle}>
-                <h4 style={{ color: C.textPrimary, fontSize: '16px', marginBottom: '12px' }}>🎲 Volatilidad</h4>
-                <div style={{ fontSize: '14px', color: result.messages.volatilityOk ? C.positive : C.negative }}>
+                <h4 style={{ color: C.textPrimary, fontSize: F.sizeLg, marginBottom: '12px' }}>🎲 Volatilidad</h4>
+                <div style={{ fontSize: F.sizeBase, color: result.messages.volatilityOk ? C.positive : C.negative }}>
                   <p style={{ margin: '0 0 8px' }}>{result.messages.volatilityValidation}</p>
                   <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
                     <div>
@@ -683,7 +683,7 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
               alignItems: 'center',
               gap: '12px',
               padding: '16px',
-              borderRadius: '8px',
+              borderRadius: R.md,
               background: C.bg,
               marginBottom: '16px'
             }}>
@@ -692,11 +692,11 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
               </span>
               <div>
                 <div style={{ color: C.textPrimary, fontSize: '18px', fontWeight: '600' }}>{result.strategy}</div>
-                <div style={{ color: C.textMuted, fontSize: '14px' }}>{result.structure.description}</div>
+                <div style={{ color: C.textMuted, fontSize: F.sizeBase }}>{result.structure.description}</div>
               </div>
             </div>
 
-            <h5 style={{ color: C.textPrimary, fontSize: '14px', marginBottom: '12px' }}>Estructura:</h5>
+            <h5 style={{ color: C.textPrimary, fontSize: F.sizeBase, marginBottom: '12px' }}>Estructura:</h5>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {result.structure.legs.map((leg, index) => (
                 <div key={index} style={{
@@ -704,16 +704,16 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
                   alignItems: 'center',
                   gap: '12px',
                   padding: '12px',
-                  borderRadius: '8px',
-                  background: leg.type === 'buy' ? `${C.accent}20` : '#f8514920',
+                  borderRadius: R.md,
+                  background: leg.type === 'buy' ? `${C.accent}20` : `${C.negative}20`,
                   border: `1px solid ${leg.type === 'buy' ? C.accent : C.negative}40`
                 }}>
                   <span style={{
                     padding: '4px 12px',
-                    borderRadius: '4px',
+                    borderRadius: R.sm,
                     background: leg.type === 'buy' ? C.accent : C.negative,
-                    color: 'white',
-                    fontSize: '12px',
+                    color: C.textPrimary,
+                    fontSize: F.sizeSm,
                     fontWeight: '600'
                   }}>
                     {leg.type === 'buy' ? 'COMPRAR' : 'VENDER'}

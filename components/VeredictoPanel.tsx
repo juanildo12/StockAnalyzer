@@ -65,7 +65,7 @@ interface VeredictoPanelProps {
 }
 
 function getVerdictColor(signal: string): string {
-  return signal === 'BUY' ? '#22C55E' : signal === 'SELL' ? '#EF4444' : '#F59E0B';
+  return signal === 'BUY' ? C.positive : signal === 'SELL' ? C.negative : C.warning;
 }
 
 function calcCallScore(signal: string, trend: string, rsi: number): { score: number; label: string; color: string; desc: string } {
@@ -87,18 +87,18 @@ function calcCallScore(signal: string, trend: string, rsi: number): { score: num
   score = Math.max(0, Math.min(100, score));
 
   if (signal === 'BUY' && trend === 'alcista' && rsi < 70)
-    return { score, label: 'CALL', color: '#22C55E', desc: 'Tendencia alcista + señal compra, RSI óptimo' };
+    return { score, label: 'CALL', color: C.positive, desc: 'Tendencia alcista + señal compra, RSI óptimo' };
   if (signal === 'BUY' && trend === 'alcista' && rsi >= 70)
-    return { score, label: 'Esperar CALL', color: '#F59E0B', desc: 'BUY + alcista pero RSI sobrecomprado' };
+    return { score, label: 'Esperar CALL', color: C.warning, desc: 'BUY + alcista pero RSI sobrecomprado' };
   if (trend === 'alcista' && rsi >= 40 && rsi < 70)
-    return { score, label: 'CALL', color: '#22C55E', desc: 'Tendencia alcista, RSI en rango' };
+    return { score, label: 'CALL', color: C.positive, desc: 'Tendencia alcista, RSI en rango' };
   if (trend === 'alcista' && rsi < 40)
-    return { score, label: 'CALL (rebote)', color: '#A78BFA', desc: 'Tendencia alcista, RSI bajo — posible rebote' };
+    return { score, label: 'CALL (rebote)', color: C.accent, desc: 'Tendencia alcista, RSI bajo — posible rebote' };
   if (signal === 'HOLD' && trend === 'alcista')
-    return { score, label: 'Esperar CALL', color: '#A78BFA', desc: 'Señal HOLD en tendencia alcista' };
+    return { score, label: 'Esperar CALL', color: C.accent, desc: 'Señal HOLD en tendencia alcista' };
   if (trend === 'bajista' && rsi < 30)
-    return { score, label: 'CALL (contra)', color: '#A78BFA', desc: 'Sobreventa en tendencia bajista — posible rebote técnico' };
-  return { score, label: score >= 65 ? 'CALL' : score >= 45 ? 'CALL dudoso' : 'Evitar CALL', color: '#78716C', desc: '' };
+    return { score, label: 'CALL (contra)', color: C.accent, desc: 'Sobreventa en tendencia bajista — posible rebote técnico' };
+  return { score, label: score >= 65 ? 'CALL' : score >= 45 ? 'CALL dudoso' : 'Evitar CALL', color: C.textMuted, desc: '' };
 }
 
 function calcPutScore(signal: string, trend: string, rsi: number): { score: number; label: string; color: string; desc: string } {
@@ -120,28 +120,28 @@ function calcPutScore(signal: string, trend: string, rsi: number): { score: numb
   score = Math.max(0, Math.min(100, score));
 
   if (signal === 'SELL' && trend === 'bajista' && rsi > 30)
-    return { score, label: 'PUT', color: '#EF4444', desc: 'Tendencia bajista + señal venta, RSI óptimo' };
+    return { score, label: 'PUT', color: C.negative, desc: 'Tendencia bajista + señal venta, RSI óptimo' };
   if (signal === 'SELL' && trend === 'bajista' && rsi <= 30)
-    return { score, label: 'Esperar PUT', color: '#F59E0B', desc: 'SELL + bajista pero RSI sobrevendido' };
+    return { score, label: 'Esperar PUT', color: C.warning, desc: 'SELL + bajista pero RSI sobrevendido' };
   if (trend === 'bajista' && rsi <= 60 && rsi > 30)
-    return { score, label: 'PUT', color: '#EF4444', desc: 'Tendencia bajista, RSI sin sobreventa' };
+    return { score, label: 'PUT', color: C.negative, desc: 'Tendencia bajista, RSI sin sobreventa' };
   if (trend === 'bajista' && rsi < 30)
-    return { score, label: 'Esperar PUT', color: '#A78BFA', desc: 'Tendencia bajista pero RSI muy bajo' };
+    return { score, label: 'Esperar PUT', color: C.accent, desc: 'Tendencia bajista pero RSI muy bajo' };
   if (signal === 'HOLD' && trend === 'bajista')
-    return { score, label: 'Esperar PUT', color: '#A78BFA', desc: 'Señal HOLD en tendencia bajista' };
+    return { score, label: 'Esperar PUT', color: C.accent, desc: 'Señal HOLD en tendencia bajista' };
   if (trend === 'alcista' && rsi > 70)
-    return { score, label: 'PUT (contra)', color: '#A78BFA', desc: 'Sobrecompra en tendencia alcista — posible corrección' };
-  return { score, label: score >= 65 ? 'PUT' : score >= 45 ? 'PUT dudoso' : 'Evitar PUT', color: '#78716C', desc: '' };
+    return { score, label: 'PUT (contra)', color: C.accent, desc: 'Sobrecompra en tendencia alcista — posible corrección' };
+  return { score, label: score >= 65 ? 'PUT' : score >= 45 ? 'PUT dudoso' : 'Evitar PUT', color: C.textMuted, desc: '' };
 }
 
 function getEntryAdvice(price: number, buyLow: number, buyHigh: number): { label: string; color: string } {
   if (price >= buyLow && price <= buyHigh) {
-    return { label: '✅ EN ZONA DE COMPRA', color: '#22C55E' };
+    return { label: '✅ EN ZONA DE COMPRA', color: C.positive };
   }
   if (price > buyHigh) {
-    return { label: `⏳ Esperar pullback a $${buyLow.toFixed(2)} — $${buyHigh.toFixed(2)}`, color: '#F59E0B' };
+    return { label: `⏳ Esperar pullback a $${buyLow.toFixed(2)} — $${buyHigh.toFixed(2)}`, color: C.warning };
   }
-  return { label: '📉 Fuera de zona, esperar confirmación', color: '#78716C' };
+  return { label: '📉 Fuera de zona, esperar confirmación', color: C.textMuted };
 }
 
 export default function VeredictoPanel({ symbol, detailData, summary, quote, technical }: VeredictoPanelProps) {
@@ -230,9 +230,9 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
   const totalItems = checklist.length;
 
   const checklistResult = (() => {
-    if (checkedCount >= 9) return { emoji: '🟢', label: 'Entraría', color: '#22C55E' };
-    if (checkedCount >= 7) return { emoji: '🟡', label: 'Esperaría confirmación', color: '#F59E0B' };
-    return { emoji: '🔴', label: 'No operaría', color: '#EF4444' };
+    if (checkedCount >= 9) return { emoji: '🟢', label: 'Entraría', color: C.positive };
+    if (checkedCount >= 7) return { emoji: '🟡', label: 'Esperaría confirmación', color: C.warning };
+    return { emoji: '🔴', label: 'No operaría', color: C.negative };
   })();
 
   const toggleChecklist = (id: string) => {
@@ -328,7 +328,7 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 12px', fontSize: F.sizeXs, color: C.textSecondary, marginTop: 2, paddingTop: 4, borderTop: `1px solid ${C.divider}50` }}>
           <span>Coste <strong style={{ color: C.textPrimary }}>${(premium * 100).toFixed(0)}</strong></span>
           <span>B/E {isCall ? '↑' : '↓'} <strong style={{ color: C.textPrimary }}>${breakeven.toFixed(1)}</strong></span>
-          <span style={{ color: '#EF4444' }}>SL <strong>${(premium * 100 * 0.5).toFixed(0)}</strong> (-50%)</span>
+          <span style={{ color: C.negative }}>SL <strong>${(premium * 100 * 0.5).toFixed(0)}</strong> (-50%)</span>
         </div>
       </div>
     );
@@ -392,7 +392,7 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
           borderRadius: R.lg, marginBottom: 16,
         }}>
           <span style={{
-            background: vColor, color: '#fff', padding: '6px 18px',
+            background: vColor, color: C.textPrimary, padding: '6px 18px',
             borderRadius: R.full, fontWeight: 700, fontSize: F.sizeLg,
             letterSpacing: '0.5px',
           }}>
@@ -444,7 +444,7 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
             : ((price - effSl) / price) * 100;
           const riskBarPct = Math.min(100, Math.max(0, effRiskPct));
           const tpLabel = isBearish ? 'Cover Target' : 'Take Profit';
-          const tpColor = isBearish ? '#EF4444' : '#22C55E';
+          const tpColor = isBearish ? C.negative : C.positive;
           const entryLabel = isBearish ? 'Zona de Venta' : 'Zona de Entrada';
 
           return (
@@ -452,7 +452,7 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
               {/* Entry Zone — same original style for BUY/HOLD */}
               <div style={{
                 background: C.bg, borderRadius: R.md, padding: 12,
-                border: isBearish ? '1px solid #EF444430' : `1px solid ${entry.color}30`,
+                border: isBearish ? `1px solid ${C.negative}30` : `1px solid ${entry.color}30`,
               }}>
                 <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   {entryLabel}
@@ -460,9 +460,9 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
                 {isBearish ? (
                   <>
                     <div style={{ fontSize: F.sizeSm, fontWeight: 600, color: C.textPrimary }}>
-                      <span style={{ color: '#EF4444' }}>Short</span> @ ${price.toFixed(2)}
+                      <span style={{ color: C.negative }}>Short</span> @ ${price.toFixed(2)}
                     </div>
-                    <div style={{ fontSize: F.sizeXs, color: '#EF4444', marginTop: 4, fontWeight: 500 }}>
+                    <div style={{ fontSize: F.sizeXs, color: C.negative, marginTop: 4, fontWeight: 500 }}>
                       Vender en corto ahora
                     </div>
                   </>
@@ -517,12 +517,12 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
               {/* SL */}
               <div style={{
                 background: C.bg, borderRadius: R.md, padding: 12,
-                border: '1px solid #EF444430',
+                border: `1px solid ${C.negative}30`,
               }}>
                 <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Stop Loss
                 </div>
-                <div style={{ fontSize: F.sizeSm, fontWeight: 600, color: '#EF4444' }}>
+                <div style={{ fontSize: F.sizeSm, fontWeight: 600, color: C.negative }}>
                   ${effSl.toFixed(2)}
                 </div>
                 <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginTop: 4 }}>
@@ -533,7 +533,7 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
                     <div style={{
                       position: 'absolute', left: 0, top: 0, height: '100%',
                       width: `${riskBarPct}%`,
-                      background: '#EF4444', borderRadius: 2,
+                      background: C.negative, borderRadius: 2,
                     }} />
                   </div>
                 </div>
@@ -564,7 +564,7 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
               <span style={{ fontSize: F.sizeXs, color: call.color, fontWeight: 700 }}>{call.label}</span>
             </div>
             {optionsData?.nextExpirations?.[0]
-              ? (renderContractCard(bestContract(optionsData.nextExpirations[0].calls, true), optionsData.nextExpirations[0], '#22C55E', true)
+              ? (renderContractCard(bestContract(optionsData.nextExpirations[0].calls, true), optionsData.nextExpirations[0], C.positive, true)
                  || <div style={{ fontSize: F.sizeXs, color: C.textSecondary }}>{call.desc || 'Sin contratos cercanos'}</div>)
               : (<>
                 {call.desc && <div style={{ fontSize: F.sizeXs, color: C.textSecondary, marginTop: 2 }}>{call.desc}</div>}
@@ -583,7 +583,7 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
               <span style={{ fontSize: F.sizeXs, color: put.color, fontWeight: 700 }}>{put.label}</span>
             </div>
             {optionsData?.nextExpirations?.[0]
-              ? (renderContractCard(bestContract(optionsData.nextExpirations[0].puts, false), optionsData.nextExpirations[0], '#EF4444', false)
+              ? (renderContractCard(bestContract(optionsData.nextExpirations[0].puts, false), optionsData.nextExpirations[0], C.negative, false)
                  || <div style={{ fontSize: F.sizeXs, color: C.textSecondary }}>{put.desc || 'Sin contratos cercanos'}</div>)
               : (<>
                 {put.desc && <div style={{ fontSize: F.sizeXs, color: C.textSecondary, marginTop: 2 }}>{put.desc}</div>}
@@ -600,7 +600,7 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
         {summary && (summary.peClassification || summary.cashClassification || summary.debtClassification || summary.peRatio || summary?.targetMeanPrice) && (
           <div style={{
             background: C.bg, borderRadius: R.md, padding: 12, marginBottom: 16,
-            border: '1px solid #7C3AED30',
+            border: `1px solid ${C.accent}30`,
           }}>
             <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Clasificaciones
@@ -636,7 +636,7 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
                   <span style={{ color: C.textSecondary }}>
                     ${summary.targetMeanPrice.toFixed(2)}
                     {price > 0 && (
-                      <span style={{ color: summary.targetMeanPrice > price ? '#22C55E' : '#EF4444', marginLeft: 4 }}>
+                      <span style={{ color: summary.targetMeanPrice > price ? C.positive : C.negative, marginLeft: 4 }}>
                         ({((summary.targetMeanPrice - price) / price * 100).toFixed(1)}%)
                       </span>
                     )}
@@ -710,8 +710,8 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
           {/* Items */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {checklist.map(item => {
-              const bgColor = item.check ? '#22C55E15' : 'transparent';
-              const borderColor = item.check ? '#22C55E30' : C.border;
+              const bgColor = item.check ? `${C.positive}15` : 'transparent';
+              const borderColor = item.check ? `${C.positive}30` : C.border;
               return (
                 <div
                   key={item.id}
@@ -726,7 +726,7 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
                 >
                   <span style={{
                     fontSize: '14px', flexShrink: 0,
-                    color: item.check ? '#22C55E' : C.textMuted,
+                    color: item.check ? C.positive : C.textMuted,
                   }}>
                     {item.check ? '☑' : '☐'}
                   </span>

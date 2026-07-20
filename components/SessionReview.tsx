@@ -11,8 +11,8 @@ interface Props {
 }
 
 const DIFF_COLORS: Record<string, string> = {
-  novato: '#22C55E', bronce: '#CD7F32', plata: '#94A3B8',
-  oro: '#F59E0B', platino: '#06B6D4', diamante: '#8B5CF6',
+  novato: C.positive, bronce: '#CD7F32', plata: C.textSecondary,
+  oro: C.warning, platino: C.info, diamante: C.accentLight,
 };
 
 const DIFF_ICONS: Record<string, string> = {
@@ -38,7 +38,7 @@ const LEVEL_ICONS = [
 ];
 
 function SignalBadge({ signal }: { signal: string }) {
-  const color = signal === 'COMPRAR' ? '#22C55E' : signal === 'VENDER' ? '#EF4444' : '#F59E0B';
+  const color = signal === 'COMPRAR' ? C.positive : signal === 'VENDER' ? C.negative : C.warning;
   return (
     <span style={{
       display: 'inline-block', padding: '2px 8px', borderRadius: R.sm,
@@ -53,7 +53,7 @@ export default function SessionReview({ result, onNewSession, onBack }: Props) {
   const [showDetails, setShowDetails] = useState(false);
   const [celebrating, setCelebrating] = useState(result.levelUp);
 
-  const accuracyColor = result.accuracy >= 80 ? '#22C55E' : result.accuracy >= 50 ? '#F59E0B' : '#EF4444';
+  const accuracyColor = result.accuracy >= 80 ? C.positive : result.accuracy >= 50 ? C.warning : C.negative;
 
   const strongAreas = useMemo(() => {
     const metricCount: Record<string, { total: number; correct: number; lessons: string[] }> = {};
@@ -87,10 +87,10 @@ export default function SessionReview({ result, onNewSession, onBack }: Props) {
             <div style={{ fontSize: '72px', marginBottom: '12px', animation: 'spin 2s linear infinite' }}>
               {LEVEL_ICONS[result.newLevel] || '⭐'}
             </div>
-            <h2 style={{ color: '#fff', fontSize: '32px', margin: '0 0 8px' }}>
+            <h2 style={{ color: C.textPrimary, fontSize: '32px', margin: '0 0 8px' }}>
               ¡Nivel {result.newLevel}!
             </h2>
-            <p style={{ color: '#F59E0B', fontSize: '18px', margin: '0 0 4px', fontWeight: 700 }}>
+            <p style={{ color: C.warning, fontSize: '18px', margin: '0 0 4px', fontWeight: 700 }}>
               {LEVEL_NAMES[result.newLevel] || 'Leyenda'}
             </p>
             <p style={{ color: C.textMuted, fontSize: '14px', marginBottom: '20px' }}>
@@ -107,7 +107,7 @@ export default function SessionReview({ result, onNewSession, onBack }: Props) {
             }}>
               <div style={{
                 width: '100%', height: '100%',
-                background: 'linear-gradient(90deg, #22C55E, #F59E0B, #8B5CF6)',
+                background: `linear-gradient(90deg, ${C.positive}, ${C.warning}, ${C.accentLight})`,
                 animation: 'shimmer 1.5s ease infinite',
               }} />
             </div>
@@ -115,7 +115,7 @@ export default function SessionReview({ result, onNewSession, onBack }: Props) {
               onClick={() => setCelebrating(false)}
               style={{
                 padding: '14px 40px', borderRadius: R.lg, border: 'none',
-                background: C.gradientPrimary, color: '#fff', fontWeight: 700,
+                background: C.gradientPrimary, color: C.textPrimary, fontWeight: 700,
                 fontSize: '16px', cursor: 'pointer',
                 boxShadow: `0 4px 30px ${C.accent}60`,
               }}
@@ -164,7 +164,7 @@ export default function SessionReview({ result, onNewSession, onBack }: Props) {
             { label: 'Aciertos', value: `${result.correct}/${result.total}`, color: accuracyColor },
             { label: 'Precisión', value: `${result.accuracy}%`, color: accuracyColor },
             { label: 'Tiempo prom.', value: `${result.averageTime}s`, color: C.textPrimary },
-            { label: 'Racha', value: `${result.bestStreak}`, color: '#F59E0B' },
+            { label: 'Racha', value: `${result.bestStreak}`, color: C.warning },
           ].map(stat => (
             <div key={stat.label} style={{
               background: C.bgCard, borderRadius: R.lg, padding: '14px 8px', textAlign: 'center',
@@ -198,8 +198,8 @@ export default function SessionReview({ result, onNewSession, onBack }: Props) {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {result.results.map((r, i) => {
-              const color = r.correct ? '#22C55E20' : '#EF444420';
-              const border = r.correct ? '#22C55E30' : '#EF444430';
+              const color = r.correct ? `${C.positive}20` : `${C.negative}20`;
+              const border = r.correct ? `${C.positive}30` : `${C.negative}30`;
               return (
                 <div key={i} style={{
                   background: color, borderRadius: R.md, padding: '10px 14px',
@@ -222,7 +222,7 @@ export default function SessionReview({ result, onNewSession, onBack }: Props) {
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <p style={{ margin: 0, color: '#F59E0B', fontWeight: 700, fontSize: '14px' }}>
+                      <p style={{ margin: 0, color: C.warning, fontWeight: 700, fontSize: '14px' }}>
                         +{r.score}
                       </p>
                       <p style={{ margin: 0, color: C.textMuted, fontSize: '10px' }}>
@@ -248,7 +248,7 @@ export default function SessionReview({ result, onNewSession, onBack }: Props) {
                           }}>
                             <span style={{
                               flexShrink: 0,
-                              color: tp.impact === 'positivo' ? '#22C55E' : tp.impact === 'negativo' ? '#EF4444' : C.textMuted,
+                              color: tp.impact === 'positivo' ? C.positive : tp.impact === 'negativo' ? C.negative : C.textMuted,
                             }}>
                               {tp.impact === 'positivo' ? '▲' : tp.impact === 'negativo' ? '▼' : '●'}
                             </span>
@@ -279,7 +279,7 @@ export default function SessionReview({ result, onNewSession, onBack }: Props) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <span style={{ color: C.textSecondary, fontSize: '12px' }}>{area.metric}</span>
                     <span style={{
-                      color: area.score >= 70 ? '#22C55E' : area.score >= 40 ? '#F59E0B' : '#EF4444',
+                      color: area.score >= 70 ? C.positive : area.score >= 40 ? C.warning : C.negative,
                       fontWeight: 700, fontSize: '12px',
                     }}>
                       {area.score}%
@@ -288,7 +288,7 @@ export default function SessionReview({ result, onNewSession, onBack }: Props) {
                   <div style={{ height: '4px', background: C.bgBase, borderRadius: '2px', overflow: 'hidden' }}>
                     <div style={{
                       width: `${area.score}%`, height: '100%',
-                      background: area.score >= 70 ? '#22C55E' : area.score >= 40 ? '#F59E0B' : '#EF4444',
+                      background: area.score >= 70 ? C.positive : area.score >= 40 ? C.warning : C.negative,
                       borderRadius: '2px', transition: 'width 0.5s ease',
                     }} />
                   </div>
@@ -308,7 +308,7 @@ export default function SessionReview({ result, onNewSession, onBack }: Props) {
           <button onClick={onNewSession}
             style={{
               padding: '14px 32px', borderRadius: R.lg, border: 'none',
-              background: C.gradientPrimary, color: '#fff', fontWeight: 700,
+              background: C.gradientPrimary, color: C.textPrimary, fontWeight: 700,
               fontSize: '15px', cursor: 'pointer',
               boxShadow: `0 4px 20px ${C.accent}40`,
             }}

@@ -20,15 +20,15 @@ interface AnalysisResponse {
 }
 
 const VERDICT_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  BUY: { bg: 'rgba(16, 185, 129, 0.15)', border: '#10b981', text: '#34d399' },
-  HOLD: { bg: 'rgba(245, 158, 11, 0.15)', border: '#f59e0b', text: '#fbbf24' },
-  SELL: { bg: 'rgba(239, 68, 68, 0.15)', border: '#ef4444', text: '#f87171' },
+  BUY: { bg: 'rgba(16, 185, 129, 0.15)', border: C.positive, text: C.positive },
+  HOLD: { bg: 'rgba(245, 158, 11, 0.15)', border: C.warning, text: C.warning },
+  SELL: { bg: 'rgba(239, 68, 68, 0.15)', border: C.negative, text: C.negative },
 };
 
 const CONVICTION_COLORS: Record<string, string> = {
-  HIGH: '#10b981',
-  MEDIUM: '#f59e0b',
-  LOW: '#ef4444',
+  HIGH: C.positive,
+  MEDIUM: C.warning,
+  LOW: C.negative,
 };
 
 const SIGNAL_ICONS: Record<string, string> = {
@@ -46,9 +46,9 @@ const SIGNAL_ICONS: Record<string, string> = {
 };
 
 const RISK_COLORS: Record<string, string> = {
-  low: '#10b981',
-  medium: '#f59e0b',
-  high: '#ef4444',
+  low: C.positive,
+  medium: C.warning,
+  high: C.negative,
 };
 
 export default function AIAnalysisPanel({ symbol }: Props) {
@@ -110,7 +110,7 @@ export default function AIAnalysisPanel({ symbol }: Props) {
           <div style={{
             width: 36, height: 36,
             borderRadius: R.md,
-            background: 'linear-gradient(135deg, #7c3aed, #6366f1)',
+            background: C.gradientPrimary,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 18,
           }}>🧠</div>
@@ -137,7 +137,7 @@ export default function AIAnalysisPanel({ symbol }: Props) {
           <div style={{
             padding: '4px 10px',
             borderRadius: R.full,
-            background: 'rgba(255,255,255,0.05)',
+            background: `${C.textSecondary}08`,
             border: `1px solid ${CONVICTION_COLORS[a.conviction]}40`,
             color: CONVICTION_COLORS[a.conviction],
             fontSize: F.sizeXs,
@@ -150,7 +150,7 @@ export default function AIAnalysisPanel({ symbol }: Props) {
       <div style={{
         padding: `${S.md} ${S.lg}`,
         borderBottom: `1px solid ${C.border}`,
-        background: 'rgba(124, 58, 237, 0.03)',
+        background: C.accentGlow,
       }}>
         <p style={{
           margin: 0,
@@ -187,9 +187,9 @@ export default function AIAnalysisPanel({ symbol }: Props) {
           </div>
           <div style={{ display: 'flex', gap: S.lg, flexWrap: 'wrap' }}>
             <MetricChip label="Entry" value={`$${a.entry.ideal.toFixed(2)}`} color={C.accent} />
-            <MetricChip label="SL" value={`$${a.entry.stopLoss.toFixed(2)}`} color="#ef4444" />
-            <MetricChip label="TP1" value={`$${a.entry.tp1.toFixed(2)}`} color="#10b981" />
-            <MetricChip label="TP2" value={`$${a.entry.tp2.toFixed(2)}`} color="#10b981" />
+            <MetricChip label="SL" value={`$${a.entry.stopLoss.toFixed(2)}`} color={C.negative} />
+            <MetricChip label="TP1" value={`$${a.entry.tp1.toFixed(2)}`} color={C.positive} />
+            <MetricChip label="TP2" value={`$${a.entry.tp2.toFixed(2)}`} color={C.positive} />
             {a.entry.ideal > 0 && a.entry.stopLoss > 0 && (
               <MetricChip
                 label="R:R"
@@ -208,8 +208,8 @@ export default function AIAnalysisPanel({ symbol }: Props) {
         gap: 1,
         background: C.border,
       }}>
-        <LevelList title="📌 Supports" items={a.support} color="#10b981" />
-        <LevelList title="📌 Resistances" items={a.resistance} color="#ef4444" />
+        <LevelList title="📌 Supports" items={a.support} color={C.positive} />
+        <LevelList title="📌 Resistances" items={a.resistance} color={C.negative} />
       </div>
 
       {/* Catalysts & Warnings */}
@@ -222,12 +222,12 @@ export default function AIAnalysisPanel({ symbol }: Props) {
         }}>
           {a.catalysts.length > 0 && (
             <div style={{ background: C.bgCard, padding: `${S.md} ${S.lg}` }}>
-              <div style={{ fontSize: F.sizeXs, fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: S.sm }}>
+              <div style={{ fontSize: F.sizeXs, fontWeight: 600, color: C.positive, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: S.sm }}>
                 ⚡ Catalysts
               </div>
               {a.catalysts.map((c, i) => (
                 <div key={i} style={{ fontSize: F.sizeSm, color: C.textSecondary, marginBottom: 4, paddingLeft: 12, position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: 0, color: '#10b981' }}>•</span>
+                  <span style={{ position: 'absolute', left: 0, color: C.positive }}>•</span>
                   {c}
                 </div>
               ))}
@@ -235,12 +235,12 @@ export default function AIAnalysisPanel({ symbol }: Props) {
           )}
           {a.warnings.length > 0 && (
             <div style={{ background: C.bgCard, padding: `${S.md} ${S.lg}` }}>
-              <div style={{ fontSize: F.sizeXs, fontWeight: 600, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: S.sm }}>
+              <div style={{ fontSize: F.sizeXs, fontWeight: 600, color: C.negative, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: S.sm }}>
                 ⚠️ Warnings
               </div>
               {a.warnings.map((w, i) => (
                 <div key={i} style={{ fontSize: F.sizeSm, color: C.textSecondary, marginBottom: 4, paddingLeft: 12, position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: 0, color: '#ef4444' }}>•</span>
+                  <span style={{ position: 'absolute', left: 0, color: C.negative }}>•</span>
                   {w}
                 </div>
               ))}
@@ -279,7 +279,7 @@ function AnalysisCard({
   const isPositive = ['bullish', 'accumulation', 'confirmed', 'imminent', 'low'].includes(signal);
   const isNegative = ['bearish', 'distribution', 'failed', 'high'].includes(signal);
 
-  const accentColor = isPositive ? '#10b981' : isNegative ? '#ef4444' : C.textMuted;
+  const accentColor = isPositive ? C.positive : isNegative ? C.negative : C.textMuted;
 
   return (
     <div style={{
@@ -385,22 +385,22 @@ function LoadingSkeleton() {
         <div style={{
           width: 36, height: 36,
           borderRadius: R.md,
-          background: 'rgba(124, 58, 237, 0.1)',
+          background: C.accentGlow,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           animation: 'pulse 1.5s ease-in-out infinite',
         }}>🧠</div>
         <div>
-          <div style={{ height: 14, width: 160, background: 'rgba(255,255,255,0.05)', borderRadius: 4, marginBottom: 4 }} />
-          <div style={{ height: 10, width: 120, background: 'rgba(255,255,255,0.03)', borderRadius: 4 }} />
+          <div style={{ height: 14, width: 160, background: `${C.textSecondary}08`, borderRadius: 4, marginBottom: 4 }} />
+          <div style={{ height: 10, width: 120, background: `${C.textMuted}08`, borderRadius: 4 }} />
         </div>
       </div>
-      <div style={{ height: 40, background: 'rgba(255,255,255,0.03)', borderRadius: R.md, marginBottom: S.lg }} />
+      <div style={{ height: 40, background: `${C.textMuted}08`, borderRadius: R.md, marginBottom: S.lg }} />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
         {[...Array(6)].map((_, i) => (
-          <div key={i} style={{ background: 'rgba(255,255,255,0.02)', padding: S.md }}>
-            <div style={{ height: 10, width: 50, background: 'rgba(255,255,255,0.05)', borderRadius: 4, marginBottom: 6 }} />
-            <div style={{ height: 14, width: 60, background: 'rgba(255,255,255,0.05)', borderRadius: 4, marginBottom: 4 }} />
-            <div style={{ height: 10, width: '80%', background: 'rgba(255,255,255,0.03)', borderRadius: 4 }} />
+          <div key={i} style={{ background: `${C.border}`, padding: S.md }}>
+            <div style={{ height: 10, width: 50, background: `${C.textSecondary}08`, borderRadius: 4, marginBottom: 6 }} />
+            <div style={{ height: 14, width: 60, background: `${C.textSecondary}08`, borderRadius: 4, marginBottom: 4 }} />
+            <div style={{ height: 10, width: '80%', background: `${C.textMuted}08`, borderRadius: 4 }} />
           </div>
         ))}
       </div>

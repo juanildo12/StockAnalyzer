@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { colors as C, radius as R, font as F, spacing as S } from '@/src/utils/webTheme';
 import LineChart from './LineChart';
 
 interface MetricData {
@@ -35,7 +36,7 @@ const CARDS: CardConfig[] = [
     description: 'Qué tan cerca está el precio del techo del rango de 20 días. Sobre 50 indica presión alcista. Volumen alto suma puntaje.',
     leftLabels: [0, 25, 50, 75, 100],
     rightLabels: [],
-    color: '#22C55E',
+    color: C.positive,
   },
   {
     key: 'downsideBreakout',
@@ -43,7 +44,7 @@ const CARDS: CardConfig[] = [
     description: 'Qué tan cerca está el precio del suelo del rango de 20 días. Sobre 50 indica presión bajista. Volumen alto suma puntaje.',
     leftLabels: [0, 25, 50, 75, 100],
     rightLabels: [],
-    color: '#EF4444',
+    color: C.negative,
   },
   {
     key: 'volumePressure',
@@ -101,27 +102,27 @@ function MetricChartCard({ title, description, metricData, cardKey, dates, price
 
   return (
     <div style={{
-      background: '#FFFFFF',
-      borderRadius: '22px',
-      padding: '20px',
-      border: '1px solid #E8E8ED',
+      background: C.bgCard,
+      borderRadius: R.xl,
+      padding: S.xl,
+      border: `1px solid ${C.border}`,
     }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: S.md }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: S.sm }}>
             <h3 style={{
-              margin: 0, color: '#1D1D1F', fontSize: '16px', fontWeight: '700',
+              margin: 0, color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '700',
               fontFamily: 'Inter, system-ui, sans-serif',
             }}>
               {title}
             </h3>
             <div
               style={{
-                width: '18px', height: '18px', borderRadius: '50%',
-                background: '#E8E8ED', display: 'flex', alignItems: 'center',
+                width: '18px', height: '18px', borderRadius: R.full,
+                background: C.border, display: 'flex', alignItems: 'center',
                 justifyContent: 'center', cursor: 'help', position: 'relative',
-                fontSize: '11px', color: '#86868B', fontWeight: '600',
+                fontSize: F.sizeXs, color: C.textMuted, fontWeight: '600',
                 fontFamily: 'Inter, system-ui, sans-serif',
               }}
               onMouseEnter={() => setShowTooltip(true)}
@@ -131,8 +132,8 @@ function MetricChartCard({ title, description, metricData, cardKey, dates, price
               {showTooltip && (
                 <div style={{
                   position: 'absolute', top: '24px', left: '50%', transform: 'translateX(-50%)',
-                  background: '#1D1D1F', color: '#FFFFFF', fontSize: '11px', padding: '8px 12px',
-                  borderRadius: '8px', width: '220px', textAlign: 'center', zIndex: 10,
+                  background: C.bg, color: C.textPrimary, fontSize: F.sizeXs, padding: `${S.sm} ${S.md}`,
+                  borderRadius: R.md, width: '220px', textAlign: 'center', zIndex: 10,
                   fontWeight: '400', lineHeight: '1.4', fontFamily: 'Inter, system-ui, sans-serif',
                   pointerEvents: 'none',
                 }}>
@@ -145,14 +146,14 @@ function MetricChartCard({ title, description, metricData, cardKey, dates, price
       </div>
 
       {/* Legend */}
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', gap: S.lg, marginBottom: S.lg }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color || '#8B6BFF', display: 'inline-block' }} />
-          <span style={{ color: '#86868B', fontSize: '11px', fontFamily: 'Inter, system-ui, sans-serif' }}>Indicator</span>
+          <span style={{ width: '8px', height: '8px', borderRadius: R.full, background: color || C.accent, display: 'inline-block' }} />
+          <span style={{ color: C.textMuted, fontSize: F.sizeXs, fontFamily: 'Inter, system-ui, sans-serif' }}>Indicator</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F08AE8', display: 'inline-block' }} />
-          <span style={{ color: '#86868B', fontSize: '11px', fontFamily: 'Inter, system-ui, sans-serif' }}>Price</span>
+          <span style={{ width: '8px', height: '8px', borderRadius: R.full, background: C.accentLight, display: 'inline-block' }} />
+          <span style={{ color: C.textMuted, fontSize: F.sizeXs, fontFamily: 'Inter, system-ui, sans-serif' }}>Price</span>
         </div>
       </div>
 
@@ -162,8 +163,8 @@ function MetricChartCard({ title, description, metricData, cardKey, dates, price
           data={metricData}
           data2={price}
           height={200}
-          color={color || '#8B6BFF'}
-          color2="#F08AE8"
+          color={color || C.accent}
+          color2={C.accentLight}
           leftLabels={[0, 25, 50, 75, 100]}
           rightLabels={rightLabels}
           dateStart={dates[0]}
@@ -178,11 +179,11 @@ function MetricChartCard({ title, description, metricData, cardKey, dates, price
 function LoadingCard() {
   return (
     <div style={{
-      background: '#FFFFFF', borderRadius: '22px', padding: '24px',
-      border: '1px solid #E8E8ED', height: '280px',
+      background: C.bgCard, borderRadius: R.xl, padding: S.xxl,
+      border: `1px solid ${C.border}`, height: '280px',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
-      <div style={{ color: '#86868B', fontSize: '13px', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div style={{ color: C.textMuted, fontSize: F.sizeMd, fontFamily: 'Inter, system-ui, sans-serif' }}>
         Loading...
       </div>
     </div>
@@ -213,7 +214,7 @@ export default function MetricChartPanel({ symbol }: MetricChartPanelProps) {
 
   if (loading) {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '12px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: S.md }}>
         {[1, 2, 3, 4, 5, 6].map(i => <LoadingCard key={i} />)}
       </div>
     );
@@ -222,7 +223,7 @@ export default function MetricChartPanel({ symbol }: MetricChartPanelProps) {
   if (!data || !data.dates || data.dates.length === 0) return null;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '12px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: S.md }}>
       {CARDS.map(card => (
         <MetricChartCard
           key={card.key}

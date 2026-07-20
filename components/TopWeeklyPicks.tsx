@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 
 interface Hit {
   id: string;
@@ -28,19 +29,6 @@ interface TopWeeklyData {
   picks: Pick[];
 }
 
-const DARK = {
-  bg: '#0B0B0B',
-  card: '#1B1B1B',
-  text: '#FFFFFF',
-  muted: '#9A9A9A',
-  primary: '#B64DFF',
-  divider: '#343434',
-};
-
-const POS = '#22C55E';
-const NEG = '#EF4444';
-const WARN = '#F59E0B';
-
 function formatMarketCap(v: number): string {
   if (v >= 1e12) return `$${(v / 1e12).toFixed(2)}T`;
   if (v >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
@@ -48,9 +36,9 @@ function formatMarketCap(v: number): string {
 }
 
 function trendBadge(trend: string): { label: string; color: string } {
-  if (trend === 'alcista') return { label: '↑ Alcista', color: POS };
-  if (trend === 'bajista') return { label: '↓ Bajista', color: NEG };
-  return { label: '→ Neutral', color: DARK.muted };
+  if (trend === 'alcista') return { label: '↑ Alcista', color: C.positive };
+  if (trend === 'bajista') return { label: '↓ Bajista', color: C.negative };
+  return { label: '→ Neutral', color: C.textMuted };
 }
 
 export default function TopWeeklyPicks({ onStockClick }: { onStockClick?: (symbol: string) => void }) {
@@ -70,16 +58,16 @@ export default function TopWeeklyPicks({ onStockClick }: { onStockClick?: (symbo
   if (loading) {
     return (
       <div style={{
-        background: DARK.bg,
+        background: C.bg,
         borderRadius: '24px',
         padding: '28px',
-        border: '1px solid #1F1F1F',
+        border: `1px solid ${C.border}`,
         fontFamily: 'Inter, system-ui, sans-serif',
       }}>
-        <div style={{ width: '180px', height: '24px', background: '#1B1B1B', borderRadius: '6px', marginBottom: '20px' }} />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+        <div style={{ width: '180px', height: '24px', background: C.bgCard, borderRadius: R.sm, marginBottom: '20px' }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: S.lg }}>
           {[1, 2, 3, 4].map(i => (
-            <div key={i} style={{ background: '#1B1B1B', borderRadius: '16px', height: '180px' }} />
+            <div key={i} style={{ background: C.bgCard, borderRadius: R.xl, height: '180px' }} />
           ))}
         </div>
       </div>
@@ -90,26 +78,26 @@ export default function TopWeeklyPicks({ onStockClick }: { onStockClick?: (symbo
 
   return (
     <div style={{
-      background: `linear-gradient(135deg, #0B0B0B 0%, #140B1F 100%)`,
+      background: `linear-gradient(135deg, ${C.bg} 0%, ${C.bgCard} 100%)`,
       borderRadius: '24px',
       padding: '28px',
-      border: '1px solid #2A1A3A',
+      border: `1px solid ${C.border}`,
       fontFamily: 'Inter, system-ui, sans-serif',
     }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: S.md }}>
             <span style={{ fontSize: '26px' }}>🏆</span>
-            <h2 style={{ margin: 0, color: DARK.text, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em' }}>
+            <h2 style={{ margin: 0, color: C.textPrimary, fontSize: F.sizeXxl, fontWeight: 700, letterSpacing: '-0.02em' }}>
               Top 4 Semanal
             </h2>
           </div>
-          <p style={{ margin: '6px 0 0', color: DARK.muted, fontSize: '13px' }}>
+          <p style={{ margin: '6px 0 0', color: C.textMuted, fontSize: F.sizeMd }}>
             Las mejores oportunidades de la semana basadas en 7 modelos de screener
           </p>
         </div>
-        <div style={{ color: DARK.muted, fontSize: '12px', whiteSpace: 'nowrap' }}>
+        <div style={{ color: C.textMuted, fontSize: F.sizeSm, whiteSpace: 'nowrap' }}>
           {data.updatedAt ? `Updated ${data.updatedAt}` : ''}
         </div>
       </div>
@@ -118,86 +106,86 @@ export default function TopWeeklyPicks({ onStockClick }: { onStockClick?: (symbo
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-        gap: '16px',
+        gap: S.lg,
       }}>
         {data.picks.map((pick, idx) => {
           const tb = trendBadge(pick.trend);
-          const changeColor = pick.changePercent >= 0 ? POS : NEG;
-          const rankColors = ['#FFD700', '#C0C0C0', '#CD7F32', DARK.muted];
+          const changeColor = pick.changePercent >= 0 ? C.positive : C.negative;
+          const rankColors = [C.warning, C.textMuted, C.warning, C.textMuted];
 
           return (
             <div key={pick.symbol} style={{
-              background: DARK.card,
+              background: C.bgCard,
               borderRadius: '18px',
               padding: '18px',
-              border: `1px solid ${idx === 0 ? '#FFD70030' : '#2A2A2A'}`,
+              border: `1px solid ${idx === 0 ? `${C.warning}30` : C.border}`,
               position: 'relative',
-              transition: 'border-color 150ms',
+              transition: `border-color ${T.fast}`,
             }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = DARK.primary; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = idx === 0 ? '#FFD70030' : '#2A2A2A'; }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = C.accentLight; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = idx === 0 ? `${C.warning}30` : C.border; }}
             >
               {/* Rank badge */}
               <div style={{
                 position: 'absolute',
                 top: '-8px',
-                left: '16px',
+                left: S.lg,
                 background: rankColors[idx],
-                color: idx < 3 ? '#000' : DARK.text,
+                color: idx < 3 ? '#000' : C.textPrimary,
                 width: '28px',
                 height: '28px',
-                borderRadius: '50%',
+                borderRadius: R.full,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: 800,
-                fontSize: '14px',
+                fontSize: F.sizeBase,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
               }}>
                 {idx + 1}
               </div>
 
               {/* Symbol + Score */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', marginTop: '4px' }}>
-                <span style={{ color: DARK.primary, fontWeight: 700, fontSize: '18px', letterSpacing: '-0.01em' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: S.md, marginTop: S.xs }}>
+                <span style={{ color: C.accentLight, fontWeight: 700, fontSize: F.sizeLg, letterSpacing: '-0.01em' }}>
                   {pick.symbol}
                 </span>
                 <span style={{
-                  background: `${DARK.primary}20`,
-                  color: DARK.primary,
+                  background: `${C.accentLight}20`,
+                  color: C.accentLight,
                   fontWeight: 700,
-                  fontSize: '13px',
+                  fontSize: F.sizeMd,
                   padding: '3px 10px',
-                  borderRadius: '999px',
+                  borderRadius: R.full,
                 }}>
                   {pick.compositeScore}
                 </span>
               </div>
 
               {/* Price + Change */}
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '10px' }}>
-                <span style={{ color: DARK.text, fontSize: '22px', fontWeight: 700 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: S.md, marginBottom: S.md }}>
+                <span style={{ color: C.textPrimary, fontSize: F.sizeXl, fontWeight: 700 }}>
                   ${pick.price.toFixed(2)}
                 </span>
-                <span style={{ color: changeColor, fontWeight: 600, fontSize: '14px' }}>
+                <span style={{ color: changeColor, fontWeight: 600, fontSize: F.sizeBase }}>
                   {pick.changePercent >= 0 ? '+' : ''}{pick.changePercent.toFixed(2)}%
                 </span>
               </div>
 
               {/* Sector + Mkt Cap + RSI */}
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '10px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: S.sm, marginBottom: S.md, flexWrap: 'wrap' }}>
                 {pick.sector && (
-                  <span style={{ color: DARK.muted, fontSize: '11px' }}>
+                  <span style={{ color: C.textMuted, fontSize: F.sizeXs }}>
                     {pick.sector}
                   </span>
                 )}
-                <span style={{ color: DARK.muted, fontSize: '11px' }}>
+                <span style={{ color: C.textMuted, fontSize: F.sizeXs }}>
                   {formatMarketCap(pick.marketCap)}
                 </span>
                 {pick.rsi !== null && (
                   <span style={{
-                    color: pick.rsi > 60 ? WARN : pick.rsi < 40 ? NEG : POS,
-                    fontSize: '11px',
+                    color: pick.rsi > 60 ? C.warning : pick.rsi < 40 ? C.negative : C.positive,
+                    fontSize: F.sizeXs,
                     fontWeight: 600,
                   }}>
                     RSI {Math.round(pick.rsi)}
@@ -206,26 +194,26 @@ export default function TopWeeklyPicks({ onStockClick }: { onStockClick?: (symbo
               </div>
 
               {/* Direction signal */}
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: S.sm, marginBottom: S.sm, alignItems: 'center' }}>
                 <span style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '4px',
-                  padding: '4px 12px',
-                  borderRadius: '8px',
-                  fontSize: '14px',
+                  gap: S.xs,
+                  padding: `${S.xs} ${S.sm}`,
+                  borderRadius: R.md,
+                  fontSize: F.sizeBase,
                   fontWeight: 700,
-                  background: pick.direction === 'ALZA' ? '#22C55E20' : '#EF444420',
-                  color: pick.direction === 'ALZA' ? '#22C55E' : '#EF4444',
-                  border: `1px solid ${pick.direction === 'ALZA' ? '#22C55E40' : '#EF444440'}`,
+                  background: pick.direction === 'ALZA' ? `${C.positive}20` : `${C.negative}20`,
+                  color: pick.direction === 'ALZA' ? C.positive : C.negative,
+                  border: `1px solid ${pick.direction === 'ALZA' ? `${C.positive}40` : `${C.negative}40`}`,
                 }}>
                   {pick.direction === 'ALZA' ? '▲' : '▼'} {pick.signalLabel}
                 </span>
                 <span style={{
                   display: 'inline-block',
-                  padding: '2px 10px',
-                  borderRadius: '999px',
-                  fontSize: '11px',
+                  padding: `${S.xxs} ${S.md}`,
+                  borderRadius: R.full,
+                  fontSize: F.sizeXs,
                   fontWeight: 600,
                   background: `${tb.color}18`,
                   color: tb.color,
@@ -236,34 +224,34 @@ export default function TopWeeklyPicks({ onStockClick }: { onStockClick?: (symbo
               </div>
 
               {/* Reasons */}
-              <div style={{ marginBottom: '14px' }}>
+              <div style={{ marginBottom: S.md }}>
                 {pick.reasons.map((r, i) => (
                   <div key={i} style={{
-                    color: DARK.muted,
-                    fontSize: '11px',
+                    color: C.textMuted,
+                    fontSize: F.sizeXs,
                     lineHeight: '1.5',
                     display: 'flex',
-                    gap: '4px',
-                    marginBottom: '2px',
+                    gap: S.xs,
+                    marginBottom: S.xxs,
                   }}>
-                    <span style={{ color: DARK.primary }}>•</span>
+                    <span style={{ color: C.accentLight }}>•</span>
                     {r}
                   </div>
                 ))}
               </div>
 
               {/* Screener hit badges */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: S.xs, marginBottom: S.sm }}>
                 {pick.screenerHits.sort((a, b) => a.rank - b.rank).slice(0, 4).map(h => (
                   <span key={h.id} style={{
                     display: 'inline-block',
-                    padding: '2px 7px',
-                    borderRadius: '6px',
+                    padding: `${S.xxs} 7px`,
+                    borderRadius: R.sm,
                     fontSize: '10px',
                     fontWeight: 600,
-                    background: '#B64DFF15',
-                    color: '#B64DFF',
-                    border: '1px solid #B64DFF25',
+                    background: `${C.accent}15`,
+                    color: C.accent,
+                    border: `1px solid ${C.accent}25`,
                   }}>
                     {h.name} #{h.rank}
                   </span>
@@ -275,16 +263,16 @@ export default function TopWeeklyPicks({ onStockClick }: { onStockClick?: (symbo
                 onClick={() => onStockClick?.(pick.symbol)}
                 style={{
                   width: '100%',
-                  padding: '8px',
-                  borderRadius: '10px',
+                  padding: S.sm,
+                  borderRadius: R.md,
                   border: 'none',
-                  background: DARK.primary,
-                  color: '#FFF',
-                  fontSize: '13px',
+                  background: C.accent,
+                  color: C.textPrimary,
+                  fontSize: F.sizeMd,
                   fontWeight: 600,
                   cursor: 'pointer',
                   fontFamily: 'inherit',
-                  transition: 'opacity 150ms',
+                  transition: `opacity ${T.fast}`,
                 }}
                 onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
                 onMouseLeave={e => (e.currentTarget.style.opacity = '1')}

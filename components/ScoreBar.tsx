@@ -1,5 +1,7 @@
 'use client';
 
+import { colors as C, radius as R, font as F, spacing as S } from '@/src/utils/webTheme';
+
 interface ScoreBarProps {
   value: number;
   max?: number;
@@ -9,12 +11,12 @@ interface ScoreBarProps {
   barWidth?: number;
 }
 
-const DEFAULT_COLOR = '#B64DFF';
+const DEFAULT_COLOR = C.accent;
 
 function barColor(v: number): string {
-  if (v >= 80) return '#1FD18A';
-  if (v >= 50) return '#F59E0B';
-  return '#EF4444';
+  if (v >= 80) return C.positive;
+  if (v >= 50) return C.warning;
+  return C.negative;
 }
 
 function barBlocks(value: number, totalBlocks = 5): boolean[] {
@@ -30,14 +32,14 @@ export default function ScoreBar({ value, label, showValue = true, color, barWid
     <div style={{
       display: 'flex',
       alignItems: 'center',
-      gap: '6px',
+      gap: S.sm,
       fontFamily: 'Inter, system-ui, sans-serif',
     }}>
       {label && (
         <span style={{
-          fontSize: '11px',
+          fontSize: F.sizeXs,
           fontWeight: 500,
-          color: '#9A9A9A',
+          color: C.textMuted,
           whiteSpace: 'nowrap',
           minWidth: '70px',
         }}>
@@ -52,7 +54,7 @@ export default function ScoreBar({ value, label, showValue = true, color, barWid
               width: '14px',
               height: '8px',
               borderRadius: '2px',
-              background: filled ? c : '#2A2A2A',
+              background: filled ? c : C.border,
               transition: 'background 200ms',
             }}
           />
@@ -60,7 +62,7 @@ export default function ScoreBar({ value, label, showValue = true, color, barWid
       </div>
       {showValue && (
         <span style={{
-          fontSize: '11px',
+          fontSize: F.sizeXs,
           fontWeight: 700,
           color: c,
           minWidth: '20px',

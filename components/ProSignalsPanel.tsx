@@ -25,19 +25,19 @@ interface ProSignalsPanelProps {
 }
 
 function signalColor(val: number): string {
-  if (val >= 70) return '#22c55e';
-  if (val >= 55) return '#84cc16';
-  if (val >= 45) return '#eab308';
-  if (val >= 30) return '#f97316';
-  return '#ef4444';
+  if (val >= 70) return C.positive;
+  if (val >= 55) return C.positive;
+  if (val >= 45) return C.warning;
+  if (val >= 30) return C.warning;
+  return C.negative;
 }
 
 function signalBg(val: number): string {
-  if (val >= 70) return '#0a2e1a';
-  if (val >= 55) return '#1a2e0a';
-  if (val >= 45) return '#2e2a0a';
-  if (val >= 30) return '#2e1a0a';
-  return '#2e0a0a';
+  if (val >= 70) return C.positiveBg;
+  if (val >= 55) return C.warningBg;
+  if (val >= 45) return C.infoBg;
+  if (val >= 30) return C.negativeBg;
+  return C.negativeBg;
 }
 
 const signalIcons: Record<string, string> = {
@@ -132,7 +132,7 @@ export default function ProSignalsPanel({ symbol, onClose, onAnalyze }: ProSigna
               </div>
             </div>
             <div style={{
-              fontSize: '13px', fontWeight: '600', padding: '6px 16px', borderRadius: '20px',
+              fontSize: '13px', fontWeight: '600', padding: '6px 16px', borderRadius: R.full,
               background: signalBg(data.overall), color: signalColor(data.overall),
               border: `1px solid ${signalColor(data.overall)}44`,
             }}>
@@ -196,7 +196,7 @@ function SignalCard({ signal: sig }: { signal: SignalItem }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ color, fontSize: '20px', fontWeight: '800', lineHeight: 1 }}>{sig.value}</span>
           <span style={{
-            fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: '10px',
+            fontSize: '11px', fontWeight: '600', padding: '2px 8px', borderRadius: R.lg,
             background: bg, color, border: `1px solid ${color}44`,
           }}>
             {sig.direction === 'bullish' ? '🟢 Alcista' : sig.direction === 'bearish' ? '🔴 Bajista' : '⚪ Neutral'}

@@ -1,5 +1,5 @@
 'use client';
-import { colors as C, radius as R, font as F } from '@/src/utils/webTheme';
+import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 
 import type { GrahamScoreResult } from '@/src/services/grahamAnalysis';
 
@@ -32,12 +32,12 @@ const labelStyle = {
   display: 'flex' as const,
   alignItems: 'center' as const,
   gap: '8px',
-  fontSize: '13px',
+  fontSize: F.sizeMd,
   color: C.textSecondary,
 };
 
 const valueStyle = (passes: boolean) => ({
-  fontSize: '13px',
+  fontSize: F.sizeMd,
   fontWeight: '600' as const,
   color: passes ? C.positive : C.negative,
 });
@@ -45,8 +45,8 @@ const valueStyle = (passes: boolean) => ({
 export default function GrahamMetrics({ result }: GrahamMetricsProps) {
   if (!result) {
     return (
-      <div style={{ background: C.bgCard, borderRadius: '12px', padding: '24px', border: '1px solid ' + C.border, textAlign: 'center', color: C.textMuted }}>
-        <p style={{ fontSize: '14px', margin: 0 }}>Analiza una acción para ver los indicadores</p>
+      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '24px', border: '1px solid ' + C.border, textAlign: 'center', color: C.textMuted }}>
+        <p style={{ fontSize: F.sizeBase, margin: 0 }}>Analiza una acción para ver los indicadores</p>
       </div>
     );
   }
@@ -54,9 +54,9 @@ export default function GrahamMetrics({ result }: GrahamMetricsProps) {
   const metrics = [result.ncav, result.netCash, result.ev, result.currentRatio, result.priceToBook];
 
   return (
-    <div style={{ background: C.bgCard, borderRadius: '12px', padding: '24px', border: '1px solid ' + C.border }}>
+    <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '24px', border: '1px solid ' + C.border }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h3 style={{ margin: 0, color: C.textPrimary, fontSize: '16px', fontWeight: '600' }}>
+        <h3 style={{ margin: 0, color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>
           📊 Score Graham Modernizado
         </h3>
         <div style={{
@@ -71,7 +71,7 @@ export default function GrahamMetrics({ result }: GrahamMetricsProps) {
           <span style={{ fontSize: '20px', fontWeight: '700', color: getScoreColor(result.scorePercent) }}>
             {result.passingCount}/{result.totalCount}
           </span>
-          <span style={{ fontSize: '12px', color: getScoreColor(result.scorePercent), fontWeight: '500' }}>
+          <span style={{ fontSize: F.sizeSm, color: getScoreColor(result.scorePercent), fontWeight: '500' }}>
             {getScoreLabel(result.scorePercent)}
           </span>
         </div>
@@ -84,7 +84,7 @@ export default function GrahamMetrics({ result }: GrahamMetricsProps) {
               <span>{m.passes ? '✅' : '❌'}</span>
               <div>
                 <span style={{ color: C.textPrimary, fontWeight: '500' }}>{m.name}</span>
-                <div style={{ fontSize: '11px', color: C.textMuted, marginTop: '2px' }}>{m.formula}</div>
+                <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginTop: '2px' }}>{m.formula}</div>
               </div>
             </div>
             <div style={{ textAlign: 'right' as const }}>
@@ -103,9 +103,9 @@ export default function GrahamMetrics({ result }: GrahamMetricsProps) {
         ))}
       </div>
 
-      <details style={{ fontSize: '12px', color: C.textMuted }}>
+      <details style={{ fontSize: F.sizeSm, color: C.textMuted }}>
         <summary style={{ cursor: 'pointer', fontWeight: '500' }}>📖 ¿Qué significan estos indicadores?</summary>
-        <div style={{ marginTop: '8px', padding: '12px', background: C.bg, borderRadius: '8px', lineHeight: '1.8' }}>
+        <div style={{ marginTop: '8px', padding: '12px', background: C.bg, borderRadius: R.md, lineHeight: '1.8' }}>
           <p style={{ margin: '0 0 8px' }}>
             <strong style={{ color: C.textSecondary }}>NCAV:</strong> Si el MarketCap es menor al NCAV, compras la empresa por menos de lo que valen sus activos corrientes netos — la regla clásica de Graham.
           </p>

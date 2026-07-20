@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { colors as C, radius as R } from '@/src/utils/webTheme';
+import { colors as C, radius as R, font as F, spacing as S } from '@/src/utils/webTheme';
 
 interface RadarMetricSet {
   trendQuality: number;
@@ -49,27 +49,25 @@ const ST_LABELS: { key: keyof ShortTermMetricSet; label: string }[] = [
   { key: 'riskReward', label: 'Risk/Reward' },
 ];
 
-const ACCENT = '#C65BFF';
-
-function MetricBar({ label, value, color = ACCENT }: { label: string; value: number; color?: string }) {
+function MetricBar({ label, value, color = C.accent }: { label: string; value: number; color?: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: S.sm }}>
       <span style={{
-        color: '#86868B', fontSize: '12px', fontWeight: '500', minWidth: '120px',
+        color: C.textMuted, fontSize: F.sizeSm, fontWeight: '500', minWidth: '120px',
         fontFamily: 'Inter, system-ui, sans-serif',
       }}>
         {label}
       </span>
       <div style={{
-        flex: 1, height: '4px', background: '#E8E8ED', borderRadius: '2px', overflow: 'hidden',
+        flex: 1, height: '4px', background: C.border, borderRadius: R.sm, overflow: 'hidden',
       }}>
         <div style={{
-          width: `${value}%`, height: '100%', background: color, borderRadius: '2px',
+          width: `${value}%`, height: '100%', background: color, borderRadius: R.sm,
           transition: 'width 400ms cubic-bezier(0.22, 1, 0.36, 1)',
         }} />
       </div>
       <span style={{
-        color: '#1D1D1F', fontSize: '13px', fontWeight: '700', minWidth: '28px', textAlign: 'right',
+        color: C.textPrimary, fontSize: F.sizeMd, fontWeight: '700', minWidth: '28px', textAlign: 'right',
         fontFamily: 'Inter, system-ui, sans-serif',
       }}>
         {value}
@@ -93,20 +91,20 @@ function RadarColumn({
 }) {
   return (
     <div style={{
-      background: '#FFFFFF',
-      borderRadius: '20px',
-      padding: '16px',
-      border: '1px solid #E8E8ED',
+      background: C.bgCard,
+      borderRadius: R.xl,
+      padding: S.lg,
+      border: `1px solid ${C.border}`,
     }}>
       <h3 style={{
-        margin: '0 0 20px', color: '#1D1D1F', fontSize: '15px', fontWeight: '600',
-        fontFamily: 'Inter, system-ui, sans-serif', display: 'flex', alignItems: 'center', gap: '8px',
+        margin: `0 0 ${S.xl}`, color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600',
+        fontFamily: 'Inter, system-ui, sans-serif', display: 'flex', alignItems: 'center', gap: S.sm,
       }}>
         {icon} {title}
       </h3>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: S.md }}>
         {labels.map(l => (
-          <MetricBar key={l.key} label={l.label} value={metrics[l.key] ?? 50} color={color || ACCENT} />
+          <MetricBar key={l.key} label={l.label} value={metrics[l.key] ?? 50} color={color || C.accent} />
         ))}
       </div>
     </div>
@@ -135,10 +133,10 @@ export default function RadarDashboardPanel({ symbol }: RadarDashboardPanelProps
   if (loading) {
     return (
       <div style={{
-        background: '#FFFFFF', borderRadius: '20px', border: '1px solid #E8E8ED', padding: '48px',
+        background: C.bgCard, borderRadius: R.xl, border: `1px solid ${C.border}`, padding: '48px',
         textAlign: 'center',
       }}>
-        <div style={{ color: '#86868B', fontSize: '14px', fontFamily: 'Inter, system-ui, sans-serif' }}>
+        <div style={{ color: C.textMuted, fontSize: F.sizeBase, fontFamily: 'Inter, system-ui, sans-serif' }}>
           Loading radar data...
         </div>
       </div>
@@ -149,30 +147,30 @@ export default function RadarDashboardPanel({ symbol }: RadarDashboardPanelProps
 
   const changeStr = data.change >= 0 ? `+${data.change.toFixed(2)}` : data.change.toFixed(2);
   const changePctStr = data.changePercent >= 0 ? `+${data.changePercent.toFixed(2)}%` : `${data.changePercent.toFixed(2)}%`;
-  const changeColor = data.change >= 0 ? '#22c55e' : '#ef4444';
+  const changeColor = data.change >= 0 ? C.positive : C.negative;
   const updated = new Date(data.updated);
 
   return (
     <div style={{
-      background: '#F5F5F7',
-      borderRadius: '24px',
-      padding: '20px',
-      border: '1px solid #E8E8ED',
+      background: C.bgCard,
+      borderRadius: R.xl,
+      padding: S.xl,
+      border: `1px solid ${C.border}`,
     }}>
       {/* Header */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-        marginBottom: '28px',
+        marginBottom: S.xxl,
       }}>
         <div>
           <h2 style={{
-            margin: 0, color: '#1D1D1F', fontSize: '28px', fontWeight: '700',
+            margin: 0, color: C.textPrimary, fontSize: F.sizeHero, fontWeight: '700',
             fontFamily: 'Inter, system-ui, sans-serif', letterSpacing: '-0.02em',
           }}>
             {data.symbol}
           </h2>
           <p style={{
-            margin: '4px 0 0', color: '#86868B', fontSize: '12px', fontWeight: '500',
+            margin: `${S.xs} 0 0`, color: C.textMuted, fontSize: F.sizeSm, fontWeight: '500',
             fontFamily: 'Inter, system-ui, sans-serif',
           }}>
             Last updated: {updated.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} {updated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
@@ -180,13 +178,13 @@ export default function RadarDashboardPanel({ symbol }: RadarDashboardPanelProps
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{
-            color: '#1D1D1F', fontSize: '28px', fontWeight: '700',
+            color: C.textPrimary, fontSize: F.sizeHero, fontWeight: '700',
             fontFamily: 'Inter, system-ui, sans-serif',
           }}>
             ${data.price.toFixed(2)}
           </div>
           <div style={{
-            color: changeColor, fontSize: '14px', fontWeight: '600',
+            color: changeColor, fontSize: F.sizeBase, fontWeight: '600',
             fontFamily: 'Inter, system-ui, sans-serif',
           }}>
             {changeStr} ({changePctStr})
@@ -198,21 +196,21 @@ export default function RadarDashboardPanel({ symbol }: RadarDashboardPanelProps
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '24px',
+        gap: S.xxl,
       }}>
         <RadarColumn
           title="Long-Term Analysis"
           icon="📈"
           metrics={data.longTerm as unknown as Record<string, number>}
           labels={LT_LABELS as any}
-          color={ACCENT}
+          color={C.accent}
         />
         <RadarColumn
           title="Short-Term Analysis"
           icon="⚡"
           metrics={data.shortTerm as unknown as Record<string, number>}
           labels={ST_LABELS as any}
-          color={ACCENT}
+          color={C.accent}
         />
       </div>
     </div>

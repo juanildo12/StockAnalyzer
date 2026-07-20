@@ -31,8 +31,8 @@ const DIFFICULTIES: { id: DifficultyTier; icon: string; name: string; minLevel: 
 ];
 
 const TIER_COLORS: Record<DifficultyTier, string> = {
-  novato: '#22C55E', bronce: '#CD7F32', plata: '#94A3B8',
-  oro: '#F59E0B', platino: '#06B6D4', diamante: '#8B5CF6',
+  novato: C.positive, bronce: '#CD7F32', plata: C.textSecondary,
+  oro: C.warning, platino: C.info, diamante: C.accentLight,
 };
 
 function defaultState(): GameState {
@@ -241,9 +241,9 @@ export default function TradingTrainer() {
         </div>
         <div style={{
           padding: '4px 12px', borderRadius: R.md,
-          background: 'linear-gradient(135deg, #22C55E20, #22C55E08)',
-          border: '1px solid #22C55E30',
-          fontSize: '12px', fontWeight: 600, color: '#22C55E',
+          background: `linear-gradient(135deg, ${C.positive}20, ${C.positive}08)`,
+          border: `1px solid ${C.positive}30`,
+          fontSize: '12px', fontWeight: 600, color: C.positive,
         }}>
           Racha: {gameState.streak}
         </div>
@@ -279,19 +279,19 @@ export default function TradingTrainer() {
             <div style={{ textAlign: 'center', padding: '60px 20px' }}>
               <div style={{
                 width: '40px', height: '40px', borderRadius: '50%',
-                border: '3px solid #30363d', borderTopColor: C.accent,
+                border: `3px solid ${C.border}`, borderTopColor: C.accent,
                 animation: 'spin 1s linear infinite', margin: '0 auto 16px',
               }} />
               <p style={{ color: C.textSecondary }}>Preparando tu reto del día...</p>
             </div>
           )}
           {error && (
-            <div style={{ background: '#EF444418', color: '#EF4444', padding: '16px', borderRadius: R.lg, textAlign: 'center', marginBottom: '16px' }}>
+            <div style={{ background: `${C.negative}18`, color: C.negative, padding: '16px', borderRadius: R.lg, textAlign: 'center', marginBottom: '16px' }}>
               {error}
               <button onClick={fetchChallenge} style={{
                 display: 'block', margin: '12px auto 0', padding: '8px 16px',
-                borderRadius: R.md, border: '1px solid #EF4444', background: 'transparent',
-                color: '#EF4444', cursor: 'pointer', fontSize: '13px',
+                borderRadius: R.md, border: `1px solid ${C.negative}`, background: 'transparent',
+                color: C.negative, cursor: 'pointer', fontSize: '13px',
               }}>
                 Reintentar
               </button>
@@ -367,7 +367,7 @@ export default function TradingTrainer() {
                       {locked && (
                         <span style={{
                           fontSize: '10px', padding: '2px 6px', borderRadius: R.sm,
-                          background: '#EF444418', color: '#EF4444', fontWeight: 600,
+                          background: `${C.negative}18`, color: C.negative, fontWeight: 600,
                         }}>
                           Nivel {diff.minLevel}+
                         </span>

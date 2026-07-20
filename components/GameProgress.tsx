@@ -33,8 +33,8 @@ const TIER_LABELS: Record<DifficultyTier, string> = {
 };
 
 const TIER_COLORS: Record<DifficultyTier, string> = {
-  novato: '#22C55E', bronce: '#CD7F32', plata: '#94A3B8',
-  oro: '#F59E0B', platino: '#06B6D4', diamante: '#8B5CF6',
+  novato: C.positive, bronce: '#CD7F32', plata: C.textSecondary,
+  oro: C.warning, platino: C.info, diamante: C.accentLight,
 };
 
 function getLevel(score: number, streak: number): { name: string; icon: string; current: number; max: number; levelNum: number; tier: DifficultyTier } {
@@ -147,10 +147,10 @@ export default function GameProgress({ state }: Props) {
       }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
           {[
-            { label: 'Racha', value: `${state.streak}`, sub: `mejor: ${state.bestStreak}`, color: '#F59E0B' },
-            { label: 'Precisión', value: `${accuracy}%`, sub: `${state.challengesCorrect}/${state.challengesCompleted}`, color: '#22C55E' },
+            { label: 'Racha', value: `${state.streak}`, sub: `mejor: ${state.bestStreak}`, color: C.warning },
+            { label: 'Precisión', value: `${accuracy}%`, sub: `${state.challengesCorrect}/${state.challengesCompleted}`, color: C.positive },
             { label: 'Retos', value: `${state.challengesCompleted}`, sub: 'completados', color: '#6366F1' },
-            { label: 'Sesiones', value: `${state.sessionsCompleted}`, sub: 'completadas', color: '#06B6D4' },
+            { label: 'Sesiones', value: `${state.sessionsCompleted}`, sub: 'completadas', color: C.info },
           ].map(stat => (
             <div key={stat.label} style={{
               background: C.bgBase, borderRadius: R.md, padding: '12px', textAlign: 'center',
@@ -210,7 +210,7 @@ export default function GameProgress({ state }: Props) {
                   <span style={{ color: C.textPrimary, fontWeight: 600 }}>{h.symbol}</span>
                   <span style={{ color: C.textMuted, fontSize: '10px' }}>{h.date}</span>
                 </div>
-                <span style={{ color: '#F59E0B', fontWeight: 700 }}>+{h.score}</span>
+                <span style={{ color: C.warning, fontWeight: 700 }}>+{h.score}</span>
               </div>
             ))}
           </div>

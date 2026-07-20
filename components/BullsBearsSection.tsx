@@ -1,5 +1,5 @@
 'use client';
-import { colors as C, radius as R, font as F } from '@/src/utils/webTheme';
+import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 
 interface SignalData {
   symbol: string;
@@ -70,13 +70,13 @@ export default function BullsBearsSection({ signals, onStockClick }: BullsBearsS
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
         <h2 style={{ margin: 0, color: C.textPrimary, fontSize: '18px', fontWeight: '700' }}>🐂🐻 Bulls & Bears</h2>
-        <span style={{ color: C.textMuted, fontSize: '13px' }}>Clasificación por horizonte temporal</span>
+        <span style={{ color: C.textMuted, fontSize: F.sizeMd }}>Clasificación por horizonte temporal</span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
         {/* Short-term column */}
         <div>
-          <h3 style={{ margin: '0 0 8px', color: C.textMuted, fontSize: '13px', fontWeight: '600', letterSpacing: '0.5px' }}>
+          <h3 style={{ margin: '0 0 8px', color: C.textMuted, fontSize: F.sizeMd, fontWeight: '600', letterSpacing: '0.5px' }}>
             CORTO PLAZO
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -87,7 +87,7 @@ export default function BullsBearsSection({ signals, onStockClick }: BullsBearsS
               <MiniCard key={s.symbol} data={s} c={c!} onClick={() => onStockClick(s.symbol)} />
             ))}
             {shortTermBulls.length === 0 && shortTermBears.length === 0 && (
-              <div style={{ color: C.textMuted, fontSize: '13px', padding: '12px', background: C.bg, borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ color: C.textMuted, fontSize: F.sizeMd, padding: '12px', background: C.bg, borderRadius: R.md, textAlign: 'center' }}>
                 Sin señales claras a corto plazo
               </div>
             )}
@@ -96,7 +96,7 @@ export default function BullsBearsSection({ signals, onStockClick }: BullsBearsS
 
         {/* Long-term column */}
         <div>
-          <h3 style={{ margin: '0 0 8px', color: C.textMuted, fontSize: '13px', fontWeight: '600', letterSpacing: '0.5px' }}>
+          <h3 style={{ margin: '0 0 8px', color: C.textMuted, fontSize: F.sizeMd, fontWeight: '600', letterSpacing: '0.5px' }}>
             LARGO PLAZO
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -107,7 +107,7 @@ export default function BullsBearsSection({ signals, onStockClick }: BullsBearsS
               <MiniCard key={s.symbol} data={s} c={c!} onClick={() => onStockClick(s.symbol)} />
             ))}
             {longTermBulls.length === 0 && longTermBears.length === 0 && (
-              <div style={{ color: C.textMuted, fontSize: '13px', padding: '12px', background: C.bg, borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ color: C.textMuted, fontSize: F.sizeMd, padding: '12px', background: C.bg, borderRadius: R.md, textAlign: 'center' }}>
                 Sin señales claras a largo plazo
               </div>
             )}
@@ -128,7 +128,7 @@ function MiniCard({ data, c, onClick }: { data: SignalData; c: { icon: string; l
         justifyContent: 'space-between',
         padding: '10px 14px',
         background: C.bgCard,
-        borderRadius: '8px',
+        borderRadius: R.md,
         border: '1px solid ' + C.borderLight,
         borderLeft: `3px solid ${c.color}`,
         cursor: 'pointer',
@@ -141,19 +141,19 @@ function MiniCard({ data, c, onClick }: { data: SignalData; c: { icon: string; l
         <span style={{ fontSize: '18px' }}>{c.icon}</span>
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ color: C.textPrimary, fontWeight: '700', fontSize: '14px' }}>{data.symbol}</span>
-            <span style={{ color: c.color, fontSize: '11px', fontWeight: '600' }}>{c.label}</span>
+            <span style={{ color: C.textPrimary, fontWeight: '700', fontSize: F.sizeBase }}>{data.symbol}</span>
+            <span style={{ color: c.color, fontSize: F.sizeXs, fontWeight: '600' }}>{c.label}</span>
           </div>
-          <div style={{ color: C.textMuted, fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ color: C.textMuted, fontSize: F.sizeXs, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {c.desc}
           </div>
         </div>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        <div style={{ color: C.textPrimary, fontWeight: '600', fontSize: '13px' }}>
+        <div style={{ color: C.textPrimary, fontWeight: '600', fontSize: F.sizeMd }}>
           ${data.price != null ? data.price.toFixed(2) : '0.00'}
         </div>
-        <div style={{ color: data.change != null && data.change >= 0 ? C.positive : C.negative, fontSize: '11px' }}>
+        <div style={{ color: data.change != null && data.change >= 0 ? C.positive : C.negative, fontSize: F.sizeXs }}>
           {data.changePercent != null ? `${data.changePercent >= 0 ? '+' : ''}${data.changePercent.toFixed(2)}%` : '—'}
         </div>
       </div>

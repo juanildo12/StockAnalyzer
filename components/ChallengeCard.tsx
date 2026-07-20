@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { DailyChallenge, SignalAction, ConfidenceLevel, VerifyResponse } from '@/src/types';
-import { colors as C, radius as R } from '@/src/utils/webTheme';
+import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 import CandlestickChart from './CandlestickChart';
 
 interface Props {
@@ -12,9 +12,9 @@ interface Props {
 }
 
 const SIGNAL_ACTIONS: { value: SignalAction; label: string; color: string; glow: string }[] = [
-  { value: 'COMPRAR', label: 'COMPRAR', color: '#22C55E', glow: 'rgba(34,197,94,0.15)' },
-  { value: 'MANTENER', label: 'MANTENER', color: '#F59E0B', glow: 'rgba(245,158,11,0.15)' },
-  { value: 'VENDER', label: 'VENDER', color: '#EF4444', glow: 'rgba(239,68,68,0.15)' },
+  { value: 'COMPRAR', label: 'COMPRAR', color: C.positive, glow: `${C.positive}26` },
+  { value: 'MANTENER', label: 'MANTENER', color: C.warning, glow: `${C.warning}26` },
+  { value: 'VENDER', label: 'VENDER', color: C.negative, glow: `${C.negative}26` },
 ];
 
 const CONFIDENCE_LEVELS: { value: ConfidenceLevel; label: string; multiplier: string }[] = [
@@ -23,7 +23,7 @@ const CONFIDENCE_LEVELS: { value: ConfidenceLevel; label: string; multiplier: st
   { value: 'alta', label: 'Alta', multiplier: '×1.0' },
 ];
 
-const CONFETTI_COLORS = ['#22C55E', '#6366F1', '#F59E0B', '#06B6D4', '#EC4899', '#8B5CF6'];
+const CONFETTI_COLORS = [C.positive, C.accent, C.warning, C.info, C.negative, C.accentLight];
 
 function ConfettiExplosion() {
   const pieces = useMemo(() =>
@@ -66,24 +66,24 @@ function HintCard({ hint, revealed, onClick }: { hint: DailyChallenge['hints'][0
   const getValueColor = (key: string, value: string) => {
     if (key === 'rsi') {
       const v = parseFloat(value);
-      if (v < 30) return '#22C55E';
-      if (v > 70) return '#EF4444';
+      if (v < 30) return C.positive;
+      if (v > 70) return C.negative;
       return C.textPrimary;
     }
     if (key === 'trend') {
-      if (value.toLowerCase().includes('alcista')) return '#22C55E';
-      if (value.toLowerCase().includes('bajista')) return '#EF4444';
-      return '#F59E0B';
+      if (value.toLowerCase().includes('alcista')) return C.positive;
+      if (value.toLowerCase().includes('bajista')) return C.negative;
+      return C.warning;
     }
     if (key === 'targetUpside') {
-      if (value.includes('-')) return '#EF4444';
+      if (value.includes('-')) return C.negative;
       const v = parseFloat(value);
-      if (v > 15) return '#22C55E';
+      if (v > 15) return C.positive;
       return C.textPrimary;
     }
     if (key === 'pattern') {
-      if (value.includes('ALCISTA')) return '#22C55E';
-      if (value.includes('BAJISTA')) return '#EF4444';
+      if (value.includes('ALCISTA')) return C.positive;
+      if (value.includes('BAJISTA')) return C.negative;
       return C.textSecondary;
     }
     return C.textPrimary;
@@ -208,17 +208,17 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
           padding: '32px',
           textAlign: 'center',
           animation: 'resultPop 0.4s ease',
-          border: `1px solid ${result.correct ? '#22C55E30' : '#EF444430'}`,
+          border: `1px solid ${result.correct ? '${C.positive}30' : '${C.negative}30'}`,
           boxShadow: result.correct
-            ? `0 0 40px rgba(34,197,94,0.08)`
-            : `0 0 20px rgba(239,68,68,0.05)`,
+            ? `0 0 40px ${C.positive}14`
+            : `0 0 20px ${C.negative}0d`,
         }}>
           <div style={{
-            width: '80px', height: '80px', borderRadius: '50%',
-            background: result.correct ? '#22C55E18' : '#EF444418',
+            width: '80px', height: '80px', borderRadius: R.full,
+            background: result.correct ? '${C.positive}18' : '${C.negative}18',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 16px', fontSize: '40px',
-            border: `2px solid ${result.correct ? '#22C55E40' : '#EF444440'}`,
+            border: `2px solid ${result.correct ? '${C.positive}40' : '${C.negative}40'}`,
             animation: 'glowPulse 2s infinite',
           }}>
             {result.correct ? '🎯' : '💨'}
@@ -227,7 +227,7 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
           <h3 style={{ color: C.textPrimary, fontSize: '24px', margin: '0 0 4px' }}>
             {result.correct ? '¡Tiro al Blanco!' : 'No esta vez'}
           </h3>
-          <p style={{ color: C.textSecondary, fontSize: '14px', margin: '0 0 24px' }}>
+          <p style={{ color: C.textSecondary, fontSize: F.sizeBase, margin: '0 0 24px' }}>
             {result.correct
               ? 'Coincides con el análisis del motor de señales'
               : 'Sigue practicando, mañana habrá otro reto'}
@@ -238,7 +238,7 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
             marginBottom: '24px',
           }}>
             <div style={{ textAlign: 'center' }}>
-              <p style={{ margin: '0 0 4px', fontSize: '11px', color: C.textMuted, textTransform: 'uppercase' }}>Tu señal</p>
+              <p style={{ margin: '0 0 4px', fontSize: F.sizeXs, color: C.textMuted, textTransform: 'uppercase' }}>Tu señal</p>
               <div style={{
                 display: 'inline-block', padding: '6px 20px', borderRadius: R.md,
                 background: `${userAction?.color}20`,
@@ -253,7 +253,7 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
               {result.correct ? '=' : '≠'}
             </div>
             <div style={{ textAlign: 'center' }}>
-              <p style={{ margin: '0 0 4px', fontSize: '11px', color: C.textMuted, textTransform: 'uppercase' }}>Señal real</p>
+              <p style={{ margin: '0 0 4px', fontSize: F.sizeXs, color: C.textMuted, textTransform: 'uppercase' }}>Señal real</p>
               <div style={{
                 display: 'inline-block', padding: '6px 20px', borderRadius: R.md,
                 background: `${correctAction?.color}20`,
@@ -268,23 +268,23 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
 
           <div style={{
             background: result.correct
-              ? 'linear-gradient(135deg, #22C55E15, #22C55E08)'
-              : 'linear-gradient(135deg, #EF444415, #EF444408)',
+              ? `linear-gradient(135deg, ${C.positive}15, ${C.positive}08)`
+              : `linear-gradient(135deg, ${C.negative}15, ${C.negative}08)`,
             borderRadius: R.lg,
             padding: '20px',
             marginBottom: '20px',
-            border: `1px solid ${result.correct ? '#22C55E20' : '#EF444420'}`,
+            border: `1px solid ${result.correct ? '${C.positive}20' : '${C.negative}20'}`,
           }}>
             <p style={{
               fontSize: '36px', fontWeight: 800,
-              color: result.correct ? '#22C55E' : '#EF4444',
+              color: result.correct ? C.positive : C.negative,
               margin: '0 0 2px',
               letterSpacing: '-0.02em',
             }}>
               +{result.score}
-              <span style={{ fontSize: '16px', fontWeight: 500, opacity: 0.6 }}> pts</span>
+              <span style={{ fontSize: F.sizeLg, fontWeight: 500, opacity: 0.6 }}> pts</span>
             </p>
-            <p style={{ fontSize: '14px', color: C.textSecondary, margin: 0 }}>
+            <p style={{ fontSize: F.sizeBase, color: C.textSecondary, margin: 0 }}>
               Racha: {result.streak} {result.streak === 1 ? 'día' : 'días'} seguidos
               {result.streak >= 3 && ' 🔥'}
               {result.streak >= 5 && ' ⚡'}
@@ -293,7 +293,7 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
           </div>
 
           <p style={{
-            color: C.textMuted, fontSize: '13px', lineHeight: '1.6',
+            color: C.textMuted, fontSize: F.sizeMd, lineHeight: '1.6',
             marginBottom: '24px', maxWidth: '500px', margin: '0 auto 24px',
           }}>
             {result.explanation}
@@ -306,7 +306,7 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
               borderRadius: R.lg,
               border: 'none',
               background: C.gradientPrimary,
-              color: '#fff',
+              color: C.textPrimary,
               fontWeight: 700,
               cursor: 'pointer',
               fontSize: '15px',
@@ -365,7 +365,7 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
             width: '48px', height: '48px', borderRadius: R.lg,
             background: C.gradientPrimary,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '18px', fontWeight: 700, color: '#fff',
+            fontSize: '18px', fontWeight: 700, color: C.textPrimary,
             boxShadow: `0 4px 12px ${C.accent}40`,
           }}>
             {challenge.symbol.charAt(0)}
@@ -374,14 +374,14 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
             <h3 style={{ margin: 0, color: C.textPrimary, fontSize: '18px', fontWeight: 700 }}>
               {challenge.symbol}
             </h3>
-            <p style={{ margin: '2px 0 0', color: C.textMuted, fontSize: '13px' }}>{challenge.name}</p>
+            <p style={{ margin: '2px 0 0', color: C.textMuted, fontSize: F.sizeMd }}>{challenge.name}</p>
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
           <p style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: C.textPrimary }}>
             ${challenge.price.toFixed(2)}
           </p>
-          <p style={{ margin: '2px 0 0', fontSize: '11px', color: C.textMuted }}>
+          <p style={{ margin: '2px 0 0', fontSize: F.sizeXs, color: C.textMuted }}>
             {bonusText}
           </p>
         </div>
@@ -419,7 +419,7 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
 
       <div style={{ padding: '12px 24px 0' }}>
         <p style={{
-          fontSize: '11px', color: C.textMuted, textAlign: 'center',
+          fontSize: F.sizeXs, color: C.textMuted, textAlign: 'center',
           fontStyle: 'italic',
         }}>
           {allRevealed
@@ -432,7 +432,7 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
       {/* Signal selector */}
       <div style={{ padding: '16px 24px 0' }}>
         <p style={{
-          fontSize: '13px', color: C.textSecondary, marginBottom: '10px', textAlign: 'center',
+          fontSize: F.sizeMd, color: C.textSecondary, marginBottom: '10px', textAlign: 'center',
           fontWeight: 500,
         }}>
           ¿Cuál es tu veredicto para <strong style={{ color: C.textPrimary }}>{challenge.symbol}</strong>?
@@ -469,7 +469,7 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
       {/* Confidence selector */}
       <div style={{ padding: '16px 24px 0' }}>
         <p style={{
-          fontSize: '11px', color: C.textMuted, marginBottom: '8px', textAlign: 'center',
+          fontSize: F.sizeXs, color: C.textMuted, marginBottom: '8px', textAlign: 'center',
           textTransform: 'uppercase', letterSpacing: '0.05em',
         }}>
           Confianza en tu señal
@@ -486,7 +486,7 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
                 background: confidence === cl.value ? `${C.accent}18` : 'transparent',
                 color: confidence === cl.value ? C.accent : C.textMuted,
                 fontWeight: confidence === cl.value ? 700 : 400,
-                fontSize: '12px',
+                fontSize: F.sizeSm,
                 cursor: 'pointer',
                 transition: 'all 0.15s',
               }}
@@ -509,11 +509,11 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
             borderRadius: R.lg,
             border: 'none',
             background: !selectedAction
-              ? 'linear-gradient(135deg, #1E2230, #1E2230)'
+              ? `linear-gradient(135deg, ${C.bgElevated}, ${C.bgElevated})`
               : C.gradientPrimary,
-            color: !selectedAction ? C.textMuted : '#fff',
+            color: !selectedAction ? C.textMuted : C.textPrimary,
             fontWeight: 800,
-            fontSize: '16px',
+            fontSize: F.sizeLg,
             letterSpacing: '0.03em',
             cursor: !selectedAction || submitting ? 'not-allowed' : 'pointer',
             opacity: !selectedAction || submitting ? 0.5 : 1,

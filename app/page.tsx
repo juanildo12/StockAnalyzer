@@ -28,9 +28,9 @@ import BacktestPanel from '@/components/BacktestPanel';
 import ScreenerGraham from '@/components/ScreenerGraham';
 import ScreenerPage from '@/app/screener/page';
 import TradingTrainer from '@/components/TradingTrainer';
-import AIAnalysisPanel from '@/components/AIAnalysisPanel';
-import ScorePanel from '@/components/ScorePanel';
+import StockDetailPanel from '@/components/StockDetailPanel';
 import SmartAlertsPanel from '@/components/SmartAlertsPanel';
+import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 
 
 interface StockQuote {
@@ -200,6 +200,7 @@ interface ApiResponse {
   technical: Technical;
   recommendation: Recommendation;
   informeDetail?: InformeDetail;
+  fundamentals?: Record<string, any>;
 }
 
 function RenderInforme({ informe, data }: { informe: InformeDetail; data?: any }) {
@@ -211,212 +212,212 @@ function RenderInforme({ informe, data }: { informe: InformeDetail; data?: any }
   };
 
   const getActionColor = (action: string) => {
-    if (action === 'COMPRAR') return '#3fb950';
-    if (action === 'VENDER') return '#f85149';
-    return '#f0883e';
+    if (action === 'COMPRAR') return C.positive;
+    if (action === 'VENDER') return C.negative;
+    return C.warning;
   };
   
   return (
     <>
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-        <h2 style={{ color: '#f0f6fc', marginBottom: '8px' }}>📋 Análisis Fundamental de {informe.company.name} ({informe.company.symbol})</h2>
-        <p style={{ color: '#8b949e', fontSize: '13px' }}>{informe.company.sector} - Riesgo {informe.company.riskLevel}</p>
+        <h2 style={{ color: C.textPrimary, marginBottom: '8px' }}>📋 Análisis Fundamental de {informe.company.name} ({informe.company.symbol})</h2>
+        <p style={{ color: C.textMuted, fontSize: F.sizeMd }}>{informe.company.sector} - Riesgo {informe.company.riskLevel}</p>
       </div>
 
       {/* Datos Clave */}
       {informe.dataKey && (
-        <div style={{ background: '#161b22', borderRadius: '12px', padding: '16px', marginBottom: '16px', borderLeft: '4px solid #58a6ff' }}>
-          <h3 style={{ margin: '0 0 12px', color: '#f0f6fc', fontSize: '14px', fontWeight: '600' }}>Datos clave (actualizados a {informe.dataKey.lastUpdated}):</h3>
+        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '16px', marginBottom: '16px', borderLeft: '4px solid C.accentLight' }}>
+          <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeBase, fontWeight: '600' }}>Datos clave (actualizados a {informe.dataKey.lastUpdated}):</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
             <div>
-              <p style={{ margin: 0, fontSize: '11px', color: '#8b949e' }}>Precio actual</p>
-              <p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: '600', color: '#f0f6fc' }}>{informe.dataKey.price}</p>
+              <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>Precio actual</p>
+              <p style={{ margin: '4px 0 0', fontSize: F.sizeBase, fontWeight: '600', color: C.textPrimary }}>{informe.dataKey.price}</p>
             </div>
             <div>
-              <p style={{ margin: 0, fontSize: '11px', color: '#8b949e' }}>Market Cap</p>
-              <p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: '600', color: '#f0f6fc' }}>{informe.dataKey.marketCap}</p>
+              <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>Market Cap</p>
+              <p style={{ margin: '4px 0 0', fontSize: F.sizeBase, fontWeight: '600', color: C.textPrimary }}>{informe.dataKey.marketCap}</p>
             </div>
             <div>
-              <p style={{ margin: 0, fontSize: '11px', color: '#8b949e' }}>Acciones</p>
-              <p style={{ margin: '4px 0 0', fontSize: '14px', fontWeight: '600', color: '#f0f6fc' }}>{informe.dataKey.sharesOutstanding}</p>
+              <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>Acciones</p>
+              <p style={{ margin: '4px 0 0', fontSize: F.sizeBase, fontWeight: '600', color: C.textPrimary }}>{informe.dataKey.sharesOutstanding}</p>
             </div>
           </div>
         </div>
       )}
 
       {informe.company.description && (
-        <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
-          <p style={{ color: '#c9d1d9', fontSize: '13px', lineHeight: '1.6', margin: 0 }}>
+        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '16px' }}>
+          <p style={{ color: C.textSecondary, fontSize: F.sizeMd, lineHeight: '1.6', margin: 0 }}>
             {informe.company.description}
           </p>
         </div>
       )}
 
-      <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
-        <h3 style={{ margin: '0 0 12px', color: '#f0f6fc', fontSize: '16px', fontWeight: '600' }}>1. PE Ratio</h3>
+      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '16px' }}>
+        <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>1. PE Ratio</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <tr style={{ borderBottom: '1px solid #30363d' }}>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>PE Ratio actual (TTM)</td>
-              <td style={{ padding: '8px 0', color: informe.peRatio.currentValue < 0 ? '#f85149' : '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{informe.peRatio.current}</td>
+            <tr style={{ borderBottom: '1px solid C.border' }}>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>PE Ratio actual (TTM)</td>
+              <td style={{ padding: '8px 0', color: informe.peRatio.currentValue < 0 ? C.negative : C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.peRatio.current}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid #30363d' }}>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Clasificación</td>
-              <td style={{ padding: '8px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{informe.peRatio.classification}</td>
+            <tr style={{ borderBottom: '1px solid C.border' }}>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Clasificación</td>
+              <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.peRatio.classification}</td>
             </tr>
             <tr>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Forward PE</td>
-              <td style={{ padding: '8px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{informe.peRatio.forward}</td>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Forward PE</td>
+              <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.peRatio.forward}</td>
             </tr>
           </tbody>
         </table>
-        <p style={{ color: '#8b949e', fontSize: '12px', marginTop: '8px' }}>{informe.peRatio.classificationDetail}</p>
+        <p style={{ color: C.textMuted, fontSize: F.sizeSm, marginTop: '8px' }}>{informe.peRatio.classificationDetail}</p>
       </div>
 
-      <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
-        <h3 style={{ margin: '0 0 12px', color: '#f0f6fc', fontSize: '16px', fontWeight: '600' }}>2. Cash y Deudas</h3>
+      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '16px' }}>
+        <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>2. Cash y Deudas</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <tr style={{ borderBottom: '1px solid #30363d' }}>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Cash</td>
-              <td style={{ padding: '8px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{informe.cashDebt.cash}</td>
+            <tr style={{ borderBottom: '1px solid C.border' }}>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Cash</td>
+              <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.cashDebt.cash}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid #30363d' }}>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Deuda Total</td>
-              <td style={{ padding: '8px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{informe.cashDebt.debt}</td>
+            <tr style={{ borderBottom: '1px solid C.border' }}>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Deuda Total</td>
+              <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.cashDebt.debt}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid #30363d' }}>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Deuda/Equity</td>
-              <td style={{ padding: '8px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{informe.cashDebt.debtToEquity}</td>
+            <tr style={{ borderBottom: '1px solid C.border' }}>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Deuda/Equity</td>
+              <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.cashDebt.debtToEquity}</td>
             </tr>
             <tr>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Clasificación</td>
-              <td style={{ padding: '8px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>Cash: {informe.cashDebt.cashClassification} | Deuda: {informe.cashDebt.debtClassification}</td>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Clasificación</td>
+              <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>Cash: {informe.cashDebt.cashClassification} | Deuda: {informe.cashDebt.debtClassification}</td>
             </tr>
           </tbody>
         </table>
-        <p style={{ color: '#8b949e', fontSize: '12px', marginTop: '8px' }}>{informe.cashDebt.cashClassificationDetail}</p>
+        <p style={{ color: C.textMuted, fontSize: F.sizeSm, marginTop: '8px' }}>{informe.cashDebt.cashClassificationDetail}</p>
       </div>
 
-      <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
-        <h3 style={{ margin: '0 0 12px', color: '#f0f6fc', fontSize: '16px', fontWeight: '600' }}>3. Crecimiento en Ventas 2024-2025</h3>
+      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '16px' }}>
+        <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>3. Crecimiento en Ventas 2024-2025</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <tr style={{ borderBottom: '1px solid #30363d' }}>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Crecimiento actual</td>
-              <td style={{ padding: '8px 0', color: informe.growth.currentValue >= 0 ? '#3fb950' : '#f85149', textAlign: 'right', fontWeight: '600' }}>{informe.growth.current}</td>
+            <tr style={{ borderBottom: '1px solid C.border' }}>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Crecimiento actual</td>
+              <td style={{ padding: '8px 0', color: informe.growth.currentValue >= 0 ? C.positive : C.negative, textAlign: 'right', fontWeight: '600' }}>{informe.growth.current}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid #30363d' }}>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Clasificación</td>
-              <td style={{ padding: '8px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{informe.growth.classification}</td>
+            <tr style={{ borderBottom: '1px solid C.border' }}>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Clasificación</td>
+              <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.growth.classification}</td>
             </tr>
             <tr>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Proyección</td>
-              <td style={{ padding: '8px 0', color: '#58a6ff', textAlign: 'right', fontWeight: '600' }}>{informe.growth.projection}</td>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Proyección</td>
+              <td style={{ padding: '8px 0', color: C.accentLight, textAlign: 'right', fontWeight: '600' }}>{informe.growth.projection}</td>
             </tr>
           </tbody>
         </table>
-        <p style={{ color: '#8b949e', fontSize: '12px', marginTop: '8px' }}>{informe.growth.momentum}</p>
+        <p style={{ color: C.textMuted, fontSize: F.sizeSm, marginTop: '8px' }}>{informe.growth.momentum}</p>
       </div>
 
-      <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
-        <h3 style={{ margin: '0 0 12px', color: '#f0f6fc', fontSize: '16px', fontWeight: '600' }}>4. Profit Margin Promedio (últimos 4 años)</h3>
+      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '16px' }}>
+        <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>4. Profit Margin Promedio (últimos 4 años)</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <tr style={{ borderBottom: '1px solid #30363d' }}>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Profit Margin actual</td>
-              <td style={{ padding: '8px 0', color: informe.profitMargin.currentValue >= 0 ? '#3fb950' : '#f85149', textAlign: 'right', fontWeight: '600' }}>{informe.profitMargin.current}</td>
+            <tr style={{ borderBottom: '1px solid C.border' }}>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Profit Margin actual</td>
+              <td style={{ padding: '8px 0', color: informe.profitMargin.currentValue >= 0 ? C.positive : C.negative, textAlign: 'right', fontWeight: '600' }}>{informe.profitMargin.current}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid #30363d' }}>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Promedio 4 años</td>
-              <td style={{ padding: '8px 0', color: '#f85149', textAlign: 'right', fontWeight: '600' }}>{informe.profitMargin.average4Years}</td>
+            <tr style={{ borderBottom: '1px solid C.border' }}>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Promedio 4 años</td>
+              <td style={{ padding: '8px 0', color: C.negative, textAlign: 'right', fontWeight: '600' }}>{informe.profitMargin.average4Years}</td>
             </tr>
             <tr>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Clasificación</td>
-              <td style={{ padding: '8px 0', color: '#f85149', textAlign: 'right', fontWeight: '600' }}>{informe.profitMargin.classification}</td>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Clasificación</td>
+              <td style={{ padding: '8px 0', color: C.negative, textAlign: 'right', fontWeight: '600' }}>{informe.profitMargin.classification}</td>
             </tr>
           </tbody>
         </table>
-        <p style={{ color: '#8b949e', fontSize: '12px', marginTop: '8px' }}>{informe.profitMargin.classificationDetail}</p>
+        <p style={{ color: C.textMuted, fontSize: F.sizeSm, marginTop: '8px' }}>{informe.profitMargin.classificationDetail}</p>
       </div>
 
-      <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
-        <h3 style={{ margin: '0 0 12px', color: '#f0f6fc', fontSize: '16px', fontWeight: '600' }}>5. PE Ratio Promedio (últimos 6 meses)</h3>
+      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '16px' }}>
+        <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>5. PE Ratio Promedio (últimos 6 meses)</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <tr style={{ borderBottom: '1px solid #30363d' }}>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Histórico</td>
-              <td style={{ padding: '8px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{informe.peAverage.historical}</td>
+            <tr style={{ borderBottom: '1px solid C.border' }}>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Histórico</td>
+              <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.peAverage.historical}</td>
             </tr>
             <tr>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Forward</td>
-              <td style={{ padding: '8px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{informe.peAverage.forward}</td>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Forward</td>
+              <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.peAverage.forward}</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
-        <h3 style={{ margin: '0 0 12px', color: '#f0f6fc', fontSize: '16px', fontWeight: '600' }}>6. Precio Actual y Proyección</h3>
+      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '16px' }}>
+        <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>6. Precio Actual y Proyección</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <tr style={{ borderBottom: '1px solid #30363d' }}>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Precio actual</td>
-              <td style={{ padding: '8px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{informe.projection.currentPrice}</td>
+            <tr style={{ borderBottom: '1px solid C.border' }}>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Precio actual</td>
+              <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.projection.currentPrice}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid #30363d' }}>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Ventas forward</td>
-              <td style={{ padding: '8px 0', color: '#58a6ff', textAlign: 'right', fontWeight: '600' }}>{informe.projection.forwardRevenue}</td>
+            <tr style={{ borderBottom: '1px solid C.border' }}>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Ventas forward</td>
+              <td style={{ padding: '8px 0', color: C.accentLight, textAlign: 'right', fontWeight: '600' }}>{informe.projection.forwardRevenue}</td>
             </tr>
             <tr>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Retorno potencial</td>
-              <td style={{ padding: '8px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{informe.projection.returnRange}</td>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Retorno potencial</td>
+              <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.projection.returnRange}</td>
             </tr>
           </tbody>
         </table>
-        <p style={{ color: '#8b949e', fontSize: '12px', marginTop: '8px' }}>{informe.projection.note}</p>
+        <p style={{ color: C.textMuted, fontSize: F.sizeSm, marginTop: '8px' }}>{informe.projection.note}</p>
       </div>
 
-      <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
-        <h3 style={{ margin: '0 0 12px', color: '#f0f6fc', fontSize: '16px', fontWeight: '600' }}>7. Comparación con TipRanks</h3>
+      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '16px' }}>
+        <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>7. Comparación con TipRanks</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <tr style={{ borderBottom: '1px solid #30363d' }}>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Price Target</td>
-              <td style={{ padding: '8px 0', color: '#58a6ff', textAlign: 'right', fontWeight: '600' }}>{informe.tipRanks.priceTarget}</td>
+            <tr style={{ borderBottom: '1px solid C.border' }}>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Price Target</td>
+              <td style={{ padding: '8px 0', color: C.accentLight, textAlign: 'right', fontWeight: '600' }}>{informe.tipRanks.priceTarget}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid #30363d' }}>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Upside</td>
-              <td style={{ padding: '8px 0', color: informe.tipRanks.upsideValue >= 0 ? '#3fb950' : '#f85149', textAlign: 'right', fontWeight: '600' }}>{informe.tipRanks.upside}</td>
+            <tr style={{ borderBottom: '1px solid C.border' }}>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Upside</td>
+              <td style={{ padding: '8px 0', color: informe.tipRanks.upsideValue >= 0 ? C.positive : C.negative, textAlign: 'right', fontWeight: '600' }}>{informe.tipRanks.upside}</td>
             </tr>
             <tr>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Consenso</td>
-              <td style={{ padding: '8px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{informe.tipRanks.consensus} ({informe.tipRanks.analystsCount} analistas)</td>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Consenso</td>
+              <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.tipRanks.consensus} ({informe.tipRanks.analystsCount} analistas)</td>
             </tr>
           </tbody>
         </table>
-        <p style={{ color: '#8b949e', fontSize: '12px', marginTop: '8px' }}>{informe.tipRanks.discrepancy}</p>
+        <p style={{ color: C.textMuted, fontSize: F.sizeSm, marginTop: '8px' }}>{informe.tipRanks.discrepancy}</p>
       </div>
 
-      <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
-        <h3 style={{ margin: '0 0 12px', color: '#f0f6fc', fontSize: '16px', fontWeight: '600' }}>📊 Análisis Fundamental (Tabla Resumen)</h3>
+      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '16px' }}>
+        <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>📊 Análisis Fundamental (Tabla Resumen)</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
             {informe.summaryTable.rows.map((row, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid #30363d' }}>
-                <td style={{ padding: '8px 0', color: '#8b949e' }}>{row.metric}</td>
-                <td style={{ padding: '8px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{row.value}</td>
+              <tr key={i} style={{ borderBottom: '1px solid C.border' }}>
+                <td style={{ padding: '8px 0', color: C.textMuted }}>{row.metric}</td>
+                <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{row.value}</td>
               </tr>
             ))}
             {data?.summary?.freeCashflow && (
               <>
-                <tr style={{ borderBottom: '1px solid #30363d' }}>
-                  <td style={{ padding: '8px 0', color: '#8b949e' }}>Free Cash Flow</td>
-                  <td style={{ padding: '8px 0', color: '#3fb950', textAlign: 'right', fontWeight: '600' }}>{formatNumber(data.summary.freeCashflow)}</td>
+                <tr style={{ borderBottom: '1px solid C.border' }}>
+                  <td style={{ padding: '8px 0', color: C.textMuted }}>Free Cash Flow</td>
+                  <td style={{ padding: '8px 0', color: C.positive, textAlign: 'right', fontWeight: '600' }}>{formatNumber(data.summary.freeCashflow)}</td>
                 </tr>
                 <tr>
-                  <td style={{ padding: '8px 0', color: '#8b949e' }}>FCF Yield</td>
-                  <td style={{ padding: '8px 0', color: ((data.summary.freeCashflow || 0) / (data.summary.marketCap || 1) * 100) >= 3 ? '#3fb950' : '#f85149', textAlign: 'right', fontWeight: '600' }}>
+                  <td style={{ padding: '8px 0', color: C.textMuted }}>FCF Yield</td>
+                  <td style={{ padding: '8px 0', color: ((data.summary.freeCashflow || 0) / (data.summary.marketCap || 1) * 100) >= 3 ? C.positive : C.negative, textAlign: 'right', fontWeight: '600' }}>
                     {(((data.summary.freeCashflow || 0) / (data.summary.marketCap || 1) * 100)).toFixed(2)}%
                   </td>
                 </tr>
@@ -426,42 +427,42 @@ function RenderInforme({ informe, data }: { informe: InformeDetail; data?: any }
         </table>
       </div>
 
-      <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
-        <h3 style={{ margin: '0 0 12px', color: '#f0f6fc', fontSize: '16px', fontWeight: '600' }}>🎯 Precio Objetivo y Recomendación</h3>
-        <div style={{ marginTop: '12px', padding: '14px', borderRadius: '8px', background: getActionColor(informe.strategy.verdictAction) + '20', textAlign: 'center' }}>
-          <span style={{ color: getActionColor(informe.strategy.verdictAction), fontWeight: 'bold', fontSize: '20px' }}>{informe.strategy.verdictAction}</span>
+      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '16px' }}>
+        <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>🎯 Precio Objetivo y Recomendación</h3>
+        <div style={{ marginTop: '12px', padding: '14px', borderRadius: R.md, background: getActionColor(informe.strategy.verdictAction) + '20', textAlign: 'center' }}>
+          <span style={{ color: getActionColor(informe.strategy.verdictAction), fontWeight: 'bold', fontSize: F.sizeXxl }}>{informe.strategy.verdictAction}</span>
         </div>
-        <p style={{ color: '#c9d1d9', fontSize: '13px', marginTop: '12px', textAlign: 'center' }}>{informe.priceTargetSection.recommendation}</p>
+        <p style={{ color: C.textSecondary, fontSize: F.sizeMd, marginTop: '12px', textAlign: 'center' }}>{informe.priceTargetSection.recommendation}</p>
       </div>
 
-      <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
-        <h3 style={{ margin: '0 0 12px', color: '#f0f6fc', fontSize: '16px', fontWeight: '600' }}>🛠 Estrategia Operativa</h3>
+      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '16px' }}>
+        <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>🛠 Estrategia Operativa</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <tr style={{ borderBottom: '1px solid #30363d' }}>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Zona de Compra</td>
-              <td style={{ padding: '8px 0', color: '#3fb950', textAlign: 'right', fontWeight: '600' }}>{informe.strategy.buyZone}</td>
+            <tr style={{ borderBottom: '1px solid C.border' }}>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Zona de Compra</td>
+              <td style={{ padding: '8px 0', color: C.positive, textAlign: 'right', fontWeight: '600' }}>{informe.strategy.buyZone}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid #30363d' }}>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Target 1</td>
-              <td style={{ padding: '8px 0', color: '#58a6ff', textAlign: 'right', fontWeight: '600' }}>{informe.strategy.target1}</td>
+            <tr style={{ borderBottom: '1px solid C.border' }}>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Target 1</td>
+              <td style={{ padding: '8px 0', color: C.accentLight, textAlign: 'right', fontWeight: '600' }}>{informe.strategy.target1}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid #30363d' }}>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Target 2</td>
-              <td style={{ padding: '8px 0', color: '#58a6ff', textAlign: 'right', fontWeight: '600' }}>{informe.strategy.target2}</td>
+            <tr style={{ borderBottom: '1px solid C.border' }}>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Target 2</td>
+              <td style={{ padding: '8px 0', color: C.accentLight, textAlign: 'right', fontWeight: '600' }}>{informe.strategy.target2}</td>
             </tr>
             <tr>
-              <td style={{ padding: '8px 0', color: '#8b949e' }}>Stop Loss</td>
-              <td style={{ padding: '8px 0', color: '#f85149', textAlign: 'right', fontWeight: '600' }}>{informe.strategy.stopLoss}</td>
+              <td style={{ padding: '8px 0', color: C.textMuted }}>Stop Loss</td>
+              <td style={{ padding: '8px 0', color: C.negative, textAlign: 'right', fontWeight: '600' }}>{informe.strategy.stopLoss}</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '16px' }}>
-        <h3 style={{ margin: '0 0 12px', color: '#f0f6fc', fontSize: '16px', fontWeight: '600' }}>🧠 Conclusión Final</h3>
-        <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', borderLeft: `4px solid ${getActionColor(informe.strategy.verdictAction)}` }}>
-          <p style={{ margin: 0, color: '#c9d1d9', fontSize: '14px', lineHeight: '1.6' }}>{informe.conclusion}</p>
+      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '16px' }}>
+        <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>🧠 Conclusión Final</h3>
+        <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: `4px solid ${getActionColor(informe.strategy.verdictAction)}` }}>
+          <p style={{ margin: 0, color: C.textSecondary, fontSize: F.sizeBase, lineHeight: '1.6' }}>{informe.conclusion}</p>
         </div>
       </div>
     </>
@@ -474,9 +475,9 @@ function RenderInformeLegacy({ data, formatNumber, getActionColor }: {
   getActionColor: (a: string) => string;
 }) {
   return (
-    <div style={{ textAlign: 'center', padding: '60px', color: '#8b949e' }}>
+    <div style={{ textAlign: 'center', padding: '60px', color: C.textMuted }}>
       <p>El informe detallado no está disponible para este ticker.</p>
-      <p style={{ fontSize: '12px' }}>Intenta analizar otro ticker para ver el nuevo formato.</p>
+      <p style={{ fontSize: F.sizeSm }}>Intenta analizar otro ticker para ver el nuevo formato.</p>
     </div>
   );
 }
@@ -761,6 +762,7 @@ export default function Home() {
         technical: json.technical,
         recommendation: json.recommendation,
         informeDetail: json.informeDetail,
+        fundamentals: json.fundamentals,
       });
     } catch (e: any) {
       setError(e.message);
@@ -872,21 +874,21 @@ export default function Home() {
   };
 
   const getTrendColor = (trend: string) => {
-    if (trend === 'alcista') return '#3fb950';
-    if (trend === 'bajista') return '#f85149';
-    return '#8b949e';
+    if (trend === 'alcista') return C.positive;
+    if (trend === 'bajista') return C.negative;
+    return C.textMuted;
   };
 
   const getSignalColor = (signal: string) => {
-    if (signal === 'comprar') return '#3fb950';
-    if (signal === 'vender') return '#f85149';
-    return '#8b949e';
+    if (signal === 'comprar') return C.positive;
+    if (signal === 'vender') return C.negative;
+    return C.textMuted;
   };
 
   const getActionColor = (action: string) => {
-    if (action === 'COMPRAR') return '#3fb950';
-    if (action === 'VENDER') return '#f85149';
-    return '#f0883e';
+    if (action === 'COMPRAR') return C.positive;
+    if (action === 'VENDER') return C.negative;
+    return C.warning;
   };
 
   const portfolioSummary = portfolio.reduce((acc, item) => {
@@ -905,49 +907,49 @@ export default function Home() {
     : 0;
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', width: '100%', maxWidth: '100%', background: '#0d1117', color: '#c9d1d9', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', width: '100%', maxWidth: '100%', background: C.bg, color: C.textSecondary, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {!isMobile && <Sidebar view={view} onViewChange={setView} userPlan={(session?.user as any)?.plan || 'free'} userName={session?.user?.name || session?.user?.email?.split('@')[0] || 'User'} />}
       <div style={{ flex: 1, minWidth: 0, width: '100%', maxWidth: '100%', marginLeft: isMobile ? 0 : 220, display: 'flex', flexDirection: 'column' }}>
-      <header style={{ display: 'flex', alignItems: 'center', padding: '12px 24px', borderBottom: '1px solid #30363d', background: '#0d1117', position: isMobile ? 'sticky' : undefined, top: 0, zIndex: isMobile ? 100 : undefined }}>
+      <header style={{ display: 'flex', alignItems: 'center', padding: '12px 24px', borderBottom: '1px solid C.border', background: C.bg, position: isMobile ? 'sticky' : undefined, top: 0, zIndex: isMobile ? 100 : undefined }}>
         {isMobile && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button onClick={() => setMenuOpen(!menuOpen)}
-              style={{ padding: '4px 8px', border: 'none', background: 'transparent', color: '#8b949e', cursor: 'pointer', fontSize: '20px' }}>
+              style={{ padding: '4px 8px', border: 'none', background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: F.sizeXxl }}>
               {menuOpen ? '✕' : '☰'}
             </button>
-            <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'linear-gradient(135deg, #7C3AED 0%, #6366F1 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '700', color: '#fff' }}>P</div>
-            <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#f0f6fc', letterSpacing: '-0.3px' }}>Prospector</h1>
+            <div style={{ width: '32px', height: '32px', borderRadius: R.lg, background: 'linear-gradient(135deg, C.accent 0%, #6366F1 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: F.sizeLg, fontWeight: '700', color: C.textPrimary }}>P</div>
+            <h1 style={{ margin: 0, fontSize: F.sizeXl, fontWeight: '700', color: C.textPrimary, letterSpacing: '-0.3px' }}>Prospector</h1>
           </div>
         )}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '12px' }}>
           {status === 'loading' ? (
-            <span style={{ color: '#8b949e', fontSize: '14px' }}>Cargando...</span>
+            <span style={{ color: C.textMuted, fontSize: F.sizeBase }}>Cargando...</span>
           ) : session ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               {session.user?.image && (
-                <img src={session.user.image} alt={session.user.name || 'User'} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+                <img src={session.user.image} alt={session.user.name || 'User'} style={{ width: '32px', height: '32px', borderRadius: R.full }} />
               )}
-              <span style={{ color: '#c9d1d9', fontSize: '14px' }}>{session.user?.name}</span>
-              <button onClick={() => signOut()} style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #f85149', background: 'transparent', color: '#f85149', cursor: 'pointer', fontSize: '12px' }}>Salir</button>
+              <span style={{ color: C.textSecondary, fontSize: F.sizeBase }}>{session.user?.name}</span>
+              <button onClick={() => signOut()} style={{ padding: '6px 12px', borderRadius: R.sm, border: '1px solid C.negative', background: 'transparent', color: C.negative, cursor: 'pointer', fontSize: F.sizeSm }}>Salir</button>
             </div>
           ) : (
-            <button onClick={() => signIn('google')} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#7C3AED', color: 'white', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>Iniciar sesión</button>
+            <button onClick={() => signIn('google')} style={{ padding: '8px 16px', borderRadius: R.md, border: 'none', background: 'C.accent', color: C.textPrimary, cursor: 'pointer', fontWeight: '600', fontSize: F.sizeBase }}>Iniciar sesión</button>
           )}
         </div>
       </header>
 
 
         {isMobile && menuOpen && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 10000 }} onClick={() => setMenuOpen(false)} />
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: `${C.bg}b3`, zIndex: 10000 }} onClick={() => setMenuOpen(false)} />
         )}
         {isMobile && menuOpen && (
-          <div style={{ position: 'fixed', top: 0, left: 0, width: '280px', height: '100dvh', background: '#161b22', borderRight: '1px solid #30363d', zIndex: 10001, overflowY: 'auto', padding: '20px', paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}>
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '280px', height: '100dvh', background: C.bgCard, borderRight: '1px solid C.border', zIndex: 10001, overflowY: 'auto', padding: '20px', paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '12px', background: 'linear-gradient(135deg, #7C3AED 0%, #6366F1 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '700', color: '#fff' }}>P</div>
-                <span style={{ fontSize: '18px', fontWeight: '700', color: '#f0f6fc' }}>Prospector</span>
+                <div style={{ width: '36px', height: '36px', borderRadius: R.lg, background: 'linear-gradient(135deg, C.accent 0%, #6366F1 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: F.sizeXl, fontWeight: '700', color: C.textPrimary }}>P</div>
+                <span style={{ fontSize: F.sizeXl, fontWeight: '700', color: C.textPrimary }}>Prospector</span>
               </div>
-              <button onClick={() => setMenuOpen(false)} style={{ padding: '4px 8px', border: 'none', background: 'transparent', color: '#8b949e', cursor: 'pointer', fontSize: '24px' }}>✕</button>
+              <button onClick={() => setMenuOpen(false)} style={{ padding: '4px 8px', border: 'none', background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: F.sizeHero }}>✕</button>
             </div>
             {[
       { id: 'analyzer', icon: '🔍', label: 'Analizador' },
@@ -967,21 +969,21 @@ export default function Home() {
       { id: 'trading-trainer', icon: '🎮', label: 'Trading Trainer' }
             ].map(({ id, icon, label }) => (
               <button key={id} onClick={() => { setView(id); setMenuOpen(false); }}
-                style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #30363d', background: view === id ? '#7C3AED' : 'transparent', color: '#c9d1d9', cursor: 'pointer', fontWeight: '500', textAlign: 'left', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                style={{ width: '100%', padding: '12px 16px', borderRadius: R.md, border: '1px solid C.border', background: view === id ? 'C.accent' : 'transparent', color: C.textSecondary, cursor: 'pointer', fontWeight: '500', textAlign: 'left', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span>{icon}</span><span>{label} {id === 'portfolio' ? `(${portfolio.length})` : ''}</span>
               </button>
             ))}
-            <div style={{ borderTop: '1px solid #30363d', paddingTop: '16px', marginTop: '16px' }}>
+            <div style={{ borderTop: '1px solid C.border', paddingTop: '16px', marginTop: '16px' }}>
               {status === 'loading' ? (
-                <span style={{ color: '#8b949e', fontSize: '14px' }}>Cargando...</span>
+                <span style={{ color: C.textMuted, fontSize: F.sizeBase }}>Cargando...</span>
               ) : session ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  {session.user?.image && <img src={session.user.image} alt={session.user.name || 'User'} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />}
-                  <span style={{ color: '#c9d1d9', fontSize: '14px', flex: 1 }}>{session.user?.name}</span>
-                  <button onClick={() => { signOut(); setMenuOpen(false); }} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #f85149', background: 'transparent', color: '#f85149', cursor: 'pointer', fontSize: '12px' }}>Salir</button>
+                  {session.user?.image && <img src={session.user.image} alt={session.user.name || 'User'} style={{ width: '32px', height: '32px', borderRadius: R.full }} />}
+                  <span style={{ color: C.textSecondary, fontSize: F.sizeBase, flex: 1 }}>{session.user?.name}</span>
+                  <button onClick={() => { signOut(); setMenuOpen(false); }} style={{ padding: '8px 12px', borderRadius: R.sm, border: '1px solid C.negative', background: 'transparent', color: C.negative, cursor: 'pointer', fontSize: F.sizeSm }}>Salir</button>
                 </div>
               ) : (
-                <button onClick={() => { signIn('google'); setMenuOpen(false); }} style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: 'none', background: '#7C3AED', color: 'white', cursor: 'pointer', fontWeight: '600', fontSize: '14px' }}>Iniciar sesión</button>
+                <button onClick={() => { signIn('google'); setMenuOpen(false); }} style={{ width: '100%', padding: '12px 16px', borderRadius: R.md, border: 'none', background: 'C.accent', color: C.textPrimary, cursor: 'pointer', fontWeight: '600', fontSize: F.sizeBase }}>Iniciar sesión</button>
               )}
             </div>
           </div>
@@ -991,8 +993,8 @@ export default function Home() {
         {view === 'analyzer' ? (
           <>
             <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-              <h2 style={{ color: '#f0f6fc', marginBottom: '8px' }}>Analiza Acciones de EE.UU.</h2>
-              <p style={{ color: '#8b949e' }}>Ingresa el ticker para obtener un análisis profesional</p>
+              <h2 style={{ color: C.textPrimary, marginBottom: '8px' }}>Analiza Acciones de EE.UU.</h2>
+              <p style={{ color: C.textMuted }}>Ingresa el ticker para obtener un análisis profesional</p>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', maxWidth: '600px', margin: '0 auto 24px', position: 'relative' }}>
@@ -1011,20 +1013,20 @@ export default function Home() {
                 style={{
                   flex: 1,
                   padding: '14px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: '#161b22',
-                  color: '#c9d1d9',
-                  fontSize: '16px',
+                  borderRadius: R.md,
+                  border: '1px solid C.border',
+                  background: C.bgCard,
+                  color: C.textSecondary,
+                  fontSize: F.sizeLg,
                   outline: 'none',
                 }}
               />
               {showSuggestions && suggestions.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#161b22', border: '1px solid #30363d', borderRadius: '8px', marginTop: '4px', zIndex: 100, maxHeight: '200px', overflow: 'auto' }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: C.bgCard, border: '1px solid C.border', borderRadius: R.md, marginTop: '4px', zIndex: 100, maxHeight: '200px', overflow: 'auto' }}>
                   {suggestions.map(s => (
-                    <div key={s.symbol} onClick={() => { setSymbol(s.symbol); setShowSuggestions(false); searchStock(); }} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #30363d' }} onMouseOver={e => (e.currentTarget.style.background = '#238636')} onMouseOut={e => (e.currentTarget.style.background = 'transparent')}>
-                      <span style={{ color: '#58a6ff', fontWeight: '600' }}>{s.symbol}</span>
-                      <span style={{ color: '#8b949e', marginLeft: '8px', fontSize: '13px' }}>{s.name}</span>
+                    <div key={s.symbol} onClick={() => { setSymbol(s.symbol); setShowSuggestions(false); searchStock(); }} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid C.border' }} onMouseOver={e => (e.currentTarget.style.background = C.positive)} onMouseOut={e => (e.currentTarget.style.background = 'transparent')}>
+                      <span style={{ color: C.accentLight, fontWeight: '600' }}>{s.symbol}</span>
+                      <span style={{ color: C.textMuted, marginLeft: '8px', fontSize: F.sizeMd }}>{s.name}</span>
                     </div>
                   ))}
                 </div>
@@ -1035,11 +1037,11 @@ export default function Home() {
                 disabled={loading}
                 style={{
                   padding: '14px 24px',
-                  borderRadius: '8px',
+                  borderRadius: R.md,
                   border: 'none',
-                  background: '#238636',
-                  color: 'white',
-                  fontSize: '16px',
+                  background: C.positive,
+                  color: C.textPrimary,
+                  fontSize: F.sizeLg,
                   fontWeight: '600',
                   cursor: loading ? 'not-allowed' : 'pointer',
                   opacity: loading ? 0.6 : 1,
@@ -1050,269 +1052,63 @@ export default function Home() {
             </div>
 
             {error && (
-              <div style={{ padding: '16px', borderRadius: '8px', background: '#f8514920', color: '#f85149', textAlign: 'center', marginBottom: '16px' }}>
+              <div style={{ padding: '16px', borderRadius: R.md, background: C.negativeBg, color: C.negative, textAlign: 'center', marginBottom: '16px' }}>
                 {error}
               </div>
             )}
 
             {data && (
-              <div style={{ display: 'grid', gap: '20px' }}>
-                {/* Header */}
-                <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                    <div>
-                      <h2 style={{ margin: 0, color: '#f0f6fc', fontSize: '28px' }}>{data.quote.symbol}</h2>
-                      <p style={{ margin: '4px 0 0', color: '#8b949e' }}>{data.quote.shortName}</p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ margin: 0, fontSize: '32px', fontWeight: 'bold', color: '#f0f6fc' }}>
-                        ${data.quote.regularMarketPrice?.toFixed(2)}
-                      </p>
-                      <p style={{ margin: '4px 0 0', color: data.quote.regularMarketChangePercent >= 0 ? '#3fb950' : '#f85149', fontSize: '16px', fontWeight: '500' }}>
-                        {data.quote.regularMarketChangePercent >= 0 ? '+' : ''}{data.quote.regularMarketChangePercent?.toFixed(2)}%
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setAddForm({ 
-                        shares: '', 
-                        price: data.quote.regularMarketPrice.toString(), 
-                        date: new Date().toISOString().split('T')[0],
-                        notes: '',
-                        targetPrice: ''
-                      });
-                      setShowAddModal(true);
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      background: '#238636',
-                      color: 'white',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      marginBottom: '8px',
-                    }}
-                  >
-                    + Agregar al Portafolio
-                  </button>
-                  <button
-                    onClick={() => openWatchlistModal(data.quote.symbol, data.quote.regularMarketPrice)}
-                      style={{
-                        display: 'block',
-                        width: '100%',
-                        padding: '12px',
-                        borderRadius: '8px',
-                        border: isInWatchlist(data.quote.symbol) ? '1px solid #2ecc71' : '1px solid #30363d',
-                        background: isInWatchlist(data.quote.symbol) ? '#2ecc7120' : 'transparent',
-                        color: isInWatchlist(data.quote.symbol) ? '#2ecc71' : '#c9d1d9',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        marginBottom: '8px',
-                      }}
-                    >
-                      {isInWatchlist(data.quote.symbol) ? '✓ En Watchlist' : '+ Agregar a Watchlist'}
-                    </button>
-                  <a
-                    href={`https://www.tipranks.com/stocks/${data.quote.symbol.toLowerCase()}/forecast`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid #30363d',
-                      background: 'transparent',
-                      color: '#58a6ff',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      textAlign: 'center',
-                      textDecoration: 'none',
-                    }}
-                  >
-                    📊 Ver Forecast en TipRanks
-                  </a>
-                </div>
-
-                {/* Tabla de Fundamentales */}
-                <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px' }}>
-                  <h3 style={{ margin: '0 0 16px', color: '#f0f6fc', fontSize: '18px' }}>📊 Análisis Fundamental</h3>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <tbody>
-                      <tr style={{ borderBottom: '1px solid #30363d' }}>
-                        <td style={{ padding: '12px 0', color: '#8b949e' }}>PE Actual</td>
-                        <td style={{ padding: '12px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{data.summary.peRatio?.toFixed(2) || 'N/A'}</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid #30363d' }}>
-                        <td style={{ padding: '12px 0', color: '#8b949e' }}>PE Promedio (6M)</td>
-                        <td style={{ padding: '12px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{data.summary.avgPe6Months?.toFixed(2) || 'N/A'}</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid #30363d' }}>
-                        <td style={{ padding: '12px 0', color: '#8b949e' }}>Profit Margin Promedio</td>
-                        <td style={{ padding: '12px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{data.summary.avgProfitMargin?.toFixed(2) || 'N/A'}%</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid #30363d' }}>
-                        <td style={{ padding: '12px 0', color: '#8b949e' }}>Crecimiento Ventas</td>
-                        <td style={{ padding: '12px 0', color: data.summary.revenueGrowthPercent >= 0 ? '#3fb950' : '#f85149', textAlign: 'right', fontWeight: '600' }}>
-                          {data.summary.revenueGrowthPercent >= 0 ? '+' : ''}{data.summary.revenueGrowthPercent?.toFixed(2) || 'N/A'}%
-                        </td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid #30363d' }}>
-                        <td style={{ padding: '12px 0', color: '#8b949e' }}>Cash</td>
-                        <td style={{ padding: '12px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{formatNumber(data.summary.totalCash)}</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid #30363d' }}>
-                        <td style={{ padding: '12px 0', color: '#8b949e' }}>Deuda</td>
-                        <td style={{ padding: '12px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>{formatNumber(data.summary.totalDebt)}</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid #30363d' }}>
-                        <td style={{ padding: '12px 0', color: '#8b949e' }}>Debt/Cash Ratio</td>
-                        <td style={{ padding: '12px 0', color: data.summary.debtToCash < 1 ? '#3fb950' : '#f85149', textAlign: 'right', fontWeight: '600' }}>
-                          {data.summary.debtToCash?.toFixed(2) || 'N/A'}x
-                        </td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid #30363d' }}>
-                        <td style={{ padding: '12px 0', color: '#8b949e' }}>Precio Actual</td>
-                        <td style={{ padding: '12px 0', color: '#f0f6fc', textAlign: 'right', fontWeight: '600' }}>${data.quote.regularMarketPrice?.toFixed(2)}</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid #30363d' }}>
-                        <td style={{ padding: '12px 0', color: '#8b949e' }}>Precio Proyectado</td>
-                        <td style={{ padding: '12px 0', color: '#58a6ff', textAlign: 'right', fontWeight: '600' }}>${data.summary.projectedPrice?.toFixed(2)}</td>
-                      </tr>
-                      <tr>
-                        <td style={{ padding: '12px 0', color: '#8b949e' }}>Retorno %</td>
-                        <td style={{ padding: '12px 0', color: data.summary.potentialReturn >= 0 ? '#3fb950' : '#f85149', textAlign: 'right', fontWeight: '600' }}>
-                          {data.summary.potentialReturn >= 0 ? '+' : ''}{data.summary.potentialReturn?.toFixed(2) || 'N/A'}%
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Análisis Técnico */}
-                {data.technical && (
-                  <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px' }}>
-                    <h3 style={{ margin: '0 0 16px', color: '#f0f6fc', fontSize: '18px' }}>📈 Análisis Técnico</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
-                      <div style={{ background: '#0d1117', padding: '12px', borderRadius: '8px' }}>
-                        <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#8b949e' }}>Tendencia</p>
-                        <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: getTrendColor(data.technical.trend), textTransform: 'capitalize' }}>
-                          {data.technical.trend}
-                        </p>
-                      </div>
-                      <div style={{ background: '#0d1117', padding: '12px', borderRadius: '8px' }}>
-                        <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#8b949e' }}>Soporte</p>
-                        <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#3fb950' }}>${data.technical.support?.toFixed(2)}</p>
-                      </div>
-                      <div style={{ background: '#0d1117', padding: '12px', borderRadius: '8px' }}>
-                        <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#8b949e' }}>Resistencia</p>
-                        <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#f85149' }}>${data.technical.resistance?.toFixed(2)}</p>
-                      </div>
-                      <div style={{ background: '#0d1117', padding: '12px', borderRadius: '8px' }}>
-                        <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#8b949e' }}>RSI (14)</p>
-                        <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: data.technical.rsi < 30 ? '#3fb950' : data.technical.rsi > 70 ? '#f85149' : '#f0f6fc' }}>
-                          {data.technical.rsi?.toFixed(2)}
-                        </p>
-                      </div>
-                      <div style={{ background: '#0d1117', padding: '12px', borderRadius: '8px' }}>
-                        <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#8b949e' }}>SMA 50</p>
-                        <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#f0f6fc' }}>${data.technical.sma50?.toFixed(2)}</p>
-                      </div>
-                      <div style={{ background: '#0d1117', padding: '12px', borderRadius: '8px' }}>
-                        <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#8b949e' }}>SMA 200</p>
-                        <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#f0f6fc' }}>${data.technical.sma200?.toFixed(2)}</p>
-                      </div>
-                      <div style={{ background: '#0d1117', padding: '12px', borderRadius: '8px' }}>
-                        <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#8b949e' }}>Señal</p>
-                        <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: getSignalColor(data.technical.signal), textTransform: 'capitalize' }}>
-                          {data.technical.signal}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Precio Objetivo y Recomendación */}
-                <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px' }}>
-                  <h3 style={{ margin: '0 0 16px', color: '#f0f6fc', fontSize: '18px' }}>🎯 Precio Objetivo y Recomendación</h3>
-                  <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <span style={{ color: '#8b949e' }}>Veredicto</span>
-                      <span style={{ 
-                        padding: '6px 16px', 
-                        borderRadius: '20px', 
-                        background: getActionColor(data.recommendation.action) + '20',
-                        color: getActionColor(data.recommendation.action),
-                        fontWeight: 'bold',
-                        fontSize: '14px'
-                      }}>
-                        {data.recommendation.action}
-                      </span>
-                    </div>
-                    <p style={{ margin: 0, color: '#c9d1d9', fontSize: '14px' }}>{data.recommendation.reasoning}</p>
-                    <p style={{ margin: '8px 0 0', color: '#8b949e', fontSize: '12px' }}>Confianza: {data.recommendation.confidence}%</p>
-                  </div>
-                </div>
-
-                {/* Estrategia Operativa */}
-                <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px' }}>
-                  <h3 style={{ margin: '0 0 16px', color: '#f0f6fc', fontSize: '18px' }}>🛠 Estrategia Operativa</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                    <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px' }}>
-                      <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>Zona de Compra</p>
-                      <p style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#3fb950' }}>
-                        ${data.summary.buyZoneLow?.toFixed(2)} - ${data.summary.buyZoneHigh?.toFixed(2)}
-                      </p>
-                    </div>
-                    <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px' }}>
-                      <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>Target 1</p>
-                      <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#3fb950' }}>${data.summary.target1?.toFixed(2)}</p>
-                    </div>
-                    <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px' }}>
-                      <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>Target 2</p>
-                      <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#3fb950' }}>${data.summary.target2?.toFixed(2)}</p>
-                    </div>
-                    <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px' }}>
-                      <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>Stop Loss</p>
-                      <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#f85149' }}>${data.summary.stopLoss?.toFixed(2)}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Conclusión Final */}
-                <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px' }}>
-                  <h3 style={{ margin: '0 0 16px', color: '#f0f6fc', fontSize: '18px' }}>🧠 Conclusión Final</h3>
-                  <div style={{ background: getActionColor(data.recommendation.action) + '10', padding: '16px', borderRadius: '8px', borderLeft: `4px solid ${getActionColor(data.recommendation.action)}` }}>
-                    <p style={{ margin: 0, color: '#c9d1d9', lineHeight: '1.6' }}>
-                      {data.recommendation.action === 'COMPRAR' 
-                        ? `✓ ${data.quote.symbol} presenta una oportunidad de inversión atractiva con un potencial de retorno del ${data.summary.potentialReturn?.toFixed(1)}%. Los fundamentales muestran ${data.summary.peRatio < 20 ? 'un PE razonable' : 'un crecimiento sólido'}, y el análisis técnico indica tendencia ${data.technical?.trend || 'lateral'}. La zona de compra recomendada es $${data.summary.buyZoneLow?.toFixed(2)} - $${data.summary.buyZoneHigh?.toFixed(2)}.`
-                        : data.recommendation.action === 'MANTENER'
-                        ? `→ ${data.quote.symbol} está valorada correctamente. El potencial de retorno del ${data.summary.potentialReturn?.toFixed(1)}% no es suficientemente atractivo para una nueva posición. Mantener seguimiento.`
-                        : `✗ ${data.quote.symbol} presenta riesgos significativos. El análisis muestra sobrevaloración con potencial de retorno negativo del ${data.summary.potentialReturn?.toFixed(1)}%. Se recomienda esperar mejores oportunidades.`
-                      }
-                    </p>
-                  </div>
-                </div>
-
-                {/* Quantitative Score */}
-                <div style={{ marginTop: '8px' }}>
-                  <ScorePanel symbol={data.quote.symbol} />
-                </div>
-
-                {/* AI Analysis */}
-                <div style={{ marginTop: '8px' }}>
-                  <AIAnalysisPanel symbol={data.quote.symbol} />
-                </div>
-              </div>
+              <StockDetailPanel
+                symbol={data.quote.symbol}
+                name={data.quote.shortName || data.quote.longName}
+                price={data.quote.regularMarketPrice}
+                change={data.quote.regularMarketChange}
+                changePercent={data.quote.regularMarketChangePercent}
+                sector={data.informeDetail?.company?.sector}
+                marketCap={data.quote.marketCap}
+                peRatio={data.quote.peRatio}
+                technical={data.technical ? {
+                  rsi: data.technical.rsi,
+                  sma50: data.technical.sma50,
+                  sma200: data.technical.sma200,
+                  trend: data.technical.trend,
+                  support: data.technical.support,
+                  resistance: data.technical.resistance,
+                  signal: data.technical.signal,
+                } : undefined}
+                summary={{
+                  buyZoneLow: data.summary.buyZoneLow,
+                  buyZoneHigh: data.summary.buyZoneHigh,
+                  target1: data.summary.target1,
+                  target2: data.summary.target2,
+                  stopLoss: data.summary.stopLoss,
+                  projectedPrice: data.summary.projectedPrice,
+                  potentialReturn: data.summary.potentialReturn,
+                }}
+                recommendation={{
+                  action: data.recommendation.action,
+                  confidence: data.recommendation.confidence,
+                  reasoning: data.recommendation.reasoning,
+                }}
+                fundamentals={data.fundamentals}
+                userPlan={(session?.user as any)?.plan || 'free'}
+                onAddPortfolio={() => {
+                  setAddForm({
+                    shares: '',
+                    price: data.quote.regularMarketPrice.toString(),
+                    date: new Date().toISOString().split('T')[0],
+                    notes: '',
+                    targetPrice: ''
+                  });
+                  setShowAddModal(true);
+                }}
+                onAddWatchlist={() => openWatchlistModal(data.quote.symbol, data.quote.regularMarketPrice)}
+                inWatchlist={isInWatchlist(data.quote.symbol)}
+              />
             )}
 
             {!data && !loading && !error && (
-              <div style={{ textAlign: 'center', padding: '60px 20px', color: '#8b949e' }}>
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: C.textMuted }}>
                 <p style={{ fontSize: '48px', margin: '0 0 16px' }}>📈</p>
                 <p>Ingresa un ticker para analizar</p>
               </div>
@@ -1321,22 +1117,22 @@ export default function Home() {
         ) : view === 'portfolio' ? (
           <>
             {!session ? (
-              <div style={{ textAlign: 'center', padding: '60px 20px', color: '#8b949e' }}>
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: C.textMuted }}>
                 <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🔐</p>
-                <p style={{ color: '#f0f6fc', fontSize: '18px', marginBottom: '8px' }}>Inicia sesión para ver tu portafolio</p>
+                <p style={{ color: C.textPrimary, fontSize: F.sizeXl, marginBottom: '8px' }}>Inicia sesión para ver tu portafolio</p>
                 <p>Tu portafolio se guardará en la nube y estará disponible en cualquier dispositivo</p>
                 <button
                   onClick={() => signIn('google')}
                   style={{
                     marginTop: '20px',
                     padding: '12px 24px',
-                    borderRadius: '8px',
+                    borderRadius: R.md,
                     border: 'none',
-                    background: '#58a6ff',
-                    color: 'white',
+                    background: C.accentLight,
+                    color: C.textPrimary,
                     cursor: 'pointer',
                     fontWeight: '600',
-                    fontSize: '16px',
+                    fontSize: F.sizeLg,
                   }}
                 >
                   Iniciar sesión con Google
@@ -1345,24 +1141,24 @@ export default function Home() {
             ) : (
               <>
                 <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <h2 style={{ color: '#f0f6fc', marginBottom: '8px' }}>Mi Portafolio</h2>
-                  <p style={{ color: '#8b949e' }}>Acciones en seguimiento</p>
+                  <h2 style={{ color: C.textPrimary, marginBottom: '8px' }}>Mi Portafolio</h2>
+                  <p style={{ color: C.textMuted }}>Acciones en seguimiento</p>
                 </div>
 
                 {portfolio.length > 0 && (
-                  <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
+                  <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '20px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', textAlign: 'center' }}>
                       <div>
-                        <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#8b949e' }}>Total Invertido</p>
-                        <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#f0f6fc' }}>${portfolioSummary.totalInvested.toFixed(2)}</p>
+                        <p style={{ margin: '0 0 4px', fontSize: F.sizeSm, color: C.textMuted }}>Total Invertido</p>
+                        <p style={{ margin: 0, fontSize: F.sizeXxl, fontWeight: 'bold', color: C.textPrimary }}>${portfolioSummary.totalInvested.toFixed(2)}</p>
                       </div>
                       <div>
-                        <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#8b949e' }}>Valor Actual</p>
-                        <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#f0f6fc' }}>${portfolioSummary.totalCurrent.toFixed(2)}</p>
+                        <p style={{ margin: '0 0 4px', fontSize: F.sizeSm, color: C.textMuted }}>Valor Actual</p>
+                        <p style={{ margin: 0, fontSize: F.sizeXxl, fontWeight: 'bold', color: C.textPrimary }}>${portfolioSummary.totalCurrent.toFixed(2)}</p>
                       </div>
                       <div>
-                        <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#8b949e' }}>Retorno</p>
-                        <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: portfolioReturn >= 0 ? '#3fb950' : '#f85149' }}>
+                        <p style={{ margin: '0 0 4px', fontSize: F.sizeSm, color: C.textMuted }}>Retorno</p>
+                        <p style={{ margin: 0, fontSize: F.sizeXxl, fontWeight: 'bold', color: portfolioReturn >= 0 ? C.positive : C.negative }}>
                           {portfolioReturn >= 0 ? '+' : ''}{portfolioReturn.toFixed(2)}%
                         </p>
                       </div>
@@ -1379,15 +1175,15 @@ export default function Home() {
                     const portfolioPercent = portfolioSummary.totalCurrent > 0 ? (currentValue / portfolioSummary.totalCurrent) * 100 : 0;
 
                     return (
-                      <div key={item.symbol} style={{ background: '#161b22', borderRadius: '12px', padding: '16px' }}>
+                      <div key={item.symbol} style={{ background: C.bgCard, borderRadius: R.lg, padding: '16px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                           <div>
-                            <p style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#f0f6fc' }}>{item.symbol}</p>
-                            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#8b949e' }}>
+                            <p style={{ margin: 0, fontSize: F.sizeXl, fontWeight: '600', color: C.textPrimary }}>{item.symbol}</p>
+                            <p style={{ margin: '4px 0 0', fontSize: F.sizeSm, color: C.textMuted }}>
                               {item.shares} acciones @ ${item.purchasePrice.toFixed(2)} | {item.purchaseDate}
                             </p>
                             {item.targetPrice && (
-                              <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#58a6ff' }}>
+                              <p style={{ margin: '4px 0 0', fontSize: F.sizeXs, color: C.accentLight }}>
                                 Objetivo: ${item.targetPrice.toFixed(2)}
                               </p>
                             )}
@@ -1397,12 +1193,12 @@ export default function Home() {
                               onClick={() => openEditModal(item)}
                               style={{
                                 padding: '6px 10px',
-                                borderRadius: '6px',
-                                border: '1px solid #30363d',
+                                borderRadius: R.sm,
+                                border: '1px solid C.border',
                                 background: 'transparent',
-                                color: '#8b949e',
+                                color: C.textMuted,
                                 cursor: 'pointer',
-                                fontSize: '12px',
+                                fontSize: F.sizeSm,
                               }}
                               title="Editar"
                             >
@@ -1412,10 +1208,10 @@ export default function Home() {
                               onClick={() => removeFromPortfolio(item.symbol)}
                               style={{
                                 padding: '6px 10px',
-                                borderRadius: '6px',
+                                borderRadius: R.sm,
                                 border: 'none',
-                                background: '#f8514920',
-                                color: '#f85149',
+                                background: C.negativeBg,
+                                color: C.negative,
                                 cursor: 'pointer',
                               }}
                               title="Eliminar"
@@ -1425,20 +1221,20 @@ export default function Home() {
                           </div>
                         </div>
                         
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid #30363d' }}>
-                          <div style={{ fontSize: '11px', color: '#8b949e' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid C.border' }}>
+                          <div style={{ fontSize: F.sizeXs, color: C.textMuted }}>
                             Invertido: ${invested.toFixed(2)} | Cartera: {portfolioPercent.toFixed(1)}%
                           </div>
                           <div style={{ textAlign: 'right' }}>
-                            <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#f0f6fc' }}>${currentValue.toFixed(2)}</p>
-                            <p style={{ margin: '2px 0 0', fontSize: '12px', color: profitLoss >= 0 ? '#3fb950' : '#f85149' }}>
+                            <p style={{ margin: 0, fontSize: F.sizeLg, fontWeight: '600', color: C.textPrimary }}>${currentValue.toFixed(2)}</p>
+                            <p style={{ margin: '2px 0 0', fontSize: F.sizeSm, color: profitLoss >= 0 ? C.positive : C.negative }}>
                               {profitLoss >= 0 ? '+' : ''}{profitLossPercent.toFixed(2)}% (${profitLoss.toFixed(2)})
                             </p>
                           </div>
                         </div>
                         
                         {item.notes && (
-                          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #30363d', fontSize: '11px', color: '#8b949e', fontStyle: 'italic' }}>
+                          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid C.border', fontSize: F.sizeXs, color: C.textMuted, fontStyle: 'italic' }}>
                             📝 {item.notes}
                           </div>
                         )}
@@ -1447,10 +1243,10 @@ export default function Home() {
                   })}
 
                   {portfolio.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '60px 20px', color: '#8b949e' }}>
+                    <div style={{ textAlign: 'center', padding: '60px 20px', color: C.textMuted }}>
                       <p style={{ fontSize: '48px', margin: '0 0 16px' }}>📊</p>
                       <p>No tienes acciones en tu portafolio</p>
-                      <p style={{ fontSize: '12px' }}>Analiza una acción y agrégala aquí</p>
+                      <p style={{ fontSize: F.sizeSm }}>Analiza una acción y agrégala aquí</p>
                     </div>
                   )}
                 </div>
@@ -1461,9 +1257,9 @@ export default function Home() {
           <>
             {!session && watchlist.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-                <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '36px' }}>📊</div>
-                <h2 style={{ color: '#f0f6fc', fontSize: '24px', marginBottom: '8px', fontWeight: '600' }}>Tu Watchlist Personal</h2>
-                <p style={{ color: '#8b949e', fontSize: '15px', maxWidth: '400px', margin: '0 auto 24px' }}>Recibe alertas personalizadas cuando las acciones alcancen el precio que tú decides</p>
+                <div style={{ width: '80px', height: '80px', borderRadius: R.full, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '36px' }}>📊</div>
+                <h2 style={{ color: C.textPrimary, fontSize: F.sizeHero, marginBottom: '8px', fontWeight: '600' }}>Tu Watchlist Personal</h2>
+                <p style={{ color: C.textMuted, fontSize: '15px', maxWidth: '400px', margin: '0 auto 24px' }}>Recibe alertas personalizadas cuando las acciones alcancen el precio que tú decides</p>
                 <button
                   onClick={() => signIn('google')}
                   style={{
@@ -1471,7 +1267,7 @@ export default function Home() {
                     borderRadius: '50px',
                     border: 'none',
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    color: 'white',
+                    color: C.textPrimary,
                     cursor: 'pointer',
                     fontWeight: '600',
                     fontSize: '15px',
@@ -1486,45 +1282,45 @@ export default function Home() {
                 {/* Header */}
                 <div style={{ marginBottom: '24px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <h2 style={{ color: '#f0f6fc', fontSize: '24px', fontWeight: '600', margin: 0 }}>Mi Watchlist</h2>
+                    <h2 style={{ color: C.textPrimary, fontSize: F.sizeHero, fontWeight: '600', margin: 0 }}>Mi Watchlist</h2>
                     <button
                       onClick={() => setView('analyzer')}
                       style={{
                         padding: '8px 16px',
                         borderRadius: '20px',
-                        border: '1px solid #30363d',
+                        border: '1px solid C.border',
                         background: 'transparent',
-                        color: '#58a6ff',
+                        color: C.accentLight,
                         cursor: 'pointer',
                         fontWeight: '500',
-                        fontSize: '13px',
+                        fontSize: F.sizeMd,
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px',
                       }}
                     >
-                      <span style={{ fontSize: '16px' }}>+</span> Agregar
+                      <span style={{ fontSize: F.sizeLg }}>+</span> Agregar
                     </button>
                   </div>
-                  <p style={{ color: '#8b949e', fontSize: '13px', margin: 0 }}>{watchlist.length} {watchlist.length === 1 ? 'acción' : 'acciones'} en seguimiento</p>
+                  <p style={{ color: C.textMuted, fontSize: F.sizeMd, margin: 0 }}>{watchlist.length} {watchlist.length === 1 ? 'acción' : 'acciones'} en seguimiento</p>
                 </div>
 
                 {watchlist.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '60px 20px', background: '#161b22', borderRadius: '16px', border: '1px solid #30363d' }}>
-                    <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: '#21262d', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '28px' }}>📋</div>
-                    <h3 style={{ color: '#f0f6fc', fontSize: '18px', marginBottom: '8px', fontWeight: '500' }}>Sin acciones vigiladas</h3>
-                    <p style={{ color: '#8b949e', fontSize: '14px', marginBottom: '20px' }}>Agrega acciones desde el analizador para recibir alertas de precio</p>
+                  <div style={{ textAlign: 'center', padding: '60px 20px', background: C.bgCard, borderRadius: '16px', border: '1px solid C.border' }}>
+                    <div style={{ width: '64px', height: '64px', borderRadius: R.full, background: C.bgElevated, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '28px' }}>📋</div>
+                    <h3 style={{ color: C.textPrimary, fontSize: F.sizeXl, marginBottom: '8px', fontWeight: '500' }}>Sin acciones vigiladas</h3>
+                    <p style={{ color: C.textMuted, fontSize: F.sizeBase, marginBottom: '20px' }}>Agrega acciones desde el analizador para recibir alertas de precio</p>
                     <button
                       onClick={() => setView('analyzer')}
                       style={{
                         padding: '12px 24px',
-                        borderRadius: '8px',
+                        borderRadius: R.md,
                         border: 'none',
-                        background: '#238636',
-                        color: 'white',
+                        background: C.positive,
+                        color: C.textPrimary,
                         cursor: 'pointer',
                         fontWeight: '600',
-                        fontSize: '14px',
+                        fontSize: F.sizeBase,
                       }}
                     >
                       Buscar acciones
@@ -1547,10 +1343,10 @@ export default function Home() {
 
                       return (
                         <div key={item.symbol} style={{ 
-                          background: '#161b22', 
+                          background: C.bgCard, 
                           borderRadius: '16px', 
                           padding: '20px',
-                          border: isAlertTriggered ? '1px solid #2ecc71' : '1px solid transparent',
+                          border: isAlertTriggered ? '1px solid C.positive' : '1px solid transparent',
                           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -1560,52 +1356,52 @@ export default function Home() {
                                 <div style={{ 
                                   width: '44px', 
                                   height: '44px', 
-                                  borderRadius: '12px', 
+                                  borderRadius: R.lg, 
                                   background: 'linear-gradient(135deg, #667eea22 0%, #764ba222 100%)',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  color: '#58a6ff',
-                                  fontSize: '18px',
+                                  color: C.accentLight,
+                                  fontSize: F.sizeXl,
                                   fontWeight: '700'
                                 }}>
                                   {item.symbol.charAt(0)}
                                 </div>
                                 <div>
-                                  <h3 style={{ margin: 0, color: '#f0f6fc', fontSize: '18px', fontWeight: '600' }}>{item.symbol}</h3>
+                                  <h3 style={{ margin: 0, color: C.textPrimary, fontSize: F.sizeXl, fontWeight: '600' }}>{item.symbol}</h3>
                                   {priceData && (
-                                    <p style={{ margin: 0, color: '#8b949e', fontSize: '12px' }}>Mercado NYSE</p>
+                                    <p style={{ margin: 0, color: C.textMuted, fontSize: F.sizeSm }}>Mercado NYSE</p>
                                   )}
                                 </div>
                               </div>
                               
                               {priceData ? (
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                                  <span style={{ color: '#f0f6fc', fontSize: '28px', fontWeight: '700' }}>${currentPrice.toFixed(2)}</span>
+                                  <span style={{ color: C.textPrimary, fontSize: '28px', fontWeight: '700' }}>${currentPrice.toFixed(2)}</span>
                                   <span style={{ 
-                                    color: priceChange >= 0 ? '#2ecc71' : '#e74c3c', 
-                                    fontSize: '14px', 
+                                    color: priceChange >= 0 ? 'C.positive' : 'C.negative', 
+                                    fontSize: F.sizeBase, 
                                     fontWeight: '500',
                                     padding: '4px 8px',
-                                    borderRadius: '6px',
-                                    background: priceChange >= 0 ? '#2ecc7115' : '#e74c3c15'
+                                    borderRadius: R.sm,
+                                    background: priceChange >= 0 ? 'C.positive15' : 'C.negative15'
                                   }}>
                                     {priceChange >= 0 ? '▲' : '▼'} {Math.abs(priceChangePercent).toFixed(2)}%
                                   </span>
                                 </div>
                               ) : watchlistError ? (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <span style={{ color: '#f85149', fontSize: '13px' }}>{watchlistError}</span>
+                                  <span style={{ color: C.negative, fontSize: F.sizeMd }}>{watchlistError}</span>
                                   <button
                                     onClick={() => fetchWatchlistPrices([item.symbol])}
                                     style={{
                                       padding: '4px 8px',
                                       borderRadius: '4px',
-                                      border: '1px solid #30363d',
+                                      border: '1px solid C.border',
                                       background: 'transparent',
-                                      color: '#58a6ff',
+                                      color: C.accentLight,
                                       cursor: 'pointer',
-                                      fontSize: '11px',
+                                      fontSize: F.sizeXs,
                                     }}
                                   >
                                     Reintentar
@@ -1613,8 +1409,8 @@ export default function Home() {
                                 </div>
                               ) : (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '2px solid #30363d', borderTopColor: '#58a6ff', animation: 'spin 1s linear infinite' }}></div>
-                                  <span style={{ color: '#8b949e', fontSize: '14px' }}>Cargando...</span>
+                                  <div style={{ width: '16px', height: '16px', borderRadius: R.full, border: '2px solid C.border', borderTopColor: C.accentLight, animation: 'spin 1s linear infinite' }}></div>
+                                  <span style={{ color: C.textMuted, fontSize: F.sizeBase }}>Cargando...</span>
                                 </div>
                               )}
                             </div>
@@ -1625,12 +1421,12 @@ export default function Home() {
                                 onClick={() => removeFromWatchlist(item.symbol)}
                                 style={{ 
                                   padding: '10px', 
-                                  borderRadius: '10px', 
+                                  borderRadius: R.lg, 
                                   border: 'none', 
-                                  background: '#21262d', 
-                                  color: '#8b949e', 
+                                  background: C.bgElevated, 
+                                  color: C.textMuted, 
                                   cursor: 'pointer',
-                                  fontSize: '16px',
+                                  fontSize: F.sizeLg,
                                   transition: 'all 0.2s'
                                 }}
                                 title="Eliminar"
@@ -1644,12 +1440,12 @@ export default function Home() {
                           <div style={{ 
                             marginTop: '16px',
                             paddingTop: '16px',
-                            borderTop: '1px solid #30363d'
+                            borderTop: '1px solid C.border'
                           }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '18px' }}>{alertEnabled ? '🔔' : '🔕'}</span>
-                                <span style={{ color: '#c9d1d9', fontSize: '14px', fontWeight: '500' }}>
+                                <span style={{ fontSize: F.sizeXl }}>{alertEnabled ? '🔔' : '🔕'}</span>
+                                <span style={{ color: C.textSecondary, fontSize: F.sizeBase, fontWeight: '500' }}>
                                   {alertEnabled ? 'Alerta activa' : 'Alerta inactiva'}
                                 </span>
                               </div>
@@ -1666,7 +1462,7 @@ export default function Home() {
                                   left: 0,
                                   right: 0,
                                   bottom: 0,
-                                  background: alertEnabled ? '#238636' : '#30363d',
+                                  background: alertEnabled ? C.positive : C.border,
                                   borderRadius: '28px',
                                   transition: 'all 0.2s',
                                   cursor: 'pointer'
@@ -1677,8 +1473,8 @@ export default function Home() {
                                     width: '22px',
                                     left: alertEnabled ? '23px' : '3px',
                                     bottom: '3px',
-                                    background: 'white',
-                                    borderRadius: '50%',
+                                    background: C.textPrimary,
+                                    borderRadius: R.full,
                                     transition: 'all 0.2s',
                                     boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                                   }} />
@@ -1695,11 +1491,11 @@ export default function Home() {
                                     style={{ 
                                       flex: 1,
                                       padding: '12px 16px', 
-                                      borderRadius: '12px', 
-                                      border: '1px solid #30363d', 
-                                      background: '#0d1117', 
-                                      color: '#c9d1d9', 
-                                      fontSize: '14px',
+                                      borderRadius: R.lg, 
+                                      border: '1px solid C.border', 
+                                      background: C.bg, 
+                                      color: C.textSecondary, 
+                                      fontSize: F.sizeBase,
                                       cursor: 'pointer',
                                     }}
                                   >
@@ -1707,7 +1503,7 @@ export default function Home() {
                                     <option value="below">📉Alertar cuando baje a</option>
                                   </select>
                                   <div style={{ position: 'relative', flex: '0 0 120px' }}>
-                                    <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#8b949e', fontSize: '14px' }}>$</span>
+                                    <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: C.textMuted, fontSize: F.sizeBase }}>$</span>
                                     <input
                                       type="number"
                                       placeholder="0.00"
@@ -1716,11 +1512,11 @@ export default function Home() {
                                       style={{ 
                                         width: '100%', 
                                         padding: '12px 12px 12px 28px', 
-                                        borderRadius: '12px', 
-                                        border: '1px solid #30363d', 
-                                        background: '#0d1117', 
-                                        color: '#c9d1d9', 
-                                        fontSize: '14px',
+                                        borderRadius: R.lg, 
+                                        border: '1px solid C.border', 
+                                        background: C.bg, 
+                                        color: C.textSecondary, 
+                                        fontSize: F.sizeBase,
                                         textAlign: 'right',
                                       }}
                                     />
@@ -1739,11 +1535,11 @@ export default function Home() {
                                       }}
                                       style={{ 
                                         padding: '8px 16px',
-                                        borderRadius: '8px', 
-                                        border: '1px solid #30363d', 
-                                        background: '#21262d', 
-                                        color: '#c9d1d9', 
-                                        fontSize: '14px',
+                                        borderRadius: R.md, 
+                                        border: '1px solid C.border', 
+                                        background: C.bgElevated, 
+                                        color: C.textSecondary, 
+                                        fontSize: F.sizeBase,
                                         cursor: 'pointer',
                                       }}
                                     >
@@ -1766,11 +1562,11 @@ export default function Home() {
                                       disabled={savingAlert === item.symbol}
                                       style={{ 
                                         padding: '8px 20px',
-                                        borderRadius: '8px', 
+                                        borderRadius: R.md, 
                                         border: 'none', 
-                                        background: savingAlert === item.symbol ? '#30363d' : '#238636', 
-                                        color: 'white', 
-                                        fontSize: '14px',
+                                        background: savingAlert === item.symbol ? C.border : C.positive, 
+                                        color: C.textPrimary, 
+                                        fontSize: F.sizeBase,
                                         fontWeight: '600',
                                         cursor: savingAlert === item.symbol ? 'wait' : 'pointer',
                                       }}
@@ -1786,17 +1582,17 @@ export default function Home() {
                               <div style={{ 
                                 marginTop: '12px', 
                                 padding: '14px 16px', 
-                                background: 'linear-gradient(135deg, #2ecc7130 0%, #2ecc7115 100%)',
-                                borderRadius: '12px', 
-                                border: '1px solid #2ecc71',
-                                color: '#2ecc71', 
-                                fontSize: '14px', 
+                                background: 'linear-gradient(135deg, C.positive30 0%, C.positive15 100%)',
+                                borderRadius: R.lg, 
+                                border: '1px solid C.positive',
+                                color: 'C.positive', 
+                                fontSize: F.sizeBase, 
                                 fontWeight: '500',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '8px'
                               }}>
-                                <span style={{ fontSize: '18px' }}>🎉</span>
+                                <span style={{ fontSize: F.sizeXl }}>🎉</span>
                                 ¡Alerta! {item.symbol} ha alcanzado tu objetivo de ${alertPrice.toFixed(2)}
                               </div>
                             )}
@@ -1819,7 +1615,7 @@ export default function Home() {
           ) : data ? (
             <RenderInformeLegacy data={data} formatNumber={formatNumber} getActionColor={getActionColor} />
           ) : (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#8b949e' }}>
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: C.textMuted }}>
               <p style={{ fontSize: '48px', margin: '0 0 16px' }}>📋</p>
               <p>Analiza una acción para ver el informe</p>
             </div>
@@ -1831,10 +1627,10 @@ export default function Home() {
       {view === 'risk-report' && (
         data ? <RiskReport data={data} symbol={symbol} /> : (
           <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', textAlign: 'center' }}>
-            <div style={{ background: '#0d1117', borderRadius: '16px', padding: '80px 32px', border: '1px solid #30363d' }}>
+            <div style={{ background: C.bg, borderRadius: '16px', padding: '80px 32px', border: '1px solid C.border' }}>
               <p style={{ fontSize: '48px', margin: '0 0 16px' }}>📊</p>
-              <p style={{ color: '#8b949e', fontSize: '16px' }}>Analiza una acción primero para ver su Risk Report</p>
-              <p style={{ color: '#8b949e', fontSize: '13px' }}>Usa el Analizador para buscar un ticker</p>
+              <p style={{ color: C.textMuted, fontSize: F.sizeLg }}>Analiza una acción primero para ver su Risk Report</p>
+              <p style={{ color: C.textMuted, fontSize: F.sizeMd }}>Usa el Analizador para buscar un ticker</p>
             </div>
           </div>
         )
@@ -1889,10 +1685,10 @@ export default function Home() {
           <AICoach symbol={symbol} onAnalyzeSymbol={(sym) => setSymbol(sym)} />
         ) : (
           <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(135deg, #ff00ff15, #00d4ff15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '36px' }}>🤖</div>
-            <h2 style={{ color: '#f0f6fc', fontSize: '24px', marginBottom: '8px' }}>AI Coach</h2>
-            <p style={{ color: '#8b949e', marginBottom: '24px' }}>This feature requires a Pro plan or higher.</p>
-            <button onClick={() => window.location.href = '/settings/billing'} style={{ padding: '12px 32px', borderRadius: '50px', border: 'none', background: 'linear-gradient(135deg, #ff00ff, #00d4ff)', color: '#fff', fontWeight: '600', fontSize: '15px', cursor: 'pointer' }}>
+            <div style={{ width: '80px', height: '80px', borderRadius: R.full, background: 'linear-gradient(135deg, #ff00ff15, #00d4ff15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '36px' }}>🤖</div>
+            <h2 style={{ color: C.textPrimary, fontSize: F.sizeHero, marginBottom: '8px' }}>AI Coach</h2>
+            <p style={{ color: C.textMuted, marginBottom: '24px' }}>This feature requires a Pro plan or higher.</p>
+            <button onClick={() => window.location.href = '/settings/billing'} style={{ padding: '12px 32px', borderRadius: '50px', border: 'none', background: 'linear-gradient(135deg, #ff00ff, #00d4ff)', color: C.textPrimary, fontWeight: '600', fontSize: '15px', cursor: 'pointer' }}>
               Upgrade to Pro — $49/mo
             </button>
           </div>
@@ -1935,13 +1731,13 @@ export default function Home() {
           justifyContent: 'center',
           zIndex: 1000,
         }}>
-          <div style={{ background: '#161b22', borderRadius: '12px', padding: '24px', width: '90%', maxWidth: '450px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h3 style={{ margin: '0 0 16px', color: '#f0f6fc' }}>Agregar {watchlistForm.symbol} a Watchlist</h3>
+          <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '24px', width: '90%', maxWidth: '450px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h3 style={{ margin: '0 0 16px', color: C.textPrimary }}>Agregar {watchlistForm.symbol} a Watchlist</h3>
             
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>🔔 Configurar alerta de precio</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: '#0d1117', borderRadius: '8px' }}>
-                <span style={{ color: '#c9d1d9', fontSize: '14px' }}>Activar alerta</span>
+              <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: F.sizeBase }}>🔔 Configurar alerta de precio</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: C.bg, borderRadius: R.md }}>
+                <span style={{ color: C.textSecondary, fontSize: F.sizeBase }}>Activar alerta</span>
                 <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px', marginLeft: 'auto' }}>
                   <input
                     type="checkbox"
@@ -1956,7 +1752,7 @@ export default function Home() {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    background: watchlistForm.alertEnabled ? '#238636' : '#30363d',
+                    background: watchlistForm.alertEnabled ? C.positive : C.border,
                     borderRadius: '24px',
                     transition: '0.3s'
                   }}>
@@ -1966,8 +1762,8 @@ export default function Home() {
                       width: '18px',
                       left: watchlistForm.alertEnabled ? '23px' : '3px',
                       bottom: '3px',
-                      background: 'white',
-                      borderRadius: '50%',
+                      background: C.textPrimary,
+                      borderRadius: R.full,
                       transition: '0.3s'
                     }} />
                   </span>
@@ -1978,18 +1774,18 @@ export default function Home() {
             {watchlistForm.alertEnabled && (
               <>
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Tipo de alerta</label>
+                  <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: F.sizeBase }}>Tipo de alerta</label>
                   <select
                     value={watchlistForm.alertType}
                     onChange={(e) => setWatchlistForm({ ...watchlistForm, alertType: e.target.value as 'above' | 'below' })}
                     style={{
                       width: '100%',
                       padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid #30363d',
-                      background: '#0d1117',
-                      color: '#c9d1d9',
-                      fontSize: '16px',
+                      borderRadius: R.md,
+                      border: '1px solid C.border',
+                      background: C.bg,
+                      color: C.textSecondary,
+                      fontSize: F.sizeLg,
                       boxSizing: 'border-box',
                     }}
                   >
@@ -1999,7 +1795,7 @@ export default function Home() {
                 </div>
 
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Precio objetivo</label>
+                  <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: F.sizeBase }}>Precio objetivo</label>
                   <input
                     type="number"
                     value={watchlistForm.alertPrice}
@@ -2008,15 +1804,15 @@ export default function Home() {
                     style={{
                       width: '100%',
                       padding: '12px',
-                      borderRadius: '8px',
-                      border: '1px solid #30363d',
-                      background: '#0d1117',
-                      color: '#c9d1d9',
-                      fontSize: '16px',
+                      borderRadius: R.md,
+                      border: '1px solid C.border',
+                      background: C.bg,
+                      color: C.textSecondary,
+                      fontSize: F.sizeLg,
                       boxSizing: 'border-box',
                     }}
                   />
-                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#58a6ff' }}>
+                  <p style={{ margin: '4px 0 0', fontSize: F.sizeSm, color: C.accentLight }}>
                     Recibirás un correo cuando {watchlistForm.symbol} {watchlistForm.alertType === 'above' ? 'suba' : 'baje'} a este precio
                   </p>
                 </div>
@@ -2029,10 +1825,10 @@ export default function Home() {
                 style={{
                   flex: 1,
                   padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
+                  borderRadius: R.md,
+                  border: '1px solid C.border',
                   background: 'transparent',
-                  color: '#c9d1d9',
+                  color: C.textSecondary,
                   cursor: 'pointer',
                 }}
               >
@@ -2043,11 +1839,11 @@ export default function Home() {
                 style={{
                   flex: 1,
                   padding: '12px',
-                  borderRadius: '8px',
+                  borderRadius: R.md,
                   border: 'none',
-                  background: '#238636',
-                  color: 'white',
-                  fontSize: '16px',
+                  background: C.positive,
+                  color: C.textPrimary,
+                  fontSize: F.sizeLg,
                   fontWeight: 'bold',
                   cursor: 'pointer',
                 }}
@@ -2073,11 +1869,11 @@ export default function Home() {
           justifyContent: 'center',
           zIndex: 1000,
         }}>
-          <div style={{ background: '#161b22', borderRadius: '12px', padding: '24px', width: '90%', maxWidth: '450px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h3 style={{ margin: '0 0 16px', color: '#f0f6fc' }}>Agregar al Portafolio</h3>
+          <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '24px', width: '90%', maxWidth: '450px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h3 style={{ margin: '0 0 16px', color: C.textPrimary }}>Agregar al Portafolio</h3>
             
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Símbolo</label>
+              <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: F.sizeBase }}>Símbolo</label>
               <input
                 type="text"
                 value={data?.quote?.symbol || ''}
@@ -2085,18 +1881,18 @@ export default function Home() {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: '#0d1117',
-                  color: '#c9d1d9',
-                  fontSize: '16px',
+                  borderRadius: R.md,
+                  border: '1px solid C.border',
+                  background: C.bg,
+                  color: C.textSecondary,
+                  fontSize: F.sizeLg,
                   opacity: 0.7,
                 }}
               />
             </div>
             
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Número de acciones *</label>
+              <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: F.sizeBase }}>Número de acciones *</label>
               <input
                 type="number"
                 value={addForm.shares}
@@ -2105,18 +1901,18 @@ export default function Home() {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: '#0d1117',
-                  color: '#c9d1d9',
-                  fontSize: '16px',
+                  borderRadius: R.md,
+                  border: '1px solid C.border',
+                  background: C.bg,
+                  color: C.textSecondary,
+                  fontSize: F.sizeLg,
                   boxSizing: 'border-box',
                 }}
               />
             </div>
             
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Precio de compra por acción</label>
+              <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: F.sizeBase }}>Precio de compra por acción</label>
               <input
                 type="number"
                 value={addForm.price}
@@ -2125,18 +1921,18 @@ export default function Home() {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: '#0d1117',
-                  color: '#c9d1d9',
-                  fontSize: '16px',
+                  borderRadius: R.md,
+                  border: '1px solid C.border',
+                  background: C.bg,
+                  color: C.textSecondary,
+                  fontSize: F.sizeLg,
                   boxSizing: 'border-box',
                 }}
               />
             </div>
             
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Fecha de compra</label>
+              <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: F.sizeBase }}>Fecha de compra</label>
               <input
                 type="date"
                 value={addForm.date}
@@ -2144,18 +1940,18 @@ export default function Home() {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: '#0d1117',
-                  color: '#c9d1d9',
-                  fontSize: '16px',
+                  borderRadius: R.md,
+                  border: '1px solid C.border',
+                  background: C.bg,
+                  color: C.textSecondary,
+                  fontSize: F.sizeLg,
                   boxSizing: 'border-box',
                 }}
               />
             </div>
             
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Precio objetivo (opcional)</label>
+              <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: F.sizeBase }}>Precio objetivo (opcional)</label>
               <input
                 type="number"
                 value={addForm.targetPrice}
@@ -2164,18 +1960,18 @@ export default function Home() {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: '#0d1117',
-                  color: '#c9d1d9',
-                  fontSize: '16px',
+                  borderRadius: R.md,
+                  border: '1px solid C.border',
+                  background: C.bg,
+                  color: C.textSecondary,
+                  fontSize: F.sizeLg,
                   boxSizing: 'border-box',
                 }}
               />
             </div>
             
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Notas (opcional)</label>
+              <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: F.sizeBase }}>Notas (opcional)</label>
               <textarea
                 value={addForm.notes}
                 onChange={e => setAddForm({ ...addForm, notes: e.target.value })}
@@ -2184,11 +1980,11 @@ export default function Home() {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: '#0d1117',
-                  color: '#c9d1d9',
-                  fontSize: '16px',
+                  borderRadius: R.md,
+                  border: '1px solid C.border',
+                  background: C.bg,
+                  color: C.textSecondary,
+                  fontSize: F.sizeLg,
                   boxSizing: 'border-box',
                   resize: 'vertical',
                 }}
@@ -2201,11 +1997,11 @@ export default function Home() {
                 style={{
                   flex: 1,
                   padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
+                  borderRadius: R.md,
+                  border: '1px solid C.border',
                   background: 'transparent',
-                  color: '#c9d1d9',
-                  fontSize: '16px',
+                  color: C.textSecondary,
+                  fontSize: F.sizeLg,
                   fontWeight: '600',
                   cursor: 'pointer',
                 }}
@@ -2219,11 +2015,11 @@ export default function Home() {
                 style={{
                   flex: 1,
                   padding: '12px',
-                  borderRadius: '8px',
+                  borderRadius: R.md,
                   border: 'none',
-                  background: '#238636',
-                  color: 'white',
-                  fontSize: '16px',
+                  background: C.positive,
+                  color: C.textPrimary,
+                  fontSize: F.sizeLg,
                   fontWeight: 'bold',
                   cursor: !addForm.shares ? 'not-allowed' : 'pointer',
                   opacity: !addForm.shares ? 0.5 : 1,
@@ -2250,11 +2046,11 @@ export default function Home() {
           justifyContent: 'center',
           zIndex: 1000,
         }}>
-          <div style={{ background: '#161b22', borderRadius: '12px', padding: '24px', width: '90%', maxWidth: '450px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h3 style={{ margin: '0 0 16px', color: '#f0f6fc' }}>Editar {editingItem.symbol}</h3>
+          <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '24px', width: '90%', maxWidth: '450px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h3 style={{ margin: '0 0 16px', color: C.textPrimary }}>Editar {editingItem.symbol}</h3>
             
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Número de acciones *</label>
+              <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: F.sizeBase }}>Número de acciones *</label>
               <input
                 type="number"
                 value={addForm.shares}
@@ -2262,18 +2058,18 @@ export default function Home() {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: '#0d1117',
-                  color: '#c9d1d9',
-                  fontSize: '16px',
+                  borderRadius: R.md,
+                  border: '1px solid C.border',
+                  background: C.bg,
+                  color: C.textSecondary,
+                  fontSize: F.sizeLg,
                   boxSizing: 'border-box',
                 }}
               />
             </div>
             
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Precio de compra por acción *</label>
+              <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: F.sizeBase }}>Precio de compra por acción *</label>
               <input
                 type="number"
                 value={addForm.price}
@@ -2281,18 +2077,18 @@ export default function Home() {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: '#0d1117',
-                  color: '#c9d1d9',
-                  fontSize: '16px',
+                  borderRadius: R.md,
+                  border: '1px solid C.border',
+                  background: C.bg,
+                  color: C.textSecondary,
+                  fontSize: F.sizeLg,
                   boxSizing: 'border-box',
                 }}
               />
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Fecha de compra</label>
+              <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: F.sizeBase }}>Fecha de compra</label>
               <input
                 type="date"
                 value={addForm.date}
@@ -2300,18 +2096,18 @@ export default function Home() {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: '#0d1117',
-                  color: '#c9d1d9',
-                  fontSize: '16px',
+                  borderRadius: R.md,
+                  border: '1px solid C.border',
+                  background: C.bg,
+                  color: C.textSecondary,
+                  fontSize: F.sizeLg,
                   boxSizing: 'border-box',
                 }}
               />
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Precio objetivo</label>
+              <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: F.sizeBase }}>Precio objetivo</label>
               <input
                 type="number"
                 value={addForm.targetPrice}
@@ -2319,18 +2115,18 @@ export default function Home() {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: '#0d1117',
-                  color: '#c9d1d9',
-                  fontSize: '16px',
+                  borderRadius: R.md,
+                  border: '1px solid C.border',
+                  background: C.bg,
+                  color: C.textSecondary,
+                  fontSize: F.sizeLg,
                   boxSizing: 'border-box',
                 }}
               />
             </div>
 
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', color: '#8b949e', fontSize: '14px' }}>Notas</label>
+              <label style={{ display: 'block', marginBottom: '8px', color: C.textMuted, fontSize: F.sizeBase }}>Notas</label>
               <textarea
                 value={addForm.notes}
                 onChange={e => setAddForm({ ...addForm, notes: e.target.value })}
@@ -2338,11 +2134,11 @@ export default function Home() {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
-                  background: '#0d1117',
-                  color: '#c9d1d9',
-                  fontSize: '14px',
+                  borderRadius: R.md,
+                  border: '1px solid C.border',
+                  background: C.bg,
+                  color: C.textSecondary,
+                  fontSize: F.sizeBase,
                   boxSizing: 'border-box',
                   resize: 'vertical',
                   fontFamily: 'inherit',
@@ -2360,10 +2156,10 @@ export default function Home() {
                 style={{
                   flex: 1,
                   padding: '12px',
-                  borderRadius: '8px',
-                  border: '1px solid #30363d',
+                  borderRadius: R.md,
+                  border: '1px solid C.border',
                   background: 'transparent',
-                  color: '#c9d1d9',
+                  color: C.textSecondary,
                   cursor: 'pointer',
                 }}
               >
@@ -2374,11 +2170,11 @@ export default function Home() {
                 style={{
                   flex: 1,
                   padding: '12px',
-                  borderRadius: '8px',
+                  borderRadius: R.md,
                   border: 'none',
-                  background: '#1f6feb',
-                  color: 'white',
-                  fontSize: '16px',
+                  background: C.accent,
+                  color: C.textPrimary,
+                  fontSize: F.sizeLg,
                   fontWeight: 'bold',
                   cursor: 'pointer',
                 }}
@@ -2450,13 +2246,13 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
   }, [currentSymbol]);
 
   const getStatusIcon = (status: CheckStatus) => {
-    if (status === 'pass') return { icon: '✅', color: '#3fb950' };
-    return { icon: '❌', color: '#f85149' };
+    if (status === 'pass') return { icon: '✅', color: C.positive };
+    return { icon: '❌', color: C.negative };
   };
 
   const getStatusTextColor = (status: CheckStatus) => {
-    if (status === 'pass') return '#3fb950';
-    return '#f85149';
+    if (status === 'pass') return C.positive;
+    return C.negative;
   };
 
   const calculateTimeValidation = (data: any) => {
@@ -2504,13 +2300,13 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
     }
     
     let label = 'Mal estructurado';
-    let labelColor = '#f85149';
+    let labelColor = C.negative;
     if (score === 3) {
       label = 'Óptimo';
-      labelColor = '#3fb950';
+      labelColor = C.positive;
     } else if (score === 2) {
       label = 'Válido';
-      labelColor = '#58a6ff';
+      labelColor = C.accentLight;
     }
     
     setTimeValidation({
@@ -2688,16 +2484,16 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
   }, [activeTab]);
 
   const getRecommendationColor = (rec: string) => {
-    if (rec === 'excelente') return '#3fb950';
-    if (rec === 'buena') return '#58a6ff';
-    if (rec === 'regular') return '#f0883e';
-    return '#f85149';
+    if (rec === 'excelente') return C.positive;
+    if (rec === 'buena') return C.accentLight;
+    if (rec === 'regular') return C.warning;
+    return C.negative;
   };
 
   const getRiskColor = (risk: string) => {
-    if (risk === 'bajo') return '#3fb950';
-    if (risk === 'medio') return '#f0883e';
-    return '#f85149';
+    if (risk === 'bajo') return C.positive;
+    if (risk === 'medio') return C.warning;
+    return C.negative;
   };
 
   const formatIV = (iv: number) => (iv * 100).toFixed(1) + '%';
@@ -2705,8 +2501,8 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
       <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-        <h2 style={{ color: '#f0f6fc', marginBottom: '8px' }}>🎯 Estrategias de Opciones</h2>
-        <p style={{ color: '#8b949e', margin: 0, fontSize: '14px' }}>Analiza estrategias de opciones y encuentra acciones ideales para operar</p>
+        <h2 style={{ color: C.textPrimary, marginBottom: '8px' }}>🎯 Estrategias de Opciones</h2>
+        <p style={{ color: C.textMuted, margin: 0, fontSize: F.sizeBase }}>Analiza estrategias de opciones y encuentra acciones ideales para operar</p>
       </div>
       
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px', minHeight: '24px' }}>
@@ -2715,13 +2511,13 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
             onClick={() => setShowChecklist(true)}
             style={{
               padding: '12px 20px',
-              borderRadius: '8px',
-              border: '2px solid #f0883e',
-              background: 'linear-gradient(135deg, #f0883e20 0%, #f0883e10 100%)',
-              color: '#f0883e',
+              borderRadius: R.md,
+              border: '2px solid C.warning',
+              background: 'linear-gradient(135deg, C.warning20 0%, C.warning10 100%)',
+              color: C.warning,
               cursor: 'pointer',
               fontWeight: '600',
-              fontSize: '14px',
+              fontSize: F.sizeBase,
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
@@ -2738,13 +2534,13 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
           onClick={() => setActiveTab('analyze')}
           style={{
             padding: '12px 24px',
-            borderRadius: '8px',
+            borderRadius: R.md,
             border: 'none',
-            background: activeTab === 'analyze' ? '#238636' : '#161b22',
-            color: '#f0f6fc',
+            background: activeTab === 'analyze' ? C.positive : C.bgCard,
+            color: C.textPrimary,
             cursor: 'pointer',
             fontWeight: '600',
-            fontSize: '14px',
+            fontSize: F.sizeBase,
           }}
         >
           Analizar Ticker
@@ -2753,13 +2549,13 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
           onClick={() => setActiveTab('screener')}
           style={{
             padding: '12px 24px',
-            borderRadius: '8px',
+            borderRadius: R.md,
             border: 'none',
-            background: activeTab === 'screener' ? '#238636' : '#161b22',
-            color: '#f0f6fc',
+            background: activeTab === 'screener' ? C.positive : C.bgCard,
+            color: C.textPrimary,
             cursor: 'pointer',
             fontWeight: '600',
-            fontSize: '14px',
+            fontSize: F.sizeBase,
           }}
         >
           Screener de Acciones
@@ -2779,11 +2575,11 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
               style={{
                 flex: 1,
                 padding: '14px 16px',
-                borderRadius: '8px',
-                border: '1px solid #30363d',
-                background: '#161b22',
-                color: '#c9d1d9',
-                fontSize: '16px',
+                borderRadius: R.md,
+                border: '1px solid C.border',
+                background: C.bgCard,
+                color: C.textSecondary,
+                fontSize: F.sizeLg,
                 outline: 'none',
               }}
             />
@@ -2792,11 +2588,11 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
               disabled={loading}
               style={{
                 padding: '14px 24px',
-                borderRadius: '8px',
+                borderRadius: R.md,
                 border: 'none',
-                background: '#238636',
-                color: 'white',
-                fontSize: '16px',
+                background: C.positive,
+                color: C.textPrimary,
+                fontSize: F.sizeLg,
                 fontWeight: '600',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.6 : 1,
@@ -2807,7 +2603,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
           </div>
 
           {error && (
-            <div style={{ padding: '16px', borderRadius: '8px', background: '#f8514920', color: '#f85149', textAlign: 'center', marginBottom: '16px' }}>
+            <div style={{ padding: '16px', borderRadius: R.md, background: C.negativeBg, color: C.negative, textAlign: 'center', marginBottom: '16px' }}>
               {error}
             </div>
           )}
@@ -2815,15 +2611,15 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
           {data && (
             <div style={{ display: 'grid', gap: '20px' }}>
               {/* Header */}
-              <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px' }}>
+              <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
                   <div>
-                    <h2 style={{ margin: 0, color: '#f0f6fc', fontSize: '28px' }}>{data.quote?.symbol}</h2>
-                    <p style={{ margin: '4px 0 0', color: '#8b949e' }}>{data.quote?.shortName}</p>
+                    <h2 style={{ margin: 0, color: C.textPrimary, fontSize: '28px' }}>{data.quote?.symbol}</h2>
+                    <p style={{ margin: '4px 0 0', color: C.textMuted }}>{data.quote?.shortName}</p>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <p style={{ margin: 0, fontSize: '32px', fontWeight: 'bold', color: '#f0f6fc' }}>${data.quote?.price?.toFixed(2)}</p>
-                    <p style={{ margin: '4px 0 0', color: data.quote?.change >= 0 ? '#3fb950' : '#f85149', fontSize: '16px' }}>
+                    <p style={{ margin: 0, fontSize: '32px', fontWeight: 'bold', color: C.textPrimary }}>${data.quote?.price?.toFixed(2)}</p>
+                    <p style={{ margin: '4px 0 0', color: data.quote?.change >= 0 ? C.positive : C.negative, fontSize: F.sizeLg }}>
                       {data.quote?.change >= 0 ? '+' : ''}{data.quote?.changePercent?.toFixed(2)}%
                     </p>
                   </div>
@@ -2831,57 +2627,57 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
               </div>
 
               {/* Stock Evaluation */}
-              <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px' }}>
-                <h3 style={{ margin: '0 0 16px', color: '#f0f6fc', fontSize: '18px' }}>📊 Evaluación para Opciones</h3>
+              <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px' }}>
+                <h3 style={{ margin: '0 0 16px', color: C.textPrimary, fontSize: F.sizeXl }}>📊 Evaluación para Opciones</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-                  <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
-                    <p style={{ margin: '0 0 8px', fontSize: '14px', color: '#8b949e' }}>Score de Suitabilidad</p>
+                  <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, textAlign: 'center' }}>
+                    <p style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>Score de Suitabilidad</p>
                     <p style={{ margin: 0, fontSize: '32px', fontWeight: 'bold', color: getRecommendationColor(data.stockEvaluation?.recommendation) }}>
                       {data.stockEvaluation?.suitabilityScore || 0}
                     </p>
-                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: getRecommendationColor(data.stockEvaluation?.recommendation), textTransform: 'uppercase', fontWeight: '600' }}>
+                    <p style={{ margin: '4px 0 0', fontSize: F.sizeSm, color: getRecommendationColor(data.stockEvaluation?.recommendation), textTransform: 'uppercase', fontWeight: '600' }}>
                       {data.stockEvaluation?.recommendation?.replace('_', ' ')}
                     </p>
                   </div>
-                  <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px' }}>
-                    <p style={{ margin: '0 0 8px', fontSize: '14px', color: '#8b949e' }}>Mejor Estrategia</p>
-                    <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#58a6ff' }}>{data.stockEvaluation?.topStrategy}</p>
+                  <div style={{ background: C.bg, padding: '16px', borderRadius: R.md }}>
+                    <p style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>Mejor Estrategia</p>
+                    <p style={{ margin: 0, fontSize: F.sizeLg, fontWeight: '600', color: C.accentLight }}>{data.stockEvaluation?.topStrategy}</p>
                     <div style={{ marginTop: '12px' }}>
                       {data.stockEvaluation?.reasons?.slice(0, 2).map((r: string, i: number) => (
-                        <p key={i} style={{ margin: '4px 0 0', fontSize: '12px', color: '#8b949e' }}>• {r}</p>
+                        <p key={i} style={{ margin: '4px 0 0', fontSize: F.sizeSm, color: C.textMuted }}>• {r}</p>
                       ))}
                     </div>
                   </div>
-                  <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px' }}>
-                    <p style={{ margin: '0 0 8px', fontSize: '14px', color: '#8b949e' }}>Tendencia</p>
-                    <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: data.technical?.trend === 'alcista' ? '#3fb950' : data.technical?.trend === 'bajista' ? '#f85149' : '#f0883e', textTransform: 'capitalize' }}>
+                  <div style={{ background: C.bg, padding: '16px', borderRadius: R.md }}>
+                    <p style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>Tendencia</p>
+                    <p style={{ margin: 0, fontSize: F.sizeLg, fontWeight: '600', color: data.technical?.trend === 'alcista' ? C.positive : data.technical?.trend === 'bajista' ? C.negative : C.warning, textTransform: 'capitalize' }}>
                       {data.technical?.trend || 'lateral'}
                     </p>
-                    <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#8b949e' }}>RSI: {data.technical?.rsi?.toFixed(1)}</p>
+                    <p style={{ margin: '8px 0 0', fontSize: F.sizeSm, color: C.textMuted }}>RSI: {data.technical?.rsi?.toFixed(1)}</p>
                   </div>
                 </div>
               </div>
 
               {/* IV Analysis */}
               {data.optionsAnalysis && (
-                <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px' }}>
-                  <h3 style={{ margin: '0 0 16px', color: '#f0f6fc', fontSize: '18px' }}>📈 Volatilidad Implícita (IV)</h3>
+                <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px' }}>
+                  <h3 style={{ margin: '0 0 16px', color: C.textPrimary, fontSize: F.sizeXl }}>📈 Volatilidad Implícita (IV)</h3>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
-                    <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
-                      <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>IV Actual</p>
-                      <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#58a6ff' }}>{formatIV(data.optionsAnalysis.impliedVolatility)}</p>
+                    <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, textAlign: 'center' }}>
+                      <p style={{ margin: '0 0 8px', fontSize: F.sizeSm, color: C.textMuted }}>IV Actual</p>
+                      <p style={{ margin: 0, fontSize: F.sizeHero, fontWeight: 'bold', color: C.accentLight }}>{formatIV(data.optionsAnalysis.impliedVolatility)}</p>
                     </div>
-                    <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
-                      <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>IV Rank</p>
-                      <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: data.optionsAnalysis.ivRank > 50 ? '#f0883e' : '#3fb950' }}>{data.optionsAnalysis.ivRank?.toFixed(0)}%</p>
+                    <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, textAlign: 'center' }}>
+                      <p style={{ margin: '0 0 8px', fontSize: F.sizeSm, color: C.textMuted }}>IV Rank</p>
+                      <p style={{ margin: 0, fontSize: F.sizeHero, fontWeight: 'bold', color: data.optionsAnalysis.ivRank > 50 ? C.warning : C.positive }}>{data.optionsAnalysis.ivRank?.toFixed(0)}%</p>
                     </div>
-                    <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
-                      <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>IV Percentile</p>
-                      <p style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#f0f6fc' }}>{data.optionsAnalysis.ivPercentile?.toFixed(0)}%</p>
+                    <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, textAlign: 'center' }}>
+                      <p style={{ margin: '0 0 8px', fontSize: F.sizeSm, color: C.textMuted }}>IV Percentile</p>
+                      <p style={{ margin: 0, fontSize: F.sizeHero, fontWeight: 'bold', color: C.textPrimary }}>{data.optionsAnalysis.ivPercentile?.toFixed(0)}%</p>
                     </div>
-                    <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
-                      <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>Comparación Histórica</p>
-                      <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#58a6ff' }}>{data.optionsAnalysis.ivComparison?.interpretation}</p>
+                    <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, textAlign: 'center' }}>
+                      <p style={{ margin: '0 0 8px', fontSize: F.sizeSm, color: C.textMuted }}>Comparación Histórica</p>
+                      <p style={{ margin: 0, fontSize: F.sizeBase, fontWeight: '600', color: C.accentLight }}>{data.optionsAnalysis.ivComparison?.interpretation}</p>
                     </div>
                   </div>
                 </div>
@@ -2889,20 +2685,20 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
 
               {/* Key Levels */}
               {data.optionsAnalysis && (
-                <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px' }}>
-                  <h3 style={{ margin: '0 0 16px', color: '#f0f6fc', fontSize: '18px' }}>🎯 Niveles Clave</h3>
+                <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px' }}>
+                  <h3 style={{ margin: '0 0 16px', color: C.textPrimary, fontSize: F.sizeXl }}>🎯 Niveles Clave</h3>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '10px' }}>
-                    <div style={{ background: '#0d1117', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                      <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>Soporte</p>
-                      <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#3fb950' }}>${data.optionsAnalysis.keyLevels?.support?.toFixed(2)}</p>
+                    <div style={{ background: C.bg, padding: '12px', borderRadius: R.md, textAlign: 'center' }}>
+                      <p style={{ margin: '0 0 8px', fontSize: F.sizeSm, color: C.textMuted }}>Soporte</p>
+                      <p style={{ margin: 0, fontSize: F.sizeXl, fontWeight: 'bold', color: C.positive }}>${data.optionsAnalysis.keyLevels?.support?.toFixed(2)}</p>
                     </div>
-                    <div style={{ background: '#0d1117', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                      <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>Pivote</p>
-                      <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#f0f6fc' }}>${data.optionsAnalysis.keyLevels?.pivot?.toFixed(2)}</p>
+                    <div style={{ background: C.bg, padding: '12px', borderRadius: R.md, textAlign: 'center' }}>
+                      <p style={{ margin: '0 0 8px', fontSize: F.sizeSm, color: C.textMuted }}>Pivote</p>
+                      <p style={{ margin: 0, fontSize: F.sizeXl, fontWeight: 'bold', color: C.textPrimary }}>${data.optionsAnalysis.keyLevels?.pivot?.toFixed(2)}</p>
                     </div>
-                    <div style={{ background: '#0d1117', padding: '12px', borderRadius: '8px', textAlign: 'center' }}>
-                      <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>Resistencia</p>
-                      <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#f85149' }}>${data.optionsAnalysis.keyLevels?.resistance?.toFixed(2)}</p>
+                    <div style={{ background: C.bg, padding: '12px', borderRadius: R.md, textAlign: 'center' }}>
+                      <p style={{ margin: '0 0 8px', fontSize: F.sizeSm, color: C.textMuted }}>Resistencia</p>
+                      <p style={{ margin: 0, fontSize: F.sizeXl, fontWeight: 'bold', color: C.negative }}>${data.optionsAnalysis.keyLevels?.resistance?.toFixed(2)}</p>
                     </div>
                   </div>
                 </div>
@@ -2910,35 +2706,35 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
 
               {/* Recommended Strategies */}
               {data.optionsAnalysis?.recommendedStrategies?.length > 0 && (
-                <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px' }}>
-                  <h3 style={{ margin: '0 0 16px', color: '#f0f6fc', fontSize: '18px' }}>🏆 Estrategias Recomendadas</h3>
+                <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px' }}>
+                  <h3 style={{ margin: '0 0 16px', color: C.textPrimary, fontSize: F.sizeXl }}>🏆 Estrategias Recomendadas</h3>
                   <div style={{ display: 'grid', gap: '16px' }}>
                     {data.optionsAnalysis.recommendedStrategies.map((rec: any, idx: number) => (
-                      <div key={idx} style={{ background: '#0d1117', padding: '20px', borderRadius: '12px', borderLeft: `4px solid ${getRiskColor(rec.strategy.riskLevel)}` }}>
+                      <div key={idx} style={{ background: C.bg, padding: '20px', borderRadius: R.lg, borderLeft: `4px solid ${getRiskColor(rec.strategy.riskLevel)}` }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                           <div>
-                            <h4 style={{ margin: 0, color: '#f0f6fc', fontSize: '16px' }}>{idx + 1}. {rec.strategy.name}</h4>
-                            <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600', background: getRiskColor(rec.strategy.riskLevel) + '30', color: getRiskColor(rec.strategy.riskLevel) }}>
+                            <h4 style={{ margin: 0, color: C.textPrimary, fontSize: F.sizeLg }}>{idx + 1}. {rec.strategy.name}</h4>
+                            <span style={{ padding: '2px 8px', borderRadius: '4px', fontSize: F.sizeXs, fontWeight: '600', background: getRiskColor(rec.strategy.riskLevel) + '30', color: getRiskColor(rec.strategy.riskLevel) }}>
                               Riesgo {rec.strategy.riskLevel.toUpperCase()}
                             </span>
                           </div>
                           <div style={{ textAlign: 'right' }}>
-                            <p style={{ margin: 0, fontSize: '12px', color: '#8b949e' }}>Score</p>
-                            <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#58a6ff' }}>{rec.suitabilityScore?.toFixed(0)}%</p>
+                            <p style={{ margin: 0, fontSize: F.sizeSm, color: C.textMuted }}>Score</p>
+                            <p style={{ margin: 0, fontSize: F.sizeXl, fontWeight: 'bold', color: C.accentLight }}>{rec.suitabilityScore?.toFixed(0)}%</p>
                           </div>
                         </div>
-                        <p style={{ margin: '0 0 12px', fontSize: '14px', color: '#c9d1d9' }}>{rec.strategy.description}</p>
+                        <p style={{ margin: '0 0 12px', fontSize: F.sizeBase, color: C.textSecondary }}>{rec.strategy.description}</p>
                         
                         {/* Ejemplo Práctico */}
                         {rec.strategy.example && rec.strategy.example.totalCost > 0 && (
-                          <div style={{ background: '#1a2332', padding: '16px', borderRadius: '8px', marginBottom: '12px' }}>
+                          <div style={{ background: 'C.bgElevated', padding: '16px', borderRadius: R.md, marginBottom: '12px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-                              <p style={{ margin: 0, fontSize: '13px', color: '#58a6ff', fontWeight: '600' }}>📋 PLAN DE ACCIÓN</p>
+                              <p style={{ margin: 0, fontSize: F.sizeMd, color: C.accentLight, fontWeight: '600' }}>📋 PLAN DE ACCIÓN</p>
                               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                <span style={{ padding: '4px 10px', background: '#0d1117', borderRadius: '4px', fontSize: '12px', color: '#8b949e' }}>
+                                <span style={{ padding: '4px 10px', background: C.bg, borderRadius: '4px', fontSize: F.sizeSm, color: C.textMuted }}>
                                   📅 {rec.strategy.example.expiration}
                                 </span>
-                                <span style={{ padding: '4px 10px', background: '#0d1117', borderRadius: '4px', fontSize: '12px', color: '#8b949e' }}>
+                                <span style={{ padding: '4px 10px', background: C.bg, borderRadius: '4px', fontSize: F.sizeSm, color: C.textMuted }}>
                                   ⏱ {rec.strategy.example.daysToExpiration} días
                                 </span>
                               </div>
@@ -2948,21 +2744,21 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             {rec.strategy.name === 'Bull Call Spread' && (
                               <div style={{ marginBottom: '12px' }}>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                                  <div style={{ flex: 1, minWidth: '110px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
-                                    <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 COMPRA</p>
-                                    <p style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 'bold', color: 'white' }}>1 CALL ${rec.strategy.example.strike?.toFixed(2)}</p>
-                                    <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.delta?.toFixed(2)}</p>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '12px', background: C.positive, borderRadius: R.md, textAlign: 'center' }}>
+                                    <p style={{ margin: '0 0 4px', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>📌 COMPRA</p>
+                                    <p style={{ margin: '0 0 4px', fontSize: F.sizeLg, fontWeight: 'bold', color: C.textPrimary }}>1 CALL ${rec.strategy.example.strike?.toFixed(2)}</p>
+                                    <p style={{ margin: 0, fontSize: F.sizeSm, color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.delta?.toFixed(2)}</p>
                                   </div>
-                                  <div style={{ flex: 1, minWidth: '110px', padding: '12px', background: '#da3633', borderRadius: '8px', textAlign: 'center' }}>
-                                    <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 VENDE</p>
-                                    <p style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 'bold', color: 'white' }}>1 CALL ${rec.strategy.example.strikeUpper?.toFixed(2)}</p>
-                                    <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.deltaUpper?.toFixed(2)}</p>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '12px', background: 'C.negative', borderRadius: R.md, textAlign: 'center' }}>
+                                    <p style={{ margin: '0 0 4px', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>📌 VENDE</p>
+                                    <p style={{ margin: '0 0 4px', fontSize: F.sizeLg, fontWeight: 'bold', color: C.textPrimary }}>1 CALL ${rec.strategy.example.strikeUpper?.toFixed(2)}</p>
+                                    <p style={{ margin: 0, fontSize: F.sizeSm, color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.deltaUpper?.toFixed(2)}</p>
                                   </div>
                                 </div>
-                                <div style={{ padding: '10px', background: '#0d1117', borderRadius: '6px' }}>
-                                  <p style={{ margin: 0, fontSize: '12px', color: '#8b949e' }}>
-                                    <span style={{ color: '#3fb950', fontWeight: '600' }}>Costo neto:</span> ${rec.strategy.example.totalCost?.toFixed(2)} | 
-                                    <span style={{ color: '#58a6ff', fontWeight: '600' }}>Ganancia máx:</span> ${((rec.strategy.example.strikeUpper! - rec.strategy.example.strike) * 100 - rec.strategy.example.totalCost)?.toFixed(2)}
+                                <div style={{ padding: '10px', background: C.bg, borderRadius: R.sm }}>
+                                  <p style={{ margin: 0, fontSize: F.sizeSm, color: C.textMuted }}>
+                                    <span style={{ color: C.positive, fontWeight: '600' }}>Costo neto:</span> ${rec.strategy.example.totalCost?.toFixed(2)} | 
+                                    <span style={{ color: C.accentLight, fontWeight: '600' }}>Ganancia máx:</span> ${((rec.strategy.example.strikeUpper! - rec.strategy.example.strike) * 100 - rec.strategy.example.totalCost)?.toFixed(2)}
                                   </p>
                                 </div>
                               </div>
@@ -2970,66 +2766,66 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             {rec.strategy.name === 'Bull Put Spread' && (
                               <div style={{ marginBottom: '12px' }}>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                                  <div style={{ flex: 1, minWidth: '110px', padding: '12px', background: '#da3633', borderRadius: '8px', textAlign: 'center' }}>
-                                    <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 VENDE</p>
-                                    <p style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 'bold', color: 'white' }}>1 PUT ${rec.strategy.example.strike?.toFixed(2)}</p>
-                                    <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.delta?.toFixed(2)}</p>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '12px', background: 'C.negative', borderRadius: R.md, textAlign: 'center' }}>
+                                    <p style={{ margin: '0 0 4px', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>📌 VENDE</p>
+                                    <p style={{ margin: '0 0 4px', fontSize: F.sizeLg, fontWeight: 'bold', color: C.textPrimary }}>1 PUT ${rec.strategy.example.strike?.toFixed(2)}</p>
+                                    <p style={{ margin: 0, fontSize: F.sizeSm, color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.delta?.toFixed(2)}</p>
                                   </div>
-                                  <div style={{ flex: 1, minWidth: '110px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
-                                    <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 COMPRA</p>
-                                    <p style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 'bold', color: 'white' }}>1 PUT ${rec.strategy.example.strikeUpper?.toFixed(2)}</p>
-                                    <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.deltaUpper?.toFixed(2)}</p>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '12px', background: C.positive, borderRadius: R.md, textAlign: 'center' }}>
+                                    <p style={{ margin: '0 0 4px', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>📌 COMPRA</p>
+                                    <p style={{ margin: '0 0 4px', fontSize: F.sizeLg, fontWeight: 'bold', color: C.textPrimary }}>1 PUT ${rec.strategy.example.strikeUpper?.toFixed(2)}</p>
+                                    <p style={{ margin: 0, fontSize: F.sizeSm, color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.deltaUpper?.toFixed(2)}</p>
                                   </div>
                                 </div>
-                                <div style={{ padding: '10px', background: '#0d1117', borderRadius: '6px' }}>
-                                  <p style={{ margin: 0, fontSize: '12px', color: '#8b949e' }}>
-                                    <span style={{ color: '#3fb950', fontWeight: '600' }}>Crédito neto:</span> ${rec.strategy.example.totalCost?.toFixed(2)} | 
-                                    <span style={{ color: '#58a6ff', fontWeight: '600' }}>Ganancia máx:</span> ${rec.strategy.example.totalCost?.toFixed(2)} (crédito recibido)
+                                <div style={{ padding: '10px', background: C.bg, borderRadius: R.sm }}>
+                                  <p style={{ margin: 0, fontSize: F.sizeSm, color: C.textMuted }}>
+                                    <span style={{ color: C.positive, fontWeight: '600' }}>Crédito neto:</span> ${rec.strategy.example.totalCost?.toFixed(2)} | 
+                                    <span style={{ color: C.accentLight, fontWeight: '600' }}>Ganancia máx:</span> ${rec.strategy.example.totalCost?.toFixed(2)} (crédito recibido)
                                   </p>
                                 </div>
                               </div>
                             )}
                             {rec.strategy.name === 'Covered Call' && (
                               <div style={{ marginBottom: '12px' }}>
-                                <div style={{ padding: '16px', background: '#da3633', borderRadius: '8px', textAlign: 'center' }}>
-                                  <p style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 VENDE (si tienes 100 acciones de {data.quote?.symbol})</p>
-                                  <p style={{ margin: '0 0 4px', fontSize: '20px', fontWeight: 'bold', color: 'white' }}>1 CALL ${rec.strategy.example.strike?.toFixed(2)}</p>
-                                  <p style={{ margin: 0, fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.delta?.toFixed(2)}</p>
+                                <div style={{ padding: '16px', background: 'C.negative', borderRadius: R.md, textAlign: 'center' }}>
+                                  <p style={{ margin: '0 0 8px', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>📌 VENDE (si tienes 100 acciones de {data.quote?.symbol})</p>
+                                  <p style={{ margin: '0 0 4px', fontSize: F.sizeXxl, fontWeight: 'bold', color: C.textPrimary }}>1 CALL ${rec.strategy.example.strike?.toFixed(2)}</p>
+                                  <p style={{ margin: 0, fontSize: F.sizeBase, color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.delta?.toFixed(2)}</p>
                                 </div>
-                                <div style={{ padding: '10px', background: '#0d1117', borderRadius: '6px', marginTop: '8px' }}>
-                                  <p style={{ margin: 0, fontSize: '12px', color: '#8b949e' }}>
-                                    <span style={{ color: '#3fb950', fontWeight: '600' }}>Prima Recibida:</span> ${rec.strategy.example.totalCost?.toFixed(2)} | 
-                                    <span style={{ color: '#f0883e', fontWeight: '600' }}>Renuncias a ganancias sobre:</span> ${rec.strategy.example.strike?.toFixed(2)}
+                                <div style={{ padding: '10px', background: C.bg, borderRadius: R.sm, marginTop: '8px' }}>
+                                  <p style={{ margin: 0, fontSize: F.sizeSm, color: C.textMuted }}>
+                                    <span style={{ color: C.positive, fontWeight: '600' }}>Prima Recibida:</span> ${rec.strategy.example.totalCost?.toFixed(2)} | 
+                                    <span style={{ color: C.warning, fontWeight: '600' }}>Renuncias a ganancias sobre:</span> ${rec.strategy.example.strike?.toFixed(2)}
                                   </p>
                                 </div>
                               </div>
                             )}
                             {rec.strategy.name === 'Cash-Secured Put' && (
                               <div style={{ marginBottom: '12px' }}>
-                                <div style={{ padding: '16px', background: '#da3633', borderRadius: '8px', textAlign: 'center' }}>
-                                  <p style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 VENDE</p>
-                                  <p style={{ margin: '0 0 4px', fontSize: '20px', fontWeight: 'bold', color: 'white' }}>1 PUT ${rec.strategy.example.strike?.toFixed(2)}</p>
-                                  <p style={{ margin: 0, fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.delta?.toFixed(2)}</p>
+                                <div style={{ padding: '16px', background: 'C.negative', borderRadius: R.md, textAlign: 'center' }}>
+                                  <p style={{ margin: '0 0 8px', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>📌 VENDE</p>
+                                  <p style={{ margin: '0 0 4px', fontSize: F.sizeXxl, fontWeight: 'bold', color: C.textPrimary }}>1 PUT ${rec.strategy.example.strike?.toFixed(2)}</p>
+                                  <p style={{ margin: 0, fontSize: F.sizeBase, color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.delta?.toFixed(2)}</p>
                                 </div>
-                                <div style={{ padding: '10px', background: '#0d1117', borderRadius: '6px', marginTop: '8px' }}>
-                                  <p style={{ margin: 0, fontSize: '12px', color: '#8b949e' }}>
-                                    <span style={{ color: '#3fb950', fontWeight: '600' }}>Prima Recibida:</span> ${rec.strategy.example.totalCost?.toFixed(2)} | 
-                                    <span style={{ color: '#f0883e', fontWeight: '600' }}>Margen requerido:</span> $${(rec.strategy.example.strike * 100)?.toFixed(2)}
+                                <div style={{ padding: '10px', background: C.bg, borderRadius: R.sm, marginTop: '8px' }}>
+                                  <p style={{ margin: 0, fontSize: F.sizeSm, color: C.textMuted }}>
+                                    <span style={{ color: C.positive, fontWeight: '600' }}>Prima Recibida:</span> ${rec.strategy.example.totalCost?.toFixed(2)} | 
+                                    <span style={{ color: C.warning, fontWeight: '600' }}>Margen requerido:</span> $${(rec.strategy.example.strike * 100)?.toFixed(2)}
                                   </p>
                                 </div>
                               </div>
                             )}
                             {rec.strategy.name === 'Protective Put' && (
                               <div style={{ marginBottom: '12px' }}>
-                                <div style={{ padding: '16px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
-                                  <p style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 COMPRA (para proteger 100 acciones)</p>
-                                  <p style={{ margin: '0 0 4px', fontSize: '20px', fontWeight: 'bold', color: 'white' }}>1 PUT ${rec.strategy.example.strike?.toFixed(2)}</p>
-                                  <p style={{ margin: 0, fontSize: '14px', color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.delta?.toFixed(2)}</p>
+                                <div style={{ padding: '16px', background: C.positive, borderRadius: R.md, textAlign: 'center' }}>
+                                  <p style={{ margin: '0 0 8px', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>📌 COMPRA (para proteger 100 acciones)</p>
+                                  <p style={{ margin: '0 0 4px', fontSize: F.sizeXxl, fontWeight: 'bold', color: C.textPrimary }}>1 PUT ${rec.strategy.example.strike?.toFixed(2)}</p>
+                                  <p style={{ margin: 0, fontSize: F.sizeBase, color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.delta?.toFixed(2)}</p>
                                 </div>
-                                <div style={{ padding: '10px', background: '#0d1117', borderRadius: '6px', marginTop: '8px' }}>
-                                  <p style={{ margin: 0, fontSize: '12px', color: '#8b949e' }}>
-                                    <span style={{ color: '#f0883e', fontWeight: '600' }}>Costo:</span> ${rec.strategy.example.totalCost?.toFixed(2)} | 
-                                    <span style={{ color: '#58a6ff', fontWeight: '600' }}>Protección hasta:</span> $${rec.strategy.example.strike?.toFixed(2)}
+                                <div style={{ padding: '10px', background: C.bg, borderRadius: R.sm, marginTop: '8px' }}>
+                                  <p style={{ margin: 0, fontSize: F.sizeSm, color: C.textMuted }}>
+                                    <span style={{ color: C.warning, fontWeight: '600' }}>Costo:</span> ${rec.strategy.example.totalCost?.toFixed(2)} | 
+                                    <span style={{ color: C.accentLight, fontWeight: '600' }}>Protección hasta:</span> $${rec.strategy.example.strike?.toFixed(2)}
                                   </p>
                                 </div>
                               </div>
@@ -3037,21 +2833,21 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             {rec.strategy.name === 'Long Straddle' && (
                               <div style={{ marginBottom: '12px' }}>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                                  <div style={{ flex: 1, minWidth: '120px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
-                                    <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 COMPRA</p>
-                                    <p style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 'bold', color: 'white' }}>1 CALL ${rec.strategy.example.strike?.toFixed(2)}</p>
-                                    <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Δ ~0.50</p>
+                                  <div style={{ flex: 1, minWidth: '120px', padding: '12px', background: C.positive, borderRadius: R.md, textAlign: 'center' }}>
+                                    <p style={{ margin: '0 0 4px', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>📌 COMPRA</p>
+                                    <p style={{ margin: '0 0 4px', fontSize: F.sizeLg, fontWeight: 'bold', color: C.textPrimary }}>1 CALL ${rec.strategy.example.strike?.toFixed(2)}</p>
+                                    <p style={{ margin: 0, fontSize: F.sizeSm, color: 'rgba(255,255,255,0.8)' }}>Δ ~0.50</p>
                                   </div>
-                                  <div style={{ flex: 1, minWidth: '120px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
-                                    <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 COMPRA</p>
-                                    <p style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 'bold', color: 'white' }}>1 PUT ${rec.strategy.example.strike?.toFixed(2)}</p>
-                                    <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Δ ~-0.50</p>
+                                  <div style={{ flex: 1, minWidth: '120px', padding: '12px', background: C.positive, borderRadius: R.md, textAlign: 'center' }}>
+                                    <p style={{ margin: '0 0 4px', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>📌 COMPRA</p>
+                                    <p style={{ margin: '0 0 4px', fontSize: F.sizeLg, fontWeight: 'bold', color: C.textPrimary }}>1 PUT ${rec.strategy.example.strike?.toFixed(2)}</p>
+                                    <p style={{ margin: 0, fontSize: F.sizeSm, color: 'rgba(255,255,255,0.8)' }}>Δ ~-0.50</p>
                                   </div>
                                 </div>
-                                <div style={{ padding: '10px', background: '#0d1117', borderRadius: '6px' }}>
-                                  <p style={{ margin: 0, fontSize: '12px', color: '#8b949e' }}>
-                                    <span style={{ color: '#f0883e', fontWeight: '600' }}>Costo total:</span> $${rec.strategy.example.totalCost?.toFixed(2)} | 
-                                    <span style={{ color: '#58a6ff', fontWeight: '600' }}>Movimiento mínimo:</span> {((rec.strategy.example.totalCost / rec.strategy.example.strike) * 100)?.toFixed(1)}%
+                                <div style={{ padding: '10px', background: C.bg, borderRadius: R.sm }}>
+                                  <p style={{ margin: 0, fontSize: F.sizeSm, color: C.textMuted }}>
+                                    <span style={{ color: C.warning, fontWeight: '600' }}>Costo total:</span> $${rec.strategy.example.totalCost?.toFixed(2)} | 
+                                    <span style={{ color: C.accentLight, fontWeight: '600' }}>Movimiento mínimo:</span> {((rec.strategy.example.totalCost / rec.strategy.example.strike) * 100)?.toFixed(1)}%
                                   </p>
                                 </div>
                               </div>
@@ -3059,87 +2855,87 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             {rec.strategy.name === 'Long Strangle' && (
                               <div style={{ marginBottom: '12px' }}>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                                  <div style={{ flex: 1, minWidth: '120px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
-                                    <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 COMPRA</p>
-                                    <p style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 'bold', color: 'white' }}>1 CALL ${rec.strategy.example.strikeUpper?.toFixed(2)}</p>
-                                    <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Δ ~0.20</p>
+                                  <div style={{ flex: 1, minWidth: '120px', padding: '12px', background: C.positive, borderRadius: R.md, textAlign: 'center' }}>
+                                    <p style={{ margin: '0 0 4px', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>📌 COMPRA</p>
+                                    <p style={{ margin: '0 0 4px', fontSize: F.sizeLg, fontWeight: 'bold', color: C.textPrimary }}>1 CALL ${rec.strategy.example.strikeUpper?.toFixed(2)}</p>
+                                    <p style={{ margin: 0, fontSize: F.sizeSm, color: 'rgba(255,255,255,0.8)' }}>Δ ~0.20</p>
                                   </div>
-                                  <div style={{ flex: 1, minWidth: '120px', padding: '12px', background: '#238636', borderRadius: '8px', textAlign: 'center' }}>
-                                    <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>📌 COMPRA</p>
-                                    <p style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: 'bold', color: 'white' }}>1 PUT ${rec.strategy.example.strike?.toFixed(2)}</p>
-                                    <p style={{ margin: 0, fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Δ ~-0.20</p>
+                                  <div style={{ flex: 1, minWidth: '120px', padding: '12px', background: C.positive, borderRadius: R.md, textAlign: 'center' }}>
+                                    <p style={{ margin: '0 0 4px', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>📌 COMPRA</p>
+                                    <p style={{ margin: '0 0 4px', fontSize: F.sizeLg, fontWeight: 'bold', color: C.textPrimary }}>1 PUT ${rec.strategy.example.strike?.toFixed(2)}</p>
+                                    <p style={{ margin: 0, fontSize: F.sizeSm, color: 'rgba(255,255,255,0.8)' }}>Δ ~-0.20</p>
                                   </div>
                                 </div>
-                                <div style={{ padding: '10px', background: '#0d1117', borderRadius: '6px' }}>
-                                  <p style={{ margin: 0, fontSize: '12px', color: '#8b949e' }}>
-                                    <span style={{ color: '#f0883e', fontWeight: '600' }}>Costo total:</span> $${rec.strategy.example.totalCost?.toFixed(2)} | 
-                                    <span style={{ color: '#58a6ff', fontWeight: '600' }}>Necesita movimiento mayor</span>
+                                <div style={{ padding: '10px', background: C.bg, borderRadius: R.sm }}>
+                                  <p style={{ margin: 0, fontSize: F.sizeSm, color: C.textMuted }}>
+                                    <span style={{ color: C.warning, fontWeight: '600' }}>Costo total:</span> $${rec.strategy.example.totalCost?.toFixed(2)} | 
+                                    <span style={{ color: C.accentLight, fontWeight: '600' }}>Necesita movimiento mayor</span>
                                   </p>
                                 </div>
                               </div>
                             )}
                             {rec.strategy.name === 'Iron Condor' && (
                               <div style={{ marginBottom: '12px' }}>
-                                <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#58a6ff', fontWeight: '600' }}>🟢 LADO PUT (Bajista):</p>
+                                <p style={{ margin: '0 0 8px', fontSize: F.sizeSm, color: C.accentLight, fontWeight: '600' }}>🟢 LADO PUT (Bajista):</p>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                                  <div style={{ flex: 1, minWidth: '110px', padding: '10px', background: '#da3633', borderRadius: '6px', textAlign: 'center' }}>
-                                    <p style={{ margin: '0', fontSize: '11px', color: 'rgba(255,255,255,0.8)' }}>VENDE PUT</p>
-                                    <p style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>${rec.strategy.example.strike?.toFixed(2)}</p>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '10px', background: 'C.negative', borderRadius: R.sm, textAlign: 'center' }}>
+                                    <p style={{ margin: '0', fontSize: F.sizeXs, color: 'rgba(255,255,255,0.8)' }}>VENDE PUT</p>
+                                    <p style={{ margin: '2px 0 0', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>${rec.strategy.example.strike?.toFixed(2)}</p>
                                   </div>
-                                  <div style={{ flex: 1, minWidth: '110px', padding: '10px', background: '#238636', borderRadius: '6px', textAlign: 'center' }}>
-                                    <p style={{ margin: '0', fontSize: '11px', color: 'rgba(255,255,255,0.8)' }}>COMPRA PUT</p>
-                                    <p style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>${rec.strategy.example.strikeUpper?.toFixed(2)}</p>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '10px', background: C.positive, borderRadius: R.sm, textAlign: 'center' }}>
+                                    <p style={{ margin: '0', fontSize: F.sizeXs, color: 'rgba(255,255,255,0.8)' }}>COMPRA PUT</p>
+                                    <p style={{ margin: '2px 0 0', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>${rec.strategy.example.strikeUpper?.toFixed(2)}</p>
                                   </div>
                                 </div>
-                                <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#58a6ff', fontWeight: '600' }}>🔴 LADO CALL (Alcista):</p>
+                                <p style={{ margin: '0 0 8px', fontSize: F.sizeSm, color: C.accentLight, fontWeight: '600' }}>🔴 LADO CALL (Alcista):</p>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                                  <div style={{ flex: 1, minWidth: '110px', padding: '10px', background: '#da3633', borderRadius: '6px', textAlign: 'center' }}>
-                                    <p style={{ margin: '0', fontSize: '11px', color: 'rgba(255,255,255,0.8)' }}>VENDE CALL</p>
-                                    <p style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>${rec.strategy.example.strikeUpper?.toFixed(2)}</p>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '10px', background: 'C.negative', borderRadius: R.sm, textAlign: 'center' }}>
+                                    <p style={{ margin: '0', fontSize: F.sizeXs, color: 'rgba(255,255,255,0.8)' }}>VENDE CALL</p>
+                                    <p style={{ margin: '2px 0 0', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>${rec.strategy.example.strikeUpper?.toFixed(2)}</p>
                                   </div>
-                                  <div style={{ flex: 1, minWidth: '110px', padding: '10px', background: '#238636', borderRadius: '6px', textAlign: 'center' }}>
-                                    <p style={{ margin: '0', fontSize: '11px', color: 'rgba(255,255,255,0.8)' }}>COMPRA CALL</p>
-                                    <p style={{ margin: '2px 0 0', fontSize: '14px', fontWeight: 'bold', color: 'white' }}>${rec.strategy.example.strikeUpper! * 1.1?.toFixed(2)}</p>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '10px', background: C.positive, borderRadius: R.sm, textAlign: 'center' }}>
+                                    <p style={{ margin: '0', fontSize: F.sizeXs, color: 'rgba(255,255,255,0.8)' }}>COMPRA CALL</p>
+                                    <p style={{ margin: '2px 0 0', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>${rec.strategy.example.strikeUpper! * 1.1?.toFixed(2)}</p>
                                   </div>
                                 </div>
-                                <div style={{ padding: '10px', background: '#0d1117', borderRadius: '6px' }}>
-                                  <p style={{ margin: 0, fontSize: '12px', color: '#8b949e' }}>
-                                    <span style={{ color: '#3fb950', fontWeight: '600' }}>Crédito total:</span> $${rec.strategy.example.totalCost?.toFixed(2)} | 
-                                    <span style={{ color: '#58a6ff', fontWeight: '600' }}>Ganancia si precio estable</span>
+                                <div style={{ padding: '10px', background: C.bg, borderRadius: R.sm }}>
+                                  <p style={{ margin: 0, fontSize: F.sizeSm, color: C.textMuted }}>
+                                    <span style={{ color: C.positive, fontWeight: '600' }}>Crédito total:</span> $${rec.strategy.example.totalCost?.toFixed(2)} | 
+                                    <span style={{ color: C.accentLight, fontWeight: '600' }}>Ganancia si precio estable</span>
                                   </p>
                                 </div>
                               </div>
                             )}
 
                             {/* Resumen Final */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(85px, 1fr))', gap: '8px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #30363d' }}>
-                              <div style={{ textAlign: 'center', padding: '8px', background: '#0d1117', borderRadius: '6px' }}>
-                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#8b949e' }}>Gan. Máx</p>
-                                <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#3fb950' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(85px, 1fr))', gap: '8px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid C.border' }}>
+                              <div style={{ textAlign: 'center', padding: '8px', background: C.bg, borderRadius: R.sm }}>
+                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: C.textMuted }}>Gan. Máx</p>
+                                <p style={{ margin: 0, fontSize: F.sizeBase, fontWeight: 'bold', color: C.positive }}>
                                   {rec.strategy.example.maxProfitPercent === '∞' || rec.strategy.example.maxProfit === 'ilimitado' 
-                                    ? <><span style={{ fontSize: '16px' }}>∞</span> <span style={{ fontSize: '10px', opacity: 0.7 }}>%</span></>
+                                    ? <><span style={{ fontSize: F.sizeLg }}>∞</span> <span style={{ fontSize: '10px', opacity: 0.7 }}>%</span></>
                                     : <>{rec.strategy.example.maxProfitPercent}% <span style={{ fontSize: '10px', opacity: 0.7 }}>→ ${typeof rec.strategy.example.maxProfit === 'number' ? rec.strategy.example.maxProfit.toFixed(0) : rec.strategy.example.maxProfit}</span></>}
                                 </p>
                               </div>
-                              <div style={{ textAlign: 'center', padding: '8px', background: '#0d1117', borderRadius: '6px' }}>
-                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#8b949e' }}>Pérd. Máx</p>
-                                <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#f85149' }}>
+                              <div style={{ textAlign: 'center', padding: '8px', background: C.bg, borderRadius: R.sm }}>
+                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: C.textMuted }}>Pérd. Máx</p>
+                                <p style={{ margin: 0, fontSize: F.sizeBase, fontWeight: 'bold', color: C.negative }}>
                                   {rec.strategy.example.maxLossPercent === '∞' || rec.strategy.example.maxLoss === 'ilimitado'
-                                    ? <><span style={{ fontSize: '16px' }}>∞</span> <span style={{ fontSize: '10px', opacity: 0.7 }}>%</span></>
+                                    ? <><span style={{ fontSize: F.sizeLg }}>∞</span> <span style={{ fontSize: '10px', opacity: 0.7 }}>%</span></>
                                     : <>{rec.strategy.example.maxLossPercent}% <span style={{ fontSize: '10px', opacity: 0.7 }}>→ ${typeof rec.strategy.example.maxLoss === 'number' ? rec.strategy.example.maxLoss.toFixed(0) : rec.strategy.example.maxLoss}</span></>}
                                 </p>
                               </div>
-                              <div style={{ textAlign: 'center', padding: '8px', background: '#0d1117', borderRadius: '6px' }}>
-                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#8b949e' }}>Prima/Acc</p>
-                                <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#58a6ff' }}>${rec.strategy.example.premium?.toFixed(2)}</p>
+                              <div style={{ textAlign: 'center', padding: '8px', background: C.bg, borderRadius: R.sm }}>
+                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: C.textMuted }}>Prima/Acc</p>
+                                <p style={{ margin: 0, fontSize: F.sizeBase, fontWeight: 'bold', color: C.accentLight }}>${rec.strategy.example.premium?.toFixed(2)}</p>
                               </div>
-                              <div style={{ textAlign: 'center', padding: '8px', background: '#0d1117', borderRadius: '6px' }}>
-                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#8b949e' }}>Contratos</p>
-                                <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#f0f6fc' }}>{rec.strategy.example.contracts}</p>
+                              <div style={{ textAlign: 'center', padding: '8px', background: C.bg, borderRadius: R.sm }}>
+                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: C.textMuted }}>Contratos</p>
+                                <p style={{ margin: 0, fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>{rec.strategy.example.contracts}</p>
                               </div>
-                              <div style={{ textAlign: 'center', padding: '8px', background: '#0d1117', borderRadius: '6px' }}>
-                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#8b949e' }}>Costo Total</p>
-                                <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#f0883e' }}>
+                              <div style={{ textAlign: 'center', padding: '8px', background: C.bg, borderRadius: R.sm }}>
+                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: C.textMuted }}>Costo Total</p>
+                                <p style={{ margin: 0, fontSize: F.sizeBase, fontWeight: 'bold', color: C.warning }}>
                                   {rec.strategy.example.costPercent}% <span style={{ fontSize: '10px', opacity: 0.7 }}>→ ${rec.strategy.example.totalCost?.toFixed(0)}</span>
                                 </p>
                               </div>
@@ -3147,34 +2943,34 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             {/* TP / SL */}
                             {rec.strategy.example.takeProfit && rec.strategy.example.stopLoss && (
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
-                                <div style={{ padding: '10px', background: '#3fb95020', borderRadius: '6px', border: '1px solid #3fb95040' }}>
+                                <div style={{ padding: '10px', background: C.positiveBg, borderRadius: R.sm, border: '1px solid C.positiveBorder' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                                    <span style={{ fontSize: '12px' }}>🎯</span>
-                                    <span style={{ fontSize: '10px', color: '#8b949e' }}>Take Profit</span>
+                                    <span style={{ fontSize: F.sizeSm }}>🎯</span>
+                                    <span style={{ fontSize: '10px', color: C.textMuted }}>Take Profit</span>
                                   </div>
-                                  <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#3fb950' }}>
+                                  <p style={{ margin: 0, fontSize: F.sizeXl, fontWeight: 'bold', color: C.positive }}>
                                     {rec.strategy.example.takeProfit.percent > 0 ? '+' : ''}{rec.strategy.example.takeProfit.percent}%
-                                    <span style={{ fontSize: '12px', marginLeft: '8px', opacity: 0.7 }}>
+                                    <span style={{ fontSize: F.sizeSm, marginLeft: '8px', opacity: 0.7 }}>
                                       → ${rec.strategy.example.takeProfit.price?.toFixed(2)}
                                     </span>
                                   </p>
-                                  <p style={{ margin: '4px 0 0', fontSize: '10px', color: '#8b949e' }}>
+                                  <p style={{ margin: '4px 0 0', fontSize: '10px', color: C.textMuted }}>
                                     {rec.strategy.example.takeProfit.description}
                                     {rec.strategy.example.takeProfit.tpPercent && ` (cierra al ${rec.strategy.example.takeProfit.tpPercent}%)`}
                                   </p>
                                 </div>
-                                <div style={{ padding: '10px', background: '#f8514920', borderRadius: '6px', border: '1px solid #f8514940' }}>
+                                <div style={{ padding: '10px', background: C.negativeBg, borderRadius: R.sm, border: '1px solid C.negativeBorder' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                                    <span style={{ fontSize: '12px' }}>🛑</span>
-                                    <span style={{ fontSize: '10px', color: '#8b949e' }}>Stop Loss</span>
+                                    <span style={{ fontSize: F.sizeSm }}>🛑</span>
+                                    <span style={{ fontSize: '10px', color: C.textMuted }}>Stop Loss</span>
                                   </div>
-                                  <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#f85149' }}>
+                                  <p style={{ margin: 0, fontSize: F.sizeXl, fontWeight: 'bold', color: C.negative }}>
                                     {rec.strategy.example.stopLoss.percent}%
-                                    <span style={{ fontSize: '12px', marginLeft: '8px', opacity: 0.7 }}>
+                                    <span style={{ fontSize: F.sizeSm, marginLeft: '8px', opacity: 0.7 }}>
                                       → ${rec.strategy.example.stopLoss.price?.toFixed(2)}
                                     </span>
                                   </p>
-                                  <p style={{ margin: '4px 0 0', fontSize: '10px', color: '#8b949e' }}>
+                                  <p style={{ margin: '4px 0 0', fontSize: '10px', color: C.textMuted }}>
                                     {rec.strategy.example.stopLoss.description}
                                     {rec.strategy.example.stopLoss.slPercent && ` (cierra al ${rec.strategy.example.stopLoss.slPercent}%)`}
                                   </p>
@@ -3184,11 +2980,11 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                           </div>
                         )}
                         
-                        <div style={{ background: '#161b22', padding: '12px', borderRadius: '8px', marginTop: '12px' }}>
-                          <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#8b949e' }}>Condición ideal:</p>
-                          <p style={{ margin: 0, fontSize: '13px', color: '#c9d1d9' }}>{rec.strategy.idealCondition}</p>
+                        <div style={{ background: C.bgCard, padding: '12px', borderRadius: R.md, marginTop: '12px' }}>
+                          <p style={{ margin: '0 0 4px', fontSize: F.sizeSm, color: C.textMuted }}>Condición ideal:</p>
+                          <p style={{ margin: 0, fontSize: F.sizeMd, color: C.textSecondary }}>{rec.strategy.idealCondition}</p>
                         </div>
-                        <p style={{ margin: '12px 0 0', fontSize: '13px', color: '#58a6ff', fontStyle: 'italic' }}>{rec.rationale}</p>
+                        <p style={{ margin: '12px 0 0', fontSize: F.sizeMd, color: C.accentLight, fontStyle: 'italic' }}>{rec.rationale}</p>
                       </div>
                     ))}
                   </div>
@@ -3197,20 +2993,20 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
 
               {/* Options Expirations */}
               {data.optionsAnalysis?.nextExpirations?.length > 0 && (
-                <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px' }}>
-                  <h3 style={{ margin: '0 0 16px', color: '#f0f6fc', fontSize: '18px' }}>📅 Próximas Caducidades</h3>
+                <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px' }}>
+                  <h3 style={{ margin: '0 0 16px', color: C.textPrimary, fontSize: F.sizeXl }}>📅 Próximas Caducidades</h3>
                   {data.optionsAnalysis.nextExpirations.map((exp: any, idx: number) => (
-                    <div key={idx} style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', marginBottom: idx < data.optionsAnalysis.nextExpirations.length - 1 ? '12px' : 0 }}>
+                    <div key={idx} style={{ background: C.bg, padding: '16px', borderRadius: R.md, marginBottom: idx < data.optionsAnalysis.nextExpirations.length - 1 ? '12px' : 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                        <h4 style={{ margin: 0, color: '#f0f6fc', fontSize: '14px' }}>{exp.date}</h4>
-                        <span style={{ fontSize: '12px', color: '#8b949e' }}>{exp.daysToExpiration} días</span>
+                        <h4 style={{ margin: 0, color: C.textPrimary, fontSize: F.sizeBase }}>{exp.date}</h4>
+                        <span style={{ fontSize: F.sizeSm, color: C.textMuted }}>{exp.daysToExpiration} días</span>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px' }}>
                         {exp.calls?.slice(0, 3).map((c: any, i: number) => (
-                          <div key={i} style={{ padding: '8px', background: '#161b22', borderRadius: '6px', fontSize: '12px' }}>
-                            <p style={{ margin: '0 0 4px', color: '#3fb950' }}>CALL Strike ${c.strike?.toFixed(2)}</p>
-                            <p style={{ margin: 0, color: '#8b949e' }}>Prima: ${c.lastPrice?.toFixed(2)} | IV: {formatIV(c.impliedVolatility)}</p>
-                            <p style={{ margin: '4px 0 0', color: '#8b949e' }}>Delta: {c.delta?.toFixed(2)} | OI: {c.openInterest?.toLocaleString()}</p>
+                          <div key={i} style={{ padding: '8px', background: C.bgCard, borderRadius: R.sm, fontSize: F.sizeSm }}>
+                            <p style={{ margin: '0 0 4px', color: C.positive }}>CALL Strike ${c.strike?.toFixed(2)}</p>
+                            <p style={{ margin: 0, color: C.textMuted }}>Prima: ${c.lastPrice?.toFixed(2)} | IV: {formatIV(c.impliedVolatility)}</p>
+                            <p style={{ margin: '4px 0 0', color: C.textMuted }}>Delta: {c.delta?.toFixed(2)} | OI: {c.openInterest?.toLocaleString()}</p>
                           </div>
                         ))}
                       </div>
@@ -3221,34 +3017,34 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
 
               {/* Events */}
               {(data.optionsAnalysis?.earningsDate || data.optionsAnalysis?.dividendDate) && (
-                <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px' }}>
-                  <h3 style={{ margin: '0 0 16px', color: '#f0f6fc', fontSize: '18px' }}>📆 Eventos Importantes</h3>
+                <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px' }}>
+                  <h3 style={{ margin: '0 0 16px', color: C.textPrimary, fontSize: F.sizeXl }}>📆 Eventos Importantes</h3>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
                     {data.optionsAnalysis.earningsDate && (
-                      <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px' }}>
+                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                          <p style={{ margin: 0, fontSize: '12px', color: '#8b949e' }}>📊 Earnings</p>
+                          <p style={{ margin: 0, fontSize: F.sizeSm, color: C.textMuted }}>📊 Earnings</p>
                           <span style={{ 
                             padding: '2px 8px', 
                             borderRadius: '4px', 
                             fontSize: '10px', 
                             fontWeight: '600',
-                            background: data.optionsAnalysis.earningsEstimate ? '#f0883e30' : '#3fb95030',
-                            color: data.optionsAnalysis.earningsEstimate ? '#f0883e' : '#3fb950'
+                            background: data.optionsAnalysis.earningsEstimate ? C.warningBg : C.positiveBg,
+                            color: data.optionsAnalysis.earningsEstimate ? C.warning : C.positive
                           }}>
                             {data.optionsAnalysis.earningsEstimate ? '⚠️ ESTIMADO' : '✓ CONFIRMADO'}
                           </span>
                         </div>
-                        <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#f0883e' }}>{data.optionsAnalysis.earningsDate}</p>
+                        <p style={{ margin: 0, fontSize: F.sizeLg, fontWeight: '600', color: C.warning }}>{data.optionsAnalysis.earningsDate}</p>
                         {data.optionsAnalysis.earningsEstimate && (
-                          <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#8b949e' }}>Fecha puede cambiar</p>
+                          <p style={{ margin: '4px 0 0', fontSize: F.sizeXs, color: C.textMuted }}>Fecha puede cambiar</p>
                         )}
                       </div>
                     )}
                     {data.optionsAnalysis.dividendDate && (
-                      <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px' }}>
-                        <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>💰 Dividend</p>
-                        <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#3fb950' }}>{data.optionsAnalysis.dividendDate}</p>
+                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md }}>
+                        <p style={{ margin: '0 0 8px', fontSize: F.sizeSm, color: C.textMuted }}>💰 Dividend</p>
+                        <p style={{ margin: 0, fontSize: F.sizeLg, fontWeight: '600', color: C.positive }}>{data.optionsAnalysis.dividendDate}</p>
                       </div>
                     )}
                   </div>
@@ -3275,29 +3071,29 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                 >
                   <div 
                     style={{
-                      background: '#161b22',
+                      background: C.bgCard,
                       borderRadius: '16px',
                       padding: '24px',
                       width: '100%',
                       maxWidth: '600px',
                       maxHeight: '90vh',
                       overflowY: 'auto',
-                      border: '1px solid #30363d',
+                      border: '1px solid C.border',
                     }}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                      <h3 style={{ margin: 0, color: '#f0f6fc', fontSize: '20px' }}>🧠 Checklist Institucional</h3>
+                      <h3 style={{ margin: 0, color: C.textPrimary, fontSize: F.sizeXxl }}>🧠 Checklist Institucional</h3>
                       <button
                         onClick={() => setShowChecklist(false)}
                         style={{
                           padding: '8px 16px',
-                          borderRadius: '8px',
-                          border: '1px solid #30363d',
+                          borderRadius: R.md,
+                          border: '1px solid C.border',
                           background: 'transparent',
-                          color: '#8b949e',
+                          color: C.textMuted,
                           cursor: 'pointer',
-                          fontSize: '14px',
+                          fontSize: F.sizeBase,
                         }}
                       >
                         ✕ Cerrar
@@ -3306,82 +3102,82 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
 
                     <div style={{ display: 'grid', gap: '16px' }}>
                       {/* 1. Contexto Mercado */}
-                      <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #58a6ff' }}>
-                        <h4 style={{ margin: '0 0 12px', color: '#58a6ff', fontSize: '14px' }}>🔵 1. CONTEXTO DEL MERCADO</h4>
+                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: '4px solid C.accentLight' }}>
+                        <h4 style={{ margin: '0 0 12px', color: C.accentLight, fontSize: F.sizeBase }}>🔵 1. CONTEXTO DEL MERCADO</h4>
                         <div style={{ display: 'grid', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.marketAligned).icon}</span>
-                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.marketAligned) }}>¿SPY/QQQ en tendencia clara? ({data.technical?.trend || 'lateral'})</span>
+                            <span style={{ fontSize: F.sizeXl, width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.marketAligned).icon}</span>
+                            <span style={{ fontSize: F.sizeMd, color: getStatusTextColor(preTradeChecklist.marketAligned) }}>¿SPY/QQQ en tendencia clara? ({data.technical?.trend || 'lateral'})</span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.priceAligned).icon}</span>
-                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.priceAligned) }}>¿Precio alineado con tendencia?</span>
+                            <span style={{ fontSize: F.sizeXl, width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.priceAligned).icon}</span>
+                            <span style={{ fontSize: F.sizeMd, color: getStatusTextColor(preTradeChecklist.priceAligned) }}>¿Precio alineado con tendencia?</span>
                           </div>
                         </div>
                       </div>
 
                       {/* 2. Setup */}
-                      <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #00d4aa' }}>
-                        <h4 style={{ margin: '0 0 12px', color: '#00d4aa', fontSize: '14px' }}>🟢 2. SETUP (TU EDGE)</h4>
+                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: '4px solid C.positive' }}>
+                        <h4 style={{ margin: '0 0 12px', color: 'C.positive', fontSize: F.sizeBase }}>🟢 2. SETUP (TU EDGE)</h4>
                         <div style={{ display: 'grid', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.breakout).icon}</span>
-                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.breakout) }}>¿Breakout claro de resistencia? (Score: {data.stockEvaluation?.suitabilityScore || 0})</span>
+                            <span style={{ fontSize: F.sizeXl, width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.breakout).icon}</span>
+                            <span style={{ fontSize: F.sizeMd, color: getStatusTextColor(preTradeChecklist.breakout) }}>¿Breakout claro de resistencia? (Score: {data.stockEvaluation?.suitabilityScore || 0})</span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.aboveResistance).icon}</span>
-                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.aboveResistance) }}>¿Precio sobre pivote? (Precio: ${data.optionsAnalysis?.keyLevels?.currentPrice?.toFixed(2)} | Pivote: ${data.optionsAnalysis?.keyLevels?.pivot?.toFixed(2)})</span>
+                            <span style={{ fontSize: F.sizeXl, width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.aboveResistance).icon}</span>
+                            <span style={{ fontSize: F.sizeMd, color: getStatusTextColor(preTradeChecklist.aboveResistance) }}>¿Precio sobre pivote? (Precio: ${data.optionsAnalysis?.keyLevels?.currentPrice?.toFixed(2)} | Pivote: ${data.optionsAnalysis?.keyLevels?.pivot?.toFixed(2)})</span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.volumeUp).icon}</span>
-                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.volumeUp) }}>¿Volumen superior al promedio?</span>
+                            <span style={{ fontSize: F.sizeXl, width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.volumeUp).icon}</span>
+                            <span style={{ fontSize: F.sizeMd, color: getStatusTextColor(preTradeChecklist.volumeUp) }}>¿Volumen superior al promedio?</span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.aboveEMAs).icon}</span>
-                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.aboveEMAs) }}>¿Está por encima de EMAs 8/21/50?</span>
+                            <span style={{ fontSize: F.sizeXl, width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.aboveEMAs).icon}</span>
+                            <span style={{ fontSize: F.sizeMd, color: getStatusTextColor(preTradeChecklist.aboveEMAs) }}>¿Está por encima de EMAs 8/21/50?</span>
                           </div>
                         </div>
                       </div>
 
                       {/* 3. Ubicación Precio */}
-                      <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #f0883e' }}>
-                        <h4 style={{ margin: '0 0 12px', color: '#f0883e', fontSize: '14px' }}>🟡 3. UBICACIÓN DEL PRECIO</h4>
+                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: '4px solid C.warning' }}>
+                        <h4 style={{ margin: '0 0 12px', color: C.warning, fontSize: F.sizeBase }}>🟡 3. UBICACIÓN DEL PRECIO</h4>
                         <div style={{ display: 'grid', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.notExtended).icon}</span>
-                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.notExtended) }}>¿No está sobreextendido?</span>
+                            <span style={{ fontSize: F.sizeXl, width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.notExtended).icon}</span>
+                            <span style={{ fontSize: F.sizeMd, color: getStatusTextColor(preTradeChecklist.notExtended) }}>¿No está sobreextendido?</span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.hasSpace).icon}</span>
-                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.hasSpace) }}>¿Hay espacio hasta resistencia (${data.optionsAnalysis?.keyLevels?.resistance?.toFixed(2)})?</span>
+                            <span style={{ fontSize: F.sizeXl, width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.hasSpace).icon}</span>
+                            <span style={{ fontSize: F.sizeMd, color: getStatusTextColor(preTradeChecklist.hasSpace) }}>¿Hay espacio hasta resistencia (${data.optionsAnalysis?.keyLevels?.resistance?.toFixed(2)})?</span>
                           </div>
                         </div>
                       </div>
 
                       {/* 4. Riesgo/Recompensa */}
-                      <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #f85149' }}>
-                        <h4 style={{ margin: '0 0 12px', color: '#f85149', fontSize: '14px' }}>🔴 4. RIESGO / RECOMPENSA</h4>
+                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: '4px solid C.negative' }}>
+                        <h4 style={{ margin: '0 0 12px', color: C.negative, fontSize: F.sizeBase }}>🔴 4. RIESGO / RECOMPENSA</h4>
                         <div style={{ display: 'grid', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.goodRiskReward).icon}</span>
-                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.goodRiskReward) }}>¿Spread da al menos 1:1? ({data.optionsAnalysis?.recommendedStrategies?.length || 0} estrategias)</span>
+                            <span style={{ fontSize: F.sizeXl, width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.goodRiskReward).icon}</span>
+                            <span style={{ fontSize: F.sizeMd, color: getStatusTextColor(preTradeChecklist.goodRiskReward) }}>¿Spread da al menos 1:1? ({data.optionsAnalysis?.recommendedStrategies?.length || 0} estrategias)</span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.riskAcceptable).icon}</span>
-                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.riskAcceptable) }}>¿Riesgo {'<'}3% del capital?</span>
+                            <span style={{ fontSize: F.sizeXl, width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.riskAcceptable).icon}</span>
+                            <span style={{ fontSize: F.sizeMd, color: getStatusTextColor(preTradeChecklist.riskAcceptable) }}>¿Riesgo {'<'}3% del capital?</span>
                           </div>
                         </div>
                       </div>
 
                       {/* 5. Tiempo */}
-                      <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #6e7681' }}>
-                        <h4 style={{ margin: '0 0 12px', color: '#8b949e', fontSize: '14px' }}>⚫ 5. TIEMPO (EXPIRACIÓN)</h4>
+                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: '4px solid C.textMuted' }}>
+                        <h4 style={{ margin: '0 0 12px', color: C.textMuted, fontSize: F.sizeBase }}>⚫ 5. TIEMPO (EXPIRACIÓN)</h4>
                         
                         {timeValidation ? (
                           <>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
                               <span style={{ 
-                                fontSize: '12px', 
+                                fontSize: F.sizeSm, 
                                 padding: '4px 10px', 
                                 borderRadius: '4px', 
                                 fontWeight: '600',
@@ -3393,82 +3189,82 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             </div>
                             
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '12px' }}>
-                              <div style={{ textAlign: 'center', padding: '8px', background: '#161b22', borderRadius: '6px' }}>
-                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#8b949e' }}>Dist. Target</p>
-                                <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#f0f6fc' }}>${timeValidation.distance.toFixed(2)}</p>
+                              <div style={{ textAlign: 'center', padding: '8px', background: C.bgCard, borderRadius: R.sm }}>
+                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: C.textMuted }}>Dist. Target</p>
+                                <p style={{ margin: 0, fontSize: F.sizeBase, fontWeight: '600', color: C.textPrimary }}>${timeValidation.distance.toFixed(2)}</p>
                               </div>
-                              <div style={{ textAlign: 'center', padding: '8px', background: '#161b22', borderRadius: '6px' }}>
-                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#8b949e' }}>Días Est.</p>
-                                <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: timeValidation.estimatedDays <= timeValidation.expirationDays ? '#3fb950' : '#f85149' }}>
+                              <div style={{ textAlign: 'center', padding: '8px', background: C.bgCard, borderRadius: R.sm }}>
+                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: C.textMuted }}>Días Est.</p>
+                                <p style={{ margin: 0, fontSize: F.sizeBase, fontWeight: '600', color: timeValidation.estimatedDays <= timeValidation.expirationDays ? C.positive : C.negative }}>
                                   {timeValidation.estimatedDays}d
                                 </p>
                               </div>
-                              <div style={{ textAlign: 'center', padding: '8px', background: '#161b22', borderRadius: '6px' }}>
-                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#8b949e' }}>Exp. Days</p>
-                                <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#58a6ff' }}>{timeValidation.expirationDays}d</p>
+                              <div style={{ textAlign: 'center', padding: '8px', background: C.bgCard, borderRadius: R.sm }}>
+                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: C.textMuted }}>Exp. Days</p>
+                                <p style={{ margin: 0, fontSize: F.sizeBase, fontWeight: '600', color: C.accentLight }}>{timeValidation.expirationDays}d</p>
                               </div>
-                              <div style={{ textAlign: 'center', padding: '8px', background: '#161b22', borderRadius: '6px' }}>
-                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: '#8b949e' }}>Exp. Move</p>
-                                <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#f0883e' }}>${timeValidation.expectedMove.toFixed(2)}</p>
+                              <div style={{ textAlign: 'center', padding: '8px', background: C.bgCard, borderRadius: R.sm }}>
+                                <p style={{ margin: '0 0 2px', fontSize: '10px', color: C.textMuted }}>Exp. Move</p>
+                                <p style={{ margin: 0, fontSize: F.sizeBase, fontWeight: '600', color: C.warning }}>${timeValidation.expectedMove.toFixed(2)}</p>
                               </div>
                             </div>
                             
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '10px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: F.sizeXs }}>
                                 <span>{timeValidation.estimatedDays <= timeValidation.expirationDays ? '✅' : '❌'}</span>
-                                <span style={{ color: '#8b949e' }}>ADR cabe en exp</span>
+                                <span style={{ color: C.textMuted }}>ADR cabe en exp</span>
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: F.sizeXs }}>
                                 <span>{timeValidation.expectedMove >= timeValidation.distance ? '✅' : '❌'}</span>
-                                <span style={{ color: '#8b949e' }}>Exp move cubre</span>
+                                <span style={{ color: C.textMuted }}>Exp move cubre</span>
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: F.sizeXs }}>
                                 <span>{timeValidation.expirationDays >= timeValidation.expectedDays ? '✅' : '❌'}</span>
-                                <span style={{ color: '#8b949e' }}>Setup: {timeValidation.setupType}</span>
+                                <span style={{ color: C.textMuted }}>Setup: {timeValidation.setupType}</span>
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px' }}>
-                                <span style={{ color: '#8b949e' }}>{timeValidation.expirationDays} días → {timeValidation.estimatedDays}d para target</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: F.sizeXs }}>
+                                <span style={{ color: C.textMuted }}>{timeValidation.expirationDays} días → {timeValidation.estimatedDays}d para target</span>
                               </div>
                             </div>
                             
-                            <p style={{ margin: 0, fontSize: '11px', color: timeValidation.score >= 2 ? '#3fb950' : '#f0883e', fontStyle: 'italic' }}>
+                            <p style={{ margin: 0, fontSize: F.sizeXs, color: timeValidation.score >= 2 ? C.positive : C.warning, fontStyle: 'italic' }}>
                               {timeValidation.message}
                             </p>
                           </>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.goodTiming).icon}</span>
-                            <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.goodTiming) }}>Analizando tiempo...</span>
+                            <span style={{ fontSize: F.sizeXl, width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.goodTiming).icon}</span>
+                            <span style={{ fontSize: F.sizeMd, color: getStatusTextColor(preTradeChecklist.goodTiming) }}>Analizando tiempo...</span>
                           </div>
                         )}
                       </div>
 
                       {/* 6. Volatilidad */}
-                      <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #a371f7' }}>
-                        <h4 style={{ margin: '0 0 12px', color: '#a371f7', fontSize: '14px' }}>🟣 6. VOLATILIDAD</h4>
-                        <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>IV Rank: <span style={{ color: data.optionsAnalysis?.ivRank > 50 ? '#f0883e' : '#3fb950', fontWeight: '600' }}>{(data.optionsAnalysis?.ivRank || 0).toFixed(0)}%</span> - {data.optionsAnalysis?.ivRank > 50 ? 'Alta (vender spreads)' : 'Baja (comprar spreads)'}</p>
+                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: '4px solid C.accentLight' }}>
+                        <h4 style={{ margin: '0 0 12px', color: 'C.accentLight', fontSize: F.sizeBase }}>🟣 6. VOLATILIDAD</h4>
+                        <p style={{ margin: '0 0 8px', fontSize: F.sizeSm, color: C.textMuted }}>IV Rank: <span style={{ color: data.optionsAnalysis?.ivRank > 50 ? C.warning : C.positive, fontWeight: '600' }}>{(data.optionsAnalysis?.ivRank || 0).toFixed(0)}%</span> - {data.optionsAnalysis?.ivRank > 50 ? 'Alta (vender spreads)' : 'Baja (comprar spreads)'}</p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.ivFavorable).icon}</span>
-                          <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.ivFavorable) }}>¿Estrategia alineada con IV actual?</span>
+                          <span style={{ fontSize: F.sizeXl, width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.ivFavorable).icon}</span>
+                          <span style={{ fontSize: F.sizeMd, color: getStatusTextColor(preTradeChecklist.ivFavorable) }}>¿Estrategia alineada con IV actual?</span>
                         </div>
                       </div>
 
                       {/* 7. Eventos */}
-                      <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', borderLeft: '4px solid #f0883e' }}>
-                        <h4 style={{ margin: '0 0 12px', color: '#f0883e', fontSize: '14px' }}>⚠️ 7. EVENTOS</h4>
-                        <p style={{ margin: '0 0 8px', fontSize: '12px', color: '#8b949e' }}>
-                          Earnings: <span style={{ color: data.optionsAnalysis?.earningsDate ? '#f0883e' : '#3fb950', fontWeight: '600' }}>
+                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: '4px solid C.warning' }}>
+                        <h4 style={{ margin: '0 0 12px', color: C.warning, fontSize: F.sizeBase }}>⚠️ 7. EVENTOS</h4>
+                        <p style={{ margin: '0 0 8px', fontSize: F.sizeSm, color: C.textMuted }}>
+                          Earnings: <span style={{ color: data.optionsAnalysis?.earningsDate ? C.warning : C.positive, fontWeight: '600' }}>
                             {data.optionsAnalysis?.earningsDate || 'Ninguno cercano'}
                           </span>
                           {data.optionsAnalysis?.earningsDaysUntil && data.optionsAnalysis?.earningsDaysUntil <= 30 && (
-                            <span style={{ marginLeft: '8px', fontSize: '11px', padding: '2px 6px', background: data.optionsAnalysis.earningsDaysUntil <= 14 ? '#f8514930' : '#f0883e30', borderRadius: '4px', color: data.optionsAnalysis.earningsDaysUntil <= 14 ? '#f85149' : '#f0883e' }}>
+                            <span style={{ marginLeft: '8px', fontSize: F.sizeXs, padding: '2px 6px', background: data.optionsAnalysis.earningsDaysUntil <= 14 ? C.negativeBg : C.warningBg, borderRadius: '4px', color: data.optionsAnalysis.earningsDaysUntil <= 14 ? C.negative : C.warning }}>
                               {data.optionsAnalysis.earningsDaysUntil <= 0 ? '⚠️ YA PASÓ' : `En ${data.optionsAnalysis.earningsDaysUntil} días`}
                             </span>
                           )}
                         </p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <span style={{ fontSize: '18px', width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.noEvents).icon}</span>
-                          <span style={{ fontSize: '13px', color: getStatusTextColor(preTradeChecklist.noEvents) }}>¿Sin eventos en {'>'}14 días?</span>
+                          <span style={{ fontSize: F.sizeXl, width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.noEvents).icon}</span>
+                          <span style={{ fontSize: F.sizeMd, color: getStatusTextColor(preTradeChecklist.noEvents) }}>¿Sin eventos en {'>'}14 días?</span>
                         </div>
                       </div>
 
@@ -3481,25 +3277,25 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                         
                         if (passCount >= 10) {
                           decision = '✅ ENTRAS';
-                          decisionColor = '#3fb950';
-                          bgColor = '#3fb95020';
+                          decisionColor = C.positive;
+                          bgColor = C.positiveBg;
                         } else if (failCount >= 4) {
                           decision = '❌ NO TRADE';
-                          decisionColor = '#f85149';
-                          bgColor = '#f8514920';
+                          decisionColor = C.negative;
+                          bgColor = C.negativeBg;
                         } else {
                           decision = '⚠️ RIESGOSO';
-                          decisionColor = '#f0883e';
-                          bgColor = '#f0883e20';
+                          decisionColor = C.warning;
+                          bgColor = C.warningBg;
                         }
                         
                         return (
-                          <div style={{ background: bgColor, padding: '20px', borderRadius: '12px', border: `2px solid ${decisionColor}`, textAlign: 'center' }}>
+                          <div style={{ background: bgColor, padding: '20px', borderRadius: R.lg, border: `2px solid ${decisionColor}`, textAlign: 'center' }}>
                             <p style={{ margin: '0 0 8px', fontSize: '28px', fontWeight: 'bold', color: decisionColor }}>{decision}</p>
-                            <p style={{ margin: 0, fontSize: '14px', color: '#8b949e' }}>
+                            <p style={{ margin: 0, fontSize: F.sizeBase, color: C.textMuted }}>
                               ✅ {passCount} &nbsp; ❌ {failCount} / {totalChecks}
                             </p>
-                            <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#6e7681', fontStyle: 'italic' }}>"Si tengo que convencerme para entrar, ya es un NO."</p>
+                            <p style={{ margin: '8px 0 0', fontSize: F.sizeSm, color: 'C.textMuted', fontStyle: 'italic' }}>"Si tengo que convencerme para entrar, ya es un NO."</p>
                           </div>
                         );
                       })()}
@@ -3509,8 +3305,8 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                         <button
                           onClick={() => setShowChecklist(false)}
                           style={{
-                            padding: '12px 32px', borderRadius: '8px', border: 'none',
-                            background: '#238636', color: 'white', cursor: 'pointer', fontSize: '14px', fontWeight: '600',
+                            padding: '12px 32px', borderRadius: R.md, border: 'none',
+                            background: C.positive, color: C.textPrimary, cursor: 'pointer', fontSize: F.sizeBase, fontWeight: '600',
                           }}
                         >
                           ✓ Cerrar
@@ -3524,7 +3320,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
           )}
 
           {!data && !loading && !error && (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#8b949e' }}>
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: C.textMuted }}>
               <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🎯</p>
               <p>Ingresa un ticker para analizar estrategias de opciones</p>
             </div>
@@ -3535,26 +3331,26 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
           {/* Screener */}
           {screenerLoading ? (
             <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '3px solid #30363d', borderTopColor: '#58a6ff', animation: 'spin 1s linear infinite', margin: '0 auto 16px' }}></div>
-              <p style={{ color: '#8b949e' }}>Analizando acciones...</p>
+              <div style={{ width: '48px', height: '48px', borderRadius: R.full, border: '3px solid C.border', borderTopColor: C.accentLight, animation: 'spin 1s linear infinite', margin: '0 auto 16px' }}></div>
+              <p style={{ color: C.textMuted }}>Analizando acciones...</p>
             </div>
           ) : screenerData ? (
             <div>
               {/* Summary */}
-              <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
+              <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h3 style={{ margin: 0, color: '#f0f6fc', fontSize: '18px' }}>📊 Resumen del Screener</h3>
+                  <h3 style={{ margin: 0, color: C.textPrimary, fontSize: F.sizeXl }}>📊 Resumen del Screener</h3>
                   <button
                     onClick={loadScreener}
                     disabled={screenerLoading}
                     style={{
                       padding: '8px 16px',
-                      borderRadius: '8px',
-                      border: '1px solid #30363d',
+                      borderRadius: R.md,
+                      border: '1px solid C.border',
                       background: 'transparent',
-                      color: '#58a6ff',
+                      color: C.accentLight,
                       cursor: screenerLoading ? 'wait' : 'pointer',
-                      fontSize: '14px',
+                      fontSize: F.sizeBase,
                       fontWeight: '600',
                       display: 'flex',
                       alignItems: 'center',
@@ -3562,7 +3358,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                     }}
                   >
                     {screenerLoading ? (
-                      <span style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid #30363d', borderTopColor: '#58a6ff', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></span>
+                      <span style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid C.border', borderTopColor: C.accentLight, borderRadius: R.full, animation: 'spin 1s linear infinite' }}></span>
                     ) : (
                       '🔄'
                     )}
@@ -3570,49 +3366,49 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                   </button>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px' }}>
-                  <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
-                    <p style={{ margin: '0 0 4px', fontSize: '24px', fontWeight: 'bold', color: '#3fb950' }}>{screenerData.summary?.excellent || 0}</p>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#8b949e' }}>Excelentes</p>
+                  <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, textAlign: 'center' }}>
+                    <p style={{ margin: '0 0 4px', fontSize: F.sizeHero, fontWeight: 'bold', color: C.positive }}>{screenerData.summary?.excellent || 0}</p>
+                    <p style={{ margin: 0, fontSize: F.sizeSm, color: C.textMuted }}>Excelentes</p>
                   </div>
-                  <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
-                    <p style={{ margin: '0 0 4px', fontSize: '24px', fontWeight: 'bold', color: '#58a6ff' }}>{screenerData.summary?.buena || 0}</p>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#8b949e' }}>Buenas</p>
+                  <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, textAlign: 'center' }}>
+                    <p style={{ margin: '0 0 4px', fontSize: F.sizeHero, fontWeight: 'bold', color: C.accentLight }}>{screenerData.summary?.buena || 0}</p>
+                    <p style={{ margin: 0, fontSize: F.sizeSm, color: C.textMuted }}>Buenas</p>
                   </div>
-                  <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
-                    <p style={{ margin: '0 0 4px', fontSize: '24px', fontWeight: 'bold', color: '#f0883e' }}>{screenerData.summary?.regular || 0}</p>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#8b949e' }}>Regulares</p>
+                  <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, textAlign: 'center' }}>
+                    <p style={{ margin: '0 0 4px', fontSize: F.sizeHero, fontWeight: 'bold', color: C.warning }}>{screenerData.summary?.regular || 0}</p>
+                    <p style={{ margin: 0, fontSize: F.sizeSm, color: C.textMuted }}>Regulares</p>
                   </div>
-                  <div style={{ background: '#0d1117', padding: '16px', borderRadius: '8px', textAlign: 'center' }}>
-                    <p style={{ margin: '0 0 4px', fontSize: '24px', fontWeight: 'bold', color: '#f85149' }}>{screenerData.summary?.notRecommended || 0}</p>
-                    <p style={{ margin: 0, fontSize: '12px', color: '#8b949e' }}>No Recomendadas</p>
+                  <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, textAlign: 'center' }}>
+                    <p style={{ margin: '0 0 4px', fontSize: F.sizeHero, fontWeight: 'bold', color: C.negative }}>{screenerData.summary?.notRecommended || 0}</p>
+                    <p style={{ margin: 0, fontSize: F.sizeSm, color: C.textMuted }}>No Recomendadas</p>
                   </div>
                   <div 
                     onClick={() => setShowChanges(!showChanges)}
                     style={{ 
-                      background: '#0d1117', 
+                      background: C.bg, 
                       padding: '16px', 
-                      borderRadius: '8px', 
+                      borderRadius: R.md, 
                       textAlign: 'center',
                       cursor: 'pointer',
-                      border: (symbolChanges.added.length > 0 || symbolChanges.removed.length > 0) ? '2px solid #f0883e' : '1px solid #30363d',
+                      border: (symbolChanges.added.length > 0 || symbolChanges.removed.length > 0) ? '2px solid C.warning' : '1px solid C.border',
                     }}
                   >
-                    <p style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: 'bold', color: '#f0883e' }}>
-                      {symbolChanges.added.length > 0 && <span style={{ color: '#3fb950' }}>+{symbolChanges.added.length}</span>}
+                    <p style={{ margin: '0 0 4px', fontSize: F.sizeXl, fontWeight: 'bold', color: C.warning }}>
+                      {symbolChanges.added.length > 0 && <span style={{ color: C.positive }}>+{symbolChanges.added.length}</span>}
                       {symbolChanges.added.length > 0 && symbolChanges.removed.length > 0 && ' / '}
-                      {symbolChanges.removed.length > 0 && <span style={{ color: '#f85149' }}>-{symbolChanges.removed.length}</span>}
-                      {symbolChanges.added.length === 0 && symbolChanges.removed.length === 0 && <span style={{ color: '#8b949e' }}>Sin cambios</span>}
+                      {symbolChanges.removed.length > 0 && <span style={{ color: C.negative }}>-{symbolChanges.removed.length}</span>}
+                      {symbolChanges.added.length === 0 && symbolChanges.removed.length === 0 && <span style={{ color: C.textMuted }}>Sin cambios</span>}
                     </p>
-                    <p style={{ margin: 0, fontSize: '11px', color: '#8b949e' }}>Ver cambios {showChanges ? '▲' : '▼'}</p>
+                    <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>Ver cambios {showChanges ? '▲' : '▼'}</p>
                   </div>
                 </div>
 
                 {/* Detalle de cambios */}
                 {showChanges && (
-                  <div style={{ marginTop: '16px', padding: '16px', background: '#0d1117', borderRadius: '8px', border: '1px solid #30363d' }}>
+                  <div style={{ marginTop: '16px', padding: '16px', background: C.bg, borderRadius: R.md, border: '1px solid C.border' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                       <div>
-                        <p style={{ margin: '0 0 8px', color: '#3fb950', fontSize: '13px', fontWeight: '600' }}>🟢 Agregadas ({symbolChanges.added.length})</p>
+                        <p style={{ margin: '0 0 8px', color: C.positive, fontSize: F.sizeMd, fontWeight: '600' }}>🟢 Agregadas ({symbolChanges.added.length})</p>
                         {symbolChanges.added.length > 0 ? (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                             {symbolChanges.added.map((sym) => (
@@ -3621,10 +3417,10 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                                 onClick={() => setSelectedSymbolFromScreener(sym)}
                                 style={{
                                   padding: '4px 10px',
-                                  background: '#3fb95020',
+                                  background: C.positiveBg,
                                   borderRadius: '4px',
-                                  color: '#3fb950',
-                                  fontSize: '12px',
+                                  color: C.positive,
+                                  fontSize: F.sizeSm,
                                   fontWeight: '600',
                                   cursor: 'pointer',
                                 }}
@@ -3634,11 +3430,11 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             ))}
                           </div>
                         ) : (
-                          <p style={{ margin: 0, fontSize: '12px', color: '#484f58' }}>Ninguna</p>
+                          <p style={{ margin: 0, fontSize: F.sizeSm, color: 'C.textMuted' }}>Ninguna</p>
                         )}
                       </div>
                       <div>
-                        <p style={{ margin: '0 0 8px', color: '#f85149', fontSize: '13px', fontWeight: '600' }}>🔴 Removidas ({symbolChanges.removed.length})</p>
+                        <p style={{ margin: '0 0 8px', color: C.negative, fontSize: F.sizeMd, fontWeight: '600' }}>🔴 Removidas ({symbolChanges.removed.length})</p>
                         {symbolChanges.removed.length > 0 ? (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                             {symbolChanges.removed.map((sym) => (
@@ -3646,10 +3442,10 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                                 key={sym}
                                 style={{
                                   padding: '4px 10px',
-                                  background: '#f8514920',
+                                  background: C.negativeBg,
                                   borderRadius: '4px',
-                                  color: '#f85149',
-                                  fontSize: '12px',
+                                  color: C.negative,
+                                  fontSize: F.sizeSm,
                                   fontWeight: '600',
                                 }}
                               >
@@ -3658,7 +3454,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             ))}
                           </div>
                         ) : (
-                          <p style={{ margin: 0, fontSize: '12px', color: '#484f58' }}>Ninguna</p>
+                          <p style={{ margin: 0, fontSize: F.sizeSm, color: 'C.textMuted' }}>Ninguna</p>
                         )}
                       </div>
                     </div>
@@ -3668,8 +3464,8 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
 
               {/* Top Picks */}
               {screenerData.topPicks?.length > 0 && (
-                <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '20px' }}>
-                  <h3 style={{ margin: '0 0 16px', color: '#f0f6fc', fontSize: '18px' }}>🏆 Top Picks para Opciones <span style={{ fontSize: '12px', color: '#8b949e', fontWeight: 'normal' }}>(clic para analizar)</span></h3>
+                <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '20px' }}>
+                  <h3 style={{ margin: '0 0 16px', color: C.textPrimary, fontSize: F.sizeXl }}>🏆 Top Picks para Opciones <span style={{ fontSize: F.sizeSm, color: C.textMuted, fontWeight: 'normal' }}>(clic para analizar)</span></h3>
                   <div style={{ display: 'grid', gap: '12px' }}>
                     {screenerData.topPicks.slice(0, 5).map((stock: any, idx: number) => {
                       const isNew = newSymbols.has(stock.symbol);
@@ -3678,9 +3474,9 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                         key={stock.symbol} 
                         onClick={() => setSelectedSymbolFromScreener(stock.symbol)}
                         style={{ 
-                          background: '#0d1117', 
+                          background: C.bg, 
                           padding: '16px', 
-                          borderRadius: '8px', 
+                          borderRadius: R.md, 
                           display: 'flex', 
                           justifyContent: 'space-between', 
                           alignItems: 'center', 
@@ -3688,43 +3484,43 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                           gap: '12px',
                           cursor: 'pointer',
                           transition: 'all 0.2s',
-                          border: isNew ? '2px solid #3fb950' : '1px solid transparent',
+                          border: isNew ? '2px solid C.positive' : '1px solid transparent',
                           boxShadow: isNew ? '0 0 10px rgba(63, 185, 80, 0.2)' : 'none',
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#1a2332';
-                          e.currentTarget.style.borderColor = '#58a6ff';
+                          e.currentTarget.style.background = 'C.bgElevated';
+                          e.currentTarget.style.borderColor = C.accentLight;
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.background = '#0d1117';
-                          e.currentTarget.style.borderColor = isNew ? '#3fb950' : 'transparent';
+                          e.currentTarget.style.background = C.bg;
+                          e.currentTarget.style.borderColor = isNew ? C.positive : 'transparent';
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#58a6ff', width: '28px', textAlign: 'center' }}>{idx + 1}</span>
+                          <span style={{ fontSize: F.sizeXl, fontWeight: 'bold', color: C.accentLight, width: '28px', textAlign: 'center' }}>{idx + 1}</span>
                           <div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#58a6ff' }}>{stock.symbol}</p>
-                              {isNew && <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '4px', background: '#3fb950', color: 'white', fontWeight: '700' }}>NUEVA</span>}
+                              <p style={{ margin: 0, fontSize: F.sizeLg, fontWeight: '600', color: C.accentLight }}>{stock.symbol}</p>
+                              {isNew && <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '4px', background: C.positive, color: C.textPrimary, fontWeight: '700' }}>NUEVA</span>}
                             </div>
-                            <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#8b949e' }}>{stock.name}</p>
+                            <p style={{ margin: '2px 0 0', fontSize: F.sizeSm, color: C.textMuted }}>{stock.name}</p>
                             <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                              <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: '#30363d', color: '#8b949e' }}>IV: {((stock.iv || 0) * 100).toFixed(0)}%</span>
-                              <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: '#30363d', color: '#8b949e' }}>Vol: {(stock.volume / 1000000).toFixed(1)}M</span>
-                              {stock.nearEarnings && <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: '#f0883e30', color: '#f0883e' }}>⚠ Earnings</span>}
+                              <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: C.border, color: C.textMuted }}>IV: {((stock.iv || 0) * 100).toFixed(0)}%</span>
+                              <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: C.border, color: C.textMuted }}>Vol: {(stock.volume / 1000000).toFixed(1)}M</span>
+                              {stock.nearEarnings && <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', background: C.warningBg, color: C.warning }}>⚠ Earnings</span>}
                             </div>
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                           <div style={{ textAlign: 'right' }}>
-                            <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#f0f6fc' }}>${stock.price?.toFixed(2)}</p>
-                            <p style={{ margin: '2px 0 0', fontSize: '12px', color: stock.change >= 0 ? '#3fb950' : '#f85149' }}>
+                            <p style={{ margin: 0, fontSize: F.sizeBase, fontWeight: '600', color: C.textPrimary }}>${stock.price?.toFixed(2)}</p>
+                            <p style={{ margin: '2px 0 0', fontSize: F.sizeSm, color: stock.change >= 0 ? C.positive : C.negative }}>
                               {stock.change >= 0 ? '+' : ''}{stock.changePercent?.toFixed(2)}%
                             </p>
-                            <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#58a6ff' }}>{stock.topStrategy}</p>
+                            <p style={{ margin: '2px 0 0', fontSize: '10px', color: C.accentLight }}>{stock.topStrategy}</p>
                           </div>
                           <div style={{ textAlign: 'center' }}>
-                            <p style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: getRecommendationColor(stock.recommendation) }}>{stock.suitabilityScore}</p>
+                            <p style={{ margin: 0, fontSize: F.sizeXxl, fontWeight: 'bold', color: getRecommendationColor(stock.recommendation) }}>{stock.suitabilityScore}</p>
                             <p style={{ margin: '2px 0 0', fontSize: '10px', color: getRecommendationColor(stock.recommendation), textTransform: 'uppercase' }}>{stock.recommendation?.replace('_', ' ')}</p>
                           </div>
                         </div>
@@ -3736,10 +3532,10 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
               )}
 
               {/* All Stocks */}
-              <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px' }}>
+              <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                  <h3 style={{ margin: 0, color: '#f0f6fc', fontSize: '18px' }}>📋 Todas las Acciones Analizadas</h3>
-                  <div style={{ fontSize: '12px', color: '#8b949e' }}>
+                  <h3 style={{ margin: 0, color: C.textPrimary, fontSize: F.sizeXl }}>📋 Todas las Acciones Analizadas</h3>
+                  <div style={{ fontSize: F.sizeSm, color: C.textMuted }}>
                     Escaneadas: {screenerData.totalScanned} | Filtradas: {screenerData.filteredCount}
                   </div>
                 </div>
@@ -3752,11 +3548,11 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                     style={{
                       flex: 1,
                       padding: '10px 14px',
-                      borderRadius: '8px',
-                      border: '1px solid #30363d',
-                      background: '#0d1117',
-                      color: '#c9d1d9',
-                      fontSize: '14px',
+                      borderRadius: R.md,
+                      border: '1px solid C.border',
+                      background: C.bg,
+                      color: C.textSecondary,
+                      fontSize: F.sizeBase,
                       outline: 'none',
                     }}
                   />
@@ -3765,12 +3561,12 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                       onClick={() => setScreenerFilter('')}
                       style={{
                         padding: '10px 16px',
-                        borderRadius: '8px',
-                        border: '1px solid #30363d',
+                        borderRadius: R.md,
+                        border: '1px solid C.border',
                         background: 'transparent',
-                        color: '#8b949e',
+                        color: C.textMuted,
                         cursor: 'pointer',
-                        fontSize: '14px',
+                        fontSize: F.sizeBase,
                       }}
                     >
                       Limpiar
@@ -3780,14 +3576,14 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                     <thead>
-                      <tr style={{ borderBottom: '1px solid #30363d' }}>
-                        <th onClick={() => handleSort('symbol')} style={{ padding: '12px 8px', textAlign: 'left', color: sortField === 'symbol' ? '#58a6ff' : '#8b949e', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Símbolo {sortField === 'symbol' && (sortDir === 'asc' ? '↑' : '↓')}</th>
-                        <th onClick={() => handleSort('price')} style={{ padding: '12px 8px', textAlign: 'right', color: sortField === 'price' ? '#58a6ff' : '#8b949e', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Precio {sortField === 'price' && (sortDir === 'asc' ? '↑' : '↓')}</th>
-                        <th onClick={() => handleSort('iv')} style={{ padding: '12px 8px', textAlign: 'center', color: sortField === 'iv' ? '#58a6ff' : '#8b949e', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>IV % {sortField === 'iv' && (sortDir === 'asc' ? '↑' : '↓')}</th>
-                        <th onClick={() => handleSort('volume')} style={{ padding: '12px 8px', textAlign: 'right', color: sortField === 'volume' ? '#58a6ff' : '#8b949e', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Volumen {sortField === 'volume' && (sortDir === 'asc' ? '↑' : '↓')}</th>
-                        <th onClick={() => handleSort('suitabilityScore')} style={{ padding: '12px 8px', textAlign: 'center', color: sortField === 'suitabilityScore' ? '#58a6ff' : '#8b949e', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Score {sortField === 'suitabilityScore' && (sortDir === 'asc' ? '↑' : '↓')}</th>
-                        <th style={{ padding: '12px 8px', textAlign: 'center', color: '#8b949e', fontSize: '11px', fontWeight: '600' }}>Earnings</th>
-                        <th onClick={() => handleSort('topStrategy')} style={{ padding: '12px 8px', textAlign: 'left', color: sortField === 'topStrategy' ? '#58a6ff' : '#8b949e', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>Estrategia {sortField === 'topStrategy' && (sortDir === 'asc' ? '↑' : '↓')}</th>
+                      <tr style={{ borderBottom: '1px solid C.border' }}>
+                        <th onClick={() => handleSort('symbol')} style={{ padding: '12px 8px', textAlign: 'left', color: sortField === 'symbol' ? C.accentLight : C.textMuted, fontSize: F.sizeXs, fontWeight: '600', cursor: 'pointer' }}>Símbolo {sortField === 'symbol' && (sortDir === 'asc' ? '↑' : '↓')}</th>
+                        <th onClick={() => handleSort('price')} style={{ padding: '12px 8px', textAlign: 'right', color: sortField === 'price' ? C.accentLight : C.textMuted, fontSize: F.sizeXs, fontWeight: '600', cursor: 'pointer' }}>Precio {sortField === 'price' && (sortDir === 'asc' ? '↑' : '↓')}</th>
+                        <th onClick={() => handleSort('iv')} style={{ padding: '12px 8px', textAlign: 'center', color: sortField === 'iv' ? C.accentLight : C.textMuted, fontSize: F.sizeXs, fontWeight: '600', cursor: 'pointer' }}>IV % {sortField === 'iv' && (sortDir === 'asc' ? '↑' : '↓')}</th>
+                        <th onClick={() => handleSort('volume')} style={{ padding: '12px 8px', textAlign: 'right', color: sortField === 'volume' ? C.accentLight : C.textMuted, fontSize: F.sizeXs, fontWeight: '600', cursor: 'pointer' }}>Volumen {sortField === 'volume' && (sortDir === 'asc' ? '↑' : '↓')}</th>
+                        <th onClick={() => handleSort('suitabilityScore')} style={{ padding: '12px 8px', textAlign: 'center', color: sortField === 'suitabilityScore' ? C.accentLight : C.textMuted, fontSize: F.sizeXs, fontWeight: '600', cursor: 'pointer' }}>Score {sortField === 'suitabilityScore' && (sortDir === 'asc' ? '↑' : '↓')}</th>
+                        <th style={{ padding: '12px 8px', textAlign: 'center', color: C.textMuted, fontSize: F.sizeXs, fontWeight: '600' }}>Earnings</th>
+                        <th onClick={() => handleSort('topStrategy')} style={{ padding: '12px 8px', textAlign: 'left', color: sortField === 'topStrategy' ? C.accentLight : C.textMuted, fontSize: F.sizeXs, fontWeight: '600', cursor: 'pointer' }}>Estrategia {sortField === 'topStrategy' && (sortDir === 'asc' ? '↑' : '↓')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3798,46 +3594,46 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                           key={stock.symbol} 
                           onClick={() => setSelectedSymbolFromScreener(stock.symbol)}
                           style={{ 
-                            borderBottom: '1px solid #30363d',
+                            borderBottom: '1px solid C.border',
                             cursor: 'pointer',
                             transition: 'background 0.2s',
                             background: isNew ? 'rgba(63, 185, 80, 0.1)' : 'transparent',
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = '#1a2332'}
+                          onMouseEnter={(e) => e.currentTarget.style.background = 'C.bgElevated'}
                           onMouseLeave={(e) => e.currentTarget.style.background = isNew ? 'rgba(63, 185, 80, 0.1)' : 'transparent'}
                         >
                           <td style={{ padding: '10px 8px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#58a6ff' }}>{stock.symbol}</p>
-                              {isNew && <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '4px', background: '#3fb950', color: 'white', fontWeight: '700' }}>NUEVA</span>}
+                              <p style={{ margin: 0, fontSize: F.sizeBase, fontWeight: '600', color: C.accentLight }}>{stock.symbol}</p>
+                              {isNew && <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '4px', background: C.positive, color: C.textPrimary, fontWeight: '700' }}>NUEVA</span>}
                             </div>
-                            <p style={{ margin: '2px 0 0', fontSize: '10px', color: '#8b949e', maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stock.name}</p>
+                            <p style={{ margin: '2px 0 0', fontSize: '10px', color: C.textMuted, maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stock.name}</p>
                           </td>
-                          <td style={{ padding: '10px 8px', textAlign: 'right', color: '#f0f6fc', fontSize: '13px' }}>${stock.price?.toFixed(2)}</td>
-                          <td style={{ padding: '10px 8px', textAlign: 'center', color: '#3fb950', fontSize: '12px', fontWeight: '600' }}>
+                          <td style={{ padding: '10px 8px', textAlign: 'right', color: C.textPrimary, fontSize: F.sizeMd }}>${stock.price?.toFixed(2)}</td>
+                          <td style={{ padding: '10px 8px', textAlign: 'center', color: C.positive, fontSize: F.sizeSm, fontWeight: '600' }}>
                             {((stock.iv || 0) * 100).toFixed(0)}%
                           </td>
-                          <td style={{ padding: '10px 8px', textAlign: 'right', color: '#f0f6fc', fontSize: '11px' }}>
+                          <td style={{ padding: '10px 8px', textAlign: 'right', color: C.textPrimary, fontSize: F.sizeXs }}>
                             {(stock.volume / 1000000).toFixed(1)}M
                           </td>
                           <td style={{ padding: '10px 8px', textAlign: 'center' }}>
-                            <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: '600', background: getRecommendationColor(stock.recommendation) + '30', color: getRecommendationColor(stock.recommendation) }}>
+                            <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: F.sizeXs, fontWeight: '600', background: getRecommendationColor(stock.recommendation) + '30', color: getRecommendationColor(stock.recommendation) }}>
                               {stock.suitabilityScore}
                             </span>
                           </td>
                           <td style={{ padding: '10px 8px', textAlign: 'center' }}>
                             {stock.earningsDate ? (
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
-                                <span style={{ fontSize: '10px', color: '#f0f6fc' }}>{stock.earningsDate}</span>
-                                <span style={{ fontSize: '8px', padding: '1px 4px', borderRadius: '3px', background: stock.earningsEstimate ? '#f0883e30' : '#3fb95030', color: stock.earningsEstimate ? '#f0883e' : '#3fb950' }}>
+                                <span style={{ fontSize: '10px', color: C.textPrimary }}>{stock.earningsDate}</span>
+                                <span style={{ fontSize: '8px', padding: '1px 4px', borderRadius: '3px', background: stock.earningsEstimate ? C.warningBg : C.positiveBg, color: stock.earningsEstimate ? C.warning : C.positive }}>
                                   {stock.earningsEstimate ? 'ESTIMADA' : 'CONFIRMADA'}
                                 </span>
                               </div>
                             ) : (
-                              <span style={{ fontSize: '10px', color: '#484f58' }}>-</span>
+                              <span style={{ fontSize: '10px', color: 'C.textMuted' }}>-</span>
                             )}
                           </td>
-                          <td style={{ padding: '10px 8px', fontSize: '11px', color: '#58a6ff' }}>{stock.topStrategy}</td>
+                          <td style={{ padding: '10px 8px', fontSize: F.sizeXs, color: C.accentLight }}>{stock.topStrategy}</td>
                         </tr>
                       );
                     })}
@@ -3847,10 +3643,10 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
               </div>
             </div>
           ) : (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#8b949e' }}>
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: C.textMuted }}>
               <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🔍</p>
               <p>Error al cargar el screener</p>
-              <button onClick={loadScreener} style={{ marginTop: '16px', padding: '12px 24px', borderRadius: '8px', border: 'none', background: '#238636', color: 'white', cursor: 'pointer', fontWeight: '600' }}>
+              <button onClick={loadScreener} style={{ marginTop: '16px', padding: '12px 24px', borderRadius: R.md, border: 'none', background: C.positive, color: C.textPrimary, cursor: 'pointer', fontWeight: '600' }}>
                 Reintentar
               </button>
             </div>
@@ -3876,7 +3672,7 @@ function FrameworkView({ data }: { data: any }) {
   if (pe > 0 && pe < 25) score += 2;
 
   const decision = score >= 8 ? '💎 FUERTE COMPRA' : score >= 5 ? '🤔 EVALUAR' : '❌ EVITAR';
-  const color = score >= 8 ? '#3fb950' : score >= 5 ? '#f0883e' : '#f85149';
+  const color = score >= 8 ? C.positive : score >= 5 ? C.warning : C.negative;
 
   const isJoyas = fcfYield > 8 && pe < 25 && revGrowth > 5 && margin > 10;
   const isGrowth = fcfYield < 3 && pe > 25 && revGrowth > 20 && margin > 0;
@@ -3884,76 +3680,76 @@ function FrameworkView({ data }: { data: any }) {
   const isBomba = fcfYield < 0 && pe > 25 && revGrowth < 0 && margin < 0;
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', color: '#f0f6fc' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', color: C.textPrimary }}>
       <div style={{ textAlign: 'center', marginBottom: '32px' }}>
         <h1 style={{ fontSize: '28px', marginBottom: '8px' }}>🧠 FRAMEWORK PRO</h1>
-        <h2 style={{ fontSize: '18px', color: '#8b949e', fontWeight: 'normal' }}>¿Barata o Trampa?</h2>
-        <p style={{ color: '#58a6ff', marginTop: '8px' }}>{data.quote?.shortName} ({data.quote?.symbol})</p>
+        <h2 style={{ fontSize: F.sizeXl, color: C.textMuted, fontWeight: 'normal' }}>¿Barata o Trampa?</h2>
+        <p style={{ color: C.accentLight, marginTop: '8px' }}>{data.quote?.shortName} ({data.quote?.symbol})</p>
       </div>
 
       {/* Filtro FCF */}
-      <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', marginBottom: '16px', borderLeft: '4px solid #f0883e' }}>
-        <h4 style={{ margin: '0 0 8px', fontSize: '14px', color: '#8b949e' }}>🧩 Filtro Inicial</h4>
-        <p style={{ fontSize: '24px', fontWeight: 'bold', color: isFCFPositive ? '#3fb950' : '#f85149', margin: 0 }}>
+      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '16px', borderLeft: '4px solid C.warning' }}>
+        <h4 style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>🧩 Filtro Inicial</h4>
+        <p style={{ fontSize: F.sizeHero, fontWeight: 'bold', color: isFCFPositive ? C.positive : C.negative, margin: 0 }}>
           {isFCFPositive ? '✅ FCF POSITIVO - Modo Valor' : '⚠️ FCF NEGATIVO - Modo Growth'}
         </p>
       </div>
 
       {/* Métricas */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #58a6ff' }}>
-          <h4 style={{ margin: '0 0 8px', fontSize: '14px', color: '#8b949e' }}>💰 FCF Yield</h4>
-          <p style={{ fontSize: '28px', fontWeight: 'bold', color: fcfYield > 5 ? '#3fb950' : '#f85149', margin: 0 }}>{fcfYield.toFixed(1)}%</p>
-          <p style={{ fontSize: '12px', color: '#8b949e', margin: '4px 0 0' }}>{fcfYield > 10 ? '💎 Muy barata' : fcfYield > 5 ? '✅ Buena' : fcfYield > 3 ? '😐 Normal' : '⚠️ Cara'}</p>
+        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: '4px solid C.accentLight' }}>
+          <h4 style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>💰 FCF Yield</h4>
+          <p style={{ fontSize: '28px', fontWeight: 'bold', color: fcfYield > 5 ? C.positive : C.negative, margin: 0 }}>{fcfYield.toFixed(1)}%</p>
+          <p style={{ fontSize: F.sizeSm, color: C.textMuted, margin: '4px 0 0' }}>{fcfYield > 10 ? '💎 Muy barata' : fcfYield > 5 ? '✅ Buena' : fcfYield > 3 ? '😐 Normal' : '⚠️ Cara'}</p>
         </div>
-        <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #58a6ff' }}>
-          <h4 style={{ margin: '0 0 8px', fontSize: '14px', color: '#8b949e' }}>📊 PE Ratio</h4>
-          <p style={{ fontSize: '28px', fontWeight: 'bold', color: pe < 25 ? '#3fb950' : '#f85149', margin: 0 }}>{pe.toFixed(1)}</p>
-          <p style={{ fontSize: '12px', color: '#8b949e', margin: '4px 0 0' }}>{pe < 15 ? 'Value' : pe < 25 ? 'Balanceada' : pe < 40 ? 'Growth' : '🚨 Alta'}</p>
+        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: '4px solid C.accentLight' }}>
+          <h4 style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>📊 PE Ratio</h4>
+          <p style={{ fontSize: '28px', fontWeight: 'bold', color: pe < 25 ? C.positive : C.negative, margin: 0 }}>{pe.toFixed(1)}</p>
+          <p style={{ fontSize: F.sizeSm, color: C.textMuted, margin: '4px 0 0' }}>{pe < 15 ? 'Value' : pe < 25 ? 'Balanceada' : pe < 40 ? 'Growth' : '🚨 Alta'}</p>
         </div>
-        <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #58a6ff' }}>
-          <h4 style={{ margin: '0 0 8px', fontSize: '14px', color: '#8b949e' }}>📈 Revenue</h4>
-          <p style={{ fontSize: '28px', fontWeight: 'bold', color: revGrowth > 0 ? '#3fb950' : '#f85149', margin: 0 }}>{revGrowth > 0 ? '+' : ''}{revGrowth.toFixed(1)}%</p>
-          <p style={{ fontSize: '12px', color: '#8b949e', margin: '4px 0 0' }}>{revGrowth > 20 ? '🚀 Alto' : revGrowth > 10 ? '✅ Saludable' : revGrowth > 0 ? '🐢 Lento' : '🚨 Problema'}</p>
+        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: '4px solid C.accentLight' }}>
+          <h4 style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>📈 Revenue</h4>
+          <p style={{ fontSize: '28px', fontWeight: 'bold', color: revGrowth > 0 ? C.positive : C.negative, margin: 0 }}>{revGrowth > 0 ? '+' : ''}{revGrowth.toFixed(1)}%</p>
+          <p style={{ fontSize: F.sizeSm, color: C.textMuted, margin: '4px 0 0' }}>{revGrowth > 20 ? '🚀 Alto' : revGrowth > 10 ? '✅ Saludable' : revGrowth > 0 ? '🐢 Lento' : '🚨 Problema'}</p>
         </div>
-        <div style={{ background: '#161b22', borderRadius: '12px', padding: '20px', borderLeft: '4px solid #58a6ff' }}>
-          <h4 style={{ margin: '0 0 8px', fontSize: '14px', color: '#8b949e' }}>🧾 Margen</h4>
-          <p style={{ fontSize: '28px', fontWeight: 'bold', color: margin > 10 ? '#3fb950' : '#f85149', margin: 0 }}>{margin.toFixed(1)}%</p>
-          <p style={{ fontSize: '12px', color: '#8b949e', margin: '4px 0 0' }}>{margin > 20 ? '💪 Excelente' : margin > 10 ? '✅ Bueno' : '⚠️ Débil'}</p>
+        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: '4px solid C.accentLight' }}>
+          <h4 style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>🧾 Margen</h4>
+          <p style={{ fontSize: '28px', fontWeight: 'bold', color: margin > 10 ? C.positive : C.negative, margin: 0 }}>{margin.toFixed(1)}%</p>
+          <p style={{ fontSize: F.sizeSm, color: C.textMuted, margin: '4px 0 0' }}>{margin > 20 ? '💪 Excelente' : margin > 10 ? '✅ Bueno' : '⚠️ Débil'}</p>
         </div>
       </div>
 
       {/* Score */}
-      <div style={{ background: '#161b22', borderRadius: '12px', padding: '24px', marginBottom: '24px', borderLeft: '4px solid ' + color }}>
+      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '24px', marginBottom: '24px', borderLeft: '4px solid ' + color }}>
         <h3 style={{ margin: '0 0 16px', textAlign: 'center' }}>🧭 Score: {score}/10</h3>
-        <div style={{ padding: '20px', background: color + '20', borderRadius: '12px', textAlign: 'center' }}>
-          <p style={{ fontSize: '24px', fontWeight: 'bold', color: color, margin: 0 }}>{decision}</p>
+        <div style={{ padding: '20px', background: color + '20', borderRadius: R.lg, textAlign: 'center' }}>
+          <p style={{ fontSize: F.sizeHero, fontWeight: 'bold', color: color, margin: 0 }}>{decision}</p>
         </div>
       </div>
 
       {/* Escenarios */}
       <div>
-        <h3 style={{ margin: '0 0 16px', fontSize: '18px' }}>🔥 AHORA LO IMPORTANTE: LA COMBINACIÓN</h3>
+        <h3 style={{ margin: '0 0 16px', fontSize: F.sizeXl }}>🔥 AHORA LO IMPORTANTE: LA COMBINACIÓN</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
-          <div style={{ padding: '16px', background: '#161b22', borderRadius: '12px', border: isJoyas ? '2px solid #3fb950' : '1px solid #30363d' }}>
-            <h4 style={{ margin: '0 0 8px', color: '#3fb950', fontSize: '15px' }}>💎 ESCENARIO 1: Joyas Ocultas</h4>
-            <p style={{ margin: 0, fontSize: '11px', color: '#8b949e' }}>FCF Yield &gt;8% + PE bajo + Revenue crece + Margen sólido</p>
-            {isJoyas && <p style={{ margin: '8px 0 0', fontSize: '13px', fontWeight: 'bold', color: '#3fb950' }}>✓ ACCIÓN BARATA + GENERA CASH + CRECE</p>}
+          <div style={{ padding: '16px', background: C.bgCard, borderRadius: R.lg, border: isJoyas ? '2px solid C.positive' : '1px solid C.border' }}>
+            <h4 style={{ margin: '0 0 8px', color: C.positive, fontSize: '15px' }}>💎 ESCENARIO 1: Joyas Ocultas</h4>
+            <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>FCF Yield &gt;8% + PE bajo + Revenue crece + Margen sólido</p>
+            {isJoyas && <p style={{ margin: '8px 0 0', fontSize: F.sizeMd, fontWeight: 'bold', color: C.positive }}>✓ ACCIÓN BARATA + GENERA CASH + CRECE</p>}
           </div>
-          <div style={{ padding: '16px', background: '#161b22', borderRadius: '12px', border: isGrowth ? '2px solid #58a6ff' : '1px solid #30363d' }}>
-            <h4 style={{ margin: '0 0 8px', color: '#58a6ff', fontSize: '15px' }}>🚀 ESCENARIO 2: Growth Caro</h4>
-            <p style={{ margin: 0, fontSize: '11px', color: '#8b949e' }}>FCF bajo/neg + PE alto + Revenue &gt;20% + Margen expandiéndose</p>
-            {isGrowth && <p style={{ margin: '8px 0 0', fontSize: '13px', fontWeight: 'bold', color: '#58a6ff' }}>✓ CARA HOY, PERO PUEDE SER GANADORA</p>}
+          <div style={{ padding: '16px', background: C.bgCard, borderRadius: R.lg, border: isGrowth ? '2px solid C.accentLight' : '1px solid C.border' }}>
+            <h4 style={{ margin: '0 0 8px', color: C.accentLight, fontSize: '15px' }}>🚀 ESCENARIO 2: Growth Caro</h4>
+            <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>FCF bajo/neg + PE alto + Revenue &gt;20% + Margen expandiéndose</p>
+            {isGrowth && <p style={{ margin: '8px 0 0', fontSize: F.sizeMd, fontWeight: 'bold', color: C.accentLight }}>✓ CARA HOY, PERO PUEDE SER GANADORA</p>}
           </div>
-          <div style={{ padding: '16px', background: '#161b22', borderRadius: '12px', border: isValueTrap ? '2px solid #f85149' : '1px solid #30363d' }}>
-            <h4 style={{ margin: '0 0 8px', color: '#f85149', fontSize: '15px' }}>⚠️ ESCENARIO 3: Value Trap</h4>
-            <p style={{ margin: 0, fontSize: '11px', color: '#8b949e' }}>FCF Yield alto + PE bajo + Revenue estancado + Margen débil</p>
-            {isValueTrap && <p style={{ margin: '8px 0 0', fontSize: '13px', fontWeight: 'bold', color: '#f85149' }}>✗ PARECE BARATA... PERO ESTÁ MUERIENDO</p>}
+          <div style={{ padding: '16px', background: C.bgCard, borderRadius: R.lg, border: isValueTrap ? '2px solid C.negative' : '1px solid C.border' }}>
+            <h4 style={{ margin: '0 0 8px', color: C.negative, fontSize: '15px' }}>⚠️ ESCENARIO 3: Value Trap</h4>
+            <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>FCF Yield alto + PE bajo + Revenue estancado + Margen débil</p>
+            {isValueTrap && <p style={{ margin: '8px 0 0', fontSize: F.sizeMd, fontWeight: 'bold', color: C.negative }}>✗ PARECE BARATA... PERO ESTÁ MUERIENDO</p>}
           </div>
-          <div style={{ padding: '16px', background: '#161b22', borderRadius: '12px', border: isBomba ? '2px solid #f85149' : '1px solid #30363d' }}>
-            <h4 style={{ margin: '0 0 8px', color: '#f85149', fontSize: '15px' }}>💣 ESCENARIO 4: Bomba de Tiempo</h4>
-            <p style={{ margin: 0, fontSize: '11px', color: '#8b949e' }}>FCF negativo + PE alto + No crece + Margen bajo</p>
-            {isBomba && <p style={{ margin: '8px 0 0', fontSize: '13px', fontWeight: 'bold', color: '#f85149' }}>✗ SOBREVALORADA + SIN FUNDAMENTOS</p>}
+          <div style={{ padding: '16px', background: C.bgCard, borderRadius: R.lg, border: isBomba ? '2px solid C.negative' : '1px solid C.border' }}>
+            <h4 style={{ margin: '0 0 8px', color: C.negative, fontSize: '15px' }}>💣 ESCENARIO 4: Bomba de Tiempo</h4>
+            <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>FCF negativo + PE alto + No crece + Margen bajo</p>
+            {isBomba && <p style={{ margin: '8px 0 0', fontSize: F.sizeMd, fontWeight: 'bold', color: C.negative }}>✗ SOBREVALORADA + SIN FUNDAMENTOS</p>}
           </div>
         </div>
       </div>
@@ -4005,12 +3801,12 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
   })();
   const gaugeScore = 100 - strengthScore;
   const riskLabel = gaugeScore <= 30 ? 'Low Risk' : gaugeScore <= 60 ? 'Medium Risk' : 'High Risk';
-  const riskColor = gaugeScore <= 30 ? '#22c55e' : gaugeScore <= 60 ? '#f59e0b' : '#ef4444';
+  const riskColor = gaugeScore <= 30 ? 'C.positive' : gaugeScore <= 60 ? 'C.warning' : 'C.negative';
 
   const verAction = data.recommendation?.action || s.verdict || 'HOLD';
-  const verColor = verAction === 'COMPRAR' || verAction === 'BUY' ? '#3fb950' : verAction === 'VENDER' || verAction === 'SELL' ? '#ef4444' : '#f59e0b';
+  const verColor = verAction === 'COMPRAR' || verAction === 'BUY' ? C.positive : verAction === 'VENDER' || verAction === 'SELL' ? 'C.negative' : 'C.warning';
 
-  const cardBase = { background: '#161b22', borderRadius: '12px', padding: '20px', border: '1px solid #30363d' };
+  const cardBase = { background: C.bgCard, borderRadius: R.lg, padding: '20px', border: '1px solid C.border' };
 
   const clipboardText = [
     `${symbol} RISK SCORE REPORT`,
@@ -4032,45 +3828,45 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={() => setPage(1)} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid #30363d', background: page === 1 ? '#238636' : 'transparent', color: '#c9d1d9', cursor: 'pointer', fontWeight: '500', fontSize: '13px' }}>Page 1 · Overview</button>
-          <button onClick={() => setPage(2)} style={{ padding: '8px 20px', borderRadius: '8px', border: '1px solid #30363d', background: page === 2 ? '#238636' : 'transparent', color: '#c9d1d9', cursor: 'pointer', fontWeight: '500', fontSize: '13px' }}>Page 2 · Deep Dive</button>
+          <button onClick={() => setPage(1)} style={{ padding: '8px 20px', borderRadius: R.md, border: '1px solid C.border', background: page === 1 ? C.positive : 'transparent', color: C.textSecondary, cursor: 'pointer', fontWeight: '500', fontSize: F.sizeMd }}>Page 1 · Overview</button>
+          <button onClick={() => setPage(2)} style={{ padding: '8px 20px', borderRadius: R.md, border: '1px solid C.border', background: page === 2 ? C.positive : 'transparent', color: C.textSecondary, cursor: 'pointer', fontWeight: '500', fontSize: F.sizeMd }}>Page 2 · Deep Dive</button>
         </div>
-        <button onClick={() => navigator.clipboard.writeText(clipboardText)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #30363d', background: 'transparent', color: '#8b949e', cursor: 'pointer', fontSize: '13px' }}>Copy Report</button>
+        <button onClick={() => navigator.clipboard.writeText(clipboardText)} style={{ padding: '8px 16px', borderRadius: R.md, border: '1px solid C.border', background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: F.sizeMd }}>Copy Report</button>
       </div>
 
       {page === 1 && (
-        <div style={{ background: '#0d1117', borderRadius: '16px', padding: '32px', border: '1px solid #30363d' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '20px', borderBottom: '1px solid #30363d' }}>
+        <div style={{ background: C.bg, borderRadius: '16px', padding: '32px', border: '1px solid C.border' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '20px', borderBottom: '1px solid C.border' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '24px', fontWeight: '700', background: '#1a6df5', color: '#fff', padding: '6px 16px', borderRadius: '8px' }}>{symbol}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: F.sizeHero, fontWeight: '700', background: 'C.accentLight', color: C.textPrimary, padding: '6px 16px', borderRadius: R.md }}>{symbol}</span>
               <div>
-                <div style={{ fontWeight: '600', fontSize: '16px', color: '#f0f6fc' }}>{companyName}</div>
+                <div style={{ fontWeight: '600', fontSize: F.sizeLg, color: C.textPrimary }}>{companyName}</div>
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '28px', fontWeight: '600', color: '#f0f6fc' }}>${price.toFixed(2)}</div>
-              <div style={{ color: isPos ? '#3fb950' : '#ef4444', fontSize: '14px' }}>{isPos ? '+' : ''}{change.toFixed(2)} ({isPos ? '+' : ''}{changePct.toFixed(2)}%)</div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '28px', fontWeight: '600', color: C.textPrimary }}>${price.toFixed(2)}</div>
+              <div style={{ color: isPos ? C.positive : 'C.negative', fontSize: F.sizeBase }}>{isPos ? '+' : ''}{change.toFixed(2)} ({isPos ? '+' : ''}{changePct.toFixed(2)}%)</div>
             </div>
           </div>
 
           <div style={{ marginBottom: '32px' }}>
-            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', color: '#8b949e', marginBottom: '12px' }}>Risk Score</div>
+            <div style={{ fontSize: F.sizeXs, textTransform: 'uppercase', letterSpacing: '2px', color: C.textMuted, marginBottom: '12px' }}>Risk Score</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '28px', fontWeight: '700', color: riskColor, minWidth: '60px', textAlign: 'right' }}>{gaugeScore}</div>
               <div style={{ flex: 1 }}>
-                <div style={{ height: '12px', background: '#21262d', borderRadius: '6px', overflow: 'hidden', position: 'relative' }}>
-                  <div style={{ height: '100%', width: `${gaugeScore}%`, background: riskColor, borderRadius: '6px', transition: 'width 0.8s ease-out' }} />
+                <div style={{ height: '12px', background: C.bgElevated, borderRadius: R.sm, overflow: 'hidden', position: 'relative' }}>
+                  <div style={{ height: '100%', width: `${gaugeScore}%`, background: riskColor, borderRadius: R.sm, transition: 'width 0.8s ease-out' }} />
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', fontWeight: '700', color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>{gaugeScore}%</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', fontWeight: '700', color: C.textPrimary, textShadow: '0 1px 2px `${C.bg}80`' }}>{gaugeScore}%</span>
                   </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', padding: '0 2px' }}>
-                  <span style={{ fontSize: '9px', color: '#22c55e' }}>Low</span>
-                  <span style={{ fontSize: '9px', color: '#f59e0b' }}>Medium</span>
-                  <span style={{ fontSize: '9px', color: '#ef4444' }}>High</span>
+                  <span style={{ fontSize: '9px', color: 'C.positive' }}>Low</span>
+                  <span style={{ fontSize: '9px', color: 'C.warning' }}>Medium</span>
+                  <span style={{ fontSize: '9px', color: 'C.negative' }}>High</span>
                 </div>
               </div>
-              <span style={{ fontSize: '11px', color: '#8b949e', minWidth: '70px' }}>{riskLabel}</span>
+              <span style={{ fontSize: F.sizeXs, color: C.textMuted, minWidth: '70px' }}>{riskLabel}</span>
             </div>
           </div>
 
@@ -4083,15 +3879,15 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
               { label: 'Net Margin', val: netMargin.toFixed(1) + '%' },
               { label: 'Strength', val: strengthScore + '/100' },
             ].map(k => (
-              <div key={k.label} style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: '10px', padding: '10px 8px', textAlign: 'center' }}>
-                <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#8b949e' }}>{k.label}</div>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '14px', fontWeight: '600', color: '#f0f6fc', marginTop: '6px' }}>{k.val}</div>
+              <div key={k.label} style={{ background: C.bgCard, border: '1px solid C.border', borderRadius: R.lg, padding: '10px 8px', textAlign: 'center' }}>
+                <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', color: C.textMuted }}>{k.label}</div>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: F.sizeBase, fontWeight: '600', color: C.textPrimary, marginTop: '6px' }}>{k.val}</div>
               </div>
             ))}
           </div>
 
           <div style={{ marginBottom: '28px' }}>
-            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.5px', color: '#8b949e', marginBottom: '12px' }}>Technical Snapshot</div>
+            <div style={{ fontSize: F.sizeXs, textTransform: 'uppercase', letterSpacing: '1.5px', color: C.textMuted, marginBottom: '12px' }}>Technical Snapshot</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
               {[
                 { label: 'RSI (14)', val: t?.rsi?.toFixed(1) || 'N/A' },
@@ -4099,9 +3895,9 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
                 { label: 'Signal', val: t?.signal || 'N/A' },
                 { label: 'Confidence', val: r?.confidence ? r.confidence + '%' : 'N/A' },
               ].map(k => (
-                <div key={k.label} style={{ background: '#161b22', border: '1px solid #30363d', borderRadius: '10px', padding: '10px 8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#8b949e' }}>{k.label}</div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '14px', fontWeight: '600', color: '#f0f6fc', marginTop: '6px' }}>{k.val}</div>
+                <div key={k.label} style={{ background: C.bgCard, border: '1px solid C.border', borderRadius: R.lg, padding: '10px 8px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', color: C.textMuted }}>{k.label}</div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: F.sizeBase, fontWeight: '600', color: C.textPrimary, marginTop: '6px' }}>{k.val}</div>
                 </div>
               ))}
             </div>
@@ -4109,21 +3905,21 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', marginBottom: '28px' }}>
             {[
-              { title: 'Valuation', color: pe > 25 ? '#f59e0b' : '#22c55e', grade: pe > 25 ? 'Premium' : 'Fair', rows: [
+              { title: 'Valuation', color: pe > 25 ? 'C.warning' : 'C.positive', grade: pe > 25 ? 'Premium' : 'Fair', rows: [
                 { label: 'P/E (TTM)', val: pe ? pe.toFixed(2) : 'N/A' },
                 { label: 'Market Cap', val: formatLargeNum(mcap) },
                 { label: '52W High', val: q.fiftyTwoWeekHigh ? '$' + q.fiftyTwoWeekHigh.toFixed(2) : 'N/A' },
                 { label: '52W Low', val: q.fiftyTwoWeekLow ? '$' + q.fiftyTwoWeekLow.toFixed(2) : 'N/A' },
                 { label: 'Target Price', val: q.targetMeanPrice ? '$' + q.targetMeanPrice.toFixed(2) : 'N/A' },
               ]},
-              { title: 'Financial Health', color: s.totalCash > s.totalDebt ? '#22c55e' : '#f59e0b', grade: s.totalCash > s.totalDebt ? 'Strong' : 'Watch', rows: [
+              { title: 'Financial Health', color: s.totalCash > s.totalDebt ? 'C.positive' : 'C.warning', grade: s.totalCash > s.totalDebt ? 'Strong' : 'Watch', rows: [
                 { label: 'Total Cash', val: formatLargeNum(s.totalCash) },
                 { label: 'Total Debt', val: formatLargeNum(s.totalDebt) },
                 { label: 'Cash/Debt', val: s.totalDebt > 0 ? (s.totalCash / s.totalDebt).toFixed(2) : 'N/A' },
                 { label: 'Profit Margin', val: netMargin.toFixed(1) + '%' },
                 { label: 'Cash Class', val: s.cashClassification || 'N/A' },
               ]},
-              { title: 'Growth', color: revGrowth > 5 ? '#22c55e' : '#ef4444', grade: revGrowth > 5 ? 'Growing' : 'Stalling', rows: [
+              { title: 'Growth', color: revGrowth > 5 ? 'C.positive' : 'C.negative', grade: revGrowth > 5 ? 'Growing' : 'Stalling', rows: [
                 { label: 'Revenue YoY', val: (revGrowth >= 0 ? '+' : '') + revGrowth.toFixed(1) + '%' },
                 { label: 'Avg P/E 6M', val: s.avgPe6Months ? s.avgPe6Months.toFixed(2) : 'N/A' },
                 { label: 'Projected Price', val: s.projectedPrice ? '$' + s.projectedPrice.toFixed(2) : 'N/A' },
@@ -4132,66 +3928,66 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
               ]},
             ].map(card => (
               <div key={card.title} style={cardBase}>
-                <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1.2px', color: '#8b949e', marginBottom: '14px', paddingBottom: '10px', borderBottom: '1px solid #30363d' }}>{card.title}</div>
+                <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1.2px', color: C.textMuted, marginBottom: '14px', paddingBottom: '10px', borderBottom: '1px solid C.border' }}>{card.title}</div>
                 {card.rows.map((r, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', fontSize: '13px', borderTop: i > 0 ? '1px solid #0d1117' : 'none' }}>
-                    <span style={{ color: '#8b949e' }}>{r.label}</span>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: '500', color: '#f0f6fc' }}>{r.val}</span>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', fontSize: F.sizeMd, borderTop: i > 0 ? '1px solid C.bg' : 'none' }}>
+                    <span style={{ color: C.textMuted }}>{r.label}</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: '500', color: C.textPrimary }}>{r.val}</span>
                   </div>
                 ))}
-                <div style={{ marginTop: '8px', paddingTop: '10px', borderTop: '1px solid #30363d', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', color: '#8b949e' }}>Grade</span>
-                  <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '6px', fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', fontWeight: '600', background: card.color + '20', color: card.color }}>{card.grade}</span>
+                <div style={{ marginTop: '8px', paddingTop: '10px', borderTop: '1px solid C.border', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: F.sizeSm, color: C.textMuted }}>Grade</span>
+                  <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: R.sm, fontFamily: "'JetBrains Mono', monospace", fontSize: F.sizeMd, fontWeight: '600', background: card.color + '20', color: card.color }}>{card.grade}</span>
                 </div>
               </div>
             ))}
           </div>
 
           <div>
-            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.5px', color: '#8b949e', marginBottom: '16px' }}>Score Breakdown · 35/35/30 Weighting</div>
+            <div style={{ fontSize: F.sizeXs, textTransform: 'uppercase', letterSpacing: '1.5px', color: C.textMuted, marginBottom: '16px' }}>Score Breakdown · 35/35/30 Weighting</div>
             {[
-              { label: 'Valuation', pct: Math.min(100, Math.max(10, pe > 0 && pe < 15 ? 80 : pe < 25 ? 60 : 40)), color: '#3b82f6', max: '/35' },
-              { label: 'Financial Health', pct: Math.min(100, Math.max(10, s.totalCash > s.totalDebt ? 75 : 45)), color: '#22c55e', max: '/35' },
-              { label: 'Growth', pct: Math.min(100, Math.max(10, revGrowth > 10 ? 85 : revGrowth > 0 ? 60 : 30)), color: '#f59e0b', max: '/30' },
+              { label: 'Valuation', pct: Math.min(100, Math.max(10, pe > 0 && pe < 15 ? 80 : pe < 25 ? 60 : 40)), color: 'C.accentLight', max: '/35' },
+              { label: 'Financial Health', pct: Math.min(100, Math.max(10, s.totalCash > s.totalDebt ? 75 : 45)), color: 'C.positive', max: '/35' },
+              { label: 'Growth', pct: Math.min(100, Math.max(10, revGrowth > 10 ? 85 : revGrowth > 0 ? 60 : 30)), color: 'C.warning', max: '/30' },
             ].map(b => (
               <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '14px' }}>
-                <span style={{ width: '120px', fontSize: '13px', color: '#8b949e' }}>{b.label}</span>
-                <div style={{ flex: 1, height: '20px', background: '#21262d', borderRadius: '10px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: b.pct + '%', borderRadius: '10px', background: b.color }}></div>
+                <span style={{ width: '120px', fontSize: F.sizeMd, color: C.textMuted }}>{b.label}</span>
+                <div style={{ flex: 1, height: '20px', background: C.bgElevated, borderRadius: R.lg, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: b.pct + '%', borderRadius: R.lg, background: b.color }}></div>
                 </div>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '14px', color: '#f0f6fc', width: '50px', textAlign: 'right' }}>{b.pct}</span>
-                <span style={{ fontSize: '11px', color: '#8b949e', width: '40px' }}>{b.max}</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: F.sizeBase, color: C.textPrimary, width: '50px', textAlign: 'right' }}>{b.pct}</span>
+                <span style={{ fontSize: F.sizeXs, color: C.textMuted, width: '40px' }}>{b.max}</span>
               </div>
             ))}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #30363d' }}>
-              <span style={{ width: '120px', fontSize: '13px', fontWeight: '600', color: '#f0f6fc' }}>Total Score</span>
-              <div style={{ flex: 1, height: '24px', background: '#21262d', borderRadius: '10px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: strengthScore + '%', borderRadius: '10px', background: 'linear-gradient(90deg, #1a6df5, #3b82f6, #22c55e)' }}></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid C.border' }}>
+              <span style={{ width: '120px', fontSize: F.sizeMd, fontWeight: '600', color: C.textPrimary }}>Total Score</span>
+              <div style={{ flex: 1, height: '24px', background: C.bgElevated, borderRadius: R.lg, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: strengthScore + '%', borderRadius: R.lg, background: 'linear-gradient(90deg, C.accentLight, C.accentLight, C.positive)' }}></div>
               </div>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '16px', fontWeight: '700', color: '#f0f6fc', width: '50px', textAlign: 'right' }}>{strengthScore}</span>
-              <span style={{ fontSize: '11px', color: '#8b949e', width: '40px' }}>/100</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: F.sizeLg, fontWeight: '700', color: C.textPrimary, width: '50px', textAlign: 'right' }}>{strengthScore}</span>
+              <span style={{ fontSize: F.sizeXs, color: C.textMuted, width: '40px' }}>/100</span>
             </div>
           </div>
         </div>
       )}
 
       {page === 2 && (
-        <div style={{ background: '#0d1117', borderRadius: '16px', padding: '32px', border: '1px solid #30363d' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '20px', borderBottom: '1px solid #30363d' }}>
+        <div style={{ background: C.bg, borderRadius: '16px', padding: '32px', border: '1px solid C.border' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '20px', borderBottom: '1px solid C.border' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '24px', fontWeight: '700', background: '#1a6df5', color: '#fff', padding: '6px 16px', borderRadius: '8px' }}>{symbol}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: F.sizeHero, fontWeight: '700', background: 'C.accentLight', color: C.textPrimary, padding: '6px 16px', borderRadius: R.md }}>{symbol}</span>
               <div>
-                <div style={{ fontWeight: '600', fontSize: '16px', color: '#f0f6fc' }}>{companyName}</div>
-                <div style={{ fontSize: '12px', color: '#8b949e' }}>Deep Dive</div>
+                <div style={{ fontWeight: '600', fontSize: F.sizeLg, color: C.textPrimary }}>{companyName}</div>
+                <div style={{ fontSize: F.sizeSm, color: C.textMuted }}>Deep Dive</div>
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '11px', color: '#8b949e' }}>Report Generated</div>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', color: '#f0f6fc' }}>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+              <div style={{ fontSize: F.sizeXs, color: C.textMuted }}>Report Generated</div>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: F.sizeMd, color: C.textPrimary }}>{new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
             </div>
           </div>
 
-          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', color: '#8b949e', marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid #30363d' }}>Key Fundamentals</div>
+          <div style={{ fontSize: F.sizeXs, textTransform: 'uppercase', letterSpacing: '2px', color: C.textMuted, marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid C.border' }}>Key Fundamentals</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '28px' }}>
             {[
               ['Cash', formatLargeNum(s.totalCash)],
@@ -4203,17 +3999,17 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
               ['Target Low - High', q.targetMeanPrice ? '$' + q.targetMeanPrice.toFixed(2) : 'N/A'],
               ['Support / Resistance', t?.support && t?.resistance ? '$' + t.support.toFixed(2) + ' / $' + t.resistance.toFixed(2) : 'N/A'],
             ].map((r, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: '#161b22', borderRadius: '8px', fontSize: '13px', border: '1px solid #30363d' }}>
-                <span style={{ color: '#8b949e' }}>{r[0]}</span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: '500', color: '#f0f6fc' }}>{r[1]}</span>
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: C.bgCard, borderRadius: R.md, fontSize: F.sizeMd, border: '1px solid C.border' }}>
+                <span style={{ color: C.textMuted }}>{r[0]}</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: '500', color: C.textPrimary }}>{r[1]}</span>
               </div>
             ))}
           </div>
 
-          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', color: '#8b949e', marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid #30363d' }}>Strategy & Targets</div>
-          <div style={{ background: 'linear-gradient(135deg, #0d1117, #161b22)', border: '1px solid #30363d', borderRadius: '12px', padding: '20px', marginBottom: '28px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          <div style={{ fontSize: F.sizeXs, textTransform: 'uppercase', letterSpacing: '2px', color: C.textMuted, marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid C.border' }}>Strategy & Targets</div>
+          <div style={{ background: 'linear-gradient(135deg, C.bg, C.bgCard)', border: '1px solid C.border', borderRadius: R.lg, padding: '20px', marginBottom: '28px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             <div>
-              <div style={{ fontSize: '12px', marginBottom: '12px', color: '#f0f6fc' }}>Price Targets</div>
+              <div style={{ fontSize: F.sizeSm, marginBottom: '12px', color: C.textPrimary }}>Price Targets</div>
               {[
                 ['Buy Zone Low', r?.buyZoneLow ? '$' + r.buyZoneLow.toFixed(2) : s.buyZoneLow ? '$' + s.buyZoneLow.toFixed(2) : 'N/A'],
                 ['Buy Zone High', r?.buyZoneHigh ? '$' + r.buyZoneHigh.toFixed(2) : s.buyZoneHigh ? '$' + s.buyZoneHigh.toFixed(2) : 'N/A'],
@@ -4222,41 +4018,41 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
                 ['Target 1', s.target1 ? '$' + s.target1.toFixed(2) : 'N/A'],
                 ['Target 2', s.target2 ? '$' + s.target2.toFixed(2) : 'N/A'],
               ].map((r, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: '13px', borderBottom: '1px solid #0d1117' }}>
-                  <span style={{ color: '#8b949e' }}>{r[0]}</span>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: '500', color: '#f0f6fc' }}>{r[1]}</span>
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: F.sizeMd, borderBottom: '1px solid C.bg' }}>
+                  <span style={{ color: C.textMuted }}>{r[0]}</span>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: '500', color: C.textPrimary }}>{r[1]}</span>
                 </div>
               ))}
             </div>
             <div>
-              <div style={{ fontSize: '12px', marginBottom: '12px', color: '#f0f6fc' }}>Recommendation</div>
-              <div style={{ padding: '20px', background: verColor + '20', borderRadius: '12px', textAlign: 'center', marginBottom: '12px' }}>
-                <div style={{ fontSize: '24px', fontWeight: '700', color: verColor }}>{r?.action || s.verdict || 'HOLD'}</div>
-                {r?.confidence && <div style={{ fontSize: '13px', color: '#8b949e', marginTop: '4px' }}>Confidence: {r.confidence}%</div>}
+              <div style={{ fontSize: F.sizeSm, marginBottom: '12px', color: C.textPrimary }}>Recommendation</div>
+              <div style={{ padding: '20px', background: verColor + '20', borderRadius: R.lg, textAlign: 'center', marginBottom: '12px' }}>
+                <div style={{ fontSize: F.sizeHero, fontWeight: '700', color: verColor }}>{r?.action || s.verdict || 'HOLD'}</div>
+                {r?.confidence && <div style={{ fontSize: F.sizeMd, color: C.textMuted, marginTop: '4px' }}>Confidence: {r.confidence}%</div>}
               </div>
               {r?.reasoning && (
-                <div style={{ fontSize: '12px', color: '#8b949e', padding: '12px', background: '#0d1117', borderRadius: '8px', lineHeight: '1.5' }}>
+                <div style={{ fontSize: F.sizeSm, color: C.textMuted, padding: '12px', background: C.bg, borderRadius: R.md, lineHeight: '1.5' }}>
                   {r.reasoning}
                 </div>
               )}
             </div>
           </div>
 
-          <div style={{ textAlign: 'center', padding: '28px 20px', borderTop: '1px solid #30363d' }}>
-            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', color: '#8b949e', marginBottom: '8px' }}>Bottom Line</div>
-            <div style={{ maxWidth: '500px', margin: '16px auto', height: '8px', background: '#21262d', borderRadius: '4px', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: gaugeScore + '%', background: gaugeScore <= 30 ? '#22c55e' : gaugeScore <= 60 ? '#f59e0b' : '#ef4444', borderRadius: '4px' }}></div>
+          <div style={{ textAlign: 'center', padding: '28px 20px', borderTop: '1px solid C.border' }}>
+            <div style={{ fontSize: F.sizeXs, textTransform: 'uppercase', letterSpacing: '2px', color: C.textMuted, marginBottom: '8px' }}>Bottom Line</div>
+            <div style={{ maxWidth: '500px', margin: '16px auto', height: '8px', background: C.bgElevated, borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: gaugeScore + '%', background: gaugeScore <= 30 ? 'C.positive' : gaugeScore <= 60 ? 'C.warning' : 'C.negative', borderRadius: '4px' }}></div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', maxWidth: '500px', margin: '6px auto 0', fontSize: '10px', color: '#8b949e' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', maxWidth: '500px', margin: '6px auto 0', fontSize: '10px', color: C.textMuted }}>
               <span>Low Risk</span><span>Medium</span><span>High Risk</span>
             </div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '11px', color: '#8b949e', marginTop: '4px' }}>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: F.sizeXs, color: C.textMuted, marginTop: '4px' }}>
               Risk Score: {gaugeScore}/100
             </div>
-            <div style={{ fontSize: '18px', fontWeight: '600', marginTop: '20px', color: verColor }}>
+            <div style={{ fontSize: F.sizeXl, fontWeight: '600', marginTop: '20px', color: verColor }}>
               {verAction} · {riskLabel} ({gaugeScore}/100)
             </div>
-            <div style={{ fontSize: '13px', color: '#8b949e', marginTop: '6px', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
+            <div style={{ fontSize: F.sizeMd, color: C.textMuted, marginTop: '6px', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
               {r?.reasoning || `Based on the analysis of ${symbol}, the stock shows a strength score of ${strengthScore}/100 with a risk score of ${gaugeScore}/100. Current P/E is ${pe.toFixed(2)} with revenue growth of ${revGrowth.toFixed(1)}%.`}
             </div>
           </div>

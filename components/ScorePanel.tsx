@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 
 interface Factor {
   id: string;
@@ -24,11 +25,11 @@ interface ScoreData {
 }
 
 function getScoreColor(score: number): string {
-  if (score >= 80) return "#0d9488";
-  if (score >= 60) return "#0891b2";
-  if (score >= 40) return "#d97706";
-  if (score >= 20) return "#ea580c";
-  return "#dc2626";
+  if (score >= 80) return C.positive;
+  if (score >= 60) return C.accent;
+  if (score >= 40) return C.warning;
+  if (score >= 20) return C.warning;
+  return C.negative;
 }
 
 function getGradeLabel(grade: string): string {
@@ -71,7 +72,7 @@ export default function ScorePanel({ symbol }: Props) {
       <div style={styles.card}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 40 }}>
           <div style={styles.spinner} />
-          <span style={{ color: "#94a3b8", fontSize: 13 }}>Computing score for {symbol}...</span>
+          <span style={{ color: C.textMuted, fontSize: F.sizeMd }}>Computing score for {symbol}...</span>
         </div>
       </div>
     );
@@ -80,7 +81,7 @@ export default function ScorePanel({ symbol }: Props) {
   if (error) {
     return (
       <div style={styles.card}>
-        <p style={{ color: "#ef4444", fontSize: 13, padding: 40 }}>{error}</p>
+        <p style={{ color: C.negative, fontSize: F.sizeMd, padding: 40 }}>{error}</p>
       </div>
     );
   }
@@ -99,7 +100,7 @@ export default function ScorePanel({ symbol }: Props) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
             <span style={styles.label}>Quantitative Score</span>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 4 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: S.sm, marginTop: S.xs }}>
               <span style={{ ...styles.score, color }}>{data.totalScore}</span>
               <span style={styles.scoreUnit}>/100</span>
             </div>
@@ -125,7 +126,7 @@ export default function ScorePanel({ symbol }: Props) {
       {strong.length > 0 && (
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
-            <div style={{ ...styles.dot, background: "#0d9488" }} />
+            <div style={{ ...styles.dot, background: C.positive }} />
             <span style={styles.sectionTitle}>Fortalezas</span>
             <span style={styles.sectionCount}>({strong.length})</span>
           </div>
@@ -141,7 +142,7 @@ export default function ScorePanel({ symbol }: Props) {
       {weak.length > 0 && (
         <div style={{ ...styles.section, borderBottom: "none" }}>
           <div style={styles.sectionHeader}>
-            <div style={{ ...styles.dot, background: "#d97706" }} />
+            <div style={{ ...styles.dot, background: C.warning }} />
             <span style={styles.sectionTitle}>Areas de mejora</span>
             <span style={styles.sectionCount}>({weak.length})</span>
           </div>
@@ -164,12 +165,12 @@ function FactorCard({ factor, expanded, onToggle }: { factor: Factor; expanded: 
       onClick={onToggle}
       style={{
         ...styles.factorCard,
-        borderColor: expanded ? color : "#e2e8f0",
-        background: expanded ? "#f8fafc" : "#fff",
+        borderColor: expanded ? color : C.border,
+        background: expanded ? C.bgCard : C.textPrimary,
       }}
     >
       {/* Row 1 */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: S.sm }}>
         <span style={styles.factorLabel}>{factor.label}</span>
         <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
           <span style={{ ...styles.factorScore, color }}>{factor.score}</span>
@@ -209,22 +210,22 @@ function FactorCard({ factor, expanded, onToggle }: { factor: Factor; expanded: 
 
 const styles: Record<string, React.CSSProperties> = {
   card: {
-    background: "#fafaf8",
-    border: "1px solid #e2e8f0",
+    background: C.bgCard,
+    border: `1px solid ${C.border}`,
     borderRadius: 16,
     overflow: "hidden",
     fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
   },
   header: {
     padding: "24px 24px 20px",
-    borderBottom: "1px solid #f1f5f9",
+    borderBottom: `1px solid ${C.border}`,
   },
   label: {
-    fontSize: 11,
+    fontSize: F.sizeXs,
     fontWeight: 600,
     textTransform: "uppercase" as const,
     letterSpacing: "0.08em",
-    color: "#94a3b8",
+    color: C.textMuted,
   },
   score: {
     fontSize: 48,
@@ -235,30 +236,30 @@ const styles: Record<string, React.CSSProperties> = {
   scoreUnit: {
     fontSize: 18,
     fontWeight: 500,
-    color: "#94a3b8",
+    color: C.textMuted,
   },
   gradeBadge: {
     display: "flex",
     alignItems: "center",
-    gap: 8,
+    gap: S.sm,
     padding: "8px 14px",
     border: "1.5px solid",
-    borderRadius: 10,
-    background: "#fff",
+    borderRadius: R.lg,
+    background: C.textPrimary,
   },
   gradeLetter: {
     fontSize: 18,
     fontWeight: 700,
   },
   gradeLabel: {
-    fontSize: 12,
+    fontSize: F.sizeSm,
     fontWeight: 500,
-    color: "#64748b",
+    color: C.textMuted,
   },
   masterBar: {
-    marginTop: 16,
+    marginTop: S.lg,
     height: 6,
-    background: "#e2e8f0",
+    background: C.border,
     borderRadius: 3,
     overflow: "hidden" as const,
     position: "relative" as const,
@@ -271,75 +272,75 @@ const styles: Record<string, React.CSSProperties> = {
   masterBarLabels: {
     display: "flex",
     justifyContent: "space-between",
-    marginTop: 4,
-    fontSize: 10,
-    color: "#94a3b8",
+    marginTop: S.xs,
+    fontSize: F.sizeXxs,
+    color: C.textMuted,
     fontWeight: 500,
   },
   summary: {
     marginTop: 14,
-    fontSize: 13,
-    color: "#64748b",
+    fontSize: F.sizeMd,
+    color: C.textMuted,
     lineHeight: 1.6,
     margin: "14px 0 0",
   },
   section: {
     padding: "20px 24px",
-    borderBottom: "1px solid #f1f5f9",
+    borderBottom: `1px solid ${C.border}`,
   },
   sectionHeader: {
     display: "flex",
     alignItems: "center",
-    gap: 8,
+    gap: S.sm,
     marginBottom: 14,
   },
   dot: {
     width: 8,
     height: 8,
-    borderRadius: "50%",
+    borderRadius: R.full,
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: F.sizeSm,
     fontWeight: 600,
     textTransform: "uppercase" as const,
     letterSpacing: "0.05em",
-    color: "#475569",
+    color: C.textMuted,
   },
   sectionCount: {
-    fontSize: 11,
-    color: "#94a3b8",
+    fontSize: F.sizeXs,
+    color: C.textMuted,
     fontWeight: 500,
   },
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-    gap: 12,
+    gap: S.md,
   },
   factorCard: {
-    border: "1px solid #e2e8f0",
-    borderRadius: 12,
-    padding: 16,
+    border: `1px solid ${C.border}`,
+    borderRadius: R.lg,
+    padding: S.lg,
     cursor: "pointer",
     transition: "all 0.15s ease",
   },
   factorLabel: {
-    fontSize: 13,
+    fontSize: F.sizeMd,
     fontWeight: 600,
-    color: "#1e293b",
+    color: C.bgElevated,
   },
   factorScore: {
-    fontSize: 16,
+    fontSize: F.sizeLg,
     fontWeight: 700,
     fontVariantNumeric: "tabular-nums",
   },
   factorWeight: {
-    fontSize: 11,
+    fontSize: F.sizeXs,
     fontWeight: 500,
-    color: "#94a3b8",
+    color: C.textMuted,
   },
   bar: {
     height: 6,
-    background: "#e2e8f0",
+    background: C.border,
     borderRadius: 3,
     overflow: "hidden" as const,
     marginBottom: 10,
@@ -350,15 +351,15 @@ const styles: Record<string, React.CSSProperties> = {
     transition: "width 0.7s ease-out",
   },
   factorExplanation: {
-    fontSize: 12,
-    color: "#64748b",
+    fontSize: F.sizeSm,
+    color: C.textMuted,
     lineHeight: 1.5,
     margin: 0,
   },
   breakdown: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTop: "1px solid #e2e8f0",
+    marginTop: S.md,
+    paddingTop: S.md,
+    borderTop: `1px solid ${C.border}`,
     display: "flex",
     flexDirection: "column" as const,
     gap: 6,
@@ -367,30 +368,30 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: 12,
+    gap: S.md,
   },
   breakdownMetric: {
-    fontSize: 12,
-    color: "#94a3b8",
+    fontSize: F.sizeSm,
+    color: C.textMuted,
     flexShrink: 0,
   },
   breakdownDetail: {
-    fontSize: 12,
-    color: "#334155",
+    fontSize: F.sizeSm,
+    color: C.textSecondary,
     textAlign: "right" as const,
   },
   hint: {
     display: "block",
-    marginTop: 8,
-    fontSize: 10,
-    color: "#94a3b8",
+    marginTop: S.sm,
+    fontSize: F.sizeXxs,
+    color: C.textMuted,
   },
   spinner: {
     width: 18,
     height: 18,
-    border: "2px solid #e2e8f0",
-    borderTopColor: "#0d9488",
-    borderRadius: "50%",
+    border: `2px solid ${C.border}`,
+    borderTopColor: C.positive,
+    borderRadius: R.full,
     animation: "spin 0.8s linear infinite",
   },
 };
