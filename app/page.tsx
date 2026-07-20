@@ -489,7 +489,7 @@ export default function Home() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [view, setView] = useState<'briefing' | 'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'framework' | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard' | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer' | 'alerts'>('briefing');
+  const [view, setView] = useState<'briefing' | 'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'framework' | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard' | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer' | 'alerts'>('analyzer');
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
