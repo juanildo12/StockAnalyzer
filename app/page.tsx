@@ -952,7 +952,7 @@ export default function Home() {
               <button onClick={() => setMenuOpen(false)} style={{ padding: '4px 8px', border: 'none', background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: F.sizeHero }}>✕</button>
             </div>
             {[
-      { id: 'analyzer', icon: '🔍', label: 'Analizador' },
+      { id: 'analyzer', icon: '🏠', label: 'Inicio' },
       { id: 'portfolio', icon: '📁', label: 'Portafolio' },
       { id: 'watchlist', icon: '👁️', label: 'Watchlist' },
       { id: 'screener', icon: '🔎', label: 'Screener' },
@@ -992,71 +992,249 @@ export default function Home() {
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
         {view === 'analyzer' ? (
           <>
-            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-              <h2 style={{ color: C.textPrimary, marginBottom: '8px' }}>Analiza Acciones de EE.UU.</h2>
-              <p style={{ color: C.textMuted }}>Ingresa el ticker para obtener un análisis profesional</p>
-            </div>
+            {/* ═══ LANDING HERO (when no stock selected) ═══ */}
+            {!data && !loading && !error && (
+              <div style={{
+                position: 'relative', overflow: 'hidden',
+                borderRadius: R.xl, marginBottom: '32px',
+                background: `linear-gradient(135deg, ${C.bgCard} 0%, ${C.bgElevated} 100%)`,
+                border: `1px solid ${C.border}`,
+              }}>
+                {/* Glow effects */}
+                <div style={{
+                  position: 'absolute', top: -100, right: -100,
+                  width: 300, height: 300, borderRadius: '50%',
+                  background: `${C.accent}10`, filter: 'blur(80px)',
+                }} />
+                <div style={{
+                  position: 'absolute', bottom: -60, left: -60,
+                  width: 200, height: 200, borderRadius: '50%',
+                  background: `${C.positive}08`, filter: 'blur(60px)',
+                }} />
 
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', maxWidth: '600px', margin: '0 auto 24px', position: 'relative' }}>
-              <input
-                type="text"
-                value={symbol}
-                placeholder="Ej: AAPL, MSFT, GOOGL..."
-                onKeyDown={e => { if (e.key === 'Enter') searchStock(); }}
-                onChange={e => {
-                  setSymbol(e.target.value);
-                  setShowSuggestions(true);
-                  fetchSuggestions(e.target.value);
-                }}
-                onFocus={() => setShowSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                style={{
-                  flex: 1,
-                  padding: '14px 16px',
-                  borderRadius: R.md,
-                  border: '1px solid C.border',
-                  background: C.bgCard,
-                  color: C.textSecondary,
-                  fontSize: F.sizeLg,
-                  outline: 'none',
-                }}
-              />
-              {showSuggestions && suggestions.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: C.bgCard, border: '1px solid C.border', borderRadius: R.md, marginTop: '4px', zIndex: 100, maxHeight: '200px', overflow: 'auto' }}>
-                  {suggestions.map(s => (
-                    <div key={s.symbol} onClick={() => { setSymbol(s.symbol); setShowSuggestions(false); searchStock(); }} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid C.border' }} onMouseOver={e => (e.currentTarget.style.background = C.positive)} onMouseOut={e => (e.currentTarget.style.background = 'transparent')}>
-                      <span style={{ color: C.accentLight, fontWeight: '600' }}>{s.symbol}</span>
-                      <span style={{ color: C.textMuted, marginLeft: '8px', fontSize: F.sizeMd }}>{s.name}</span>
+                <div style={{ position: 'relative', padding: '48px 40px 40px', textAlign: 'center' }}>
+                  {/* Badge */}
+                  <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                    padding: '5px 14px', borderRadius: R.full,
+                    background: `${C.accent}12`, border: `1px solid ${C.accent}25`,
+                    marginBottom: '20px',
+                  }}>
+                    <span style={{ fontSize: 10, color: C.accentLight, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                      AI-Powered Analysis
+                    </span>
+                  </div>
+
+                  {/* Headline */}
+                  <h1 style={{
+                    fontSize: '36px', fontWeight: 900, color: C.textPrimary,
+                    lineHeight: 1.15, letterSpacing: '-0.03em', margin: '0 0 12px',
+                    fontFamily: F.family,
+                  }}>
+                    Analiza cualquier accion<br />
+                    <span style={{
+                      background: C.gradientPrimary,
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}>como un profesional</span>
+                  </h1>
+
+                  <p style={{
+                    fontSize: F.sizeLg, color: C.textSecondary,
+                    margin: '0 0 32px', maxWidth: 520, marginLeft: 'auto', marginRight: 'auto',
+                    lineHeight: 1.6,
+                  }}>
+                    Graham Principles, AI briefing, trade setups y levels automaticos en segundos.
+                  </p>
+
+                  {/* Search bar */}
+                  <div style={{
+                    display: 'flex', gap: '10px', maxWidth: 560, margin: '0 auto',
+                    position: 'relative',
+                  }}>
+                    <div style={{ flex: 1, position: 'relative' }}>
+                      <span style={{
+                        position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
+                        fontSize: 16, color: C.textMuted, pointerEvents: 'none',
+                      }}>&#128269;</span>
+                      <input
+                        type="text"
+                        value={symbol}
+                        placeholder="AAPL, MSFT, GOOGL, NVDA..."
+                        onKeyDown={e => { if (e.key === 'Enter') searchStock(); }}
+                        onChange={e => {
+                          setSymbol(e.target.value);
+                          setShowSuggestions(true);
+                          fetchSuggestions(e.target.value);
+                        }}
+                        onFocus={() => setShowSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                        style={{
+                          width: '100%', padding: '16px 16px 16px 44px',
+                          borderRadius: R.lg,
+                          border: `1px solid ${C.borderHover}`,
+                          background: C.bgInput,
+                          color: C.textPrimary,
+                          fontSize: F.sizeLg,
+                          outline: 'none',
+                          fontFamily: F.family,
+                          transition: T.fast,
+                        }}
+                      />
+                      {showSuggestions && suggestions.length > 0 && (
+                        <div style={{
+                          position: 'absolute', top: '100%', left: 0, right: 0,
+                          background: C.bgCard, border: `1px solid ${C.border}`,
+                          borderRadius: R.lg, marginTop: '6px', zIndex: 100,
+                          maxHeight: 240, overflow: 'auto', boxShadow: shadow.lg,
+                        }}>
+                          {suggestions.map(s => (
+                            <div key={s.symbol} onClick={() => { setSymbol(s.symbol); setShowSuggestions(false); searchStock(); }}
+                              style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: '10px' }}
+                              onMouseOver={e => (e.currentTarget.style.background = C.bgCardHover)}
+                              onMouseOut={e => (e.currentTarget.style.background = 'transparent')}>
+                              <span style={{ color: C.accentLight, fontWeight: 700, fontSize: F.sizeBase, fontFamily: F.mono }}>{s.symbol}</span>
+                              <span style={{ color: C.textMuted, fontSize: F.sizeSm }}>{s.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => searchStock()}
-                disabled={loading}
-                style={{
-                  padding: '14px 24px',
-                  borderRadius: R.md,
-                  border: 'none',
-                  background: C.positive,
-                  color: C.textPrimary,
-                  fontSize: F.sizeLg,
-                  fontWeight: '600',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  opacity: loading ? 0.6 : 1,
-                }}
-              >
-                {loading ? '...' : 'Buscar'}
-              </button>
-            </div>
+                    <button
+                      type="button"
+                      onClick={() => searchStock()}
+                      disabled={loading}
+                      style={{
+                        padding: '16px 32px', borderRadius: R.lg,
+                        border: 'none',
+                        background: C.gradientPrimary,
+                        color: '#fff',
+                        fontSize: F.sizeLg,
+                        fontWeight: 700,
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        opacity: loading ? 0.6 : 1,
+                        fontFamily: F.family,
+                        transition: T.fast,
+                        whiteSpace: 'nowrap',
+                      }}
+                      onMouseOver={e => { if (!loading) { e.currentTarget.style.opacity = '0.9'; e.currentTarget.style.transform = 'translateY(-1px)'; }}}
+                      onMouseOut={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                    >
+                      {loading ? '...' : 'Analizar'}
+                    </button>
+                  </div>
 
+                  {/* Quick tickers */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    gap: '8px', marginTop: '20px', flexWrap: 'wrap',
+                  }}>
+                    <span style={{ fontSize: F.sizeXs, color: C.textMuted }}>Popular:</span>
+                    {['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA'].map(t => (
+                      <button key={t} onClick={() => { setSymbol(t); searchStock(); }}
+                        style={{
+                          padding: '4px 10px', borderRadius: R.full,
+                          border: `1px solid ${C.border}`, background: 'transparent',
+                          color: C.textSecondary, fontSize: F.sizeXs, fontWeight: 600,
+                          cursor: 'pointer', fontFamily: F.mono,
+                          transition: T.fast,
+                        }}
+                        onMouseOver={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accentLight; }}
+                        onMouseOut={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textSecondary; }}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Feature pills */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    gap: '12px', marginTop: '24px', flexWrap: 'wrap',
+                  }}>
+                    {[
+                      { icon: '🧠', label: 'AI Briefing' },
+                      { icon: '📋', label: 'Graham Principles' },
+                      { icon: '🎯', label: 'Trade Setup' },
+                      { icon: '📊', label: 'Technical Matrix' },
+                    ].map(f => (
+                      <div key={f.label} style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        padding: '6px 12px', borderRadius: R.full,
+                        background: `${C.bgElevated}80`, border: `1px solid ${C.border}`,
+                        fontSize: F.sizeXs, color: C.textSecondary, fontWeight: 500,
+                      }}>
+                        <span>{f.icon}</span>
+                        <span>{f.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ═══ LOADING STATE ═══ */}
+            {loading && (
+              <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                <div style={{
+                  width: 48, height: 48, borderRadius: '50%', margin: '0 auto 16px',
+                  border: `3px solid ${C.border}`,
+                  borderTopColor: C.accent,
+                  animation: 'spin 0.8s linear infinite',
+                }} />
+                <p style={{ color: C.textSecondary, fontSize: F.sizeBase }}>Analizando {symbol.toUpperCase()}...</p>
+              </div>
+            )}
+
+            {/* ═══ ERROR STATE ═══ */}
             {error && (
-              <div style={{ padding: '16px', borderRadius: R.md, background: C.negativeBg, color: C.negative, textAlign: 'center', marginBottom: '16px' }}>
+              <div style={{
+                padding: '16px 20px', borderRadius: R.lg,
+                background: C.negativeBg, border: `1px solid ${C.negativeBorder}`,
+                color: C.negative, textAlign: 'center', marginBottom: '16px',
+                fontSize: F.sizeBase,
+              }}>
                 {error}
               </div>
             )}
 
+            {/* ═══ SEARCH BAR (compact, shown when loading or after search) ═══ */}
+            {(data || loading) && (
+              <div style={{
+                display: 'flex', gap: '10px', marginBottom: '24px', maxWidth: '500px',
+              }}>
+                <input
+                  type="text"
+                  value={symbol}
+                  placeholder="Otro ticker..."
+                  onKeyDown={e => { if (e.key === 'Enter') searchStock(); }}
+                  onChange={e => {
+                    setSymbol(e.target.value);
+                    setShowSuggestions(true);
+                    fetchSuggestions(e.target.value);
+                  }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                  style={{
+                    flex: 1, padding: '10px 14px', borderRadius: R.md,
+                    border: `1px solid ${C.border}`, background: C.bgCard,
+                    color: C.textPrimary, fontSize: F.sizeBase, outline: 'none',
+                    fontFamily: F.family,
+                  }}
+                />
+                <button type="button" onClick={() => searchStock()} disabled={loading}
+                  style={{
+                    padding: '10px 20px', borderRadius: R.md, border: 'none',
+                    background: C.positive, color: '#fff', fontSize: F.sizeBase,
+                    fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
+                    opacity: loading ? 0.6 : 1, fontFamily: F.family,
+                  }}>
+                  {loading ? '...' : 'Buscar'}
+                </button>
+              </div>
+            )}
+
+            {/* ═══ STOCK RESULT ═══ */}
             {data && (
               <StockDetailPanel
                 symbol={data.quote.symbol}
@@ -1105,13 +1283,6 @@ export default function Home() {
                 onAddWatchlist={() => openWatchlistModal(data.quote.symbol, data.quote.regularMarketPrice)}
                 inWatchlist={isInWatchlist(data.quote.symbol)}
               />
-            )}
-
-            {!data && !loading && !error && (
-              <div style={{ textAlign: 'center', padding: '60px 20px', color: C.textMuted }}>
-                <p style={{ fontSize: '48px', margin: '0 0 16px' }}>📈</p>
-                <p>Ingresa un ticker para analizar</p>
-              </div>
             )}
           </>
         ) : view === 'portfolio' ? (

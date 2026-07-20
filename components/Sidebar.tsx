@@ -48,6 +48,13 @@ const PLAN_ICONS: Record<string, React.ReactNode> = {
 
 const NAV_GROUPS: NavGroup[] = [
   {
+    id: 'home',
+    label: '',
+    items: [
+      { view: 'analyzer', label: 'Inicio', icon: <Rocket size={18} /> },
+    ],
+  },
+  {
     id: 'core',
     label: '',
     items: [
@@ -70,7 +77,6 @@ const NAV_GROUPS: NavGroup[] = [
     id: 'analysis',
     label: 'Análisis',
     items: [
-      { view: 'analyzer', label: 'Analizador', icon: <LineChart size={18} />, badge: 'PRO', minPlan: 'pro' },
       { view: 'framework', label: 'Framework', icon: <Brain size={18} /> },
       { view: 'ai-coach', label: 'AI Coach', icon: <Bot size={18} />, badge: 'PRO', minPlan: 'pro' },
       { view: 'inversor-inteligente', label: 'Value Investing', icon: <Brain size={18} />, badge: 'ELITE', minPlan: 'elite' },
