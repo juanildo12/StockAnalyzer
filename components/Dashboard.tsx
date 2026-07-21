@@ -97,36 +97,44 @@ export default function Dashboard({
     initialSection === 'market' ? 'market' : initialSection === 'screeners' ? 'screener' : 'dashboard'
   );
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const loadSignals = useCallback(async (showLoading = true) => {
+    try {
+      if (showLoading) setLoading(true);
+      const screenerRes = await fetch('/api/screener?action=screener');
+      const screenerJson = await screenerRes.json();
+      const stocks = screenerJson.stocks || screenerJson.screenerStocks || [];
+      const symbols = stocks.map((s: any) => s.symbol).filter(Boolean).slice(0, TOP_N_SIGNALS).join(',');
+
+      if (!symbols) {
+        setSignals([]);
+        return;
+      }
+
+      const res = await fetch(`/api/signal?symbols=${symbols}`);
+      const json = await res.json();
+      if (json.signals) {
+        setSignals(json.signals.filter((s: SignalData | null) => s != null));
+      }
+      setLastUpdated(new Date());
+    } catch (err) {
+      setError('Error cargando señales');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let active = true;
-    async function loadSignals() {
-      try {
-        setLoading(true);
-        const screenerRes = await fetch('/api/screener?action=screener');
-        const screenerJson = await screenerRes.json();
-        const stocks = screenerJson.stocks || screenerJson.screenerStocks || [];
-        const symbols = stocks.map((s: any) => s.symbol).filter(Boolean).slice(0, TOP_N_SIGNALS).join(',');
-
-        if (!symbols) {
-          if (active) { setSignals([]); setLoading(false); }
-          return;
-        }
-
-        const res = await fetch(`/api/signal?symbols=${symbols}`);
-        const json = await res.json();
-        if (active && json.signals) {
-          setSignals(json.signals.filter((s: SignalData | null) => s != null));
-        }
-      } catch (err) {
-        if (active) setError('Error loading signals');
-      } finally {
-        if (active) setLoading(false);
-      }
-    }
     loadSignals();
-    return () => { active = false; };
-  }, []);
+  }, [loadSignals]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadSignals(false);
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [loadSignals]);
 
   const handleStockClick = useCallback(async (symbol: string) => {
     setSelectedSymbol(symbol);
@@ -152,7 +160,7 @@ export default function Dashboard({
         setTechnicalData(stockJson.technical ?? null);
       }
     } catch (err) {
-      setError(`Error loading ${symbol}`);
+      setError(`Error cargando ${symbol}`);
     } finally {
       setDetailLoading(false);
       setEnrichedLoading(false);
@@ -192,7 +200,7 @@ export default function Dashboard({
           <div style={{ fontSize: '28px', marginBottom: '8px' }}>&#9888;</div>
           <div style={{ fontSize: F.sizeMd, fontWeight: 500 }}>{error}</div>
           <Button variant="secondary" size="sm" onClick={() => { setError(null); window.location.reload(); }} style={{ marginTop: 16 }}>
-            Retry
+            Reintentar
           </Button>
         </div>
       </div>
@@ -207,19 +215,25 @@ export default function Dashboard({
           onSearchChange={handleSearch}
           activeTab={activeTab}
           onTabChange={setActiveTab}
+          lastUpdated={lastUpdated}
+          onRefresh={() => loadSignals(false)}
+          refreshing={loading && !!lastUpdated}
         />
 
         {selectedSymbol && detailData ? (
-          <div>
+          <div style={{ animation: 'fadeIn 0.15s ease forwards' }}>
             <button
               onClick={() => setSelectedSymbol(null)}
               style={{
                 background: 'none', border: 'none', color: C.accentLight, cursor: 'pointer',
                 fontSize: F.sizeSm, padding: '8px 0', marginBottom: S.lg,
                 display: 'flex', alignItems: 'center', gap: S.xs, fontFamily: F.family, fontWeight: 500,
+                transition: T.fast,
               }}
+              onMouseEnter={e => { e.currentTarget.style.color = C.accent; e.currentTarget.style.transform = 'translateX(-2px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = C.accentLight; e.currentTarget.style.transform = 'translateX(0)'; }}
             >
-              &#8592; Back to dashboard
+              &#8592; Volver al panel
             </button>
             <StockDetailPanel
               symbol={detailData.symbol}
@@ -264,7 +278,7 @@ export default function Dashboard({
         ) : loading ? (
           <LoadingState />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: S.xl }}>
+          <div key={activeTab} style={{ display: 'flex', flexDirection: 'column', gap: S.xl, animation: 'slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
             {activeTab === 'dashboard' && (
               <MorningBriefing onSelectStock={handleStockClick} userPlan={userPlan} />
             )}
@@ -290,11 +304,18 @@ export default function Dashboard({
 // ─── Header ──────────────────────────────────────────────────────────────────
 
 function DashboardHeader({
-  searchQuery, onSearchChange, activeTab, onTabChange,
+  searchQuery, onSearchChange, activeTab, onTabChange, lastUpdated, onRefresh, refreshing,
 }: {
   searchQuery: string; onSearchChange: (q: string) => void;
   activeTab: DashboardTab; onTabChange: (v: DashboardTab) => void;
+  lastUpdated: Date | null; onRefresh: () => void; refreshing: boolean;
 }) {
+  const timeAgo = lastUpdated ? (() => {
+    const diff = Math.floor((Date.now() - lastUpdated.getTime()) / 1000);
+    if (diff < 60) return `${diff}s`;
+    return `${Math.floor(diff / 60)}m`;
+  })() : '';
+
   return (
     <div style={{ marginBottom: S.xxl }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: S.lg, gap: S.md }}>
@@ -308,36 +329,62 @@ function DashboardHeader({
             &#9670;
           </div>
           <h1 style={{ margin: 0, color: C.textPrimary, fontSize: '20px', fontWeight: 800, letterSpacing: '-0.02em' }}>
-            Dashboard
+            Panel
           </h1>
+          {lastUpdated && (
+            <span style={{
+              fontSize: F.sizeXs, color: C.textMuted, background: C.bgElevated,
+              padding: '2px 8px', borderRadius: R.sm,
+            }}>
+              {timeAgo} atrás
+            </span>
+          )}
         </div>
-        <div style={{ position: 'relative', flexShrink: 0 }}>
-          <input
-            type="text"
-            placeholder="Search symbol..."
-            value={searchQuery}
-            onChange={e => onSearchChange(e.target.value)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: S.sm }}>
+          <button
+            onClick={onRefresh}
+            disabled={refreshing}
+            aria-label="Actualizar datos"
             style={{
-              background: C.bgCard,
-              border: `1px solid ${C.border}`,
-              borderRadius: R.md,
-              padding: `${S.sm} ${S.md} ${S.sm} 36px`,
-              color: C.textPrimary,
-              fontSize: F.sizeBase,
-              width: '200px',
-              outline: 'none',
-              fontFamily: F.family,
-              transition: T.fast,
+              background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: R.sm,
+              padding: `${S.sm} ${S.sm}`, color: C.textMuted, cursor: refreshing ? 'wait' : 'pointer',
+              fontSize: F.sizeSm, display: 'flex', alignItems: 'center', gap: S.xs,
+              transition: T.fast, fontFamily: F.family,
             }}
-            onFocus={e => (e.currentTarget.style.borderColor = C.accentBorder)}
-            onBlur={e => (e.currentTarget.style.borderColor = C.border)}
-          />
-          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: C.textMuted, fontSize: F.sizeSm }}>&#128269;</span>
+            onMouseEnter={e => { if (!refreshing) { e.currentTarget.style.color = C.textPrimary; e.currentTarget.style.borderColor = C.borderHover; } }}
+            onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; e.currentTarget.style.borderColor = C.border; }}
+          >
+            <span style={{ display: 'inline-block', transition: 'transform 0.5s ease', transform: refreshing ? 'rotate(360deg)' : 'none' }}>&#8635;</span>
+            <span style={{ fontSize: F.sizeXs }}>Refresh</span>
+          </button>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <input
+              type="text"
+              placeholder="Buscar símbolo..."
+              value={searchQuery}
+              onChange={e => onSearchChange(e.target.value)}
+              style={{
+                background: C.bgCard,
+                border: `1px solid ${C.border}`,
+                borderRadius: R.md,
+                padding: `${S.sm} ${S.md} ${S.sm} 36px`,
+                color: C.textPrimary,
+                fontSize: F.sizeBase,
+                width: '200px',
+                outline: 'none',
+                fontFamily: F.family,
+                transition: T.fast,
+              }}
+              onFocus={e => (e.currentTarget.style.borderColor = C.accentBorder)}
+              onBlur={e => (e.currentTarget.style.borderColor = C.border)}
+            />
+            <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: C.textMuted, fontSize: F.sizeSm }}>&#128269;</span>
+          </div>
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: S.xs }}>
-        {([['dashboard', 'Overview'], ['screener', 'Screener'], ['market', 'Market']] as const).map(([key, label]) => (
+        {([['dashboard', 'Resumen'], ['screener', 'Screener'], ['market', 'Mercado']] as const).map(([key, label]) => (
           <button
             key={key}
             onClick={() => onTabChange(key)}
@@ -368,16 +415,38 @@ function DashboardHeader({
 // ─── Loading State ───────────────────────────────────────────────────────────
 
 function LoadingState() {
+  const SHIMMER = `linear-gradient(90deg, ${C.bgElevated} 25%, ${C.bgCardHover} 50%, ${C.bgElevated} 75%)`;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: S.lg, paddingTop: S.xl }}>
       {[1, 2, 3].map(i => (
-        <div key={i} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: R.lg, padding: `${S.md} ${S.lg}`, display: 'flex', alignItems: 'center', gap: S.md }}>
-          <div style={{ width: 28, height: 28, borderRadius: R.sm, background: C.bgElevated }} />
+        <div key={i} style={{
+          background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: R.lg,
+          padding: `${S.md} ${S.lg}`, display: 'flex', alignItems: 'center', gap: S.md,
+          animation: `fadeInUp 0.2s ease ${i * 0.05}s both`,
+        }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: R.sm,
+            background: SHIMMER, backgroundSize: '200% 100%',
+            animation: 'shimmerModern 1.5s ease-in-out infinite',
+          }} />
           <div style={{ flex: 1 }}>
-            <div style={{ width: 80, height: 14, borderRadius: R.sm, background: C.bgElevated, marginBottom: 4 }} />
-            <div style={{ width: 160, height: 10, borderRadius: R.sm, background: C.bgElevated }} />
+            <div style={{
+              width: 80, height: 14, borderRadius: R.sm,
+              background: SHIMMER, backgroundSize: '200% 100%',
+              marginBottom: 4,
+              animation: `shimmerModern 1.5s ease-in-out infinite ${0.05 * i}s`,
+            }} />
+            <div style={{
+              width: 160, height: 10, borderRadius: R.sm,
+              background: SHIMMER, backgroundSize: '200% 100%',
+              animation: `shimmerModern 1.5s ease-in-out infinite ${0.05 * i}s`,
+            }} />
           </div>
-          <div style={{ width: 50, height: 14, borderRadius: R.sm, background: C.bgElevated }} />
+          <div style={{
+            width: 50, height: 14, borderRadius: R.sm,
+            background: SHIMMER, backgroundSize: '200% 100%',
+            animation: `shimmerModern 1.5s ease-in-out infinite ${0.05 * i}s`,
+          }} />
         </div>
       ))}
     </div>

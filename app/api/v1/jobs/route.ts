@@ -13,9 +13,11 @@ export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    const { getServerSession } = await import("next-auth");
-    const { authOptions } = await import("@/app/api/auth/[...nextauth]/route");
+  const { getServerSession } = await import("next-auth");
+  const { authOptions } = await import("@/app/api/auth/[...nextauth]/route");
+  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+    // Authorized via cron secret
+  } else {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -111,6 +113,13 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
+  const { getServerSession } = await import("next-auth");
+  const { authOptions } = await import("@/app/api/auth/[...nextauth]/route");
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const runs = await prisma.job_runs.findMany({
     orderBy: { startedAt: "desc" },
     take: 20,

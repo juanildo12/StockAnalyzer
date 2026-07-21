@@ -1,7 +1,7 @@
 import { SmartAlert } from "./types";
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = "BreakoutFinder <alerts@resend.dev>";
+const FROM_EMAIL = "Prospector <alerts@prospector.com>";
 
 function riskColor(level: string): string {
   if (level === "Bajo") return "#0d9488";
@@ -18,7 +18,6 @@ function gradeColor(grade: string): string {
 
 export async function sendAlertEmail(alert: SmartAlert): Promise<boolean> {
   if (!RESEND_API_KEY) {
-    console.log("[AlertDelivery] RESEND_API_KEY not configured, skipping");
     return false;
   }
 
@@ -30,7 +29,6 @@ export async function sendAlertEmail(alert: SmartAlert): Promise<boolean> {
   });
 
   if (!user?.email) {
-    console.log(`[AlertDelivery] No email for user ${alert.userId}`);
     return false;
   }
 
@@ -57,7 +55,6 @@ export async function sendAlertEmail(alert: SmartAlert): Promise<boolean> {
       return false;
     }
 
-    console.log(`[AlertDelivery] Sent alert for ${alert.symbol} to ${user.email}`);
     return true;
   } catch (error) {
     console.error(`[AlertDelivery] Failed:`, error);
@@ -164,7 +161,7 @@ function buildEmailHtml(alert: SmartAlert): string {
         Expira: ${alert.expiresAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
         ${alert.expiresAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
       </div>
-      <div style="font-size:10px;color:#cbd5e1;margin-top:8px;">BreakoutFinder — Smart Alerts</div>
+      <div style="font-size:10px;color:#cbd5e1;margin-top:8px;">Prospector — Smart Alerts</div>
     </div>
 
   </div>

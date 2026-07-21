@@ -74,9 +74,9 @@ interface AIAnalysis {
 }
 
 const VERDICT_COLORS: Record<string, { text: string; bg: string; border: string; gradient: string }> = {
-  BUY: { text: C.positive, bg: `${C.positive}12`, border: `${C.positive}30`, gradient: `linear-gradient(135deg, ${C.positive}08, transparent)` },
-  HOLD: { text: C.warning, bg: `${C.warning}12`, border: `${C.warning}30`, gradient: `linear-gradient(135deg, ${C.warning}08, transparent)` },
-  SELL: { text: C.negative, bg: `${C.negative}12`, border: `${C.negative}30`, gradient: `linear-gradient(135deg, ${C.negative}08, transparent)` },
+  BUY: { text: C.positive, bg: `${C.positive12}`, border: `${C.positive30}`, gradient: `linear-gradient(135deg, ${C.positive08}, transparent)` },
+  HOLD: { text: C.warning, bg: `${C.warning12}`, border: `${C.warning30}`, gradient: `linear-gradient(135deg, ${C.warning08}, transparent)` },
+  SELL: { text: C.negative, bg: `${C.negative12}`, border: `${C.negative30}`, gradient: `linear-gradient(135deg, ${C.negative08}, transparent)` },
 };
 
 const TECH_SIGNAL_ICON: Record<string, string> = {
@@ -150,20 +150,29 @@ export default function StockDetailPanel({
 }: StockDetailPanelProps) {
   const [ai, setAi] = useState<AIAnalysis | null>(null);
   const [aiLoading, setAiLoading] = useState(true);
+  const [aiError, setAiError] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   const p = safe(price);
   const ch = safe(change);
   const chp = safe(changePercent);
 
   useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
     let active = true;
     setAiLoading(true);
+    setAiError(false);
     fetch(`/api/v1/ai/analysis?symbol=${symbol}`)
       .then(r => r.json())
       .then(json => {
         if (active && json?.success && json.analysis) setAi(json.analysis);
+        else if (active) setAiError(true);
       })
-      .catch(() => {})
+      .catch(() => { if (active) setAiError(true); })
       .finally(() => { if (active) setAiLoading(false); });
     return () => { active = false; };
   }, [symbol]);
@@ -196,7 +205,7 @@ export default function StockDetailPanel({
   const scoreColor = signalScore >= 70 ? C.positive : signalScore >= 40 ? C.warning : C.negative;
 
   return (
-    <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: R.xl, overflow: 'hidden', boxShadow: shadow.lg }}>
+    <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: R.xl, overflow: 'hidden', boxShadow: shadow.lg, animation: 'fadeInScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' }}>
 
       {/* ═══ HERO HEADER ═══ */}
       <div style={{
@@ -221,7 +230,7 @@ export default function StockDetailPanel({
               {sector && (
                 <span style={{
                   fontSize: F.sizeXs, fontWeight: 600, color: C.textMuted,
-                  background: `${C.bgElevated}cc`, padding: '3px 10px', borderRadius: R.full,
+                  background: `${C.bgElevatedcc}`, padding: '3px 10px', borderRadius: R.full,
                   border: `1px solid ${C.border}`, backdropFilter: 'blur(4px)',
                 }}>
                   {sector}
@@ -236,7 +245,7 @@ export default function StockDetailPanel({
               <span style={{
                 fontSize: F.sizeBase, fontWeight: 700, fontFamily: F.mono,
                 color: ch >= 0 ? C.positive : C.negative,
-                background: ch >= 0 ? `${C.positive}15` : `${C.negative}15`,
+                background: ch >= 0 ? `${C.positive15}` : `${C.negative15}`,
                 padding: '2px 8px', borderRadius: R.sm,
               }}>
                 {ch >= 0 ? '+' : ''}{chp.toFixed(2)}%
@@ -247,8 +256,10 @@ export default function StockDetailPanel({
           <div style={{ textAlign: 'center', flexShrink: 0 }}>
             <div style={{
               width: 80, height: 80, borderRadius: '50%',
-              background: `conic-gradient(${scoreColor} ${signalScore * 3.6}deg, ${C.border} 0deg)`,
+              background: `conic-gradient(${scoreColor} ${mounted ? signalScore * 3.6 : 0}deg, ${C.border} 0deg)`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'background 0.8s cubic-bezier(0.25, 0.1, 0.25, 1)',
+              boxShadow: `0 0 20px ${scoreColor}15`,
             }}>
               <div style={{
                 width: 64, height: 64, borderRadius: '50%', background: C.bgCard,
@@ -268,20 +279,22 @@ export default function StockDetailPanel({
               background: vc.bg, border: `1px solid ${vc.border}`,
               color: vc.text, fontWeight: 900, fontSize: 16, letterSpacing: '0.08em',
               textTransform: 'uppercase', fontFamily: F.mono,
+              animation: 'verdictReveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
             }}>
               {verdict === 'BUY' ? 'COMPRAR' : verdict === 'SELL' ? 'VENDER' : 'MANTENER'}
             </div>
             <div style={{
               marginTop: S.sm, display: 'inline-flex',
               padding: '3px 12px', borderRadius: R.full,
-              background: conviction === 'HIGH' ? `${C.positive}15` : conviction === 'MEDIUM' ? `${C.warning}15` : `${C.textMuted}15`,
-              border: `1px solid ${conviction === 'HIGH' ? `${C.positive}30` : conviction === 'MEDIUM' ? `${C.warning}30` : C.border}`,
+              background: conviction === 'HIGH' ? `${C.positive15}` : conviction === 'MEDIUM' ? `${C.warning15}` : `${C.textMuted15}`,
+              border: `1px solid ${conviction === 'HIGH' ? `${C.positive30}` : conviction === 'MEDIUM' ? `${C.warning30}` : C.border}`,
+              animation: 'fadeInUp 0.3s ease 0.15s both',
             }}>
               <span style={{
                 fontSize: F.sizeXs, fontWeight: 700,
                 color: conviction === 'HIGH' ? C.positive : conviction === 'MEDIUM' ? C.warning : C.textMuted,
               }}>
-                {conviction} Conviction
+                {conviction} Convicción
               </span>
             </div>
           </div>
@@ -289,7 +302,7 @@ export default function StockDetailPanel({
           {onClose && (
             <button onClick={onClose} style={{
               position: 'absolute', top: S.md, right: S.md,
-              background: `${C.bgElevated}80`, border: `1px solid ${C.border}`,
+              background: `${C.bgElevated80}`, border: `1px solid ${C.border}`,
               color: C.textMuted, cursor: 'pointer', borderRadius: R.full,
               width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 14, lineHeight: 1, transition: T.fast, backdropFilter: 'blur(4px)',
@@ -302,18 +315,51 @@ export default function StockDetailPanel({
 
       {/* ═══ AI BRIEFING ═══ */}
       {aiLoading ? (
-        <div style={{ padding: `${S.lg} ${S.xxl}`, borderBottom: `1px solid ${C.border}` }}>
+        <div style={{
+          padding: `${S.lg} ${S.xxl}`, borderBottom: `1px solid ${C.border}`,
+          animation: 'fadeIn 0.2s ease forwards',
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: S.md }}>
             <div style={{
               width: 36, height: 36, borderRadius: R.md,
               background: C.gradientPrimary,
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+              animation: 'pulseSoft 1.5s ease-in-out infinite',
             }}>🧠</div>
             <div style={{ flex: 1 }}>
-              <div style={{ height: 12, width: 180, background: C.bgElevated, borderRadius: 4, marginBottom: 6 }} />
-              <div style={{ height: 10, width: 280, background: C.bgElevated, borderRadius: 4 }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: S.sm }}>
+                <div style={{
+                  height: 10, width: 160,
+                  borderRadius: R.sm,
+                  background: `linear-gradient(90deg, ${C.bgElevated} 25%, ${C.bgCardHover} 50%, ${C.bgElevated} 75%)`,
+                  backgroundSize: '200% 100%',
+                  animation: 'shimmerModern 1.5s ease-in-out infinite',
+                }} />
+                <div style={{
+                  height: 8, width: 240,
+                  borderRadius: R.sm,
+                  background: `linear-gradient(90deg, ${C.bgElevated} 25%, ${C.bgCardHover} 50%, ${C.bgElevated} 75%)`,
+                  backgroundSize: '200% 100%',
+                  animation: 'shimmerModern 1.5s ease-in-out infinite 0.2s',
+                }} />
+              </div>
             </div>
           </div>
+        </div>
+      ) : aiError ? (
+        <div style={{
+          padding: `${S.lg} ${S.xxl}`, borderBottom: `1px solid ${C.border}`,
+          borderLeft: `3px solid ${C.warning}`, background: `${C.warning08}`,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: S.sm, marginBottom: S.xs }}>
+            <span style={{ fontSize: '14px' }}>🤖</span>
+            <span style={{ fontSize: F.sizeXs, fontWeight: 700, color: C.warning, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Informe IA
+            </span>
+          </div>
+          <p style={{ margin: 0, color: C.textSecondary, fontSize: F.sizeSm, lineHeight: 1.6 }}>
+            El análisis IA no está disponible temporalmente. Los niveles y configuración de operación se calcularon con datos técnicos.
+          </p>
         </div>
       ) : ai ? (
         <>
@@ -322,10 +368,11 @@ export default function StockDetailPanel({
             borderBottom: `1px solid ${C.border}`,
             borderLeft: `3px solid ${vc.text}`,
             background: `${vc.text}04`,
+            animation: 'fadeInUp 0.3s ease 0.1s both',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: S.sm, marginBottom: S.xs }}>
               <span style={{ fontSize: F.sizeXs, fontWeight: 700, color: vc.text, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                AI Briefing
+                Informe IA
               </span>
             </div>
             <p style={{
@@ -341,13 +388,14 @@ export default function StockDetailPanel({
                   <div style={{ display: 'flex', alignItems: 'center', gap: S.xs, marginBottom: S.sm }}>
                     <span style={{ fontSize: '14px' }}>⚡</span>
                     <span style={{ fontSize: F.sizeXs, fontWeight: 700, color: C.positive, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                      Catalysts
+                      Catalizadores
                     </span>
                   </div>
                   {ai.catalysts.slice(0, 3).map((c, i) => (
                     <div key={i} style={{
                       fontSize: F.sizeSm, color: C.textSecondary, paddingLeft: 20,
                       position: 'relative', marginBottom: S.xs, lineHeight: 1.5,
+                      animation: `fadeInRight 0.2s ease ${0.05 * i}s both`,
                     }}>
                       <span style={{ position: 'absolute', left: 0, top: 1, color: C.positive, fontSize: F.sizeSm }}>+</span>
                       {c}
@@ -360,13 +408,14 @@ export default function StockDetailPanel({
                   <div style={{ display: 'flex', alignItems: 'center', gap: S.xs, marginBottom: S.sm }}>
                     <span style={{ fontSize: '14px' }}>⚠️</span>
                     <span style={{ fontSize: F.sizeXs, fontWeight: 700, color: C.negative, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                      Warnings
+                      Advertencias
                     </span>
                   </div>
                   {ai.warnings.slice(0, 3).map((w, i) => (
                     <div key={i} style={{
                       fontSize: F.sizeSm, color: C.textSecondary, paddingLeft: 20,
                       position: 'relative', marginBottom: S.xs, lineHeight: 1.5,
+                      animation: `fadeInRight 0.2s ease ${0.05 * i}s both`,
                     }}>
                       <span style={{ position: 'absolute', left: 0, top: 1, color: C.negative, fontSize: F.sizeSm }}>!</span>
                       {w}
@@ -386,7 +435,7 @@ export default function StockDetailPanel({
             {recommendation.reasoning}
           </p>
           <div style={{ marginTop: S.sm, fontSize: F.sizeXs, color: C.textMuted }}>
-            Confidence: {recommendation.confidence}%
+            Confianza: {recommendation.confidence}%
           </div>
         </div>
       ) : null}
@@ -396,28 +445,28 @@ export default function StockDetailPanel({
         <div style={{ display: 'flex', alignItems: 'center', gap: S.sm, marginBottom: S.md }}>
           <span style={{ fontSize: '14px' }}>🎯</span>
           <span style={{ fontSize: F.sizeXs, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Trade Setup
+            Configuración de Operación
           </span>
         </div>
         <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: S.sm,
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: S.sm,
         }}>
-          <TradeLevel label="ENTRY" value={entry} sub={summary?.buyZoneHigh ? `$${safe(summary.buyZoneHigh).toFixed(2)} top` : undefined} color={C.accent} />
-          <TradeLevel label="STOP" value={stop} sub={entry && stop ? `${((1 - stop / p) * 100).toFixed(1)}% risk` : undefined} color={C.negative} />
-          <TradeLevel label="TARGET 1" value={tp1} sub={entry && tp1 ? pctChange(entry, tp1) : undefined} color={C.positive} />
-          <TradeLevel label="TARGET 2" value={tp2} sub={entry && tp2 ? pctChange(entry, tp2) : undefined} color={C.positive} />
-          <TradeLevel label="R : R" value={0} rawDisplay={rr(entry, stop, tp1)} color={C.accent} />
+          <div style={{ animation: 'fadeInUp 0.25s ease 0.05s both' }}><TradeLevel label="ENTRY" value={entry} sub={summary?.buyZoneHigh ? `$${safe(summary.buyZoneHigh).toFixed(2)} top` : undefined} color={C.accent} /></div>
+          <div style={{ animation: 'fadeInUp 0.25s ease 0.1s both' }}><TradeLevel label="STOP" value={stop} sub={entry && stop ? `${((1 - stop / p) * 100).toFixed(1)}% risk` : undefined} color={C.negative} /></div>
+          <div style={{ animation: 'fadeInUp 0.25s ease 0.15s both' }}><TradeLevel label="TARGET 1" value={tp1} sub={entry && tp1 ? pctChange(entry, tp1) : undefined} color={C.positive} /></div>
+          <div style={{ animation: 'fadeInUp 0.25s ease 0.2s both' }}><TradeLevel label="TARGET 2" value={tp2} sub={entry && tp2 ? pctChange(entry, tp2) : undefined} color={C.positive} /></div>
+          <div style={{ animation: 'fadeInUp 0.25s ease 0.25s both' }}><TradeLevel label="R : R" value={0} rawDisplay={rr(entry, stop, tp1)} color={C.accent} /></div>
         </div>
       </div>
 
       {/* ═══ TECHNICAL MATRIX ═══ */}
       {ai?.analysis && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: C.border }}>
-          {(['trend', 'ema', 'breakout', 'volume', 'momentum', 'risk'] as const).map(key => {
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 1, background: C.border }}>
+          {(['trend', 'ema', 'breakout', 'volume', 'momentum', 'risk'] as const).map((key, idx) => {
             const s = ai.analysis[key];
             const c = techColor(s.signal);
             return (
-              <div key={key} style={{ background: C.bgCard, padding: `${S.md} ${S.md}` }}>
+              <div key={key} style={{ background: C.bgCard, padding: `${S.md} ${S.md}`, animation: `fadeInUp 0.2s ease ${0.03 * idx}s both` }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: S.xs }}>
                   <span style={{ fontSize: F.sizeXs, fontWeight: 700, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     {key === 'ema' ? 'EMAs' : key === 'risk' ? 'Risk' : key.charAt(0).toUpperCase() + key.slice(1)}
@@ -446,14 +495,14 @@ export default function StockDetailPanel({
       {/* ═══ KEY LEVELS ═══ */}
       {!ai && technical && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: C.border }}>
-          <LevelColumn title="Supports" items={[{ price: technical.support, type: 'Technical' }]} color={C.positive} icon="🟢" />
-          <LevelColumn title="Resistances" items={[{ price: technical.resistance, type: 'Technical' }]} color={C.negative} icon="🔴" />
+          <LevelColumn title="Soportes" items={[{ price: technical.support, type: 'Technical' }]} color={C.positive} icon="🟢" />
+          <LevelColumn title="Resistencias" items={[{ price: technical.resistance, type: 'Technical' }]} color={C.negative} icon="🔴" />
         </div>
       )}
       {ai && (ai.support.length > 0 || ai.resistance.length > 0) && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, background: C.border }}>
-          <LevelColumn title="Supports" items={ai.support} color={C.positive} icon="🟢" />
-          <LevelColumn title="Resistances" items={ai.resistance} color={C.negative} icon="🔴" />
+          <LevelColumn title="Soportes" items={ai.support} color={C.positive} icon="🟢" />
+          <LevelColumn title="Resistencias" items={ai.resistance} color={C.negative} icon="🔴" />
         </div>
       )}
 
@@ -465,19 +514,28 @@ export default function StockDetailPanel({
           display: 'flex', gap: S.xxxl,
         }}>
           {marketCap > 0 && (
-            <span style={{ fontSize: F.sizeXs, color: C.textMuted }}>
+            <span style={{
+              fontSize: F.sizeXs, color: C.textMuted,
+              animation: 'fadeInUp 0.2s ease 0.1s both',
+            }}>
               Mkt Cap{' '}
               <span style={{ color: C.textPrimary, fontWeight: 700 }}>{fmtCompact(marketCap)}</span>
             </span>
           )}
           {peRatio > 0 && (
-            <span style={{ fontSize: F.sizeXs, color: C.textMuted }}>
+            <span style={{
+              fontSize: F.sizeXs, color: C.textMuted,
+              animation: 'fadeInUp 0.2s ease 0.15s both',
+            }}>
               P/E{' '}
               <span style={{ color: C.textPrimary, fontWeight: 700 }}>{safe(peRatio, NaN).toFixed(1)}</span>
             </span>
           )}
           {technical?.rsi != null && !ai?.analysis?.momentum?.rsi && (
-            <span style={{ fontSize: F.sizeXs, color: C.textMuted }}>
+            <span style={{
+              fontSize: F.sizeXs, color: C.textMuted,
+              animation: 'fadeInUp 0.2s ease 0.2s both',
+            }}>
               RSI{' '}
               <span style={{ color: C.textPrimary, fontWeight: 700 }}>{safe(technical?.rsi, NaN).toFixed(0)}</span>
             </span>
@@ -591,19 +649,29 @@ export default function StockDetailPanel({
                     <div key={i} style={{
                       padding: `${S.md} ${S.lg}`, borderRadius: R.lg,
                       background: isFav
-                        ? `linear-gradient(135deg, ${C.positive}08 0%, transparent 100%)`
-                        : `linear-gradient(135deg, ${C.negative}06 0%, transparent 100%)`,
-                      border: `1px solid ${isFav ? `${C.positive}20` : `${C.negative}18`}`,
-                      transition: T.normal,
+                        ? `linear-gradient(135deg, ${C.positive08} 0%, transparent 100%)`
+                        : `linear-gradient(135deg, ${C.negative06} 0%, transparent 100%)`,
+                      border: `1px solid ${isFav ? `${C.positive20}` : `${C.negative18}`}`,
+                      transition: 'all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)',
                       position: 'relative',
                       overflow: 'hidden',
-                    }}>
+                      animation: `fadeInUp 0.25s ease ${0.05 * i}s both`,
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = isFav ? `0 4px 16px ${C.positive12}` : `0 4px 16px ${C.negative10}`;
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                    >
                       {/* Subtle glow */}
                       {isFav && (
                         <div style={{
                           position: 'absolute', top: -20, right: -20,
                           width: 60, height: 60, borderRadius: '50%',
-                          background: `${C.positive}08`,
+                          background: `${C.positive08}`,
                           filter: 'blur(16px)',
                         }} />
                       )}
@@ -613,8 +681,8 @@ export default function StockDetailPanel({
                         <div style={{
                           width: 28, height: 28, borderRadius: R.sm, flexShrink: 0,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: isFav ? `${C.positive}15` : `${C.negative}12`,
-                          border: `1px solid ${isFav ? `${C.positive}25` : `${C.negative}20`}`,
+                          background: isFav ? `${C.positive15}` : `${C.negative12}`,
+                          border: `1px solid ${isFav ? `${C.positive25}` : `${C.negative20}`}`,
                         }}>
                           <span style={{ fontSize: 13 }}>{icon}</span>
                         </div>
@@ -630,7 +698,7 @@ export default function StockDetailPanel({
                             </span>
                             <span style={{
                               fontSize: '8px', fontWeight: 800, padding: '1px 5px', borderRadius: R.sm,
-                              background: isFav ? `${C.positive}18` : `${C.negative}14`,
+                              background: isFav ? `${C.positive18}` : `${C.negative14}`,
                               color: isFav ? C.positive : C.negative,
                               textTransform: 'uppercase', letterSpacing: '0.05em',
                             }}>
@@ -661,7 +729,7 @@ export default function StockDetailPanel({
                       return (
                         <div key={i} style={{
                           padding: `${S.md} ${S.lg}`, borderRadius: R.lg,
-                          background: `${C.textMuted}06`,
+                          background: `${C.textMuted06}`,
                           border: `1px solid ${C.border}`,
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: S.sm }}>
@@ -680,12 +748,12 @@ export default function StockDetailPanel({
                   }}>
                     <div style={{
                       padding: '6px 16px', borderRadius: R.full,
-                      background: `${C.accent}15`, border: `1px solid ${C.accent}30`,
+                      background: `${C.accent15}`, border: `1px solid ${C.accent30}`,
                       display: 'flex', alignItems: 'center', gap: S.sm,
                     }}>
                       <span style={{ fontSize: 12 }}>🔒</span>
                       <span style={{ fontSize: F.sizeSm, color: C.accentLight, fontWeight: 700 }}>
-                        {lockedPrinciples.length} principles — Upgrade to Pro
+                        {lockedPrinciples.length} principles — Actualizar a Pro
                       </span>
                     </div>
                   </div>
@@ -708,45 +776,62 @@ export default function StockDetailPanel({
             style={{
               flex: 1, padding: `${S.sm} ${S.lg}`, borderRadius: R.md,
               border: 'none',
-              background: PLAN_HIERARCHY[userPlan] >= 1 ? C.gradientPrimary : `${C.accent}20`,
+              background: PLAN_HIERARCHY[userPlan] >= 1 ? C.gradientPrimary : `${C.accent20}`,
               color: PLAN_HIERARCHY[userPlan] >= 1 ? '#fff' : C.textMuted,
               fontSize: F.sizeSm, fontWeight: 700,
-              cursor: 'pointer', fontFamily: F.family, transition: T.fast,
+              cursor: 'pointer', fontFamily: F.family, transition: T.spring,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: S.sm,
+              animation: 'fadeInUp 0.2s ease 0.05s both',
             }}
-            onMouseOver={e => { e.currentTarget.style.opacity = '0.9'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-            onMouseOut={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)'; }}
+            onMouseOver={e => {
+              e.currentTarget.style.opacity = '0.92';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+              if (PLAN_HIERARCHY[userPlan] >= 1) e.currentTarget.style.boxShadow = '0 4px 16px rgba(124, 58, 237, 0.35)';
+            }}
+            onMouseOut={e => {
+              e.currentTarget.style.opacity = '1';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+            onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.98)'; }}
+            onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
           >
             {PLAN_HIERARCHY[userPlan] >= 1 ? (
-              <>Full AI Analysis <span style={{ fontSize: 14 }}>&rarr;</span></>
+              <>Análisis IA Completo <span style={{ fontSize: 14 }}>&rarr;</span></>
             ) : (
-              <>🔒 Full Analysis <span style={{ fontSize: F.sizeXs, opacity: 0.7 }}>(Pro)</span></>
+              <>🔒 Análisis Completo <span style={{ fontSize: F.sizeXs, opacity: 0.7 }}>(Pro)</span></>
             )}
           </button>
         )}
         {onAddPortfolio && (
           <button onClick={onAddPortfolio} style={{
             flex: 1, padding: `${S.sm} ${S.lg}`, borderRadius: R.md,
-            border: `1px solid ${C.accent}50`, background: `${C.accent}08`,
+            border: `1px solid ${C.accent50}`, background: `${C.accent08}`,
             color: C.accentLight, fontSize: F.sizeSm, fontWeight: 700,
-            cursor: 'pointer', fontFamily: F.family, transition: T.fast,
+            cursor: 'pointer', fontFamily: F.family, transition: T.spring,
+            animation: 'fadeInUp 0.2s ease 0.1s both',
           }}
-            onMouseOver={e => { e.currentTarget.style.background = `${C.accent}18`; }}
-            onMouseOut={e => { e.currentTarget.style.background = `${C.accent}08`; }}
-          >+ Portfolio</button>
+            onMouseOver={e => { e.currentTarget.style.background = `${C.accent18}`; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+            onMouseOut={e => { e.currentTarget.style.background = `${C.accent08}`; e.currentTarget.style.transform = 'translateY(0)'; }}
+            onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.98)'; }}
+            onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+          >+ Portafolio</button>
         )}
         {onAddWatchlist && (
           <button onClick={onAddWatchlist} style={{
             flex: 1, padding: `${S.sm} ${S.lg}`, borderRadius: R.md,
-            border: `1px solid ${inWatchlist ? `${C.positive}40` : C.border}`,
-            background: inWatchlist ? `${C.positive}10` : 'transparent',
+            border: `1px solid ${inWatchlist ? `${C.positive40}` : C.border}`,
+            background: inWatchlist ? `${C.positive10}` : 'transparent',
             color: inWatchlist ? C.positive : C.textSecondary,
             fontSize: F.sizeSm, fontWeight: 700,
-            cursor: 'pointer', fontFamily: F.family, transition: T.fast,
+            cursor: 'pointer', fontFamily: F.family, transition: T.spring,
+            animation: 'fadeInUp 0.2s ease 0.15s both',
           }}
-            onMouseOver={e => { if (!inWatchlist) e.currentTarget.style.borderColor = C.borderHover; }}
-            onMouseOut={e => { if (!inWatchlist) e.currentTarget.style.borderColor = C.border; }}
-          >{inWatchlist ? '✓ Watchlist' : '+ Watchlist'}</button>
+            onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-1px)'; if (!inWatchlist) e.currentTarget.style.borderColor = C.borderHover; }}
+            onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; if (!inWatchlist) e.currentTarget.style.borderColor = C.border; }}
+            onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.98)'; }}
+            onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+          >{inWatchlist ? '✓ Lista de seguimiento' : '+ Lista de seguimiento'}</button>
         )}
       </div>
 
@@ -758,7 +843,7 @@ export default function StockDetailPanel({
         display: 'flex', alignItems: 'center', gap: S.xs,
       }}>
         <span style={{ opacity: 0.6 }}>⏱</span>
-        {new Date().toLocaleString()} — BreakoutFinder Research
+        {new Date().toLocaleString()} — Prospector Research
       </div>
     </div>
   );
@@ -769,7 +854,7 @@ function Tag({ label, color }: { label: string; color?: string }) {
   return (
     <span style={{
       fontSize: F.sizeXs, fontWeight: 600, color: color || C.textSecondary,
-      background: color ? `${color}12` : `${C.textMuted}12`,
+      background: color ? `${color}12` : `${C.textMuted12}`,
       padding: '1px 6px', borderRadius: R.sm, whiteSpace: 'nowrap',
     }}>
       {label}
@@ -818,7 +903,7 @@ function LevelColumn({ title, items, color, icon }: {
         </span>
       </div>
       {items.length === 0 && (
-        <div style={{ fontSize: F.sizeSm, color: C.textMuted }}>None detected</div>
+        <div style={{ fontSize: F.sizeSm, color: C.textMuted }}>Ninguno detectado</div>
       )}
       {items.map((item, i) => (
         <div key={i} style={{

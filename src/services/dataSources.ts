@@ -26,7 +26,6 @@ export async function getTipRanksData(symbol: string): Promise<TipRanksData | nu
     const response = await fetchWithTimeout(url);
     
     if (!response.ok) {
-      console.log(`TipRanks: Failed to fetch ${symbol}, status: ${response.status}`);
       return null;
     }
     
@@ -61,7 +60,6 @@ export async function getTipRanksData(symbol: string): Promise<TipRanksData | nu
       lastUpdated: new Date().toISOString()
     };
   } catch (error) {
-    console.log(`TipRanks Error for ${symbol}:`, error);
     return null;
   }
 }
@@ -72,7 +70,6 @@ export async function getMacrotrendsData(symbol: string): Promise<MacrotrendsDat
     const response = await fetchWithTimeout(url);
     
     if (!response.ok) {
-      console.log(`Macrotrends: Failed to fetch ${symbol}, status: ${response.status}`);
       return null;
     }
     
@@ -104,7 +101,6 @@ export async function getMacrotrendsData(symbol: string): Promise<MacrotrendsDat
       peRatioHistory: peRatioHistory.slice(0, 12)
     };
   } catch (error) {
-    console.log(`Macrotrends Error for ${symbol}:`, error);
     return null;
   }
 }
@@ -120,7 +116,6 @@ export async function getMarketBeatData(symbol: string): Promise<MarketBeatData 
     }
     
     if (!response.ok) {
-      console.log(`MarketBeat: Failed to fetch ${symbol}, status: ${response.status}`);
       return null;
     }
     
@@ -150,7 +145,6 @@ export async function getMarketBeatData(symbol: string): Promise<MarketBeatData 
       lastUpdated: new Date().toISOString()
     };
   } catch (error) {
-    console.log(`MarketBeat Error for ${symbol}:`, error);
     return null;
   }
 }
@@ -181,7 +175,6 @@ export async function getCircleUSDCData(): Promise<CircleUSDCData | null> {
       lastUpdated: new Date().toISOString()
     };
   } catch (error) {
-    console.log('Circle USDC Error:', error);
     return null;
   }
 }
@@ -192,7 +185,6 @@ export async function getGuruFocusData(symbol: string): Promise<GuruFocusData | 
     const response = await fetchWithTimeout(url);
     
     if (!response.ok) {
-      console.log(`GuruFocus: Failed to fetch ${symbol}, status: ${response.status}`);
       return null;
     }
     
@@ -224,7 +216,6 @@ export async function getGuruFocusData(symbol: string): Promise<GuruFocusData | 
       dividendYield: dividendMatch ? parseFloat(dividendMatch[1]) : 0
     };
   } catch (error) {
-    console.log(`GuruFocus Error for ${symbol}:`, error);
     return null;
   }
 }

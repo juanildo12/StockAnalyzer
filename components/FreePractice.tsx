@@ -208,7 +208,7 @@ export default function FreePractice() {
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: '16px',
             padding: '16px 24px', borderRadius: R.lg,
-            background: userGuess === stock.signal ? '${C.positive}18' : '${C.negative}18',
+            background: userGuess === stock.signal ? `${C.positive18}` : `${C.negative18}`,
             marginBottom: '16px',
           }}>
             <div>

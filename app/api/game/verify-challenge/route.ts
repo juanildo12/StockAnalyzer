@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import type { SignalAction, VerifyResponse } from '@/src/types';
 
 export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const body = await request.json();
     const { userGuess, confidence }: { userGuess: SignalAction; confidence: 'baja' | 'media' | 'alta' } = body;
@@ -48,6 +54,6 @@ export async function POST(request: NextRequest) {
     res.headers.set('Set-Cookie', 'daily_signal=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0');
     return res;
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

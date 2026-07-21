@@ -56,7 +56,7 @@ function buildCardJsx(trigger: ShareTrigger) {
                 type: "div",
                 props: {
                   children: [
-                    { type: "div", props: { children: "BreakoutFinder", style: { fontSize: 18, fontWeight: 700, color: "#f0f6fc", letterSpacing: "-0.5px" } } },
+                    { type: "div", props: { children: "Prospector", style: { fontSize: 18, fontWeight: 700, color: "#f0f6fc", letterSpacing: "-0.5px" } } },
                     { type: "div", props: { children: "Quantitative Trading Platform", style: { fontSize: 11, color: "#8b949e", marginTop: 1 } } },
                   ],
                   style: { display: "flex", flexDirection: "column", gap: 2 },
@@ -143,7 +143,7 @@ function buildCardJsx(trigger: ShareTrigger) {
           props: {
             children: [
               { type: "div", props: { children: "Powered by 12-factor quantitative scoring engine", style: { fontSize: 11, color: "#484f58" } } },
-              { type: "div", props: { children: "breakoutfinder.com", style: { fontSize: 11, color: "#8b949e", fontWeight: 600 } } },
+              { type: "div", props: { children: "prospector.com", style: { fontSize: 11, color: "#8b949e", fontWeight: 600 } } },
             ],
             style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 40px", borderTop: "1px solid #21262d" },
           },

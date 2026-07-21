@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import YahooFinance from 'yahoo-finance2';
 
 const yf = new YahooFinance();
@@ -55,6 +57,10 @@ function calcSMA(closes: number[], period: number): number {
 }
 
 export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const seed = getTodaySeed();
     const shuffled = seededShuffle(SCREENER_SYMBOLS, seed);
@@ -178,6 +184,6 @@ export async function GET() {
 
     return response;
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Internal error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

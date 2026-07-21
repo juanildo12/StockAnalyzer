@@ -1,6 +1,6 @@
 'use client';
 import { colors as C, radius as R, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
-import { CSSProperties, ReactNode } from 'react';
+import { CSSProperties, ReactNode, useState } from 'react';
 
 interface CardProps {
   children: ReactNode;
@@ -23,13 +23,21 @@ export default function Card({
   onClick,
   className,
 }: CardProps) {
+  const [isHovered, setIsHovered] = useState(false);
+
   const base: CSSProperties = {
-    background: C.bgCard,
-    border: `1px solid ${active ? C.accentBorder : C.border}`,
+    background: active ? `linear-gradient(135deg, ${C.bgCard}, ${C.accentGlow})` : C.bgCard,
+    border: `1px solid ${active ? C.accentBorder : isHovered ? C.borderHover : C.border}`,
     borderRadius: R.lg,
     padding,
-    transition: T.fast,
+    transition: T.springSnap,
     cursor: onClick ? 'pointer' : 'default',
+    transform: isHovered && hover ? 'translateY(-2px)' : 'translateY(0)',
+    boxShadow: isHovered && hover
+      ? glow
+        ? `0 8px 32px rgba(124, 58, 237, 0.15), 0 2px 8px rgba(124, 58, 237, 0.1)`
+        : `0 8px 24px rgba(0, 0, 0, 0.3)`
+      : '0 0 0 rgba(0,0,0,0)',
     ...style,
   };
 
@@ -38,23 +46,13 @@ export default function Card({
       className={className}
       style={base}
       onClick={onClick}
-      onMouseEnter={e => {
-        if (!hover) return;
-        e.currentTarget.style.borderColor = active ? C.accentBorder : C.borderHover;
-        e.currentTarget.style.boxShadow = glow ? shadow.glow : shadow.sm;
-        e.currentTarget.style.transform = 'translateY(-1px)';
-      }}
-      onMouseLeave={e => {
-        if (!hover) return;
-        e.currentTarget.style.borderColor = active ? C.accentBorder : C.border;
-        e.currentTarget.style.boxShadow = 'none';
-        e.currentTarget.style.transform = 'translateY(0)';
-      }}
+      onMouseEnter={() => { if (hover) setIsHovered(true); }}
+      onMouseLeave={() => { if (hover) setIsHovered(false); }}
       onMouseDown={e => {
-        if (onClick) e.currentTarget.style.transform = 'scale(0.99)';
+        if (onClick) e.currentTarget.style.transform = 'scale(0.98)';
       }}
       onMouseUp={e => {
-        if (onClick) e.currentTarget.style.transform = 'translateY(-1px)';
+        if (onClick && hover) e.currentTarget.style.transform = 'translateY(-2px)';
       }}
     >
       {children}

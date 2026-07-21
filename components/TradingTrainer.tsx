@@ -241,8 +241,8 @@ export default function TradingTrainer() {
         </div>
         <div style={{
           padding: '4px 12px', borderRadius: R.md,
-          background: `linear-gradient(135deg, ${C.positive}20, ${C.positive}08)`,
-          border: `1px solid ${C.positive}30`,
+          background: `linear-gradient(135deg, ${C.positive20}, ${C.positive08})`,
+          border: `1px solid ${C.positive30}`,
           fontSize: '12px', fontWeight: 600, color: C.positive,
         }}>
           Racha: {gameState.streak}
@@ -286,7 +286,7 @@ export default function TradingTrainer() {
             </div>
           )}
           {error && (
-            <div style={{ background: `${C.negative}18`, color: C.negative, padding: '16px', borderRadius: R.lg, textAlign: 'center', marginBottom: '16px' }}>
+            <div style={{ background: `${C.negative18}`, color: C.negative, padding: '16px', borderRadius: R.lg, textAlign: 'center', marginBottom: '16px' }}>
               {error}
               <button onClick={fetchChallenge} style={{
                 display: 'block', margin: '12px auto 0', padding: '8px 16px',
@@ -332,7 +332,7 @@ export default function TradingTrainer() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: '16px',
                     padding: '16px 20px', borderRadius: R.xl,
-                    background: locked ? `${C.bgBase}80` : C.bgCard,
+                    background: locked ? `C.bgBase80` : C.bgCard,
                     border: locked
                       ? `1px solid ${C.borderLight}`
                       : `1px solid ${TIER_COLORS[diff.id]}30`,
@@ -367,7 +367,7 @@ export default function TradingTrainer() {
                       {locked && (
                         <span style={{
                           fontSize: '10px', padding: '2px 6px', borderRadius: R.sm,
-                          background: `${C.negative}18`, color: C.negative, fontWeight: 600,
+                          background: `${C.negative18}`, color: C.negative, fontWeight: 600,
                         }}>
                           Nivel {diff.minLevel}+
                         </span>

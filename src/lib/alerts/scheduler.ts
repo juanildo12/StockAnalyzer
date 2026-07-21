@@ -26,7 +26,6 @@ export async function runSmartAlerts(): Promise<SchedulerResult> {
   // Check market hours (skip on weekends/holidays for cron safety)
   const marketOpen = await isMarketOpen();
   if (!marketOpen) {
-    console.log("[SmartAlerts] Market closed, skipping");
     return result;
   }
 
@@ -37,7 +36,6 @@ export async function runSmartAlerts(): Promise<SchedulerResult> {
   });
 
   if (watchlistItems.length === 0) {
-    console.log("[SmartAlerts] No watchlist items with alerts");
     return result;
   }
 
@@ -50,7 +48,6 @@ export async function runSmartAlerts(): Promise<SchedulerResult> {
   }
 
   const uniqueSymbols = Array.from(symbolUsers.keys());
-  console.log(`[SmartAlerts] Scanning ${uniqueSymbols.length} symbols across ${watchlistItems.length} watchlist items`);
 
   // Process each symbol
   for (const symbol of uniqueSymbols) {
@@ -185,10 +182,6 @@ export async function runSmartAlerts(): Promise<SchedulerResult> {
       result.errors.push(`${symbol}: ${error instanceof Error ? error.message : "unknown"}`);
     }
   }
-
-  console.log(
-    `[SmartAlerts] Done: scanned=${result.scanned} evaluated=${result.evaluated} alerted=${result.alerted} sent=${result.sent}`
-  );
 
   return result;
 }

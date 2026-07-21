@@ -772,7 +772,6 @@ export async function getStockQuote(symbol: string): Promise<StockQuote> {
   }
 
   if (!quoteResult) {
-    console.log(`[YahooFinance] yf.quote failed for ${sym}, trying direct HTTP...`);
     try {
       quoteResult = await fetchYahooFinanceDirect(sym);
       const summaryDirect = await fetchYahooFinanceSummaryDirect(sym).catch(() => null);
@@ -780,9 +779,7 @@ export async function getStockQuote(symbol: string): Promise<StockQuote> {
         summaryResult = summaryDirect;
       }
       usedScraped = true;
-      console.log(`[YahooFinance] Direct HTTP success for ${sym}`);
     } catch (directErr) {
-      console.log(`[YahooFinance] Direct HTTP also failed for ${sym}, scraping Google Finance...`);
       const gf = await scrapeGoogleFinance(sym);
       if (gf) {
         quoteResult = {
@@ -806,7 +803,6 @@ export async function getStockQuote(symbol: string): Promise<StockQuote> {
           trailingPE: 0,
         };
         usedScraped = true;
-        console.log(`[YahooFinance] Google Finance scrape success for ${sym}: $${gf.price}`);
       }
     }
   }
@@ -957,7 +953,6 @@ export async function getStockNews(symbol: string): Promise<NewsItem[]> {
         };
       });
     }
-    console.log(`[YahooFinance] yf.search returned no news for ${symbol}, scraping...`);
     return await scrapeYahooFinanceNews(symbol);
   } catch (error) {
     console.error('Error fetching news:', error);

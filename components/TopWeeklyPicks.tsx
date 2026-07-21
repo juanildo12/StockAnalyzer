@@ -118,12 +118,12 @@ export default function TopWeeklyPicks({ onStockClick }: { onStockClick?: (symbo
               background: C.bgCard,
               borderRadius: '18px',
               padding: '18px',
-              border: `1px solid ${idx === 0 ? `${C.warning}30` : C.border}`,
+              border: `1px solid ${idx === 0 ? `${C.warning30}` : C.border}`,
               position: 'relative',
               transition: `border-color ${T.fast}`,
             }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = C.accentLight; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = idx === 0 ? `${C.warning}30` : C.border; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = idx === 0 ? `${C.warning30}` : C.border; }}
             >
               {/* Rank badge */}
               <div style={{
@@ -151,7 +151,7 @@ export default function TopWeeklyPicks({ onStockClick }: { onStockClick?: (symbo
                   {pick.symbol}
                 </span>
                 <span style={{
-                  background: `${C.accentLight}20`,
+                  background: `${C.accentLight20}`,
                   color: C.accentLight,
                   fontWeight: 700,
                   fontSize: F.sizeMd,
@@ -203,9 +203,9 @@ export default function TopWeeklyPicks({ onStockClick }: { onStockClick?: (symbo
                   borderRadius: R.md,
                   fontSize: F.sizeBase,
                   fontWeight: 700,
-                  background: pick.direction === 'ALZA' ? `${C.positive}20` : `${C.negative}20`,
+                  background: pick.direction === 'ALZA' ? `${C.positive20}` : `${C.negative20}`,
                   color: pick.direction === 'ALZA' ? C.positive : C.negative,
-                  border: `1px solid ${pick.direction === 'ALZA' ? `${C.positive}40` : `${C.negative}40`}`,
+                  border: `1px solid ${pick.direction === 'ALZA' ? `${C.positive40}` : `${C.negative40}`}`,
                 }}>
                   {pick.direction === 'ALZA' ? '▲' : '▼'} {pick.signalLabel}
                 </span>
@@ -249,9 +249,9 @@ export default function TopWeeklyPicks({ onStockClick }: { onStockClick?: (symbo
                     borderRadius: R.sm,
                     fontSize: '10px',
                     fontWeight: 600,
-                    background: `${C.accent}15`,
+                    background: `${C.accent15}`,
                     color: C.accent,
-                    border: `1px solid ${C.accent}25`,
+                    border: `1px solid ${C.accent25}`,
                   }}>
                     {h.name} #{h.rank}
                   </span>

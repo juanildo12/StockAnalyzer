@@ -108,7 +108,7 @@ export default function LineChart({
           y={pad.top + i * stripeH}
           width={chartW}
           height={stripeH}
-          fill={i % 2 === 0 ? `${C.textPrimary}08` : 'transparent'}
+          fill={i % 2 === 0 ? `${C.textPrimary08}` : 'transparent'}
         />
       ))}
 

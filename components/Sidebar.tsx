@@ -5,9 +5,10 @@ import {
   Rocket, LayoutDashboard, Filter, BarChart3, Target,
   Watch, FlaskConical, Brain, Bot, Gamepad2,
   ChevronDown, ChevronRight, Zap, LineChart, Bell,
-  Lock, Crown, Gem, Building2,
+  Lock, Crown, Gem, Building2, Sun, Moon,
 } from 'lucide-react';
 import { colors as C, radius as R, font as F, spacing as S, transition as T } from '@/src/utils/webTheme';
+import { useTheme } from '@/src/components/ThemeProvider';
 
 interface SidebarProps {
   view: string;
@@ -93,6 +94,7 @@ const NAV_GROUPS: NavGroup[] = [
 
 export default function Sidebar({ view, onViewChange, userPlan = 'free', userName }: SidebarProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const { theme, toggle: toggleTheme } = useTheme();
   const toggle = (id: string) => setCollapsed(prev => ({ ...prev, [id]: !prev[id] }));
   const userLevel = PLAN_HIERARCHY[userPlan] ?? 0;
 
@@ -133,10 +135,10 @@ export default function Sidebar({ view, onViewChange, userPlan = 'free', userNam
           <div style={{
             fontSize: F.sizeBase, fontWeight: 700, color: C.textPrimary,
             letterSpacing: '-0.3px', lineHeight: 1.2,
-          }}>BreakoutFinder</div>
+          }}>Prospector</div>
           <div style={{
             fontSize: F.sizeXs, color: C.textMuted, lineHeight: 1.2,
-          }}>AI Trading Platform</div>
+          }}>AI Stock Analysis</div>
         </div>
       </div>
 
@@ -165,19 +167,27 @@ export default function Sidebar({ view, onViewChange, userPlan = 'free', userNam
                   fontFamily: F.family,
                   textAlign: 'left',
                   marginBottom: S.xxs,
+                  transition: 'all 0.15s ease',
                 }}
               >
-                {collapsed[group.id]
-                  ? <ChevronRight size={10} />
-                  : <ChevronDown size={10} />
-                }
+                <span style={{
+                  display: 'inline-flex',
+                  transition: 'transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                  transform: collapsed[group.id] ? 'rotate(-90deg)' : 'rotate(0deg)',
+                }}>
+                  <ChevronDown size={10} />
+                </span>
                 {group.label}
               </button>
             )}
 
-            {!collapsed[group.id] && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {group.items.map(item => {
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden',
+              maxHeight: collapsed[group.id] ? 0 : 400,
+              opacity: collapsed[group.id] ? 0 : 1,
+              transition: 'max-height 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease',
+            }}>
+              {group.items.map((item, idx) => {
                   const active = view === item.view;
                   const isLocked = item.minPlan && userLevel < PLAN_HIERARCHY[item.minPlan];
                   const badgeColor = item.minPlan ? PLAN_COLORS[item.minPlan] : C.positive;
@@ -205,7 +215,7 @@ export default function Sidebar({ view, onViewChange, userPlan = 'free', userNam
                         fontSize: F.sizeBase,
                         fontFamily: F.family,
                         textAlign: 'left',
-                        transition: T.fast,
+                        transition: 'all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)',
                         position: 'relative',
                         borderLeft: active ? `2px solid ${C.accent}` : '2px solid transparent',
                         opacity: isLocked ? 0.7 : 1,
@@ -214,12 +224,14 @@ export default function Sidebar({ view, onViewChange, userPlan = 'free', userNam
                         if (!active) {
                           e.currentTarget.style.background = C.bgCardHover;
                           e.currentTarget.style.color = C.textPrimary;
+                          e.currentTarget.style.transform = 'translateX(2px)';
                         }
                       }}
                       onMouseLeave={e => {
                         if (!active) {
                           e.currentTarget.style.background = 'transparent';
                           e.currentTarget.style.color = isLocked ? C.textMuted : C.textSecondary;
+                          e.currentTarget.style.transform = 'translateX(0)';
                         }
                       }}
                     >
@@ -251,7 +263,6 @@ export default function Sidebar({ view, onViewChange, userPlan = 'free', userNam
                   );
                 })}
               </div>
-            )}
           </div>
         ))}
       </nav>
@@ -259,22 +270,47 @@ export default function Sidebar({ view, onViewChange, userPlan = 'free', userNam
       {/* Plan badge + Upgrade CTA */}
       {userPlan === 'free' && (
         <div style={{
-          padding: `${S.sm} ${S.md}`,
+          padding: `${S.md} ${S.md}`,
           margin: `0 ${S.sm} ${S.sm}`,
-          borderRadius: R.md,
-          background: `linear-gradient(135deg, ${C.accent}15, ${C.info}15)`,
-          border: `1px solid ${C.accent}30`,
+          borderRadius: R.lg,
+          background: `linear-gradient(135deg, ${C.accent12}, ${C.info10})`,
+          border: `1px solid ${C.accent25}`,
           cursor: 'pointer',
-        }} onClick={() => window.location.href = '/settings/billing'}>
+          transition: T.normal,
+          boxShadow: `0 2px 8px ${C.accent10}`,
+        }} onClick={() => window.location.href = '/settings/billing'}
+          onMouseEnter={e => { e.currentTarget.style.background = `linear-gradient(135deg, ${C.accent20}, ${C.info18})`; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = `0 4px 12px ${C.accent15}`; }}
+          onMouseLeave={e => { e.currentTarget.style.background = `linear-gradient(135deg, ${C.accent12}, ${C.info10})`; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = `0 2px 8px ${C.accent10}`; }}
+        >
           <div style={{
-            fontSize: F.sizeXs, fontWeight: 700, color: C.accent,
-            marginBottom: 2,
-          }}>Unlock Pro — $49/mo</div>
+            fontSize: F.sizeSm, fontWeight: 700, color: C.accentLight,
+            marginBottom: 3, letterSpacing: '-0.01em',
+          }}>Desbloquear Pro — $49/mo</div>
           <div style={{
-            fontSize: 10, color: C.textMuted, lineHeight: 1.3,
+            fontSize: F.sizeXs, color: C.textMuted, lineHeight: 1.4,
           }}>AI Analysis + Smart Alerts + Backtest</div>
         </div>
       )}
+
+      {/* Theme toggle */}
+      <div style={{ padding: `${S.sm} ${S.sm}`, margin: `0 ${S.sm}` }}>
+        <button
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+          style={{
+            display: 'flex', alignItems: 'center', gap: S.sm, width: '100%',
+            padding: `${S.sm} ${S.md}`, borderRadius: R.md,
+            border: `1px solid ${C.border}`, background: C.bgCard,
+            color: C.textSecondary, cursor: 'pointer', fontFamily: F.family,
+            fontSize: F.sizeSm, transition: T.fast,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.bgCardHover; e.currentTarget.style.borderColor = C.borderHover; }}
+          onMouseLeave={e => { e.currentTarget.style.background = C.bgCard; e.currentTarget.style.borderColor = C.border; }}
+        >
+          {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+          <span>{theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}</span>
+        </button>
+      </div>
 
       {/* User section */}
       <div style={{

@@ -1,4 +1,5 @@
 import { Providers } from './providers';
+import { ThemeProvider } from '@/src/components/ThemeProvider';
 import { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 
@@ -29,37 +30,57 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#07080A',
+  themeColor: '#0A0B0E',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
   viewportFit: 'cover',
 };
 
 const globalStyles = `
   :root {
-    --bg: #07080A;
-    --bg-card: #111318;
-    --bg-card-hover: #161922;
-    --bg-elevated: #1A1D26;
-    --bg-input: #0D0F14;
-    --text-primary: #F1F5F9;
-    --text-secondary: #94A3B8;
-    --text-muted: #64748B;
-    --accent: #7C3AED;
-    --accent-light: #8B5CF6;
-    --accent-dark: #6D28D9;
-    --positive: #10B981;
-    --negative: #EF4444;
-    --warning: #F59E0B;
-    --info: #06B6D4;
-    --border: #1E2230;
-    --border-light: #272B3A;
-    --divider: #1A1E2A;
+    --bg: #0A0B0E;
+    --bg-card: #12141A;
+    --bg-card-hover: #181B24;
+    --bg-elevated: #1E212B;
+    --bg-input: #0E1015;
+    --text-primary: #E8EAF0;
+    --text-secondary: #8B90A5;
+    --text-muted: #555A70;
+    --accent: #2DD4BF;
+    --accent-light: #5EEAD4;
+    --accent-dark: #14B8A6;
+    --positive: #34D399;
+    --negative: #FB7185;
+    --warning: #FBBF24;
+    --info: #67E8F9;
+    --border: #1C1F2A;
+    --border-light: #23263A;
+    --divider: #181B24;
     --radius-sm: 6px;
     --radius-md: 8px;
     --radius-lg: 12px;
     --radius-xl: 16px;
+  }
+
+  [data-theme="light"] {
+    --bg: #F4F5F0;
+    --bg-card: #FFFFFF;
+    --bg-card-hover: #FAFAF8;
+    --bg-elevated: #ECEEE8;
+    --bg-input: #FFFFFF;
+    --text-primary: #1A1C22;
+    --text-secondary: #555A70;
+    --text-muted: #8B90A5;
+    --accent: #0D9488;
+    --accent-light: #14B8A6;
+    --accent-dark: #0F766E;
+    --positive: #059669;
+    --negative: #E11D48;
+    --warning: #D97706;
+    --info: #0891B2;
+    --border: #E0E2DA;
+    --border-light: #E8EAE3;
+    --divider: #E8EAE3;
   }
 
   html, body {
@@ -70,8 +91,8 @@ const globalStyles = `
     -webkit-overflow-scrolling: touch;
     -webkit-tap-highlight-color: transparent;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background: #07080A;
-    color: #F1F5F9;
+    background: var(--bg);
+    color: var(--text-primary);
   }
 
   body {
@@ -91,6 +112,11 @@ const globalStyles = `
     -webkit-appearance: none;
   }
 
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
   * {
     box-sizing: border-box;
   }
@@ -103,11 +129,11 @@ const globalStyles = `
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #272B3A;
+    background: var(--border-light);
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #3B3F52;
+    background: var(--text-muted);
   }
 
   @supports (-webkit-touch-callout: none) {
@@ -136,6 +162,88 @@ const globalStyles = `
       font-size: 16px !important;
     }
   }
+
+  /* ═══ Micro-animations ═══ */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeInScale {
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideRight {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes scoreFill {
+    from { width: 0%; }
+  }
+  @keyframes pulseGlow {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.8; }
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes staggerChild {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulseSoft {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+  @keyframes glowPulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(45, 212, 191, 0); }
+    50% { box-shadow: 0 0 20px rgba(45, 212, 191, 0.15); }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scalePress {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.97); }
+    100% { transform: scale(1); }
+  }
+  @keyframes shimmerModern {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes fadeInRight {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes skeletonPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 0.7; }
+  }
+  @keyframes verdictReveal {
+    0% { opacity: 0; transform: scale(0.9); }
+    50% { transform: scale(1.05); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes ripple {
+    to { transform: scale(4); opacity: 0; }
+  }
 `;
 
 export default function RootLayout({
@@ -144,20 +252,28 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
         <style dangerouslySetInnerHTML={{ __html: globalStyles }} />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function() {
+            var t = localStorage.getItem('theme');
+            if (t) document.documentElement.setAttribute('data-theme', t);
+          })();
+        `}} />
       </head>
       <body>
-        <Providers>
-          <Suspense fallback={<div style={{ minHeight: '100vh', background: '#07080A' }} />}>
-            {children}
-          </Suspense>
-        </Providers>
+        <ThemeProvider>
+          <Providers>
+            <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--bg)' }} />}>
+              {children}
+            </Suspense>
+          </Providers>
+        </ThemeProvider>
         <script
           dangerouslySetInnerHTML={{
             __html: `

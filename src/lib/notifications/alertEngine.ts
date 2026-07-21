@@ -162,10 +162,6 @@ export async function checkPriceAlerts(): Promise<{
     },
   });
 
-  console.log(
-    `[AlertEngine] Checked ${alerts.length} alerts, triggered ${triggered}, sent ${sent} (${Date.now() - startTime}ms)`
-  );
-
   return { checked: alerts.length, triggered, sent };
 }
 

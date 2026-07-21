@@ -32,7 +32,6 @@ export async function GET(req: NextRequest) {
 
   // Get user's signal history
   // NOTE: signal_history lacks userId column — all users see all signals.
-  // TODO: add userId to signal_history schema to isolate per-user data.
   const limit = Math.min(parseInt(searchParams.get("limit") || "50", 10), 200);
 
   const signals = await prisma.signal_history.findMany({

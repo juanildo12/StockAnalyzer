@@ -372,10 +372,10 @@ export default function GameSession({ difficulty, onComplete, onCancel, level }:
           }}>
             <div style={{
               width: '64px', height: '64px', borderRadius: '50%',
-              background: feedback.correct ? `${C.positive}18` : `${C.negative}18`,
+              background: feedback.correct ? `${C.positive18}` : `${C.negative18}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto 12px', fontSize: '32px',
-              border: `2px solid ${feedback.correct ? `${C.positive}40` : `${C.negative}40`}`,
+              border: `2px solid ${feedback.correct ? `${C.positive40}` : `${C.negative40}`}`,
             }}>
               {feedback.correct ? '✓' : '✗'}
             </div>
@@ -489,7 +489,7 @@ export default function GameSession({ difficulty, onComplete, onCancel, level }:
                   style={{
                     flex: 1, padding: '8px 4px', borderRadius: R.md,
                     border: `1px solid ${confidence === cl.value ? C.accent : C.border}`,
-                    background: confidence === cl.value ? `${C.accent}18` : 'transparent',
+                    background: confidence === cl.value ? `${C.accent18}` : 'transparent',
                     color: confidence === cl.value ? C.accent : C.textMuted,
                     fontWeight: confidence === cl.value ? 700 : 400,
                     fontSize: '11px', cursor: 'pointer', transition: 'all 0.15s',

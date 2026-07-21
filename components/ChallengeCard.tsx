@@ -12,9 +12,9 @@ interface Props {
 }
 
 const SIGNAL_ACTIONS: { value: SignalAction; label: string; color: string; glow: string }[] = [
-  { value: 'COMPRAR', label: 'COMPRAR', color: C.positive, glow: `${C.positive}26` },
-  { value: 'MANTENER', label: 'MANTENER', color: C.warning, glow: `${C.warning}26` },
-  { value: 'VENDER', label: 'VENDER', color: C.negative, glow: `${C.negative}26` },
+  { value: 'COMPRAR', label: 'COMPRAR', color: C.positive, glow: `${C.positive26}` },
+  { value: 'MANTENER', label: 'MANTENER', color: C.warning, glow: `${C.warning26}` },
+  { value: 'VENDER', label: 'VENDER', color: C.negative, glow: `${C.negative26}` },
 ];
 
 const CONFIDENCE_LEVELS: { value: ConfidenceLevel; label: string; multiplier: string }[] = [
@@ -111,7 +111,7 @@ function HintCard({ hint, revealed, onClick }: { hint: DailyChallenge['hints'][0
       {!revealed && (
         <div style={{
           position: 'absolute', inset: 0,
-          background: `linear-gradient(135deg, ${C.accent}08, transparent)`,
+          background: `linear-gradient(135deg, ${C.accent08}, transparent)`,
           pointerEvents: 'none',
         }} />
       )}
@@ -190,8 +190,8 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
           100% { transform: scale(1); opacity: 1; }
         }
         @keyframes glowPulse {
-          0%, 100% { box-shadow: 0 0 8px ${C.accent}40; }
-          50% { box-shadow: 0 0 24px ${C.accent}60; }
+          0%, 100% { box-shadow: 0 0 8px ${C.accent40}; }
+          50% { box-shadow: 0 0 24px ${C.accent60}; }
         }
         @keyframes hintReveal {
           0% { transform: rotateY(90deg); opacity: 0; }
@@ -208,17 +208,17 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
           padding: '32px',
           textAlign: 'center',
           animation: 'resultPop 0.4s ease',
-          border: `1px solid ${result.correct ? '${C.positive}30' : '${C.negative}30'}`,
+          border: `1px solid ${result.correct ? '${C.positive30}' : '${C.negative30}'}`,
           boxShadow: result.correct
-            ? `0 0 40px ${C.positive}14`
-            : `0 0 20px ${C.negative}0d`,
+            ? `0 0 40px ${C.positive14}`
+            : `0 0 20px ${C.negative0d}`,
         }}>
           <div style={{
             width: '80px', height: '80px', borderRadius: R.full,
-            background: result.correct ? '${C.positive}18' : '${C.negative}18',
+            background: result.correct ? `${C.positive18}` : `${C.negative18}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 16px', fontSize: '40px',
-            border: `2px solid ${result.correct ? '${C.positive}40' : '${C.negative}40'}`,
+            border: `2px solid ${result.correct ? '${C.positive40}' : '${C.negative40}'}`,
             animation: 'glowPulse 2s infinite',
           }}>
             {result.correct ? '🎯' : '💨'}
@@ -268,12 +268,12 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
 
           <div style={{
             background: result.correct
-              ? `linear-gradient(135deg, ${C.positive}15, ${C.positive}08)`
-              : `linear-gradient(135deg, ${C.negative}15, ${C.negative}08)`,
+              ? `linear-gradient(135deg, ${C.positive15}, ${C.positive08})`
+              : `linear-gradient(135deg, ${C.negative15}, ${C.negative08})`,
             borderRadius: R.lg,
             padding: '20px',
             marginBottom: '20px',
-            border: `1px solid ${result.correct ? '${C.positive}20' : '${C.negative}20'}`,
+            border: `1px solid ${result.correct ? '${C.positive20}' : '${C.negative20}'}`,
           }}>
             <p style={{
               fontSize: '36px', fontWeight: 800,
@@ -311,7 +311,7 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
               cursor: 'pointer',
               fontSize: '15px',
               transition: 'all 0.15s',
-              boxShadow: `0 4px 20px ${C.accent}40`,
+              boxShadow: `0 4px 20px ${C.accent40}`,
             }}
             onMouseOver={e => (e.currentTarget.style.transform = 'translateY(-2px)')}
             onMouseOut={e => (e.currentTarget.style.transform = 'translateY(0)')}
@@ -338,8 +338,8 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
           100% { transform: scale(1); opacity: 1; }
         }
         @keyframes glowPulse {
-          0%, 100% { box-shadow: 0 0 8px ${C.accent}40; }
-          50% { box-shadow: 0 0 24px ${C.accent}60; }
+          0%, 100% { box-shadow: 0 0 8px ${C.accent40}; }
+          50% { box-shadow: 0 0 24px ${C.accent60}; }
         }
         @keyframes hintReveal {
           0% { transform: rotateY(90deg); opacity: 0; }
@@ -366,7 +366,7 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
             background: C.gradientPrimary,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '18px', fontWeight: 700, color: C.textPrimary,
-            boxShadow: `0 4px 12px ${C.accent}40`,
+            boxShadow: `0 4px 12px ${C.accent40}`,
           }}>
             {challenge.symbol.charAt(0)}
           </div>
@@ -483,7 +483,7 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
                 padding: '10px 6px',
                 borderRadius: R.md,
                 border: `1px solid ${confidence === cl.value ? C.accent : C.border}`,
-                background: confidence === cl.value ? `${C.accent}18` : 'transparent',
+                background: confidence === cl.value ? `${C.accent18}` : 'transparent',
                 color: confidence === cl.value ? C.accent : C.textMuted,
                 fontWeight: confidence === cl.value ? 700 : 400,
                 fontSize: F.sizeSm,
@@ -518,7 +518,7 @@ export default function ChallengeCard({ challenge, onVerify, onRefresh }: Props)
             cursor: !selectedAction || submitting ? 'not-allowed' : 'pointer',
             opacity: !selectedAction || submitting ? 0.5 : 1,
             transition: 'all 0.2s',
-            boxShadow: selectedAction ? `0 4px 24px ${C.accent}50` : 'none',
+            boxShadow: selectedAction ? `0 4px 24px ${C.accent50}` : 'none',
           }}
         >
           {submitting ? 'Verificando con el motor de señales...' : '🎯 Confirmar Veredicto'}

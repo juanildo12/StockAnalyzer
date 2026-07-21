@@ -84,7 +84,7 @@ function analyzeMarketTiming(
   
   let validation: 'no-operar' | 'precaucion' | 'ideal' = 'precaucion';
   let validationColor = C.warning;
-  let validationBg = `${C.warning}20`;
+  let validationBg = `${C.warning20}`;
   let strategy = 'Ninguna';
   let message = '';
   
@@ -365,7 +365,7 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
                   display: 'inline-block',
                   width: '16px',
                   height: '16px',
-                  border: `2px solid ${C.textPrimary}4D`,
+                  border: `2px solid ${C.textPrimary4d}`,
                   borderTopColor: C.accent,
                   borderRadius: R.full,
                   animation: 'spin 1s linear infinite'
@@ -541,8 +541,8 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
             <div style={{
               padding: '12px',
               borderRadius: R.md,
-              background: `${C.warning}20`,
-              border: `1px solid ${C.warning}40`,
+              background: `${C.warning20}`,
+              border: `1px solid ${C.warning40}`,
               marginBottom: '16px'
             }}>
               <span style={{ color: C.warning, fontSize: F.sizeMd }}>
@@ -557,8 +557,8 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
             gap: '12px',
             padding: '16px',
             borderRadius: R.md,
-            background: `${C.accent}20`,
-            border: `1px solid ${C.accent}40`
+            background: `${C.accent20}`,
+            border: `1px solid ${C.accent40}`
           }}>
             <span style={{ fontSize: '24px' }}>🎯</span>
             <div>
@@ -582,7 +582,7 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
                 width: '60px',
                 height: '60px',
                 borderRadius: R.full,
-                background: result.tradeValid ? `${C.positive}20` : `${C.negative}20`,
+                background: result.tradeValid ? `${C.positive20}` : `${C.negative20}`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -602,7 +602,7 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
                 marginLeft: 'auto',
                 padding: '8px 16px',
                 borderRadius: '20px',
-                background: result.score === 3 ? `${C.positive}20` : result.score === 2 ? `${C.accent}20` : `${C.negative}20`,
+                background: result.score === 3 ? `${C.positive20}` : result.score === 2 ? `${C.accent20}` : `${C.negative20}`,
                 color: result.score === 3 ? C.positive : result.score === 2 ? C.accent : C.negative,
                 fontWeight: '600',
                 fontSize: F.sizeBase
@@ -705,7 +705,7 @@ export default function TradeValidator({ initialSymbol, onSymbolChange }: TradeV
                   gap: '12px',
                   padding: '12px',
                   borderRadius: R.md,
-                  background: leg.type === 'buy' ? `${C.accent}20` : `${C.negative}20`,
+                  background: leg.type === 'buy' ? `${C.accent20}` : `${C.negative20}`,
                   border: `1px solid ${leg.type === 'buy' ? C.accent : C.negative}40`
                 }}>
                   <span style={{

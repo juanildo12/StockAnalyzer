@@ -261,7 +261,7 @@ export default function TradeStationPanel() {
         <div style={{
           ...cardStyle,
           borderLeft: '4px solid ' + C.negative,
-          background: `${C.negative}20`,
+          background: `${C.negative20}`,
         }}>
           <p style={{ color: C.negative, margin: 0 }}>{error}</p>
         </div>
@@ -430,8 +430,8 @@ export default function TradeStationPanel() {
                       background: C.bg,
                       borderRadius: '8px',
                       border: `1px solid ${
-                        order.Status === 'Filled' ? `${C.positive}40` :
-                        order.Status === 'Canceled' ? `${C.negative}40` : C.border
+                        order.Status === 'Filled' ? `${C.positive40}` :
+                        order.Status === 'Canceled' ? `${C.negative40}` : C.border
                       }`,
                     }}>
                       <div>
@@ -441,7 +441,7 @@ export default function TradeStationPanel() {
                             borderRadius: '4px',
                             fontSize: '11px',
                             fontWeight: '600',
-                            background: order.Side === 'Buy' ? `${C.positive}30` : `${C.negative}30`,
+                            background: order.Side === 'Buy' ? `${C.positive30}` : `${C.negative30}`,
                             color: order.Side === 'Buy' ? C.positive : C.negative,
                           }}>
                             {order.Side}
@@ -458,9 +458,9 @@ export default function TradeStationPanel() {
                           borderRadius: '20px',
                           fontSize: '12px',
                           fontWeight: '600',
-                          background: order.Status === 'Filled' ? `${C.positive}20` :
-                            order.Status === 'Canceled' ? `${C.negative}20` :
-                            order.Status === 'Rejected' ? `${C.negative}20` : `${C.accent}20`,
+                          background: order.Status === 'Filled' ? `${C.positive20}` :
+                            order.Status === 'Canceled' ? `${C.negative20}` :
+                            order.Status === 'Rejected' ? `${C.negative20}` : `${C.accent20}`,
                           color: order.Status === 'Filled' ? C.positive :
                             order.Status === 'Canceled' ? C.negative :
                             order.Status === 'Rejected' ? C.negative : C.accent,
@@ -604,8 +604,8 @@ export default function TradeStationPanel() {
                   marginTop: '16px',
                   padding: '12px',
                   borderRadius: '8px',
-                  background: orderResult.success ? `${C.positive}20` : `${C.negative}20`,
-                  border: `1px solid ${orderResult.success ? `${C.positive}40` : `${C.negative}40`}`,
+                  background: orderResult.success ? `${C.positive20}` : `${C.negative20}`,
+                  border: `1px solid ${orderResult.success ? `${C.positive40}` : `${C.negative40}`}`,
                 }}>
                   <p style={{ margin: 0, color: orderResult.success ? C.positive : C.negative, fontSize: '14px' }}>
                     {orderResult.message}

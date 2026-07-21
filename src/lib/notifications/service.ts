@@ -73,7 +73,7 @@ export async function sendEmailNotification(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "BreakoutFinder <alerts@breakoutfinder.com>",
+      from: "Prospector <alerts@prospector.com>",
       to: [user.email],
       subject,
       html: buildEmailHtml(subject, body),
@@ -107,14 +107,14 @@ function buildEmailHtml(subject: string, body: string): string {
 <body>
   <div class="container">
     <div class="header">
-      <h1>BreakoutFinder</h1>
+      <h1>Prospector</h1>
     </div>
     <div class="body">
       <h2 style="color: #e0e0e0; margin-top: 0;">${subject}</h2>
       <p>${body}</p>
     </div>
     <div class="footer">
-      BreakoutFinder &mdash; Smart Trading Signals
+      Prospector &mdash; Smart Trading Signals
     </div>
   </div>
 </body>

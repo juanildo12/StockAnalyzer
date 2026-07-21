@@ -1,5 +1,5 @@
 'use client';
-import { colors as C, radius as R, font as F, spacing as S } from '@/src/utils/webTheme';
+import { colors as C, radius as R, font as F, spacing as S, transition as T } from '@/src/utils/webTheme';
 import { CSSProperties, ReactNode } from 'react';
 
 type Variant = 'positive' | 'negative' | 'warning' | 'info' | 'accent' | 'neutral';
@@ -9,6 +9,7 @@ interface BadgeProps {
   variant?: Variant;
   size?: 'sm' | 'md';
   dot?: boolean;
+  pulse?: boolean;
   style?: CSSProperties;
 }
 
@@ -21,7 +22,16 @@ const VARIANT_STYLES: Record<Variant, { bg: string; border: string; color: strin
   neutral: { bg: C.bgElevated, border: C.border, color: C.textSecondary },
 };
 
-export default function Badge({ children, variant = 'neutral', size = 'sm', dot = false, style }: BadgeProps) {
+const DOT_PULSE: Record<string, string> = {
+  positive: 'glowPulse',
+  negative: 'glowPulse',
+  warning: 'glowPulse',
+  info: 'glowPulse',
+  accent: 'glowPulse',
+  neutral: 'none',
+};
+
+export default function Badge({ children, variant = 'neutral', size = 'sm', dot = false, pulse = false, style }: BadgeProps) {
   const v = VARIANT_STYLES[variant];
   const isSmall = size === 'sm';
 
@@ -39,15 +49,27 @@ export default function Badge({ children, variant = 'neutral', size = 'sm', dot 
     fontFamily: F.family,
     lineHeight: 1.4,
     whiteSpace: 'nowrap',
+    transition: T.fast,
     ...style,
   };
 
   return (
-    <span style={base}>
+    <span
+      style={base}
+      onMouseEnter={e => {
+        if (variant !== 'neutral') {
+          e.currentTarget.style.filter = 'brightness(1.15)';
+        }
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.filter = 'brightness(1)';
+      }}
+    >
       {dot && (
         <span style={{
           width: 6, height: 6, borderRadius: '50%',
           background: v.color, flexShrink: 0,
+          animation: pulse && DOT_PULSE[variant] !== 'none' ? `${DOT_PULSE[variant]} 2s ease-in-out infinite` : undefined,
         }} />
       )}
       {children}

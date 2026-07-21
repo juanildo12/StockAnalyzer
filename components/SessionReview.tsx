@@ -117,7 +117,7 @@ export default function SessionReview({ result, onNewSession, onBack }: Props) {
                 padding: '14px 40px', borderRadius: R.lg, border: 'none',
                 background: C.gradientPrimary, color: C.textPrimary, fontWeight: 700,
                 fontSize: '16px', cursor: 'pointer',
-                boxShadow: `0 4px 30px ${C.accent}60`,
+                boxShadow: `0 4px 30px ${C.accent60}`,
               }}
             >
               Continuar
@@ -198,8 +198,8 @@ export default function SessionReview({ result, onNewSession, onBack }: Props) {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {result.results.map((r, i) => {
-              const color = r.correct ? `${C.positive}20` : `${C.negative}20`;
-              const border = r.correct ? `${C.positive}30` : `${C.negative}30`;
+              const color = r.correct ? `${C.positive20}` : `${C.negative20}`;
+              const border = r.correct ? `${C.positive30}` : `${C.negative30}`;
               return (
                 <div key={i} style={{
                   background: color, borderRadius: R.md, padding: '10px 14px',
@@ -310,7 +310,7 @@ export default function SessionReview({ result, onNewSession, onBack }: Props) {
               padding: '14px 32px', borderRadius: R.lg, border: 'none',
               background: C.gradientPrimary, color: C.textPrimary, fontWeight: 700,
               fontSize: '15px', cursor: 'pointer',
-              boxShadow: `0 4px 20px ${C.accent}40`,
+              boxShadow: `0 4px 20px ${C.accent40}`,
             }}
           >
             Nueva Sesión →

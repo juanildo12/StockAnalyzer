@@ -186,7 +186,7 @@ export async function GET(req: NextRequest) {
           Authorization: `Bearer ${openrouterKey}`,
           "Content-Type": "application/json",
           "HTTP-Referer": "https://stock-analyzer-new.vercel.app",
-          "X-Title": "BreakoutFinder AI Analysis",
+          "X-Title": "Prospector AI Analysis",
         },
         body: JSON.stringify({
           model,
@@ -213,7 +213,6 @@ export async function GET(req: NextRequest) {
       // Standard models put content in .content; reasoning models put it in .reasoning
       rawContent = msg?.content || msg?.reasoning || "";
       if (rawContent) {
-        console.log(`[AI Analysis] Model ${model} succeeded`);
         break;
       }
     }

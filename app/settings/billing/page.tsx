@@ -1,91 +1,91 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
+import { colors as C } from '@/src/utils/webTheme';
 
 const PLANS = [
   {
     id: "free",
     name: "Free",
     price: 0,
-    tagline: "See the Signal",
+    tagline: "Ve la Señal",
     icon: "📊",
     gradient: `linear-gradient(135deg, ${C.bgElevated} 0%, ${C.bgElevated} 100%)`,
     accent: C.textMuted,
     features: [
-      "5 stock scores/day",
-      "Morning briefing (30min delay)",
-      "Basic screener",
-      "3 watchlist slots",
-      "2 price alerts",
-      "Market overview",
-      "Earnings calendar",
+      "5 puntuaciones de acciones/día",
+      "Resumen matutino (30min de retraso)",
+      "Screener básico",
+      "3 espacios en lista de seguimiento",
+      "2 alertas de precio",
+      "Resumen del mercado",
+      "Calendario de resultados",
     ],
   },
   {
     id: "pro",
     name: "Pro",
     price: 49,
-    tagline: "Trade with AI",
+    tagline: "Opera con IA",
     icon: "🤖",
     popular: true,
     gradient: `linear-gradient(135deg, ${C.accent} 0%, ${C.accentLight} 50%, ${C.info} 100%)`,
     accent: C.accentLight,
     features: [
-      "Unlimited stock scores",
-      "AI stock analysis (verdict + conviction)",
-      "AI trading coach (unlimited chat)",
-      "Smart alerts with email delivery",
-      "Breakout screener (multi-timeframe)",
-      "Auto-share TP hits (Twitter/LinkedIn/Discord)",
-      "Full backtesting suite",
-      "Real-time morning briefing",
-      "50 watchlist + 20 active alerts",
-      "All 6 training difficulty tiers",
-      "120 req/min API rate",
+      "Puntuaciones de acciones ilimitadas",
+      "Análisis IA de acciones (veredicto + convicción)",
+      "Coach de trading IA (chat ilimitado)",
+      "Alertas inteligentes con envío por email",
+      "Screener de breakout (multi-timeframe)",
+      "Auto-compartir hits de TP (Twitter/LinkedIn/Discord)",
+      "Suite completa de backtesting",
+      "Resumen matutino en tiempo real",
+      "50 en lista de seguimiento + 20 alertas activas",
+      "Todos los 6 niveles de dificultad de entrenamiento",
+      "120 req/min tasa de API",
     ],
   },
   {
     id: "elite",
     name: "Elite",
     price: 99,
-    tagline: "Maximum Edge",
+    tagline: "Máxima Ventaja",
     icon: "⚡",
     gradient: `linear-gradient(135deg, ${C.warning} 0%, ${C.negative} 100%)`,
     accent: C.warning,
     features: [
-      "Everything in Pro",
-      "Options analysis (12+ strategies)",
-      "Options screener (IV, Greeks)",
-      "Graham value analysis",
-      "Net-net working capital screeners",
-      "Enriched data (sentiment, insider)",
-      "ML signal classification (neural net)",
-      "Portfolio tracker (multi-position P&L)",
-      "Custom alert strategies",
-      "Unlimited smart alerts + social share",
-      "300 req/min API rate",
+      "Todo en Pro",
+      "Análisis de opciones (12+ estrategias)",
+      "Screener de opciones (IV, Greeks)",
+      "Análisis de valor Graham",
+      "Screeners de capital de trabajo net-net",
+      "Datos enriquecidos (sentimiento, insider)",
+      "Clasificación de señales ML (red neuronal)",
+      "Rastreador de portafolio (P&L multi-posición)",
+      "Estrategias de alerta personalizadas",
+      "Alertas inteligentes ilimitadas + compartir en redes",
+      "300 req/min tasa de API",
     ],
   },
   {
     id: "enterprise",
     name: "Enterprise",
     price: 0,
-    tagline: "Platform as Infrastructure",
+    tagline: "Plataforma como Infraestructura",
     icon: "🏢",
     customPricing: true,
     gradient: `linear-gradient(135deg, ${C.positive} 0%, ${C.positive} 100%)`,
     accent: C.positive,
     features: [
-      "Everything in Elite",
-      "White-label API",
-      "Multi-seat (up to 20)",
-      "Custom scoring models",
-      "Historical data export",
-      "Priority support (2h SLA)",
-      "Custom integrations (TradeStation, IBKR)",
-      "Compliance dashboard",
-      "Dedicated infrastructure",
+      "Todo en Elite",
+      "API white-label",
+      "Multi-asiento (hasta 20)",
+      "Modelos de puntuación personalizados",
+      "Exportación de datos históricos",
+      "Soporte prioritario (SLA de 2h)",
+      "Integraciones personalizadas (TradeStation, IBKR)",
+      "Panel de cumplimiento",
+      "Infraestructura dedicada",
     ],
   },
 ];
@@ -201,7 +201,7 @@ export default function BillingPage() {
             marginBottom: "20px", letterSpacing: "0.5px", textTransform: "uppercase",
           }}>
             <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: C.accentLight }} />
-            Pricing
+            Planes
           </div>
           <h1 style={{
             fontSize: "48px", fontWeight: 800, margin: "0 0 12px",
@@ -209,13 +209,13 @@ export default function BillingPage() {
             WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
             lineHeight: 1.1, letterSpacing: "-1px",
           }}>
-            Choose Your Edge
+            Elige Tu Plan
           </h1>
           <p style={{
             fontSize: "18px", color: C.textMuted, maxWidth: "560px",
             margin: "0 auto", lineHeight: 1.6,
           }}>
-            Free traders see the signals. Paid traders act on them.
+            Los traders gratuitos ven las señales. Los traders premium actúan sobre ellas.
           </p>
         </div>
 
@@ -287,7 +287,7 @@ export default function BillingPage() {
                     boxShadow: "0 4px 12px rgba(124,58,237,0.4)",
                     zIndex: 2,
                   }}>
-                    MOST POPULAR
+                    MÁS POPULAR
                   </div>
                 )}
 
@@ -302,7 +302,7 @@ export default function BillingPage() {
                     boxShadow: `0 4px 12px ${plan.accent}40`,
                     zIndex: 2,
                   }}>
-                    CURRENT PLAN
+                    PLAN ACTUAL
                   </div>
                 )}
 
@@ -337,8 +337,8 @@ export default function BillingPage() {
                   }}>
                     {plan.customPricing ? (
                       <div>
-                        <span style={{ fontSize: "28px", fontWeight: 800, color: C.textPrimary }}>Custom</span>
-                        <p style={{ fontSize: "12px", color: C.textMuted, margin: "4px 0 0" }}>Tailored for your team</p>
+                        <span style={{ fontSize: "28px", fontWeight: 800, color: C.textPrimary }}>Personalizado</span>
+                        <p style={{ fontSize: "12px", color: C.textMuted, margin: "4px 0 0" }}>Adaptado para tu equipo</p>
                       </div>
                     ) : (
                       <div>
@@ -399,11 +399,11 @@ export default function BillingPage() {
                         letterSpacing: "0.3px",
                       }}
                     >
-                      {loading === "portal" ? "Loading..." : "Manage Plan"}
+                      {loading === "portal" ? "Cargando..." : "Gestionar Plan"}
                     </button>
                   ) : plan.customPricing ? (
                     <button
-                      onClick={() => window.location.href = "mailto:sales@breakoutfinder.com"}
+                      onClick={() => window.location.href = "mailto:sales@prospector.com"}
                       style={{
                         width: "100%", padding: "13px 20px", borderRadius: "10px",
                         border: "1px solid rgba(16,185,129,0.3)",
@@ -414,22 +414,27 @@ export default function BillingPage() {
                         transition: "all 0.2s ease",
                       }}
                     >
-                      Contact Sales
+                      Contactar Ventas
                     </button>
                   ) : isDowngrade ? (
-                    <button
-                      disabled
-                      style={{
-                        width: "100%", padding: "13px 20px", borderRadius: "10px",
-                        border: "1px solid rgba(255,255,255,0.06)",
-                        background: "rgba(255,255,255,0.02)",
-                        color: C.textMuted,
-                        fontSize: "14px", fontWeight: 600,
-                        cursor: "not-allowed",
-                      }}
-                    >
-                      Downgrade
-                    </button>
+                    <div>
+                      <button
+                        disabled
+                        style={{
+                          width: "100%", padding: "13px 20px", borderRadius: "10px",
+                          border: "1px solid rgba(255,255,255,0.06)",
+                          background: "rgba(255,255,255,0.02)",
+                          color: C.textMuted,
+                          fontSize: "14px", fontWeight: 600,
+                          cursor: "not-allowed",
+                        }}
+                      >
+                        Plan actual
+                      </button>
+                      <p style={{ margin: "8px 0 0", fontSize: "11px", color: C.textMuted, textAlign: "center" }}>
+                        Para cambiar de plan, contacta soporte
+                      </p>
+                    </div>
                   ) : (
                     <button
                       onClick={() => handleUpgrade(plan.id)}
@@ -451,7 +456,7 @@ export default function BillingPage() {
                         letterSpacing: "0.3px",
                       }}
                     >
-                      {loading === plan.id ? "Redirecting..." : isUpgrade ? `Upgrade to ${plan.name}` : `Get ${plan.name}`}
+                      {loading === plan.id ? "Redirigiendo..." : isUpgrade ? `Actualizar a ${plan.name}` : `Obtener ${plan.name}`}
                     </button>
                   )}
                 </div>
@@ -471,9 +476,9 @@ export default function BillingPage() {
             flexWrap: "wrap",
           }}>
             {[
-              { icon: "🔒", text: "SSL encrypted" },
-              { icon: "💳", text: "Secure payments via LemonSqueezy" },
-              { icon: "↩️", text: "7-day money-back guarantee" },
+              { icon: "🔒", text: "Cifrado SSL" },
+              { icon: "💳", text: "Pagos seguros vía LemonSqueezy" },
+              { icon: "↩️", text: "Garantía de devolución de 7 días" },
             ].map((item, i) => (
               <div key={i} style={{
                 display: "flex", alignItems: "center", gap: "8px",

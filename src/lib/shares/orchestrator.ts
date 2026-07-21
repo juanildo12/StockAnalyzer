@@ -54,12 +54,10 @@ export async function shareResult(
   // Pre-checks
   const decision = shouldShare(trigger);
   if (!decision.shouldShare) {
-    console.log(`[ShareEngine] Skip ${trigger.symbol}: ${decision.reason}`);
     return [];
   }
 
   if (await wasRecentlyShared(trigger.alertId)) {
-    console.log(`[ShareEngine] Skip ${trigger.symbol}: recently shared`);
     return [];
   }
 
@@ -113,12 +111,6 @@ export async function shareResult(
     });
 
     results.push(result);
-
-    if (result.success) {
-      console.log(`[ShareEngine] Shared ${trigger.symbol} on ${platform}: ${result.postUrl || result.postId}`);
-    } else {
-      console.log(`[ShareEngine] Failed ${trigger.symbol} on ${platform}: ${result.error}`);
-    }
   }
 
   return results;

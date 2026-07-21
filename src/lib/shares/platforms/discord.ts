@@ -36,7 +36,7 @@ export async function shareOnDiscord(
           { name: "Hold", value: `${trigger.heldDays}d`, inline: true },
         ],
         footer: {
-          text: "BreakoutFinder — Quantitative Trading",
+          text: "Prospector — AI Stock Analysis",
         },
         timestamp: new Date().toISOString(),
       }],

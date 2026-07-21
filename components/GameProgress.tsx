@@ -178,8 +178,8 @@ export default function GameProgress({ state }: Props) {
             {state.achievements.map(a => (
               <div key={a.id} style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '6px 12px', background: `${C.accent}15`, borderRadius: R.md,
-                fontSize: '12px', color: C.textPrimary, border: `1px solid ${C.accent}20`,
+                padding: '6px 12px', background: `${C.accent15}`, borderRadius: R.md,
+                fontSize: '12px', color: C.textPrimary, border: `1px solid ${C.accent20}`,
               }}>
                 <span>{a.icon}</span>
                 <span style={{ fontWeight: 500 }}>{a.name}</span>

@@ -52,6 +52,7 @@ const CARDS: CardConfig[] = [
     description: 'Current volume relative to the 20-day average volume. Values above 1 indicate elevated activity.',
     leftLabels: [0, 25, 50, 75, 100],
     rightLabels: [],
+    color: '#60a5fa',
   },
   {
     key: 'trendQuality',
@@ -59,6 +60,7 @@ const CARDS: CardConfig[] = [
     description: 'Score based on price position relative to moving averages and short-term momentum.',
     leftLabels: [0, 25, 50, 75, 100],
     rightLabels: [],
+    color: '#a78bfa',
   },
   {
     key: 'entryConfidence',
@@ -66,6 +68,7 @@ const CARDS: CardConfig[] = [
     description: 'Combined score using RSI, proximity to support, and volume confirmation.',
     leftLabels: [0, 25, 50, 75, 100],
     rightLabels: [],
+    color: '#f59e0b',
   },
   {
     key: 'riskReward',
@@ -73,6 +76,7 @@ const CARDS: CardConfig[] = [
     description: 'Estimated distance to 20-day resistance divided by distance to 20-day support.',
     leftLabels: [0, 25, 50, 75, 100],
     rightLabels: [],
+    color: '#f472b6',
   },
 ];
 

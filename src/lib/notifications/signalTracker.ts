@@ -138,10 +138,6 @@ export async function evaluatePendingSignals(): Promise<{
     },
   });
 
-  console.log(
-    `[SignalTracker] Evaluated ${evaluated} signals: ${wins} wins, ${losses} losses (${Date.now() - startTime}ms)`
-  );
-
   return { evaluated, wins, losses };
 }
 

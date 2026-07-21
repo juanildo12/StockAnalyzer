@@ -9,7 +9,6 @@ export async function warmPopularStocks(): Promise<{
   fundamentalsUpdated: number;
 }> {
   const startTime = Date.now();
-  console.log(`[CacheWorker] Warming ${STOCK_POOL.length} stocks...`);
 
   let fundamentalsUpdated = 0;
 
@@ -128,10 +127,6 @@ export async function warmPopularStocks(): Promise<{
       },
     },
   });
-
-  console.log(
-    `[CacheWorker] Warmed ${fundamentalsUpdated} stocks (${Date.now() - startTime}ms)`
-  );
 
   return { fundamentalsUpdated };
 }

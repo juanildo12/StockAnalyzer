@@ -34,6 +34,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Name and score required' }, { status: 400 });
     }
 
+    if (typeof score !== 'number' || score < 0 || score > 10000) {
+      return NextResponse.json({ error: 'Invalid score' }, { status: 400 });
+    }
+
     const entry: LeaderboardEntry = {
       name: name.slice(0, 20),
       score,
@@ -47,6 +51,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, position: leaderboard.indexOf(entry) + 1 });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

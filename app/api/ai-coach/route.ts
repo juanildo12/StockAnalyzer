@@ -83,8 +83,6 @@ export async function POST(request: NextRequest) {
     let dataBlock = '';
 
     if (ticker) {
-      console.log(`[FinRobot] ${requestType} for ${ticker}...`);
-
       // Fetch ALL sources in parallel — each catches its own errors
       const [yahooData, finnhubQuote, finnhubProfile, insiderTxns, sentiment, peers, recTrends, tipranks, googlePrice] = await Promise.all([
         getStockData(ticker),
@@ -274,6 +272,6 @@ export async function POST(request: NextRequest) {
     const stack = error instanceof Error ? error.stack : '';
     console.error('[FinRobot] Error:', message);
     console.error('[FinRobot] Stack:', stack);
-    return new Response(JSON.stringify({ error: message }), { status: 500 });
+    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 });
   }
 }

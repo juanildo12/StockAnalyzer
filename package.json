@@ -14,7 +14,6 @@
     "@auth/supabase-adapter": "^1.11.2",
     "@litertjs/core": "^2.5.2",
     "@prisma/client": "^5.22.0",
-    "@react-native-async-storage/async-storage": "^3.0.1",
     "@supabase/supabase-js": "^2.110.6",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
@@ -30,10 +29,6 @@
     "react": "^18.3.1",
     "react-dom": "^18.2.0",
     "react-markdown": "^10.1.0",
-    "react-native": "^0.84.1",
-    "react-native-chart-kit": "^6.12.0",
-    "react-native-safe-area-context": "^5.7.0",
-    "react-native-svg": "^15.15.3",
     "remark-gfm": "^4.0.1",
     "yahoo-finance2": "^3.15.3",
     "zod": "^4.4.3"

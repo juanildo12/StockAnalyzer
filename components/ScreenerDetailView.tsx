@@ -143,9 +143,9 @@ export default function ScreenerDetailView({ screener, onBack, onViewStock }: Sc
                   borderRadius: '999px',
                   fontSize: '11px',
                   fontWeight: 600,
-                  background: `${C.accent}20`,
+                  background: `${C.accent20}`,
                   color: C.accent,
-                  border: `1px solid ${C.accent}40`,
+                  border: `1px solid ${C.accent40}`,
                 }}>
                   {f}
                 </span>
@@ -288,7 +288,7 @@ export default function ScreenerDetailView({ screener, onBack, onViewStock }: Sc
                     <td style={{ padding: '10px 0 10px 8px', textAlign: 'right' }}>
                       <span style={{
                         display: 'inline-block',
-                        background: row.total >= 220 ? `${C.positive}20` : row.total >= 160 ? `${C.warning}20` : `${C.negative}20`,
+                        background: row.total >= 220 ? `${C.positive20}` : row.total >= 160 ? `${C.warning20}` : `${C.negative20}`,
                         color: row.total >= 220 ? C.positive : row.total >= 160 ? C.warning : C.negative,
                         fontWeight: 700,
                         fontSize: '14px',

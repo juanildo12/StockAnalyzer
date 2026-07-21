@@ -120,6 +120,5 @@ export async function detectTPHits(): Promise<TPHitResult> {
     }
   }
 
-  console.log(`[TPDetector] Checked ${result.checked}, shared ${result.shared}`);
   return result;
 }

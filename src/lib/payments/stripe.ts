@@ -277,8 +277,6 @@ export async function handleWebhook(event: any): Promise<void> {
     return;
   }
 
-  console.log(`[LemonSqueezy Webhook] Event: ${eventName}`);
-
   // Extract userId from custom_data
   const userId = attrs.custom_data?.userId || attrs.user_email;
   const subscriptionId = event.data?.id;
@@ -324,7 +322,6 @@ export async function handleWebhook(event: any): Promise<void> {
             currentPeriodEnd: attrs.ends_at ? new Date(attrs.ends_at) : null,
           },
         });
-        console.log(`[LemonSqueezy] User ${userId} → plan: ${plan}, status: ${dbStatus}`);
       }
       break;
     }
@@ -339,7 +336,6 @@ export async function handleWebhook(event: any): Promise<void> {
             cancelAt: attrs.ends_at ? new Date(attrs.ends_at) : new Date(),
           },
         });
-        console.log(`[LemonSqueezy] User ${userId} subscription cancelled`);
       }
       break;
     }
@@ -354,7 +350,6 @@ export async function handleWebhook(event: any): Promise<void> {
             lemonSqueezySubscriptionId: null,
           },
         });
-        console.log(`[LemonSqueezy] User ${userId} subscription expired`);
       }
       break;
     }
@@ -365,7 +360,6 @@ export async function handleWebhook(event: any): Promise<void> {
           where: { lemonSqueezySubscriptionId: subscriptionId },
           data: { status: "past_due" },
         });
-        console.log(`[LemonSqueezy] User ${userId} payment failed`);
       }
       break;
     }
@@ -384,6 +378,6 @@ export async function handleWebhook(event: any): Promise<void> {
     }
 
     default:
-      console.log(`[LemonSqueezy] Unhandled event: ${eventName}`);
+      break;
   }
 }

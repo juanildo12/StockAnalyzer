@@ -83,10 +83,8 @@ export async function runAllScreeners(): Promise<{
   totalResults: number;
 }> {
   const startTime = Date.now();
-  console.log(`[ScannerWorker] Starting scan of ${STOCK_POOL.length} stocks...`);
 
   const rows = await fetchPoolData();
-  console.log(`[ScannerWorker] Fetched data for ${rows.length} stocks`);
 
   const now = new Date();
   let totalResults = 0;
@@ -128,9 +126,6 @@ export async function runAllScreeners(): Promise<{
     }
 
     totalResults += results.length;
-    console.log(
-      `[ScannerWorker] ${model.name}: ${results.length} results (top: ${results[0]?.symbol} ${results[0]?.total})`
-    );
   }
 
   // Log the job run
@@ -149,10 +144,6 @@ export async function runAllScreeners(): Promise<{
     },
   });
 
-  console.log(
-    `[ScannerWorker] Completed in ${Date.now() - startTime}ms — ${totalResults} total results`
-  );
-
   return { screenersRun: SCREENER_MODELS.length, totalResults };
 }
 
@@ -161,7 +152,6 @@ export async function computeBreakoutScores(): Promise<{
   stored: number;
 }> {
   const startTime = Date.now();
-  console.log(`[ScannerWorker] Computing breakout scores for ${STOCK_POOL.length} stocks...`);
 
   const rows = await fetchPoolData();
   const now = new Date();
@@ -286,10 +276,6 @@ export async function computeBreakoutScores(): Promise<{
     },
   });
 
-  console.log(
-    `[ScannerWorker] Breakout scores: ${qualified} qualified, ${stored} stored (${Date.now() - startTime}ms)`
-  );
-
   return { qualified, stored };
 }
 
@@ -297,8 +283,6 @@ export async function computeMorningBriefing(): Promise<boolean> {
   const startTime = Date.now();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
-  console.log(`[ScannerWorker] Computing morning briefing...`);
 
   // Get today's breakout scores from DB
   const breakoutResults = await prisma.screener_results.findMany({
@@ -313,7 +297,6 @@ export async function computeMorningBriefing(): Promise<boolean> {
   });
 
   if (breakoutResults.length === 0) {
-    console.log(`[ScannerWorker] No breakout scores found for today`);
     return false;
   }
 
@@ -429,10 +412,6 @@ export async function computeMorningBriefing(): Promise<boolean> {
       },
     },
   });
-
-  console.log(
-    `[ScannerWorker] Morning briefing: ${picks.length} picks (${Date.now() - startTime}ms)`
-  );
 
   return true;
 }

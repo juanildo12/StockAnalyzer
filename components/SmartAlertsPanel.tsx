@@ -50,18 +50,22 @@ function timeAgo(dateStr: string): string {
 export default function SmartAlertsPanel() {
   const [alerts, setAlerts] = useState<SmartAlert[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"active" | "triggered" | "expired" | "dismissed">("active");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [shareAlert, setShareAlert] = useState<SmartAlert | null>(null);
 
   const fetchAlerts = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(`/api/v1/alerts/smart?status=${filter}`);
+      if (!res.ok) throw new Error(`Error ${res.status}`);
       const json = await res.json();
       setAlerts(json.alerts || []);
-    } catch {
+    } catch (e: any) {
       setAlerts([]);
+      setError("No se pudieron cargar las alertas. Intenta de nuevo.");
     } finally {
       setLoading(false);
     }
@@ -72,19 +76,25 @@ export default function SmartAlertsPanel() {
   const createDemo = async () => {
     try {
       const res = await fetch("/api/v1/alerts/smart?demo=true");
+      if (!res.ok) throw new Error(`Error ${res.status}`);
       const data = await res.json();
       if (data.alert) {
         setFilter("triggered");
         fetchAlerts();
       }
-    } catch {}
+    } catch {
+      setError("No se pudo crear la alerta de prueba.");
+    }
   };
 
   const dismiss = async (id: string) => {
     try {
-      await fetch(`/api/v1/alerts/smart/${id}`, { method: "PATCH", body: JSON.stringify({ status: "dismissed" }) });
+      const res = await fetch(`/api/v1/alerts/smart/${id}`, { method: "PATCH", body: JSON.stringify({ status: "dismissed" }) });
+      if (!res.ok) throw new Error(`Error ${res.status}`);
       setAlerts(prev => prev.filter(a => a.id !== id));
-    } catch {}
+    } catch {
+      setError("No se pudo descartar la alerta.");
+    }
   };
 
   return (
@@ -110,7 +120,7 @@ export default function SmartAlertsPanel() {
                   borderColor: filter === s ? C.positive : "#e2e8f0",
                 }}
               >
-                {s === "active" ? "Activas" : s === "triggered" ? "Triggered" : s === "expired" ? "Expiradas" : "Descartadas"}
+                {s === "active" ? "Activas" : s === "triggered" ? "Activadas" : s === "expired" ? "Expiradas" : "Descartadas"}
               </button>
             ))}
           </div>
@@ -122,6 +132,14 @@ export default function SmartAlertsPanel() {
         <div style={styles.empty}>
           <div style={styles.spinner} />
           <span>Cargando...</span>
+        </div>
+      ) : error ? (
+        <div style={{ ...styles.empty, background: `${C.negative08}` }}>
+          <span style={{ fontSize: 24 }}>⚠️</span>
+          <span style={{ color: C.negative, fontSize: F.sizeMd, fontWeight: 500 }}>{error}</span>
+          <button onClick={fetchAlerts} style={{ ...styles.demoBtn, color: C.negative, borderColor: C.negative }}>
+            Reintentar
+          </button>
         </div>
       ) : alerts.length === 0 ? (
         <div style={styles.empty}>
@@ -219,9 +237,9 @@ export default function SmartAlertsPanel() {
                           return (
                             <span key={i} style={{
                               ...styles.factorTag,
-                              background: s >= 70 ? `${C.positive}18` : s >= 50 ? `${C.info}18` : `${C.warning}18`,
+                              background: s >= 70 ? `${C.positive18}` : s >= 50 ? `${C.info18}` : `${C.warning18}`,
                               color: s >= 70 ? C.positive : s >= 50 ? C.info : C.warning,
-                              borderColor: s >= 70 ? `${C.positive}30` : s >= 50 ? `${C.info}30` : `${C.warning}30`,
+                              borderColor: s >= 70 ? `${C.positive30}` : s >= 50 ? `${C.info30}` : `${C.warning30}`,
                             }}>
                               {label}: {score}
                             </span>
@@ -232,7 +250,7 @@ export default function SmartAlertsPanel() {
 
                     {/* Warnings */}
                     {alert.warnings.length > 0 && (
-                      <div style={{ ...styles.detailSection, background: `${C.warning}08` }}>
+                      <div style={{ ...styles.detailSection, background: `${C.warning08}` }}>
                         <div style={{ ...styles.detailLabel, color: C.warning }}>Advertencias</div>
                         {alert.warnings.map((w, i) => (
                           <div key={i} style={{ fontSize: F.sizeSm, color: C.warning, padding: "2px 0" }}>⚠ {w}</div>
@@ -371,7 +389,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   zoneGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
+    gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
     gap: S.sm,
   },
   zoneItem: {

@@ -1,19 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import Sidebar from '@/components/Sidebar';
 import { 
   savePortfolioToFirestore, 
   getPortfolioFromFirestore, 
-  addPortfolioItem, 
   updatePortfolioItem,
   removePortfolioItem,
   PortfolioItem,
   getWatchlistFromFirestore,
-  addWatchlistItem,
   updateWatchlistItem,
   removeWatchlistItem,
   WatchlistItem,
@@ -30,7 +27,7 @@ import ScreenerPage from '@/app/screener/page';
 import TradingTrainer from '@/components/TradingTrainer';
 import StockDetailPanel from '@/components/StockDetailPanel';
 import SmartAlertsPanel from '@/components/SmartAlertsPanel';
-import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
+import { colors as C, radius as R, font as F, shadow, transition as T } from '@/src/utils/webTheme';
 
 
 interface StockQuote {
@@ -226,7 +223,7 @@ function RenderInforme({ informe, data }: { informe: InformeDetail; data?: any }
 
       {/* Datos Clave */}
       {informe.dataKey && (
-        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '16px', marginBottom: '16px', borderLeft: '4px solid C.accentLight' }}>
+        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '16px', marginBottom: '16px', borderLeft: `4px solid ${C.accentLight}` }}>
           <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeBase, fontWeight: '600' }}>Datos clave (actualizados a {informe.dataKey.lastUpdated}):</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
             <div>
@@ -257,11 +254,11 @@ function RenderInforme({ informe, data }: { informe: InformeDetail; data?: any }
         <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>1. PE Ratio</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <tr style={{ borderBottom: '1px solid C.border' }}>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: '8px 0', color: C.textMuted }}>PE Ratio actual (TTM)</td>
               <td style={{ padding: '8px 0', color: informe.peRatio.currentValue < 0 ? C.negative : C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.peRatio.current}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid C.border' }}>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: '8px 0', color: C.textMuted }}>Clasificación</td>
               <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.peRatio.classification}</td>
             </tr>
@@ -278,15 +275,15 @@ function RenderInforme({ informe, data }: { informe: InformeDetail; data?: any }
         <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>2. Cash y Deudas</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <tr style={{ borderBottom: '1px solid C.border' }}>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: '8px 0', color: C.textMuted }}>Cash</td>
               <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.cashDebt.cash}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid C.border' }}>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: '8px 0', color: C.textMuted }}>Deuda Total</td>
               <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.cashDebt.debt}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid C.border' }}>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: '8px 0', color: C.textMuted }}>Deuda/Equity</td>
               <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.cashDebt.debtToEquity}</td>
             </tr>
@@ -303,11 +300,11 @@ function RenderInforme({ informe, data }: { informe: InformeDetail; data?: any }
         <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>3. Crecimiento en Ventas 2024-2025</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <tr style={{ borderBottom: '1px solid C.border' }}>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: '8px 0', color: C.textMuted }}>Crecimiento actual</td>
               <td style={{ padding: '8px 0', color: informe.growth.currentValue >= 0 ? C.positive : C.negative, textAlign: 'right', fontWeight: '600' }}>{informe.growth.current}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid C.border' }}>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: '8px 0', color: C.textMuted }}>Clasificación</td>
               <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.growth.classification}</td>
             </tr>
@@ -324,11 +321,11 @@ function RenderInforme({ informe, data }: { informe: InformeDetail; data?: any }
         <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>4. Profit Margin Promedio (últimos 4 años)</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <tr style={{ borderBottom: '1px solid C.border' }}>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: '8px 0', color: C.textMuted }}>Profit Margin actual</td>
               <td style={{ padding: '8px 0', color: informe.profitMargin.currentValue >= 0 ? C.positive : C.negative, textAlign: 'right', fontWeight: '600' }}>{informe.profitMargin.current}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid C.border' }}>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: '8px 0', color: C.textMuted }}>Promedio 4 años</td>
               <td style={{ padding: '8px 0', color: C.negative, textAlign: 'right', fontWeight: '600' }}>{informe.profitMargin.average4Years}</td>
             </tr>
@@ -345,7 +342,7 @@ function RenderInforme({ informe, data }: { informe: InformeDetail; data?: any }
         <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>5. PE Ratio Promedio (últimos 6 meses)</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <tr style={{ borderBottom: '1px solid C.border' }}>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: '8px 0', color: C.textMuted }}>Histórico</td>
               <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.peAverage.historical}</td>
             </tr>
@@ -361,11 +358,11 @@ function RenderInforme({ informe, data }: { informe: InformeDetail; data?: any }
         <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>6. Precio Actual y Proyección</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <tr style={{ borderBottom: '1px solid C.border' }}>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: '8px 0', color: C.textMuted }}>Precio actual</td>
               <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{informe.projection.currentPrice}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid C.border' }}>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: '8px 0', color: C.textMuted }}>Ventas forward</td>
               <td style={{ padding: '8px 0', color: C.accentLight, textAlign: 'right', fontWeight: '600' }}>{informe.projection.forwardRevenue}</td>
             </tr>
@@ -382,11 +379,11 @@ function RenderInforme({ informe, data }: { informe: InformeDetail; data?: any }
         <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>7. Comparación con TipRanks</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <tr style={{ borderBottom: '1px solid C.border' }}>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: '8px 0', color: C.textMuted }}>Price Target</td>
               <td style={{ padding: '8px 0', color: C.accentLight, textAlign: 'right', fontWeight: '600' }}>{informe.tipRanks.priceTarget}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid C.border' }}>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: '8px 0', color: C.textMuted }}>Upside</td>
               <td style={{ padding: '8px 0', color: informe.tipRanks.upsideValue >= 0 ? C.positive : C.negative, textAlign: 'right', fontWeight: '600' }}>{informe.tipRanks.upside}</td>
             </tr>
@@ -404,14 +401,14 @@ function RenderInforme({ informe, data }: { informe: InformeDetail; data?: any }
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
             {informe.summaryTable.rows.map((row, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid C.border' }}>
+              <tr key={i} style={{ borderBottom: `1px solid ${C.border}` }}>
                 <td style={{ padding: '8px 0', color: C.textMuted }}>{row.metric}</td>
                 <td style={{ padding: '8px 0', color: C.textPrimary, textAlign: 'right', fontWeight: '600' }}>{row.value}</td>
               </tr>
             ))}
             {data?.summary?.freeCashflow && (
               <>
-                <tr style={{ borderBottom: '1px solid C.border' }}>
+                <tr style={{ borderBottom: `1px solid ${C.border}` }}>
                   <td style={{ padding: '8px 0', color: C.textMuted }}>Free Cash Flow</td>
                   <td style={{ padding: '8px 0', color: C.positive, textAlign: 'right', fontWeight: '600' }}>{formatNumber(data.summary.freeCashflow)}</td>
                 </tr>
@@ -439,15 +436,15 @@ function RenderInforme({ informe, data }: { informe: InformeDetail; data?: any }
         <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: F.sizeLg, fontWeight: '600' }}>🛠 Estrategia Operativa</h3>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
-            <tr style={{ borderBottom: '1px solid C.border' }}>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: '8px 0', color: C.textMuted }}>Zona de Compra</td>
               <td style={{ padding: '8px 0', color: C.positive, textAlign: 'right', fontWeight: '600' }}>{informe.strategy.buyZone}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid C.border' }}>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: '8px 0', color: C.textMuted }}>Target 1</td>
               <td style={{ padding: '8px 0', color: C.accentLight, textAlign: 'right', fontWeight: '600' }}>{informe.strategy.target1}</td>
             </tr>
-            <tr style={{ borderBottom: '1px solid C.border' }}>
+            <tr style={{ borderBottom: `1px solid ${C.border}` }}>
               <td style={{ padding: '8px 0', color: C.textMuted }}>Target 2</td>
               <td style={{ padding: '8px 0', color: C.accentLight, textAlign: 'right', fontWeight: '600' }}>{informe.strategy.target2}</td>
             </tr>
@@ -516,15 +513,55 @@ export default function Home() {
   const [watchlistError, setWatchlistError] = useState('');
   const [editingAlert, setEditingAlert] = useState<{[key: string]: { alertType: 'above' | 'below'; alertPrice: number; alertEnabled: boolean; alertPriceInput: number }}>({});
   const [savingAlert, setSavingAlert] = useState<string | null>(null);
+  const [dailyAnalysisCount, setDailyAnalysisCount] = useState(0);
 
   const { data: session, status } = useSession();
 
   useEffect(() => {
+    let active = true;
     if (session?.user?.email) {
       saveUserEmail(session.user.email, session.user.email);
     }
-    loadPortfolio();
-    loadWatchlist();
+    const loadAll = async () => {
+      if (session?.user?.email) {
+        try {
+          const items = await getPortfolioFromFirestore(session.user.email);
+          if (active) setPortfolio(items);
+        } catch (error) {
+          console.error('Error loading portfolio:', error);
+        }
+        try {
+          const items = await getWatchlistFromFirestore(session.user.email);
+          if (active) {
+            setWatchlist(items);
+            setWatchlistError('');
+          }
+          if (active && items.length > 0) fetchWatchlistPrices(items.map(w => w.symbol));
+        } catch (error) {
+          console.error('Error loading watchlist:', error);
+        }
+      } else {
+        const pLocal = localStorage.getItem(LOCAL_PORTFOLIO_KEY);
+        if (pLocal && active) setPortfolio(JSON.parse(pLocal) as PortfolioItem[]);
+        const wLocal = localStorage.getItem(LOCAL_WATCHLIST_KEY);
+        if (wLocal && active) {
+          const items = JSON.parse(wLocal) as WatchlistItem[];
+          setWatchlist(items);
+          setWatchlistError('');
+          if (items.length > 0) fetchWatchlistPrices(items.map(w => w.symbol));
+        }
+      }
+    };
+    loadAll();
+    try {
+      const raw = localStorage.getItem('prospector_daily_analyses');
+      if (raw) {
+        const saved = JSON.parse(raw) as { count: number; date: string };
+        const today = new Date().toISOString().slice(0, 10);
+        if (active && saved.date === today) setDailyAnalysisCount(saved.count);
+      }
+    } catch {}
+    return () => { active = false; };
   }, [session]);
 
   // Daily refresh of watchlist prices at 8PM Bolivia time (UTC-4)
@@ -764,6 +801,14 @@ export default function Home() {
         informeDetail: json.informeDetail,
         fundamentals: json.fundamentals,
       });
+      const today = new Date().toISOString().slice(0, 10);
+      try {
+        const raw = localStorage.getItem('prospector_daily_analyses');
+        const saved = raw ? JSON.parse(raw) as { count: number; date: string } : { count: 0, date: '' };
+        const newCount = saved.date === today ? saved.count + 1 : 1;
+        localStorage.setItem('prospector_daily_analyses', JSON.stringify({ count: newCount, date: today }));
+        setDailyAnalysisCount(newCount);
+      } catch {}
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -772,6 +817,7 @@ export default function Home() {
   };
 
   useEffect(() => {
+    let cancelled = false;
     const urlSymbol = searchParams?.get('symbol');
     if (urlSymbol && view === 'analyzer') {
       const upperSymbol = urlSymbol.toUpperCase();
@@ -779,9 +825,28 @@ export default function Home() {
         setSymbol(upperSymbol);
       }
       if (!data || data?.quote?.symbol !== upperSymbol) {
-        searchStock(upperSymbol);
+        (async () => {
+          setLoading(true);
+          setError('');
+          try {
+            const res = await fetch(`/api/stock?symbol=${encodeURIComponent(upperSymbol)}`);
+            const json = await res.json();
+            if (cancelled) return;
+            if (!json.quote) throw new Error('Symbol not found');
+            setData({
+              quote: json.quote, summary: json.summary,
+              technical: json.technical, recommendation: json.recommendation,
+              informeDetail: json.informeDetail, fundamentals: json.fundamentals,
+            });
+          } catch (e: any) {
+            if (!cancelled) setError(e.message);
+          } finally {
+            if (!cancelled) setLoading(false);
+          }
+        })();
       }
     }
+    return () => { cancelled = true; };
   }, [searchParams, view]);
 
   const addToPortfolio = async () => {
@@ -873,18 +938,6 @@ export default function Home() {
     return num.toLocaleString();
   };
 
-  const getTrendColor = (trend: string) => {
-    if (trend === 'alcista') return C.positive;
-    if (trend === 'bajista') return C.negative;
-    return C.textMuted;
-  };
-
-  const getSignalColor = (signal: string) => {
-    if (signal === 'comprar') return C.positive;
-    if (signal === 'vender') return C.negative;
-    return C.textMuted;
-  };
-
   const getActionColor = (action: string) => {
     if (action === 'COMPRAR') return C.positive;
     if (action === 'VENDER') return C.negative;
@@ -910,14 +963,14 @@ export default function Home() {
     <div style={{ display: 'flex', minHeight: '100vh', width: '100%', maxWidth: '100%', background: C.bg, color: C.textSecondary, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       {!isMobile && <Sidebar view={view} onViewChange={setView} userPlan={(session?.user as any)?.plan || 'free'} userName={session?.user?.name || session?.user?.email?.split('@')[0] || 'User'} />}
       <div style={{ flex: 1, minWidth: 0, width: '100%', maxWidth: '100%', marginLeft: isMobile ? 0 : 220, display: 'flex', flexDirection: 'column' }}>
-      <header style={{ display: 'flex', alignItems: 'center', padding: '12px 24px', borderBottom: '1px solid C.border', background: C.bg, position: isMobile ? 'sticky' : undefined, top: 0, zIndex: isMobile ? 100 : undefined }}>
+      <header style={{ display: 'flex', alignItems: 'center', padding: '12px 24px', borderBottom: `1px solid ${C.border}`, background: C.bg, position: isMobile ? 'sticky' : undefined, top: 0, zIndex: isMobile ? 100 : undefined }}>
         {isMobile && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button onClick={() => setMenuOpen(!menuOpen)}
+            <button onClick={() => setMenuOpen(!menuOpen)} aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={menuOpen}
               style={{ padding: '4px 8px', border: 'none', background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: F.sizeXxl }}>
               {menuOpen ? '✕' : '☰'}
             </button>
-            <div style={{ width: '32px', height: '32px', borderRadius: R.lg, background: 'linear-gradient(135deg, C.accent 0%, #6366F1 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: F.sizeLg, fontWeight: '700', color: C.textPrimary }}>P</div>
+            <div style={{ width: '32px', height: '32px', borderRadius: R.lg, background: `linear-gradient(135deg, ${C.accent} 0%, #6366F1 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: F.sizeLg, fontWeight: '700', color: C.textPrimary }}>P</div>
             <h1 style={{ margin: 0, fontSize: F.sizeXl, fontWeight: '700', color: C.textPrimary, letterSpacing: '-0.3px' }}>Prospector</h1>
           </div>
         )}
@@ -930,66 +983,74 @@ export default function Home() {
                 <img src={session.user.image} alt={session.user.name || 'User'} style={{ width: '32px', height: '32px', borderRadius: R.full }} />
               )}
               <span style={{ color: C.textSecondary, fontSize: F.sizeBase }}>{session.user?.name}</span>
-              <button onClick={() => signOut()} style={{ padding: '6px 12px', borderRadius: R.sm, border: '1px solid C.negative', background: 'transparent', color: C.negative, cursor: 'pointer', fontSize: F.sizeSm }}>Salir</button>
+              <button onClick={() => signOut()} aria-label="Cerrar sesión" style={{ padding: '6px 12px', borderRadius: R.sm, border: `1px solid ${C.negative}`, background: 'transparent', color: C.negative, cursor: 'pointer', fontSize: F.sizeSm }}>Salir</button>
             </div>
           ) : (
-            <button onClick={() => signIn('google')} style={{ padding: '8px 16px', borderRadius: R.md, border: 'none', background: 'C.accent', color: C.textPrimary, cursor: 'pointer', fontWeight: '600', fontSize: F.sizeBase }}>Iniciar sesión</button>
+            <button onClick={() => signIn('google')} aria-label="Iniciar sesión con Google" style={{ padding: '8px 16px', borderRadius: R.md, border: 'none', background: C.accent, color: C.textPrimary, cursor: 'pointer', fontWeight: '600', fontSize: F.sizeBase }}>Iniciar sesión</button>
           )}
         </div>
       </header>
 
 
         {isMobile && menuOpen && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: `${C.bg}b3`, zIndex: 10000 }} onClick={() => setMenuOpen(false)} />
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: `C.bgb3`, zIndex: 10000 }} onClick={() => setMenuOpen(false)} />
         )}
         {isMobile && menuOpen && (
-          <div style={{ position: 'fixed', top: 0, left: 0, width: '280px', height: '100dvh', background: C.bgCard, borderRight: '1px solid C.border', zIndex: 10001, overflowY: 'auto', padding: '20px', paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}>
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '280px', height: '100dvh', background: C.bgCard, borderRight: `1px solid ${C.border}`, zIndex: 10001, overflowY: 'auto', padding: '20px', paddingBottom: 'calc(env(safe-area-inset-bottom) + 20px)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: R.lg, background: 'linear-gradient(135deg, C.accent 0%, #6366F1 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: F.sizeXl, fontWeight: '700', color: C.textPrimary }}>P</div>
+                <div style={{ width: '36px', height: '36px', borderRadius: R.lg, background: `linear-gradient(135deg, ${C.accent} 0%, #6366F1 100%)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: F.sizeXl, fontWeight: '700', color: C.textPrimary }}>P</div>
                 <span style={{ fontSize: F.sizeXl, fontWeight: '700', color: C.textPrimary }}>Prospector</span>
               </div>
-              <button onClick={() => setMenuOpen(false)} style={{ padding: '4px 8px', border: 'none', background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: F.sizeHero }}>✕</button>
+              <button onClick={() => setMenuOpen(false)} aria-label="Cerrar menú" style={{ padding: '4px 8px', border: 'none', background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: F.sizeHero }}>✕</button>
             </div>
-            {[
-      { id: 'analyzer', icon: '🏠', label: 'Inicio' },
-      { id: 'portfolio', icon: '📁', label: 'Portafolio' },
-      { id: 'watchlist', icon: '👁️', label: 'Watchlist' },
-      { id: 'screener', icon: '🔎', label: 'Screener' },
-      { id: 'informe', icon: '📄', label: 'Informe' },
-      { id: 'risk-report', icon: '⚠️', label: 'Risk Report' },
-      { id: 'framework', icon: '🧠', label: 'Framework' },
-      { id: 'options', icon: '🎯', label: 'Opciones' },
-      { id: 'trade-validator', icon: '✅', label: 'Trade Validator' },
-      { id: 'tradestation', icon: '📊', label: 'TradeStation' },
-      { id: 'dashboard', icon: '📈', label: 'Dashboard' },
-      { id: 'ai-coach', icon: '🤖', label: 'FinRobot Coach' },
-      { id: 'backtest', icon: '🧪', label: 'Backtest' },
-      { id: 'inversor-inteligente', icon: '🧠', label: 'Inv. Inteligente' },
-      { id: 'trading-trainer', icon: '🎮', label: 'Trading Trainer' }
-            ].map(({ id, icon, label }) => (
-              <button key={id} onClick={() => { setView(id); setMenuOpen(false); }}
-                style={{ width: '100%', padding: '12px 16px', borderRadius: R.md, border: '1px solid C.border', background: view === id ? 'C.accent' : 'transparent', color: C.textSecondary, cursor: 'pointer', fontWeight: '500', textAlign: 'left', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span>{icon}</span><span>{label} {id === 'portfolio' ? `(${portfolio.length})` : ''}</span>
-              </button>
-            ))}
-            <div style={{ borderTop: '1px solid C.border', paddingTop: '16px', marginTop: '16px' }}>
+            {(() => {
+              const mobileUserPlan = (session?.user as any)?.plan || 'free';
+              const planLevel: Record<string, number> = { free: 0, pro: 1, elite: 2, enterprise: 3 };
+              const userLevel = planLevel[mobileUserPlan] ?? 0;
+              const mobileItems = [
+                { id: 'analyzer', icon: '🏠', label: 'Inicio', minPlan: 0 },
+                { id: 'briefing', icon: '📰', label: 'Briefing', minPlan: 0 },
+                { id: 'dashboard', icon: '📈', label: 'Dashboard', minPlan: 0 },
+                { id: 'screener', icon: '🔎', label: 'Screener', minPlan: 0 },
+                { id: 'alerts', icon: '🔔', label: 'Smart Alerts', minPlan: 1 },
+                { id: 'options', icon: '🎯', label: 'Opciones', minPlan: 2 },
+                { id: 'watchlist', icon: '👁️', label: 'Watchlist', minPlan: 0 },
+                { id: 'backtest', icon: '🧪', label: 'Backtest', minPlan: 1 },
+                { id: 'framework', icon: '🧠', label: 'Framework', minPlan: 0 },
+                { id: 'ai-coach', icon: '🤖', label: 'AI Coach', minPlan: 1 },
+                { id: 'inversor-inteligente', icon: '💰', label: 'Value Investing', minPlan: 2 },
+                { id: 'trading-trainer', icon: '🎮', label: 'Trainer', minPlan: 0 },
+                { id: 'portfolio', icon: '📁', label: 'Portafolio', minPlan: 0 },
+              ];
+              return mobileItems.map(({ id, icon, label, minPlan }) => {
+                const locked = userLevel < minPlan;
+                return (
+                  <button key={id} onClick={() => { if (locked) { window.location.href = '/settings/billing'; } else { setView(id); } setMenuOpen(false); }}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: R.md, border: `1px solid ${C.border}`, background: view === id ? C.accent : 'transparent', color: C.textSecondary, cursor: 'pointer', fontWeight: '500', textAlign: 'left', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px', opacity: locked ? 0.6 : 1 }}>
+                    <span>{icon}</span><span>{label} {id === 'portfolio' ? `(${portfolio.length})` : ''}</span>
+                    {locked && <span style={{ marginLeft: 'auto', fontSize: '10px', color: C.textMuted }}>PRO</span>}
+                  </button>
+                );
+              });
+            })()}
+            <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: '16px', marginTop: '16px' }}>
               {status === 'loading' ? (
                 <span style={{ color: C.textMuted, fontSize: F.sizeBase }}>Cargando...</span>
               ) : session ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   {session.user?.image && <img src={session.user.image} alt={session.user.name || 'User'} style={{ width: '32px', height: '32px', borderRadius: R.full }} />}
                   <span style={{ color: C.textSecondary, fontSize: F.sizeBase, flex: 1 }}>{session.user?.name}</span>
-                  <button onClick={() => { signOut(); setMenuOpen(false); }} style={{ padding: '8px 12px', borderRadius: R.sm, border: '1px solid C.negative', background: 'transparent', color: C.negative, cursor: 'pointer', fontSize: F.sizeSm }}>Salir</button>
+                  <button onClick={() => { signOut(); setMenuOpen(false); }} aria-label="Cerrar sesión" style={{ padding: '8px 12px', borderRadius: R.sm, border: `1px solid ${C.negative}`, background: 'transparent', color: C.negative, cursor: 'pointer', fontSize: F.sizeSm }}>Salir</button>
                 </div>
               ) : (
-                <button onClick={() => { signIn('google'); setMenuOpen(false); }} style={{ width: '100%', padding: '12px 16px', borderRadius: R.md, border: 'none', background: 'C.accent', color: C.textPrimary, cursor: 'pointer', fontWeight: '600', fontSize: F.sizeBase }}>Iniciar sesión</button>
+                <button onClick={() => { signIn('google'); setMenuOpen(false); }} aria-label="Iniciar sesión con Google" style={{ width: '100%', padding: '12px 16px', borderRadius: R.md, border: 'none', background: C.accent, color: C.textPrimary, cursor: 'pointer', fontWeight: '600', fontSize: F.sizeBase }}>Iniciar sesión</button>
               )}
             </div>
           </div>
         )}
 
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+      <div key={view} style={{ maxWidth: '1200px', margin: '0 auto', padding: isMobile ? '12px' : '20px', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
         {view === 'analyzer' ? (
           <>
             {/* ═══ LANDING HERO (when no stock selected) ═══ */}
@@ -999,41 +1060,46 @@ export default function Home() {
                 borderRadius: R.xl, marginBottom: '32px',
                 background: `linear-gradient(135deg, ${C.bgCard} 0%, ${C.bgElevated} 100%)`,
                 border: `1px solid ${C.border}`,
+                boxShadow: shadow.lg,
+                animation: `fadeInScale 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards`,
               }}>
                 {/* Glow effects */}
                 <div style={{
                   position: 'absolute', top: -100, right: -100,
                   width: 300, height: 300, borderRadius: '50%',
-                  background: `${C.accent}10`, filter: 'blur(80px)',
+                  background: `${C.accent10}`, filter: 'blur(80px)',
+                  animation: 'pulseGlow 4s ease-in-out infinite',
                 }} />
                 <div style={{
                   position: 'absolute', bottom: -60, left: -60,
                   width: 200, height: 200, borderRadius: '50%',
-                  background: `${C.positive}08`, filter: 'blur(60px)',
+                  background: `${C.positive08}`, filter: 'blur(60px)',
                 }} />
 
-                <div style={{ position: 'relative', padding: '48px 40px 40px', textAlign: 'center' }}>
+                <div style={{ position: 'relative', padding: '56px 48px 48px', textAlign: 'center' }}>
                   {/* Badge */}
                   <div style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '6px',
-                    padding: '5px 14px', borderRadius: R.full,
-                    background: `${C.accent}12`, border: `1px solid ${C.accent}25`,
-                    marginBottom: '20px',
+                    display: 'inline-flex', alignItems: 'center', gap: '8px',
+                    padding: '6px 16px', borderRadius: R.full,
+                    background: `${C.accent12}`, border: `1px solid ${C.accent25}`,
+                    marginBottom: '24px',
+                    animation: 'fadeInUp 0.3s ease 0.05s both',
                   }}>
-                    <span style={{ fontSize: 10, color: C.accentLight, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    <span style={{ fontSize: F.sizeXs, color: C.accentLight, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                       AI-Powered Analysis
                     </span>
                   </div>
 
                   {/* Headline */}
                   <h1 style={{
-                    fontSize: '36px', fontWeight: 900, color: C.textPrimary,
-                    lineHeight: 1.15, letterSpacing: '-0.03em', margin: '0 0 12px',
+                    fontSize: F.sizeDisplay, fontWeight: 800, color: C.textPrimary,
+                    lineHeight: 1.1, letterSpacing: '-0.03em', margin: '0 0 16px',
                     fontFamily: F.family,
+                    animation: 'fadeInUp 0.3s ease 0.1s both',
                   }}>
-                    Analiza cualquier accion<br />
+                    Analiza cualquier acción<br />
                     <span style={{
-                      background: C.gradientPrimary,
+                      background: `${C.gradientPrimary}`,
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                     }}>como un profesional</span>
@@ -1041,26 +1107,29 @@ export default function Home() {
 
                   <p style={{
                     fontSize: F.sizeLg, color: C.textSecondary,
-                    margin: '0 0 32px', maxWidth: 520, marginLeft: 'auto', marginRight: 'auto',
-                    lineHeight: 1.6,
+                    margin: '0 auto 36px', maxWidth: 540,
+                    lineHeight: 1.7, letterSpacing: '-0.01em',
+                    animation: 'fadeInUp 0.3s ease 0.15s both',
                   }}>
-                    Graham Principles, AI briefing, trade setups y levels automaticos en segundos.
+                    Graham Principles, AI briefing, trade setups y levels automáticos en segundos.
                   </p>
 
                   {/* Search bar */}
                   <div style={{
-                    display: 'flex', gap: '10px', maxWidth: 560, margin: '0 auto',
+                    display: 'flex', gap: '12px', maxWidth: 640, margin: '0 auto',
                     position: 'relative',
+                    animation: 'fadeInUp 0.3s ease 0.2s both',
                   }}>
                     <div style={{ flex: 1, position: 'relative' }}>
                       <span style={{
-                        position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
-                        fontSize: 16, color: C.textMuted, pointerEvents: 'none',
+                        position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)',
+                        fontSize: 18, color: C.textMuted, pointerEvents: 'none',
                       }}>&#128269;</span>
                       <input
                         type="text"
                         value={symbol}
                         placeholder="AAPL, MSFT, GOOGL, NVDA..."
+                        aria-label="Buscar acción por ticker"
                         onKeyDown={e => { if (e.key === 'Enter') searchStock(); }}
                         onChange={e => {
                           setSymbol(e.target.value);
@@ -1070,23 +1139,33 @@ export default function Home() {
                         onFocus={() => setShowSuggestions(true)}
                         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                         style={{
-                          width: '100%', padding: '16px 16px 16px 44px',
-                          borderRadius: R.lg,
+                          width: '100%', padding: '18px 18px 18px 48px',
+                          borderRadius: R.xl,
                           border: `1px solid ${C.borderHover}`,
                           background: C.bgInput,
                           color: C.textPrimary,
                           fontSize: F.sizeLg,
                           outline: 'none',
                           fontFamily: F.family,
-                          transition: T.fast,
+                          transition: 'all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1)',
+                          boxShadow: shadow.sm,
+                        }}
+                        onFocusCapture={e => {
+                          e.currentTarget.style.borderColor = C.accent;
+                          e.currentTarget.style.boxShadow = `0 0 0 3px ${C.accent15}, 0 4px 16px ${C.accent10}`;
+                        }}
+                        onBlurCapture={e => {
+                          e.currentTarget.style.borderColor = C.borderHover;
+                          e.currentTarget.style.boxShadow = 'none';
                         }}
                       />
                       {showSuggestions && suggestions.length > 0 && (
                         <div style={{
                           position: 'absolute', top: '100%', left: 0, right: 0,
                           background: C.bgCard, border: `1px solid ${C.border}`,
-                          borderRadius: R.lg, marginTop: '6px', zIndex: 100,
-                          maxHeight: 240, overflow: 'auto', boxShadow: shadow.lg,
+                          borderRadius: R.xl, marginTop: '8px', zIndex: 100,
+                          maxHeight: 260, overflow: 'auto', boxShadow: shadow.xl,
+                          animation: 'slideDown 0.2s ease forwards',
                         }}>
                           {suggestions.map(s => (
                             <div key={s.symbol} onClick={() => { setSymbol(s.symbol); setShowSuggestions(false); searchStock(); }}
@@ -1103,44 +1182,59 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => searchStock()}
-                      disabled={loading}
+                      disabled={loading || (!(session?.user as any)?.plan || (session?.user as any)?.plan === 'free') && dailyAnalysisCount >= 5}
+                      aria-label="Analizar acción"
                       style={{
-                        padding: '16px 32px', borderRadius: R.lg,
+                        padding: '18px 36px', borderRadius: R.xl,
                         border: 'none',
-                        background: C.gradientPrimary,
+                        background: `${C.gradientPrimary}`,
                         color: '#fff',
                         fontSize: F.sizeLg,
                         fontWeight: 700,
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                        opacity: loading ? 0.6 : 1,
+                        cursor: (loading || ((!(session?.user as any)?.plan || (session?.user as any)?.plan === 'free') && dailyAnalysisCount >= 5)) ? 'not-allowed' : 'pointer',
+                        opacity: (loading || ((!(session?.user as any)?.plan || (session?.user as any)?.plan === 'free') && dailyAnalysisCount >= 5)) ? 0.6 : 1,
                         fontFamily: F.family,
-                        transition: T.fast,
+                        transition: 'all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1)',
                         whiteSpace: 'nowrap',
+                        boxShadow: `0 4px 14px rgba(124, 58, 237, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2)`,
+                        letterSpacing: '-0.01em',
                       }}
-                      onMouseOver={e => { if (!loading) { e.currentTarget.style.opacity = '0.9'; e.currentTarget.style.transform = 'translateY(-1px)'; }}}
-                      onMouseOut={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                      onMouseOver={e => { if (!loading) { e.currentTarget.style.boxShadow = '0 4px 16px rgba(124, 58, 237, 0.35)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}}
+                      onMouseOut={e => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(124, 58, 237, 0.2)'; e.currentTarget.style.transform = 'translateY(0)'; }}
                     >
-                      {loading ? '...' : 'Analizar'}
+                      {loading ? 'Analizando...' : ((!(session?.user as any)?.plan || (session?.user as any)?.plan === 'free') && dailyAnalysisCount >= 5) ? 'Límite diario alcanzado — Actualiza a Pro' : 'Analizar'}
                     </button>
                   </div>
+
+                  {(!(session?.user as any)?.plan || (session?.user as any)?.plan === 'free') && (
+                    <p style={{
+                      fontSize: F.sizeXs, color: dailyAnalysisCount >= 5 ? '#ef4444' : C.textMuted,
+                      marginTop: '8px', textAlign: 'center',
+                      animation: 'fadeInUp 0.3s ease 0.25s both',
+                    }}>
+                      {dailyAnalysisCount} de 5 análisis gratuitos hoy
+                    </p>
+                  )}
 
                   {/* Quick tickers */}
                   <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    gap: '8px', marginTop: '20px', flexWrap: 'wrap',
+                    gap: '10px', marginTop: '24px', flexWrap: 'wrap',
+                    animation: 'fadeInUp 0.3s ease 0.3s both',
                   }}>
-                    <span style={{ fontSize: F.sizeXs, color: C.textMuted }}>Popular:</span>
-                    {['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA'].map(t => (
+                    <span style={{ fontSize: F.sizeSm, color: C.textMuted, fontWeight: 500 }}>Popular:</span>
+                    {['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA'].map((t, i) => (
                       <button key={t} onClick={() => { setSymbol(t); searchStock(); }}
                         style={{
-                          padding: '4px 10px', borderRadius: R.full,
+                          padding: '6px 14px', borderRadius: R.full,
                           border: `1px solid ${C.border}`, background: 'transparent',
-                          color: C.textSecondary, fontSize: F.sizeXs, fontWeight: 600,
+                          color: C.textSecondary, fontSize: F.sizeSm, fontWeight: 600,
                           cursor: 'pointer', fontFamily: F.mono,
-                          transition: T.fast,
+                          transition: 'all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)',
+                          animation: `fadeInUp 0.2s ease ${0.35 + i * 0.04}s both`,
                         }}
-                        onMouseOver={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accentLight; }}
-                        onMouseOut={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textSecondary; }}
+                        onMouseOver={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accentLight; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = `0 2px 8px ${C.accent15}`; }}
+                        onMouseOut={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textSecondary; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
                       >
                         {t}
                       </button>
@@ -1151,19 +1245,36 @@ export default function Home() {
                   <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     gap: '12px', marginTop: '24px', flexWrap: 'wrap',
+                    animation: 'fadeInUp 0.3s ease 0.4s both',
                   }}>
                     {[
                       { icon: '🧠', label: 'AI Briefing' },
                       { icon: '📋', label: 'Graham Principles' },
                       { icon: '🎯', label: 'Trade Setup' },
                       { icon: '📊', label: 'Technical Matrix' },
-                    ].map(f => (
+                    ].map((f, i) => (
                       <div key={f.label} style={{
-                        display: 'flex', alignItems: 'center', gap: '6px',
-                        padding: '6px 12px', borderRadius: R.full,
-                        background: `${C.bgElevated}80`, border: `1px solid ${C.border}`,
-                        fontSize: F.sizeXs, color: C.textSecondary, fontWeight: 500,
-                      }}>
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        padding: '8px 16px', borderRadius: R.full,
+                        background: `${C.bgElevated80}`, border: `1px solid ${C.border}`,
+                        fontSize: F.sizeSm, color: C.textSecondary, fontWeight: 500,
+                        transition: 'all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)',
+                        animation: `fadeInUp 0.2s ease ${0.45 + i * 0.05}s both`,
+                        cursor: 'default',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.borderColor = C.accentBorder;
+                        e.currentTarget.style.background = C.accentGlow;
+                        e.currentTarget.style.color = C.accentLight;
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.borderColor = C.border;
+                        e.currentTarget.style.background = `${C.bgElevated80}`;
+                        e.currentTarget.style.color = C.textSecondary;
+                        e.currentTarget.style.transform = 'translateY(0)';
+                      }}
+                      >
                         <span>{f.icon}</span>
                         <span>{f.label}</span>
                       </div>
@@ -1175,14 +1286,45 @@ export default function Home() {
 
             {/* ═══ LOADING STATE ═══ */}
             {loading && (
-              <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                <div style={{
-                  width: 48, height: 48, borderRadius: '50%', margin: '0 auto 16px',
-                  border: `3px solid ${C.border}`,
-                  borderTopColor: C.accent,
-                  animation: 'spin 0.8s linear infinite',
-                }} />
-                <p style={{ color: C.textSecondary, fontSize: F.sizeBase }}>Analizando {symbol.toUpperCase()}...</p>
+              <div style={{ animation: 'fadeIn 0.3s ease forwards' }}>
+                {/* Compact search */}
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', maxWidth: '500px' }}>
+                  <div style={{ flex: 1, padding: '14px 18px', borderRadius: R.lg, background: C.bgCard, border: `1px solid ${C.border}` }} />
+                  <div style={{ padding: '14px 28px', borderRadius: R.lg, background: C.accent, opacity: 0.5 }} />
+                </div>
+                {/* Skeleton cards */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {[1, 2, 3].map(i => (
+                    <div key={i} style={{
+                      padding: '24px', borderRadius: R.xl,
+                      background: C.bgCard, border: `1px solid ${C.border}`,
+                      animation: `fadeIn 0.3s ease ${i * 0.1}s both`,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: R.lg, background: C.bgElevated, animation: 'pulseSoft 1.5s ease-in-out infinite' }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ height: '16px', width: '80px', borderRadius: R.sm, background: C.bgElevated, marginBottom: '6px', animation: 'pulseSoft 1.5s ease-in-out infinite 0.1s' }} />
+                          <div style={{ height: '12px', width: '120px', borderRadius: R.sm, background: C.bgElevated, animation: 'pulseSoft 1.5s ease-in-out infinite 0.2s' }} />
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ height: '20px', width: '60px', borderRadius: R.sm, background: C.bgElevated, marginBottom: '4px', animation: 'pulseSoft 1.5s ease-in-out infinite 0.15s' }} />
+                          <div style={{ height: '12px', width: '40px', borderRadius: R.sm, background: C.bgElevated, animation: 'pulseSoft 1.5s ease-in-out infinite 0.25s' }} />
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                        {[1, 2, 3].map(j => (
+                          <div key={j} style={{ height: '48px', borderRadius: R.md, background: C.bgElevated, animation: `pulseSoft 1.5s ease-in-out infinite ${0.1 * j}s` }} />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p style={{
+                  color: C.textMuted, fontSize: F.sizeSm,
+                  textAlign: 'center', marginTop: '20px',
+                  fontFamily: F.mono, letterSpacing: '0.02em',
+                  animation: 'pulseSoft 1.5s ease-in-out infinite',
+                }}>Analizando {symbol.toUpperCase()}...</p>
               </div>
             )}
 
@@ -1192,7 +1334,7 @@ export default function Home() {
                 padding: '16px 20px', borderRadius: R.lg,
                 background: C.negativeBg, border: `1px solid ${C.negativeBorder}`,
                 color: C.negative, textAlign: 'center', marginBottom: '16px',
-                fontSize: F.sizeBase,
+                fontSize: F.sizeBase, boxShadow: `0 4px 12px rgba(239, 68, 68, 0.1)`,
               }}>
                 {error}
               </div>
@@ -1201,7 +1343,7 @@ export default function Home() {
             {/* ═══ SEARCH BAR (compact, shown when loading or after search) ═══ */}
             {(data || loading) && (
               <div style={{
-                display: 'flex', gap: '10px', marginBottom: '24px', maxWidth: '500px',
+                display: 'flex', gap: '10px', marginBottom: '24px', maxWidth: '480px',
               }}>
                 <input
                   type="text"
@@ -1216,10 +1358,11 @@ export default function Home() {
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                   style={{
-                    flex: 1, padding: '10px 14px', borderRadius: R.md,
+                    flex: 1, padding: '12px 16px', borderRadius: R.lg,
                     border: `1px solid ${C.border}`, background: C.bgCard,
                     color: C.textPrimary, fontSize: F.sizeBase, outline: 'none',
                     fontFamily: F.family,
+                    transition: 'border-color 0.2s ease',
                   }}
                 />
                 <button type="button" onClick={() => searchStock()} disabled={loading}
@@ -1288,10 +1431,10 @@ export default function Home() {
         ) : view === 'portfolio' ? (
           <>
             {!session ? (
-              <div style={{ textAlign: 'center', padding: '60px 20px', color: C.textMuted }}>
-                <p style={{ fontSize: '48px', margin: '0 0 16px' }}>🔐</p>
-                <p style={{ color: C.textPrimary, fontSize: F.sizeXl, marginBottom: '8px' }}>Inicia sesión para ver tu portafolio</p>
-                <p>Tu portafolio se guardará en la nube y estará disponible en cualquier dispositivo</p>
+              <div style={{ textAlign: 'center', padding: '80px 24px', background: C.bgCard, borderRadius: R.xl, border: `1px solid ${C.border}`, boxShadow: shadow.card }}>
+                <div style={{ width: '72px', height: '72px', borderRadius: R.xl, background: `${C.accent12}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '32px', border: `1px solid ${C.accent25}` }}>🔐</div>
+                <h3 style={{ color: C.textPrimary, fontSize: F.sizeXl, marginBottom: '8px', fontWeight: 600 }}>Inicia sesión para ver tu portafolio</h3>
+                <p style={{ color: C.textMuted, fontSize: F.sizeBase, marginBottom: '24px', maxWidth: '320px', margin: '0 auto 24px', lineHeight: 1.6 }}>Tu portafolio se guardará en la nube y estará disponible en cualquier dispositivo</p>
                 <button
                   onClick={() => signIn('google')}
                   style={{
@@ -1317,19 +1460,19 @@ export default function Home() {
                 </div>
 
                 {portfolio.length > 0 && (
-                  <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '20px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', textAlign: 'center' }}>
+                  <div style={{ background: C.bgCard, borderRadius: R.xl, padding: '24px', marginBottom: '20px', border: `1px solid ${C.border}`, boxShadow: shadow.card }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', textAlign: 'center' }}>
                       <div>
-                        <p style={{ margin: '0 0 4px', fontSize: F.sizeSm, color: C.textMuted }}>Total Invertido</p>
-                        <p style={{ margin: 0, fontSize: F.sizeXxl, fontWeight: 'bold', color: C.textPrimary }}>${portfolioSummary.totalInvested.toFixed(2)}</p>
+                        <p style={{ margin: '0 0 6px', fontSize: F.sizeSm, color: C.textMuted, fontWeight: 500, letterSpacing: '0.02em' }}>Total Invertido</p>
+                        <p style={{ margin: 0, fontSize: F.sizeXxl, fontWeight: 700, color: C.textPrimary, fontFamily: F.mono, letterSpacing: '-0.02em' }}>${portfolioSummary.totalInvested.toFixed(2)}</p>
                       </div>
                       <div>
-                        <p style={{ margin: '0 0 4px', fontSize: F.sizeSm, color: C.textMuted }}>Valor Actual</p>
-                        <p style={{ margin: 0, fontSize: F.sizeXxl, fontWeight: 'bold', color: C.textPrimary }}>${portfolioSummary.totalCurrent.toFixed(2)}</p>
+                        <p style={{ margin: '0 0 6px', fontSize: F.sizeSm, color: C.textMuted, fontWeight: 500, letterSpacing: '0.02em' }}>Valor Actual</p>
+                        <p style={{ margin: 0, fontSize: F.sizeXxl, fontWeight: 700, color: C.textPrimary, fontFamily: F.mono, letterSpacing: '-0.02em' }}>${portfolioSummary.totalCurrent.toFixed(2)}</p>
                       </div>
                       <div>
-                        <p style={{ margin: '0 0 4px', fontSize: F.sizeSm, color: C.textMuted }}>Retorno</p>
-                        <p style={{ margin: 0, fontSize: F.sizeXxl, fontWeight: 'bold', color: portfolioReturn >= 0 ? C.positive : C.negative }}>
+                        <p style={{ margin: '0 0 6px', fontSize: F.sizeSm, color: C.textMuted, fontWeight: 500, letterSpacing: '0.02em' }}>Retorno</p>
+                        <p style={{ margin: 0, fontSize: F.sizeXxl, fontWeight: 700, color: portfolioReturn >= 0 ? C.positive : C.negative, fontFamily: F.mono, letterSpacing: '-0.02em' }}>
                           {portfolioReturn >= 0 ? '+' : ''}{portfolioReturn.toFixed(2)}%
                         </p>
                       </div>
@@ -1346,7 +1489,7 @@ export default function Home() {
                     const portfolioPercent = portfolioSummary.totalCurrent > 0 ? (currentValue / portfolioSummary.totalCurrent) * 100 : 0;
 
                     return (
-                      <div key={item.symbol} style={{ background: C.bgCard, borderRadius: R.lg, padding: '16px' }}>
+                      <div key={item.symbol} style={{ background: C.bgCard, borderRadius: R.xl, padding: '20px', border: `1px solid ${C.border}`, boxShadow: shadow.card }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                           <div>
                             <p style={{ margin: 0, fontSize: F.sizeXl, fontWeight: '600', color: C.textPrimary }}>{item.symbol}</p>
@@ -1365,7 +1508,7 @@ export default function Home() {
                               style={{
                                 padding: '6px 10px',
                                 borderRadius: R.sm,
-                                border: '1px solid C.border',
+                                border: `1px solid ${C.border}`,
                                 background: 'transparent',
                                 color: C.textMuted,
                                 cursor: 'pointer',
@@ -1392,7 +1535,7 @@ export default function Home() {
                           </div>
                         </div>
                         
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid C.border' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: `1px solid ${C.border}` }}>
                           <div style={{ fontSize: F.sizeXs, color: C.textMuted }}>
                             Invertido: ${invested.toFixed(2)} | Cartera: {portfolioPercent.toFixed(1)}%
                           </div>
@@ -1405,7 +1548,7 @@ export default function Home() {
                         </div>
                         
                         {item.notes && (
-                          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid C.border', fontSize: F.sizeXs, color: C.textMuted, fontStyle: 'italic' }}>
+                          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: `1px solid ${C.border}`, fontSize: F.sizeXs, color: C.textMuted, fontStyle: 'italic' }}>
                             📝 {item.notes}
                           </div>
                         )}
@@ -1414,10 +1557,25 @@ export default function Home() {
                   })}
 
                   {portfolio.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '60px 20px', color: C.textMuted }}>
-                      <p style={{ fontSize: '48px', margin: '0 0 16px' }}>📊</p>
-                      <p>No tienes acciones en tu portafolio</p>
-                      <p style={{ fontSize: F.sizeSm }}>Analiza una acción y agrégala aquí</p>
+                    <div style={{ textAlign: 'center', padding: '64px 24px', background: C.bgCard, borderRadius: R.xl, border: `1px solid ${C.border}`, boxShadow: shadow.card }}>
+                      <div style={{ width: '72px', height: '72px', borderRadius: R.xl, background: C.bgElevated, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '32px', border: `1px solid ${C.border}` }}>📊</div>
+                      <h3 style={{ color: C.textPrimary, fontSize: F.sizeXl, marginBottom: '8px', fontWeight: 600 }}>Sin acciones en tu portafolio</h3>
+                      <p style={{ color: C.textMuted, fontSize: F.sizeBase, marginBottom: '24px', maxWidth: '320px', margin: '0 auto 24px', lineHeight: 1.6 }}>Analiza una acción y agrégala aquí para hacer seguimiento de tus inversiones</p>
+                      <button
+                        onClick={() => setView('analyzer')}
+                        style={{
+                          padding: '12px 24px',
+                          borderRadius: R.md,
+                          border: 'none',
+                          background: C.positive,
+                          color: C.textPrimary,
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          fontSize: F.sizeBase,
+                        }}
+                      >
+                        Analizar una acción
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1427,22 +1585,23 @@ export default function Home() {
         ) : view === 'watchlist' ? (
           <>
             {!session && watchlist.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-                <div style={{ width: '80px', height: '80px', borderRadius: R.full, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '36px' }}>📊</div>
-                <h2 style={{ color: C.textPrimary, fontSize: F.sizeHero, marginBottom: '8px', fontWeight: '600' }}>Tu Watchlist Personal</h2>
-                <p style={{ color: C.textMuted, fontSize: '15px', maxWidth: '400px', margin: '0 auto 24px' }}>Recibe alertas personalizadas cuando las acciones alcancen el precio que tú decides</p>
+              <div style={{ textAlign: 'center', padding: '80px 24px' }}>
+                <div style={{ width: '88px', height: '88px', borderRadius: R.xl, background: `linear-gradient(135deg, ${C.accent15}, ${C.info15})`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 28px', fontSize: '40px', border: `1px solid ${C.accent25}` }}>📊</div>
+                <h2 style={{ color: C.textPrimary, fontSize: F.sizeHero, marginBottom: '12px', fontWeight: 700, letterSpacing: '-0.02em' }}>Tu Watchlist Personal</h2>
+                <p style={{ color: C.textSecondary, fontSize: F.sizeBase, maxWidth: '420px', margin: '0 auto 32px', lineHeight: 1.6 }}>Recibe alertas personalizadas cuando las acciones alcancen el precio que tú decides</p>
                 <button
                   onClick={() => signIn('google')}
                   style={{
                     padding: '14px 32px',
-                    borderRadius: '50px',
+                    borderRadius: R.full,
                     border: 'none',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    background: `${C.gradientPrimary}`,
                     color: C.textPrimary,
                     cursor: 'pointer',
                     fontWeight: '600',
-                    fontSize: '15px',
-                    boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+                    fontSize: F.sizeBase,
+                    boxShadow: `0 4px 14px ${C.accent30}`,
+                    transition: 'all 0.2s ease',
                   }}
                 >
                   Iniciar con Google
@@ -1459,7 +1618,7 @@ export default function Home() {
                       style={{
                         padding: '8px 16px',
                         borderRadius: '20px',
-                        border: '1px solid C.border',
+                        border: `1px solid ${C.border}`,
                         background: 'transparent',
                         color: C.accentLight,
                         cursor: 'pointer',
@@ -1477,10 +1636,10 @@ export default function Home() {
                 </div>
 
                 {watchlist.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '60px 20px', background: C.bgCard, borderRadius: '16px', border: '1px solid C.border' }}>
-                    <div style={{ width: '64px', height: '64px', borderRadius: R.full, background: C.bgElevated, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '28px' }}>📋</div>
-                    <h3 style={{ color: C.textPrimary, fontSize: F.sizeXl, marginBottom: '8px', fontWeight: '500' }}>Sin acciones vigiladas</h3>
-                    <p style={{ color: C.textMuted, fontSize: F.sizeBase, marginBottom: '20px' }}>Agrega acciones desde el analizador para recibir alertas de precio</p>
+                  <div style={{ textAlign: 'center', padding: '64px 24px', background: C.bgCard, borderRadius: R.xl, border: `1px solid ${C.border}`, boxShadow: shadow.card }}>
+                    <div style={{ width: '72px', height: '72px', borderRadius: R.xl, background: C.bgElevated, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '32px', border: `1px solid ${C.border}` }}>📋</div>
+                    <h3 style={{ color: C.textPrimary, fontSize: F.sizeXl, marginBottom: '8px', fontWeight: 600 }}>Sin acciones vigiladas</h3>
+                    <p style={{ color: C.textMuted, fontSize: F.sizeBase, marginBottom: '24px', maxWidth: '320px', margin: '0 auto 24px', lineHeight: 1.6 }}>Agrega acciones desde el analizador para recibir alertas de precio</p>
                     <button
                       onClick={() => setView('analyzer')}
                       style={{
@@ -1498,7 +1657,7 @@ export default function Home() {
                     </button>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {watchlist.map((item) => {
                       const priceData = watchlistPrices[item.symbol];
                       const currentPrice = priceData?.price || 0;
@@ -1515,10 +1674,10 @@ export default function Home() {
                       return (
                         <div key={item.symbol} style={{ 
                           background: C.bgCard, 
-                          borderRadius: '16px', 
+                          borderRadius: R.xl, 
                           padding: '20px',
-                          border: isAlertTriggered ? '1px solid C.positive' : '1px solid transparent',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                          border: isAlertTriggered ? `1px solid ${C.positive}` : `1px solid ${C.border}`,
+                          boxShadow: shadow.card,
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             {/* Left side - Symbol and Price */}
@@ -1528,7 +1687,7 @@ export default function Home() {
                                   width: '44px', 
                                   height: '44px', 
                                   borderRadius: R.lg, 
-                                  background: 'linear-gradient(135deg, #667eea22 0%, #764ba222 100%)',
+                                  background: `linear-gradient(135deg, #667eea22 0%, #764ba222 100%)`,
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
@@ -1550,12 +1709,12 @@ export default function Home() {
                                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
                                   <span style={{ color: C.textPrimary, fontSize: '28px', fontWeight: '700' }}>${currentPrice.toFixed(2)}</span>
                                   <span style={{ 
-                                    color: priceChange >= 0 ? 'C.positive' : 'C.negative', 
+                                    color: priceChange >= 0 ? C.positive : C.negative, 
                                     fontSize: F.sizeBase, 
                                     fontWeight: '500',
                                     padding: '4px 8px',
                                     borderRadius: R.sm,
-                                    background: priceChange >= 0 ? 'C.positive15' : 'C.negative15'
+                                    background: priceChange >= 0 ? `${C.positive15}` : `${C.negative15}`
                                   }}>
                                     {priceChange >= 0 ? '▲' : '▼'} {Math.abs(priceChangePercent).toFixed(2)}%
                                   </span>
@@ -1568,7 +1727,7 @@ export default function Home() {
                                     style={{
                                       padding: '4px 8px',
                                       borderRadius: '4px',
-                                      border: '1px solid C.border',
+                                      border: `1px solid ${C.border}`,
                                       background: 'transparent',
                                       color: C.accentLight,
                                       cursor: 'pointer',
@@ -1580,7 +1739,7 @@ export default function Home() {
                                 </div>
                               ) : (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <div style={{ width: '16px', height: '16px', borderRadius: R.full, border: '2px solid C.border', borderTopColor: C.accentLight, animation: 'spin 1s linear infinite' }}></div>
+                                  <div style={{ width: '16px', height: '16px', borderRadius: R.full, border: `2px solid ${C.border}`, borderTopColor: C.accentLight, animation: 'spin 1s linear infinite' }}></div>
                                   <span style={{ color: C.textMuted, fontSize: F.sizeBase }}>Cargando...</span>
                                 </div>
                               )}
@@ -1611,7 +1770,7 @@ export default function Home() {
                           <div style={{ 
                             marginTop: '16px',
                             paddingTop: '16px',
-                            borderTop: '1px solid C.border'
+                            borderTop: `1px solid ${C.border}`
                           }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1663,7 +1822,7 @@ export default function Home() {
                                       flex: 1,
                                       padding: '12px 16px', 
                                       borderRadius: R.lg, 
-                                      border: '1px solid C.border', 
+                                      border: `1px solid ${C.border}`, 
                                       background: C.bg, 
                                       color: C.textSecondary, 
                                       fontSize: F.sizeBase,
@@ -1684,7 +1843,7 @@ export default function Home() {
                                         width: '100%', 
                                         padding: '12px 12px 12px 28px', 
                                         borderRadius: R.lg, 
-                                        border: '1px solid C.border', 
+                                        border: `1px solid ${C.border}`, 
                                         background: C.bg, 
                                         color: C.textSecondary, 
                                         fontSize: F.sizeBase,
@@ -1707,7 +1866,7 @@ export default function Home() {
                                       style={{ 
                                         padding: '8px 16px',
                                         borderRadius: R.md, 
-                                        border: '1px solid C.border', 
+                                        border: `1px solid ${C.border}`, 
                                         background: C.bgElevated, 
                                         color: C.textSecondary, 
                                         fontSize: F.sizeBase,
@@ -1752,11 +1911,11 @@ export default function Home() {
                             {isAlertTriggered && (
                               <div style={{ 
                                 marginTop: '12px', 
-                                padding: '14px 16px', 
-                                background: 'linear-gradient(135deg, C.positive30 0%, C.positive15 100%)',
+                                padding: '14px 16px',
+                                background: `linear-gradient(135deg, ${C.positive30} 0%, ${C.positive15} 100%)`,
                                 borderRadius: R.lg, 
-                                border: '1px solid C.positive',
-                                color: 'C.positive', 
+                                border: `1px solid ${C.positive}`,
+                                color: `${C.positive}`, 
                                 fontSize: F.sizeBase, 
                                 fontWeight: '500',
                                 display: 'flex',
@@ -1780,7 +1939,7 @@ export default function Home() {
       </div>
       {/* Vista de Informe - Nuevo Formato Detallado */}
       {view === 'informe' && (
-      <div style={{ width: '100%', maxWidth: isMobile ? '100%' : '1200px', margin: '0 auto', padding: isMobile ? '12px' : '20px', boxSizing: 'border-box' }}>
+      <div key={view} style={{ width: '100%', maxWidth: isMobile ? '100%' : '1200px', margin: '0 auto', padding: isMobile ? '12px' : '20px', boxSizing: 'border-box', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           {data?.informeDetail ? (
             <RenderInforme informe={data.informeDetail} data={data} />
           ) : data ? (
@@ -1788,7 +1947,18 @@ export default function Home() {
           ) : (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: C.textMuted }}>
               <p style={{ fontSize: '48px', margin: '0 0 16px' }}>📋</p>
-              <p>Analiza una acción para ver el informe</p>
+              <p style={{ color: C.textPrimary, fontSize: F.sizeXl, marginBottom: '8px' }}>Sin informe disponible</p>
+              <p style={{ marginBottom: '20px' }}>Analiza una acción para ver el informe detallado</p>
+              <button
+                onClick={() => setView('analyzer')}
+                style={{
+                  padding: '12px 24px', borderRadius: R.md, border: 'none',
+                  background: C.positive, color: C.textPrimary, cursor: 'pointer',
+                  fontWeight: '600', fontSize: F.sizeBase,
+                }}
+              >
+                Buscar acción
+              </button>
             </div>
           )}
         </div>
@@ -1797,11 +1967,21 @@ export default function Home() {
       {/* Vista de Risk Report */}
       {view === 'risk-report' && (
         data ? <RiskReport data={data} symbol={symbol} /> : (
-          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', textAlign: 'center' }}>
-            <div style={{ background: C.bg, borderRadius: '16px', padding: '80px 32px', border: '1px solid C.border' }}>
+          <div key={view} style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', textAlign: 'center', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+            <div style={{ background: C.bgCard, borderRadius: '16px', padding: '80px 32px', border: `1px solid ${C.border}` }}>
               <p style={{ fontSize: '48px', margin: '0 0 16px' }}>📊</p>
-              <p style={{ color: C.textMuted, fontSize: F.sizeLg }}>Analiza una acción primero para ver su Risk Report</p>
-              <p style={{ color: C.textMuted, fontSize: F.sizeMd }}>Usa el Analizador para buscar un ticker</p>
+              <p style={{ color: C.textPrimary, fontSize: F.sizeXl, marginBottom: '8px' }}>Sin Risk Report</p>
+              <p style={{ color: C.textMuted, fontSize: F.sizeMd, marginBottom: '20px' }}>Analiza una acción primero para ver su análisis de riesgo</p>
+              <button
+                onClick={() => setView('analyzer')}
+                style={{
+                  padding: '12px 24px', borderRadius: R.md, border: 'none',
+                  background: C.positive, color: C.textPrimary, cursor: 'pointer',
+                  fontWeight: '600', fontSize: F.sizeBase,
+                }}
+              >
+                Buscar acción
+              </button>
             </div>
           </div>
         )
@@ -1809,58 +1989,77 @@ export default function Home() {
 
       {/* Vista de Framework PRO */}
       {view === 'framework' && data && (
-        <FrameworkView data={data} />
+        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+          <FrameworkView data={data} />
+        </div>
       )}
 
       {/* Vista de Opciones */}
       {view === 'options' && (
-        <OptionsView 
-          initialSymbol={symbol} 
-          currentSymbol={symbol} 
-          onSymbolChange={(sym) => setSymbol(sym)} 
-          onAnalyzeInMain={(sym) => {
-            setSymbol(sym);
-            searchStock(sym);
-          }} 
-        />
+        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+          <OptionsView 
+            initialSymbol={symbol} 
+            currentSymbol={symbol} 
+            onSymbolChange={(sym) => setSymbol(sym)} 
+            onAnalyzeInMain={(sym) => {
+              setSymbol(sym);
+              searchStock(sym);
+            }} 
+          />
+        </div>
       )}
 
       {/* Vista de Screener */}
       {view === 'screener' && (
-        <ScreenerPage />
+        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+          <ScreenerPage />
+        </div>
       )}
 
       {/* Vista de Trade Validator */}
       {view === 'trade-validator' && (
-        <TradeValidator initialSymbol={symbol} onSymbolChange={(sym) => setSymbol(sym)} />
+        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+          <TradeValidator initialSymbol={symbol} onSymbolChange={(sym) => setSymbol(sym)} />
+        </div>
       )}
 
       {/* Vista de TradeStation */}
       {view === 'tradestation' && (
-        <TradeStationPanel />
+        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+          <TradeStationPanel />
+        </div>
       )}
 
-      {/* Vista de Briefing */}
-      {view === 'briefing' && (
-        <Dashboard onNavigateToAICoach={() => setView('ai-coach')} initialSection="briefing" />
-      )}
+      {/* Vista de Briefing — always mounted, hidden when inactive to preserve state */}
+      <div style={{ display: view === 'briefing' ? 'block' : 'none' }}>
+        <div style={{ animation: view === 'briefing' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
+          <Dashboard onNavigateToAICoach={() => setView('ai-coach')} initialSection="briefing" />
+        </div>
+      </div>
 
       {/* Vista de Dashboard */}
       {view === 'dashboard' && (
-        <Dashboard onNavigateToAICoach={() => setView('ai-coach')} />
+        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+          <Dashboard onNavigateToAICoach={() => setView('ai-coach')} />
+        </div>
       )}
 
       {/* Vista de AI Coach */}
       {view === 'ai-coach' && (
         (['pro', 'elite', 'enterprise'].includes((session?.user as any)?.plan || 'free')) ? (
-          <AICoach symbol={symbol} onAnalyzeSymbol={(sym) => setSymbol(sym)} />
+          <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+            <AICoach symbol={symbol} onAnalyzeSymbol={(sym) => setSymbol(sym)} />
+          </div>
         ) : (
-          <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-            <div style={{ width: '80px', height: '80px', borderRadius: R.full, background: 'linear-gradient(135deg, #ff00ff15, #00d4ff15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '36px' }}>🤖</div>
+          <div key={view} style={{ padding: '60px 20px', textAlign: 'center', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+            <div style={{ width: '80px', height: '80px', borderRadius: R.full, background: `linear-gradient(135deg, #ff00ff15, #00d4ff15)`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '36px' }}>🤖</div>
             <h2 style={{ color: C.textPrimary, fontSize: F.sizeHero, marginBottom: '8px' }}>AI Coach</h2>
-            <p style={{ color: C.textMuted, marginBottom: '24px' }}>This feature requires a Pro plan or higher.</p>
-            <button onClick={() => window.location.href = '/settings/billing'} style={{ padding: '12px 32px', borderRadius: '50px', border: 'none', background: 'linear-gradient(135deg, #ff00ff, #00d4ff)', color: C.textPrimary, fontWeight: '600', fontSize: '15px', cursor: 'pointer' }}>
-              Upgrade to Pro — $49/mo
+            <p style={{ color: C.textSecondary, fontSize: F.sizeLg, marginBottom: '8px' }}>Tu asistente personal de trading con AI</p>
+            <p style={{ color: C.textMuted, marginBottom: '24px', maxWidth: 400, margin: '0 auto 24px', lineHeight: 1.6 }}>
+              Recibe análisis en tiempo real, responde preguntas sobre acciones y mejora tus decisiones de inversión.
+            </p>
+            <button onClick={() => window.location.href = '/settings/billing'} style={{ padding: '12px 32px', borderRadius: '50px', border: 'none', background: `linear-gradient(135deg, #ff00ff, #00d4ff)`, color: C.textPrimary, fontWeight: '600', fontSize: '15px', cursor: 'pointer' }}>
+              Desbloquear con Pro — $49/mes
             </button>
           </div>
         )
@@ -1868,22 +2067,28 @@ export default function Home() {
 
       {/* Vista de Backtest */}
       {view === 'backtest' && (
-        <BacktestPanel />
+        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+          <BacktestPanel />
+        </div>
       )}
 
       {/* Vista de Inversor Inteligente */}
       {view === 'inversor-inteligente' && (
-        <ScreenerGraham onSelect={(sym) => { setSymbol(sym); setView('analyzer'); }} />
+        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+          <ScreenerGraham onSelect={(sym) => { setSymbol(sym); setView('analyzer'); }} />
+        </div>
       )}
 
       {/* Vista de Trading Trainer */}
       {view === 'trading-trainer' && (
-        <TradingTrainer />
+        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+          <TradingTrainer />
+        </div>
       )}
 
       {/* Vista de Smart Alerts */}
       {view === 'alerts' && (
-        <div style={{ padding: '24px', maxWidth: 900, margin: '0 auto', width: '100%' }}>
+        <div key={view} style={{ padding: '24px', maxWidth: 900, margin: '0 auto', width: '100%', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <SmartAlertsPanel />
         </div>
       )}
@@ -1953,7 +2158,7 @@ export default function Home() {
                       width: '100%',
                       padding: '12px',
                       borderRadius: R.md,
-                      border: '1px solid C.border',
+                      border: `1px solid ${C.border}`,
                       background: C.bg,
                       color: C.textSecondary,
                       fontSize: F.sizeLg,
@@ -1976,7 +2181,7 @@ export default function Home() {
                       width: '100%',
                       padding: '12px',
                       borderRadius: R.md,
-                      border: '1px solid C.border',
+                      border: `1px solid ${C.border}`,
                       background: C.bg,
                       color: C.textSecondary,
                       fontSize: F.sizeLg,
@@ -1997,7 +2202,7 @@ export default function Home() {
                   flex: 1,
                   padding: '12px',
                   borderRadius: R.md,
-                  border: '1px solid C.border',
+                  border: `1px solid ${C.border}`,
                   background: 'transparent',
                   color: C.textSecondary,
                   cursor: 'pointer',
@@ -2053,7 +2258,7 @@ export default function Home() {
                   width: '100%',
                   padding: '12px',
                   borderRadius: R.md,
-                  border: '1px solid C.border',
+                  border: `1px solid ${C.border}`,
                   background: C.bg,
                   color: C.textSecondary,
                   fontSize: F.sizeLg,
@@ -2073,7 +2278,7 @@ export default function Home() {
                   width: '100%',
                   padding: '12px',
                   borderRadius: R.md,
-                  border: '1px solid C.border',
+                  border: `1px solid ${C.border}`,
                   background: C.bg,
                   color: C.textSecondary,
                   fontSize: F.sizeLg,
@@ -2093,7 +2298,7 @@ export default function Home() {
                   width: '100%',
                   padding: '12px',
                   borderRadius: R.md,
-                  border: '1px solid C.border',
+                  border: `1px solid ${C.border}`,
                   background: C.bg,
                   color: C.textSecondary,
                   fontSize: F.sizeLg,
@@ -2112,7 +2317,7 @@ export default function Home() {
                   width: '100%',
                   padding: '12px',
                   borderRadius: R.md,
-                  border: '1px solid C.border',
+                  border: `1px solid ${C.border}`,
                   background: C.bg,
                   color: C.textSecondary,
                   fontSize: F.sizeLg,
@@ -2132,7 +2337,7 @@ export default function Home() {
                   width: '100%',
                   padding: '12px',
                   borderRadius: R.md,
-                  border: '1px solid C.border',
+                  border: `1px solid ${C.border}`,
                   background: C.bg,
                   color: C.textSecondary,
                   fontSize: F.sizeLg,
@@ -2152,7 +2357,7 @@ export default function Home() {
                   width: '100%',
                   padding: '12px',
                   borderRadius: R.md,
-                  border: '1px solid C.border',
+                  border: `1px solid ${C.border}`,
                   background: C.bg,
                   color: C.textSecondary,
                   fontSize: F.sizeLg,
@@ -2169,7 +2374,7 @@ export default function Home() {
                   flex: 1,
                   padding: '12px',
                   borderRadius: R.md,
-                  border: '1px solid C.border',
+                  border: `1px solid ${C.border}`,
                   background: 'transparent',
                   color: C.textSecondary,
                   fontSize: F.sizeLg,
@@ -2230,7 +2435,7 @@ export default function Home() {
                   width: '100%',
                   padding: '12px',
                   borderRadius: R.md,
-                  border: '1px solid C.border',
+                  border: `1px solid ${C.border}`,
                   background: C.bg,
                   color: C.textSecondary,
                   fontSize: F.sizeLg,
@@ -2249,7 +2454,7 @@ export default function Home() {
                   width: '100%',
                   padding: '12px',
                   borderRadius: R.md,
-                  border: '1px solid C.border',
+                  border: `1px solid ${C.border}`,
                   background: C.bg,
                   color: C.textSecondary,
                   fontSize: F.sizeLg,
@@ -2268,7 +2473,7 @@ export default function Home() {
                   width: '100%',
                   padding: '12px',
                   borderRadius: R.md,
-                  border: '1px solid C.border',
+                  border: `1px solid ${C.border}`,
                   background: C.bg,
                   color: C.textSecondary,
                   fontSize: F.sizeLg,
@@ -2287,7 +2492,7 @@ export default function Home() {
                   width: '100%',
                   padding: '12px',
                   borderRadius: R.md,
-                  border: '1px solid C.border',
+                  border: `1px solid ${C.border}`,
                   background: C.bg,
                   color: C.textSecondary,
                   fontSize: F.sizeLg,
@@ -2306,7 +2511,7 @@ export default function Home() {
                   width: '100%',
                   padding: '12px',
                   borderRadius: R.md,
-                  border: '1px solid C.border',
+                  border: `1px solid ${C.border}`,
                   background: C.bg,
                   color: C.textSecondary,
                   fontSize: F.sizeBase,
@@ -2328,7 +2533,7 @@ export default function Home() {
                   flex: 1,
                   padding: '12px',
                   borderRadius: R.md,
-                  border: '1px solid C.border',
+                  border: `1px solid ${C.border}`,
                   background: 'transparent',
                   color: C.textSecondary,
                   cursor: 'pointer',
@@ -2376,7 +2581,6 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [symbolChanges, setSymbolChanges] = useState<{ added: string[]; removed: string[] }>({ added: [], removed: [] });
   const [showChanges, setShowChanges] = useState(false);
-  const router = useRouter();
   const [newSymbols, setNewSymbols] = useState<Set<string>>(new Set());
   const [screenerFilter, setScreenerFilter] = useState('');
   const [timeValidation, setTimeValidation] = useState<{
@@ -2577,6 +2781,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
   };
 
   useEffect(() => {
+    let cancelled = false;
     const urlSymbol = searchParams.get('symbol');
     const urlTab = searchParams.get('tab');
     if (urlTab === 'options') {
@@ -2592,9 +2797,11 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
       setSymbol(initialSymbol);
       analyzeOptions(initialSymbol);
     }
+    return () => { cancelled = true; };
   }, [searchParams, initialSymbol]);
 
   useEffect(() => {
+    let cancelled = false;
     if (selectedSymbolFromScreener) {
       setSymbol(selectedSymbolFromScreener);
       setActiveTab('analyze');
@@ -2602,6 +2809,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
       if (onSymbolChange) onSymbolChange(selectedSymbolFromScreener);
       setSelectedSymbolFromScreener(null);
     }
+    return () => { cancelled = true; };
   }, [selectedSymbolFromScreener]);
 
   const loadScreener = async () => {
@@ -2649,9 +2857,11 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
   };
 
   useEffect(() => {
+    let cancelled = false;
     if (activeTab === 'screener' && !screenerData) {
       loadScreener();
     }
+    return () => { cancelled = true; };
   }, [activeTab]);
 
   const getRecommendationColor = (rec: string) => {
@@ -2683,8 +2893,8 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
             style={{
               padding: '12px 20px',
               borderRadius: R.md,
-              border: '2px solid C.warning',
-              background: 'linear-gradient(135deg, C.warning20 0%, C.warning10 100%)',
+              border: `2px solid ${C.warning}`,
+              background: `linear-gradient(135deg, ${C.warning20} 0%, ${C.warning10} 100%)`,
               color: C.warning,
               cursor: 'pointer',
               fontWeight: '600',
@@ -2747,7 +2957,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                 flex: 1,
                 padding: '14px 16px',
                 borderRadius: R.md,
-                border: '1px solid C.border',
+                border: `1px solid ${C.border}`,
                 background: C.bgCard,
                 color: C.textSecondary,
                 fontSize: F.sizeLg,
@@ -2898,7 +3108,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                         
                         {/* Ejemplo Práctico */}
                         {rec.strategy.example && rec.strategy.example.totalCost > 0 && (
-                          <div style={{ background: 'C.bgElevated', padding: '16px', borderRadius: R.md, marginBottom: '12px' }}>
+                          <div style={{ background: C.bgElevated, padding: '16px', borderRadius: R.md, marginBottom: '12px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
                               <p style={{ margin: 0, fontSize: F.sizeMd, color: C.accentLight, fontWeight: '600' }}>📋 PLAN DE ACCIÓN</p>
                               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -2920,7 +3130,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                                     <p style={{ margin: '0 0 4px', fontSize: F.sizeLg, fontWeight: 'bold', color: C.textPrimary }}>1 CALL ${rec.strategy.example.strike?.toFixed(2)}</p>
                                     <p style={{ margin: 0, fontSize: F.sizeSm, color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.delta?.toFixed(2)}</p>
                                   </div>
-                                  <div style={{ flex: 1, minWidth: '110px', padding: '12px', background: 'C.negative', borderRadius: R.md, textAlign: 'center' }}>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '12px', background: C.negative, borderRadius: R.md, textAlign: 'center' }}>
                                     <p style={{ margin: '0 0 4px', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>📌 VENDE</p>
                                     <p style={{ margin: '0 0 4px', fontSize: F.sizeLg, fontWeight: 'bold', color: C.textPrimary }}>1 CALL ${rec.strategy.example.strikeUpper?.toFixed(2)}</p>
                                     <p style={{ margin: 0, fontSize: F.sizeSm, color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.deltaUpper?.toFixed(2)}</p>
@@ -2937,7 +3147,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             {rec.strategy.name === 'Bull Put Spread' && (
                               <div style={{ marginBottom: '12px' }}>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                                  <div style={{ flex: 1, minWidth: '110px', padding: '12px', background: 'C.negative', borderRadius: R.md, textAlign: 'center' }}>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '12px', background: C.negative, borderRadius: R.md, textAlign: 'center' }}>
                                     <p style={{ margin: '0 0 4px', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>📌 VENDE</p>
                                     <p style={{ margin: '0 0 4px', fontSize: F.sizeLg, fontWeight: 'bold', color: C.textPrimary }}>1 PUT ${rec.strategy.example.strike?.toFixed(2)}</p>
                                     <p style={{ margin: 0, fontSize: F.sizeSm, color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.delta?.toFixed(2)}</p>
@@ -2958,7 +3168,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             )}
                             {rec.strategy.name === 'Covered Call' && (
                               <div style={{ marginBottom: '12px' }}>
-                                <div style={{ padding: '16px', background: 'C.negative', borderRadius: R.md, textAlign: 'center' }}>
+                                <div style={{ padding: '16px', background: C.negative, borderRadius: R.md, textAlign: 'center' }}>
                                   <p style={{ margin: '0 0 8px', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>📌 VENDE (si tienes 100 acciones de {data.quote?.symbol})</p>
                                   <p style={{ margin: '0 0 4px', fontSize: F.sizeXxl, fontWeight: 'bold', color: C.textPrimary }}>1 CALL ${rec.strategy.example.strike?.toFixed(2)}</p>
                                   <p style={{ margin: 0, fontSize: F.sizeBase, color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.delta?.toFixed(2)}</p>
@@ -2973,7 +3183,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             )}
                             {rec.strategy.name === 'Cash-Secured Put' && (
                               <div style={{ marginBottom: '12px' }}>
-                                <div style={{ padding: '16px', background: 'C.negative', borderRadius: R.md, textAlign: 'center' }}>
+                                <div style={{ padding: '16px', background: C.negative, borderRadius: R.md, textAlign: 'center' }}>
                                   <p style={{ margin: '0 0 8px', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>📌 VENDE</p>
                                   <p style={{ margin: '0 0 4px', fontSize: F.sizeXxl, fontWeight: 'bold', color: C.textPrimary }}>1 PUT ${rec.strategy.example.strike?.toFixed(2)}</p>
                                   <p style={{ margin: 0, fontSize: F.sizeBase, color: 'rgba(255,255,255,0.8)' }}>Δ {rec.strategy.example.delta?.toFixed(2)}</p>
@@ -3049,7 +3259,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                               <div style={{ marginBottom: '12px' }}>
                                 <p style={{ margin: '0 0 8px', fontSize: F.sizeSm, color: C.accentLight, fontWeight: '600' }}>🟢 LADO PUT (Bajista):</p>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                                  <div style={{ flex: 1, minWidth: '110px', padding: '10px', background: 'C.negative', borderRadius: R.sm, textAlign: 'center' }}>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '10px', background: C.negative, borderRadius: R.sm, textAlign: 'center' }}>
                                     <p style={{ margin: '0', fontSize: F.sizeXs, color: 'rgba(255,255,255,0.8)' }}>VENDE PUT</p>
                                     <p style={{ margin: '2px 0 0', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>${rec.strategy.example.strike?.toFixed(2)}</p>
                                   </div>
@@ -3060,7 +3270,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                                 </div>
                                 <p style={{ margin: '0 0 8px', fontSize: F.sizeSm, color: C.accentLight, fontWeight: '600' }}>🔴 LADO CALL (Alcista):</p>
                                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                                  <div style={{ flex: 1, minWidth: '110px', padding: '10px', background: 'C.negative', borderRadius: R.sm, textAlign: 'center' }}>
+                                  <div style={{ flex: 1, minWidth: '110px', padding: '10px', background: C.negative, borderRadius: R.sm, textAlign: 'center' }}>
                                     <p style={{ margin: '0', fontSize: F.sizeXs, color: 'rgba(255,255,255,0.8)' }}>VENDE CALL</p>
                                     <p style={{ margin: '2px 0 0', fontSize: F.sizeBase, fontWeight: 'bold', color: C.textPrimary }}>${rec.strategy.example.strikeUpper?.toFixed(2)}</p>
                                   </div>
@@ -3079,7 +3289,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             )}
 
                             {/* Resumen Final */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(85px, 1fr))', gap: '8px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid C.border' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(85px, 1fr))', gap: '8px', marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${C.border}` }}>
                               <div style={{ textAlign: 'center', padding: '8px', background: C.bg, borderRadius: R.sm }}>
                                 <p style={{ margin: '0 0 2px', fontSize: '10px', color: C.textMuted }}>Gan. Máx</p>
                                 <p style={{ margin: 0, fontSize: F.sizeBase, fontWeight: 'bold', color: C.positive }}>
@@ -3114,7 +3324,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             {/* TP / SL */}
                             {rec.strategy.example.takeProfit && rec.strategy.example.stopLoss && (
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
-                                <div style={{ padding: '10px', background: C.positiveBg, borderRadius: R.sm, border: '1px solid C.positiveBorder' }}>
+                                <div style={{ padding: '10px', background: C.positiveBg, borderRadius: R.sm, border: `1px solid ${C.positiveBorder}` }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                                     <span style={{ fontSize: F.sizeSm }}>🎯</span>
                                     <span style={{ fontSize: '10px', color: C.textMuted }}>Take Profit</span>
@@ -3130,7 +3340,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                                     {rec.strategy.example.takeProfit.tpPercent && ` (cierra al ${rec.strategy.example.takeProfit.tpPercent}%)`}
                                   </p>
                                 </div>
-                                <div style={{ padding: '10px', background: C.negativeBg, borderRadius: R.sm, border: '1px solid C.negativeBorder' }}>
+                                <div style={{ padding: '10px', background: C.negativeBg, borderRadius: R.sm, border: `1px solid ${C.negativeBorder}` }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                                     <span style={{ fontSize: F.sizeSm }}>🛑</span>
                                     <span style={{ fontSize: '10px', color: C.textMuted }}>Stop Loss</span>
@@ -3249,7 +3459,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                       maxWidth: '600px',
                       maxHeight: '90vh',
                       overflowY: 'auto',
-                      border: '1px solid C.border',
+                      border: `1px solid ${C.border}`,
                     }}
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -3260,7 +3470,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                         style={{
                           padding: '8px 16px',
                           borderRadius: R.md,
-                          border: '1px solid C.border',
+                          border: `1px solid ${C.border}`,
                           background: 'transparent',
                           color: C.textMuted,
                           cursor: 'pointer',
@@ -3273,7 +3483,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
 
                     <div style={{ display: 'grid', gap: '16px' }}>
                       {/* 1. Contexto Mercado */}
-                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: '4px solid C.accentLight' }}>
+                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: `4px solid ${C.accentLight}` }}>
                         <h4 style={{ margin: '0 0 12px', color: C.accentLight, fontSize: F.sizeBase }}>🔵 1. CONTEXTO DEL MERCADO</h4>
                         <div style={{ display: 'grid', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -3288,8 +3498,8 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                       </div>
 
                       {/* 2. Setup */}
-                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: '4px solid C.positive' }}>
-                        <h4 style={{ margin: '0 0 12px', color: 'C.positive', fontSize: F.sizeBase }}>🟢 2. SETUP (TU EDGE)</h4>
+                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: `4px solid ${C.positive}` }}>
+                        <h4 style={{ margin: '0 0 12px', color: C.positive, fontSize: F.sizeBase }}>🟢 2. SETUP (TU EDGE)</h4>
                         <div style={{ display: 'grid', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <span style={{ fontSize: F.sizeXl, width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.breakout).icon}</span>
@@ -3311,7 +3521,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                       </div>
 
                       {/* 3. Ubicación Precio */}
-                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: '4px solid C.warning' }}>
+                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: `4px solid ${C.warning}` }}>
                         <h4 style={{ margin: '0 0 12px', color: C.warning, fontSize: F.sizeBase }}>🟡 3. UBICACIÓN DEL PRECIO</h4>
                         <div style={{ display: 'grid', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -3326,7 +3536,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                       </div>
 
                       {/* 4. Riesgo/Recompensa */}
-                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: '4px solid C.negative' }}>
+                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: `4px solid ${C.negative}` }}>
                         <h4 style={{ margin: '0 0 12px', color: C.negative, fontSize: F.sizeBase }}>🔴 4. RIESGO / RECOMPENSA</h4>
                         <div style={{ display: 'grid', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -3341,7 +3551,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                       </div>
 
                       {/* 5. Tiempo */}
-                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: '4px solid C.textMuted' }}>
+                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: `4px solid ${C.textMuted}` }}>
                         <h4 style={{ margin: '0 0 12px', color: C.textMuted, fontSize: F.sizeBase }}>⚫ 5. TIEMPO (EXPIRACIÓN)</h4>
                         
                         {timeValidation ? (
@@ -3411,8 +3621,8 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                       </div>
 
                       {/* 6. Volatilidad */}
-                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: '4px solid C.accentLight' }}>
-                        <h4 style={{ margin: '0 0 12px', color: 'C.accentLight', fontSize: F.sizeBase }}>🟣 6. VOLATILIDAD</h4>
+                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: `4px solid ${C.accentLight}` }}>
+                        <h4 style={{ margin: '0 0 12px', color: C.accentLight, fontSize: F.sizeBase }}>🟣 6. VOLATILIDAD</h4>
                         <p style={{ margin: '0 0 8px', fontSize: F.sizeSm, color: C.textMuted }}>IV Rank: <span style={{ color: data.optionsAnalysis?.ivRank > 50 ? C.warning : C.positive, fontWeight: '600' }}>{(data.optionsAnalysis?.ivRank || 0).toFixed(0)}%</span> - {data.optionsAnalysis?.ivRank > 50 ? 'Alta (vender spreads)' : 'Baja (comprar spreads)'}</p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <span style={{ fontSize: F.sizeXl, width: '24px', textAlign: 'center' }}>{getStatusIcon(preTradeChecklist.ivFavorable).icon}</span>
@@ -3421,7 +3631,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                       </div>
 
                       {/* 7. Eventos */}
-                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: '4px solid C.warning' }}>
+                      <div style={{ background: C.bg, padding: '16px', borderRadius: R.md, borderLeft: `4px solid ${C.warning}` }}>
                         <h4 style={{ margin: '0 0 12px', color: C.warning, fontSize: F.sizeBase }}>⚠️ 7. EVENTOS</h4>
                         <p style={{ margin: '0 0 8px', fontSize: F.sizeSm, color: C.textMuted }}>
                           Earnings: <span style={{ color: data.optionsAnalysis?.earningsDate ? C.warning : C.positive, fontWeight: '600' }}>
@@ -3466,7 +3676,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             <p style={{ margin: 0, fontSize: F.sizeBase, color: C.textMuted }}>
                               ✅ {passCount} &nbsp; ❌ {failCount} / {totalChecks}
                             </p>
-                            <p style={{ margin: '8px 0 0', fontSize: F.sizeSm, color: 'C.textMuted', fontStyle: 'italic' }}>"Si tengo que convencerme para entrar, ya es un NO."</p>
+                            <p style={{ margin: '8px 0 0', fontSize: F.sizeSm, color: C.textMuted, fontStyle: 'italic' }}>"Si tengo que convencerme para entrar, ya es un NO."</p>
                           </div>
                         );
                       })()}
@@ -3502,7 +3712,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
           {/* Screener */}
           {screenerLoading ? (
             <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: R.full, border: '3px solid C.border', borderTopColor: C.accentLight, animation: 'spin 1s linear infinite', margin: '0 auto 16px' }}></div>
+              <div style={{ width: '48px', height: '48px', borderRadius: R.full, border: `3px solid ${C.border}`, borderTopColor: C.accentLight, animation: 'spin 1s linear infinite', margin: '0 auto 16px' }}></div>
               <p style={{ color: C.textMuted }}>Analizando acciones...</p>
             </div>
           ) : screenerData ? (
@@ -3517,7 +3727,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                     style={{
                       padding: '8px 16px',
                       borderRadius: R.md,
-                      border: '1px solid C.border',
+                      border: `1px solid ${C.border}`,
                       background: 'transparent',
                       color: C.accentLight,
                       cursor: screenerLoading ? 'wait' : 'pointer',
@@ -3529,7 +3739,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                     }}
                   >
                     {screenerLoading ? (
-                      <span style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid C.border', borderTopColor: C.accentLight, borderRadius: R.full, animation: 'spin 1s linear infinite' }}></span>
+                      <span style={{ display: 'inline-block', width: '14px', height: '14px', border: `2px solid ${C.border}`, borderTopColor: C.accentLight, borderRadius: R.full, animation: 'spin 1s linear infinite' }}></span>
                     ) : (
                       '🔄'
                     )}
@@ -3561,7 +3771,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                       borderRadius: R.md, 
                       textAlign: 'center',
                       cursor: 'pointer',
-                      border: (symbolChanges.added.length > 0 || symbolChanges.removed.length > 0) ? '2px solid C.warning' : '1px solid C.border',
+                      border: (symbolChanges.added.length > 0 || symbolChanges.removed.length > 0) ? `2px solid ${C.warning}` : `1px solid ${C.border}`,
                     }}
                   >
                     <p style={{ margin: '0 0 4px', fontSize: F.sizeXl, fontWeight: 'bold', color: C.warning }}>
@@ -3576,7 +3786,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
 
                 {/* Detalle de cambios */}
                 {showChanges && (
-                  <div style={{ marginTop: '16px', padding: '16px', background: C.bg, borderRadius: R.md, border: '1px solid C.border' }}>
+                  <div style={{ marginTop: '16px', padding: '16px', background: C.bg, borderRadius: R.md, border: `1px solid ${C.border}` }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                       <div>
                         <p style={{ margin: '0 0 8px', color: C.positive, fontSize: F.sizeMd, fontWeight: '600' }}>🟢 Agregadas ({symbolChanges.added.length})</p>
@@ -3601,7 +3811,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             ))}
                           </div>
                         ) : (
-                          <p style={{ margin: 0, fontSize: F.sizeSm, color: 'C.textMuted' }}>Ninguna</p>
+                          <p style={{ margin: 0, fontSize: F.sizeSm, color: C.textMuted }}>Ninguna</p>
                         )}
                       </div>
                       <div>
@@ -3625,7 +3835,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                             ))}
                           </div>
                         ) : (
-                          <p style={{ margin: 0, fontSize: F.sizeSm, color: 'C.textMuted' }}>Ninguna</p>
+                          <p style={{ margin: 0, fontSize: F.sizeSm, color: C.textMuted }}>Ninguna</p>
                         )}
                       </div>
                     </div>
@@ -3655,11 +3865,11 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                           gap: '12px',
                           cursor: 'pointer',
                           transition: 'all 0.2s',
-                          border: isNew ? '2px solid C.positive' : '1px solid transparent',
+                          border: isNew ? `2px solid ${C.positive}` : '1px solid transparent',
                           boxShadow: isNew ? '0 0 10px rgba(63, 185, 80, 0.2)' : 'none',
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'C.bgElevated';
+                          e.currentTarget.style.background = C.bgElevated;
                           e.currentTarget.style.borderColor = C.accentLight;
                         }}
                         onMouseLeave={(e) => {
@@ -3720,7 +3930,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                       flex: 1,
                       padding: '10px 14px',
                       borderRadius: R.md,
-                      border: '1px solid C.border',
+                      border: `1px solid ${C.border}`,
                       background: C.bg,
                       color: C.textSecondary,
                       fontSize: F.sizeBase,
@@ -3733,7 +3943,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                       style={{
                         padding: '10px 16px',
                         borderRadius: R.md,
-                        border: '1px solid C.border',
+                        border: `1px solid ${C.border}`,
                         background: 'transparent',
                         color: C.textMuted,
                         cursor: 'pointer',
@@ -3747,7 +3957,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '600px' }}>
                     <thead>
-                      <tr style={{ borderBottom: '1px solid C.border' }}>
+                      <tr style={{ borderBottom: `1px solid ${C.border}` }}>
                         <th onClick={() => handleSort('symbol')} style={{ padding: '12px 8px', textAlign: 'left', color: sortField === 'symbol' ? C.accentLight : C.textMuted, fontSize: F.sizeXs, fontWeight: '600', cursor: 'pointer' }}>Símbolo {sortField === 'symbol' && (sortDir === 'asc' ? '↑' : '↓')}</th>
                         <th onClick={() => handleSort('price')} style={{ padding: '12px 8px', textAlign: 'right', color: sortField === 'price' ? C.accentLight : C.textMuted, fontSize: F.sizeXs, fontWeight: '600', cursor: 'pointer' }}>Precio {sortField === 'price' && (sortDir === 'asc' ? '↑' : '↓')}</th>
                         <th onClick={() => handleSort('iv')} style={{ padding: '12px 8px', textAlign: 'center', color: sortField === 'iv' ? C.accentLight : C.textMuted, fontSize: F.sizeXs, fontWeight: '600', cursor: 'pointer' }}>IV % {sortField === 'iv' && (sortDir === 'asc' ? '↑' : '↓')}</th>
@@ -3765,12 +3975,12 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                           key={stock.symbol} 
                           onClick={() => setSelectedSymbolFromScreener(stock.symbol)}
                           style={{ 
-                            borderBottom: '1px solid C.border',
+                            borderBottom: `1px solid ${C.border}`,
                             cursor: 'pointer',
                             transition: 'background 0.2s',
                             background: isNew ? 'rgba(63, 185, 80, 0.1)' : 'transparent',
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = 'C.bgElevated'}
+                          onMouseEnter={(e) => e.currentTarget.style.background = C.bgElevated}
                           onMouseLeave={(e) => e.currentTarget.style.background = isNew ? 'rgba(63, 185, 80, 0.1)' : 'transparent'}
                         >
                           <td style={{ padding: '10px 8px' }}>
@@ -3801,7 +4011,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                                 </span>
                               </div>
                             ) : (
-                              <span style={{ fontSize: '10px', color: 'C.textMuted' }}>-</span>
+                              <span style={{ fontSize: '10px', color: C.textMuted }}>-</span>
                             )}
                           </td>
                           <td style={{ padding: '10px 8px', fontSize: F.sizeXs, color: C.accentLight }}>{stock.topStrategy}</td>
@@ -3859,7 +4069,7 @@ function FrameworkView({ data }: { data: any }) {
       </div>
 
       {/* Filtro FCF */}
-      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '16px', borderLeft: '4px solid C.warning' }}>
+      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '16px', borderLeft: `4px solid ${C.warning}` }}>
         <h4 style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>🧩 Filtro Inicial</h4>
         <p style={{ fontSize: F.sizeHero, fontWeight: 'bold', color: isFCFPositive ? C.positive : C.negative, margin: 0 }}>
           {isFCFPositive ? '✅ FCF POSITIVO - Modo Valor' : '⚠️ FCF NEGATIVO - Modo Growth'}
@@ -3868,22 +4078,22 @@ function FrameworkView({ data }: { data: any }) {
 
       {/* Métricas */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: '4px solid C.accentLight' }}>
+        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: `4px solid ${C.accentLight}` }}>
           <h4 style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>💰 FCF Yield</h4>
           <p style={{ fontSize: '28px', fontWeight: 'bold', color: fcfYield > 5 ? C.positive : C.negative, margin: 0 }}>{fcfYield.toFixed(1)}%</p>
           <p style={{ fontSize: F.sizeSm, color: C.textMuted, margin: '4px 0 0' }}>{fcfYield > 10 ? '💎 Muy barata' : fcfYield > 5 ? '✅ Buena' : fcfYield > 3 ? '😐 Normal' : '⚠️ Cara'}</p>
         </div>
-        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: '4px solid C.accentLight' }}>
+        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: `4px solid ${C.accentLight}` }}>
           <h4 style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>📊 PE Ratio</h4>
           <p style={{ fontSize: '28px', fontWeight: 'bold', color: pe < 25 ? C.positive : C.negative, margin: 0 }}>{pe.toFixed(1)}</p>
           <p style={{ fontSize: F.sizeSm, color: C.textMuted, margin: '4px 0 0' }}>{pe < 15 ? 'Value' : pe < 25 ? 'Balanceada' : pe < 40 ? 'Growth' : '🚨 Alta'}</p>
         </div>
-        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: '4px solid C.accentLight' }}>
+        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: `4px solid ${C.accentLight}` }}>
           <h4 style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>📈 Revenue</h4>
           <p style={{ fontSize: '28px', fontWeight: 'bold', color: revGrowth > 0 ? C.positive : C.negative, margin: 0 }}>{revGrowth > 0 ? '+' : ''}{revGrowth.toFixed(1)}%</p>
           <p style={{ fontSize: F.sizeSm, color: C.textMuted, margin: '4px 0 0' }}>{revGrowth > 20 ? '🚀 Alto' : revGrowth > 10 ? '✅ Saludable' : revGrowth > 0 ? '🐢 Lento' : '🚨 Problema'}</p>
         </div>
-        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: '4px solid C.accentLight' }}>
+        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: `4px solid ${C.accentLight}` }}>
           <h4 style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>🧾 Margen</h4>
           <p style={{ fontSize: '28px', fontWeight: 'bold', color: margin > 10 ? C.positive : C.negative, margin: 0 }}>{margin.toFixed(1)}%</p>
           <p style={{ fontSize: F.sizeSm, color: C.textMuted, margin: '4px 0 0' }}>{margin > 20 ? '💪 Excelente' : margin > 10 ? '✅ Bueno' : '⚠️ Débil'}</p>
@@ -3902,22 +4112,22 @@ function FrameworkView({ data }: { data: any }) {
       <div>
         <h3 style={{ margin: '0 0 16px', fontSize: F.sizeXl }}>🔥 AHORA LO IMPORTANTE: LA COMBINACIÓN</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
-          <div style={{ padding: '16px', background: C.bgCard, borderRadius: R.lg, border: isJoyas ? '2px solid C.positive' : '1px solid C.border' }}>
+          <div style={{ padding: '16px', background: C.bgCard, borderRadius: R.lg, border: isJoyas ? `2px solid ${C.positive}` : `1px solid ${C.border}` }}>
             <h4 style={{ margin: '0 0 8px', color: C.positive, fontSize: '15px' }}>💎 ESCENARIO 1: Joyas Ocultas</h4>
             <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>FCF Yield &gt;8% + PE bajo + Revenue crece + Margen sólido</p>
             {isJoyas && <p style={{ margin: '8px 0 0', fontSize: F.sizeMd, fontWeight: 'bold', color: C.positive }}>✓ ACCIÓN BARATA + GENERA CASH + CRECE</p>}
           </div>
-          <div style={{ padding: '16px', background: C.bgCard, borderRadius: R.lg, border: isGrowth ? '2px solid C.accentLight' : '1px solid C.border' }}>
+          <div style={{ padding: '16px', background: C.bgCard, borderRadius: R.lg, border: isGrowth ? `2px solid ${C.accentLight}` : `1px solid ${C.border}` }}>
             <h4 style={{ margin: '0 0 8px', color: C.accentLight, fontSize: '15px' }}>🚀 ESCENARIO 2: Growth Caro</h4>
             <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>FCF bajo/neg + PE alto + Revenue &gt;20% + Margen expandiéndose</p>
             {isGrowth && <p style={{ margin: '8px 0 0', fontSize: F.sizeMd, fontWeight: 'bold', color: C.accentLight }}>✓ CARA HOY, PERO PUEDE SER GANADORA</p>}
           </div>
-          <div style={{ padding: '16px', background: C.bgCard, borderRadius: R.lg, border: isValueTrap ? '2px solid C.negative' : '1px solid C.border' }}>
+          <div style={{ padding: '16px', background: C.bgCard, borderRadius: R.lg, border: isValueTrap ? `2px solid ${C.negative}` : `1px solid ${C.border}` }}>
             <h4 style={{ margin: '0 0 8px', color: C.negative, fontSize: '15px' }}>⚠️ ESCENARIO 3: Value Trap</h4>
             <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>FCF Yield alto + PE bajo + Revenue estancado + Margen débil</p>
             {isValueTrap && <p style={{ margin: '8px 0 0', fontSize: F.sizeMd, fontWeight: 'bold', color: C.negative }}>✗ PARECE BARATA... PERO ESTÁ MUERIENDO</p>}
           </div>
-          <div style={{ padding: '16px', background: C.bgCard, borderRadius: R.lg, border: isBomba ? '2px solid C.negative' : '1px solid C.border' }}>
+          <div style={{ padding: '16px', background: C.bgCard, borderRadius: R.lg, border: isBomba ? `2px solid ${C.negative}` : `1px solid ${C.border}` }}>
             <h4 style={{ margin: '0 0 8px', color: C.negative, fontSize: '15px' }}>💣 ESCENARIO 4: Bomba de Tiempo</h4>
             <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>FCF negativo + PE alto + No crece + Margen bajo</p>
             {isBomba && <p style={{ margin: '8px 0 0', fontSize: F.sizeMd, fontWeight: 'bold', color: C.negative }}>✗ SOBREVALORADA + SIN FUNDAMENTOS</p>}
@@ -3972,12 +4182,12 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
   })();
   const gaugeScore = 100 - strengthScore;
   const riskLabel = gaugeScore <= 30 ? 'Low Risk' : gaugeScore <= 60 ? 'Medium Risk' : 'High Risk';
-  const riskColor = gaugeScore <= 30 ? 'C.positive' : gaugeScore <= 60 ? 'C.warning' : 'C.negative';
+  const riskColor = gaugeScore <= 30 ? C.positive : gaugeScore <= 60 ? C.warning : C.negative;
 
   const verAction = data.recommendation?.action || s.verdict || 'HOLD';
-  const verColor = verAction === 'COMPRAR' || verAction === 'BUY' ? C.positive : verAction === 'VENDER' || verAction === 'SELL' ? 'C.negative' : 'C.warning';
+  const verColor = verAction === 'COMPRAR' || verAction === 'BUY' ? C.positive : verAction === 'VENDER' || verAction === 'SELL' ? C.negative : C.warning;
 
-  const cardBase = { background: C.bgCard, borderRadius: R.lg, padding: '20px', border: '1px solid C.border' };
+  const cardBase = { background: C.bgCard, borderRadius: R.lg, padding: '20px', border: `1px solid ${C.border}` };
 
   const clipboardText = [
     `${symbol} RISK SCORE REPORT`,
@@ -3999,24 +4209,24 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={() => setPage(1)} style={{ padding: '8px 20px', borderRadius: R.md, border: '1px solid C.border', background: page === 1 ? C.positive : 'transparent', color: C.textSecondary, cursor: 'pointer', fontWeight: '500', fontSize: F.sizeMd }}>Page 1 · Overview</button>
-          <button onClick={() => setPage(2)} style={{ padding: '8px 20px', borderRadius: R.md, border: '1px solid C.border', background: page === 2 ? C.positive : 'transparent', color: C.textSecondary, cursor: 'pointer', fontWeight: '500', fontSize: F.sizeMd }}>Page 2 · Deep Dive</button>
+          <button onClick={() => setPage(1)} style={{ padding: '8px 20px', borderRadius: R.md, border: `1px solid ${C.border}`, background: page === 1 ? C.positive : 'transparent', color: C.textSecondary, cursor: 'pointer', fontWeight: '500', fontSize: F.sizeMd }}>Page 1 · Overview</button>
+          <button onClick={() => setPage(2)} style={{ padding: '8px 20px', borderRadius: R.md, border: `1px solid ${C.border}`, background: page === 2 ? C.positive : 'transparent', color: C.textSecondary, cursor: 'pointer', fontWeight: '500', fontSize: F.sizeMd }}>Page 2 · Deep Dive</button>
         </div>
-        <button onClick={() => navigator.clipboard.writeText(clipboardText)} style={{ padding: '8px 16px', borderRadius: R.md, border: '1px solid C.border', background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: F.sizeMd }}>Copy Report</button>
+        <button onClick={() => navigator.clipboard.writeText(clipboardText)} style={{ padding: '8px 16px', borderRadius: R.md, border: `1px solid ${C.border}`, background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: F.sizeMd }}>Copy Report</button>
       </div>
 
       {page === 1 && (
-        <div style={{ background: C.bg, borderRadius: '16px', padding: '32px', border: '1px solid C.border' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '20px', borderBottom: '1px solid C.border' }}>
+        <div style={{ background: C.bg, borderRadius: '16px', padding: '32px', border: `1px solid ${C.border}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '20px', borderBottom: `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: F.sizeHero, fontWeight: '700', background: 'C.accentLight', color: C.textPrimary, padding: '6px 16px', borderRadius: R.md }}>{symbol}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: F.sizeHero, fontWeight: '700', background: C.accentLight, color: C.textPrimary, padding: '6px 16px', borderRadius: R.md }}>{symbol}</span>
               <div>
                 <div style={{ fontWeight: '600', fontSize: F.sizeLg, color: C.textPrimary }}>{companyName}</div>
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '28px', fontWeight: '600', color: C.textPrimary }}>${price.toFixed(2)}</div>
-              <div style={{ color: isPos ? C.positive : 'C.negative', fontSize: F.sizeBase }}>{isPos ? '+' : ''}{change.toFixed(2)} ({isPos ? '+' : ''}{changePct.toFixed(2)}%)</div>
+              <div style={{ color: isPos ? C.positive : C.negative, fontSize: F.sizeBase }}>{isPos ? '+' : ''}{change.toFixed(2)} ({isPos ? '+' : ''}{changePct.toFixed(2)}%)</div>
             </div>
           </div>
 
@@ -4028,13 +4238,13 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
                 <div style={{ height: '12px', background: C.bgElevated, borderRadius: R.sm, overflow: 'hidden', position: 'relative' }}>
                   <div style={{ height: '100%', width: `${gaugeScore}%`, background: riskColor, borderRadius: R.sm, transition: 'width 0.8s ease-out' }} />
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', fontWeight: '700', color: C.textPrimary, textShadow: '0 1px 2px `${C.bg}80`' }}>{gaugeScore}%</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', fontWeight: '700', color: C.textPrimary, textShadow: '0 1px 2px `C.bg80`' }}>{gaugeScore}%</span>
                   </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', padding: '0 2px' }}>
-                  <span style={{ fontSize: '9px', color: 'C.positive' }}>Low</span>
-                  <span style={{ fontSize: '9px', color: 'C.warning' }}>Medium</span>
-                  <span style={{ fontSize: '9px', color: 'C.negative' }}>High</span>
+                  <span style={{ fontSize: '9px', color: C.positive }}>Low</span>
+                  <span style={{ fontSize: '9px', color: C.warning }}>Medium</span>
+                  <span style={{ fontSize: '9px', color: C.negative }}>High</span>
                 </div>
               </div>
               <span style={{ fontSize: F.sizeXs, color: C.textMuted, minWidth: '70px' }}>{riskLabel}</span>
@@ -4050,7 +4260,7 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
               { label: 'Net Margin', val: netMargin.toFixed(1) + '%' },
               { label: 'Strength', val: strengthScore + '/100' },
             ].map(k => (
-              <div key={k.label} style={{ background: C.bgCard, border: '1px solid C.border', borderRadius: R.lg, padding: '10px 8px', textAlign: 'center' }}>
+              <div key={k.label} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: R.lg, padding: '10px 8px', textAlign: 'center' }}>
                 <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', color: C.textMuted }}>{k.label}</div>
                 <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: F.sizeBase, fontWeight: '600', color: C.textPrimary, marginTop: '6px' }}>{k.val}</div>
               </div>
@@ -4066,7 +4276,7 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
                 { label: 'Signal', val: t?.signal || 'N/A' },
                 { label: 'Confidence', val: r?.confidence ? r.confidence + '%' : 'N/A' },
               ].map(k => (
-                <div key={k.label} style={{ background: C.bgCard, border: '1px solid C.border', borderRadius: R.lg, padding: '10px 8px', textAlign: 'center' }}>
+                <div key={k.label} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: R.lg, padding: '10px 8px', textAlign: 'center' }}>
                   <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', color: C.textMuted }}>{k.label}</div>
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: F.sizeBase, fontWeight: '600', color: C.textPrimary, marginTop: '6px' }}>{k.val}</div>
                 </div>
@@ -4076,21 +4286,21 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', marginBottom: '28px' }}>
             {[
-              { title: 'Valuation', color: pe > 25 ? 'C.warning' : 'C.positive', grade: pe > 25 ? 'Premium' : 'Fair', rows: [
+              { title: 'Valuation', color: pe > 25 ? C.warning : C.positive, grade: pe > 25 ? 'Premium' : 'Fair', rows: [
                 { label: 'P/E (TTM)', val: pe ? pe.toFixed(2) : 'N/A' },
                 { label: 'Market Cap', val: formatLargeNum(mcap) },
                 { label: '52W High', val: q.fiftyTwoWeekHigh ? '$' + q.fiftyTwoWeekHigh.toFixed(2) : 'N/A' },
                 { label: '52W Low', val: q.fiftyTwoWeekLow ? '$' + q.fiftyTwoWeekLow.toFixed(2) : 'N/A' },
                 { label: 'Target Price', val: q.targetMeanPrice ? '$' + q.targetMeanPrice.toFixed(2) : 'N/A' },
               ]},
-              { title: 'Financial Health', color: s.totalCash > s.totalDebt ? 'C.positive' : 'C.warning', grade: s.totalCash > s.totalDebt ? 'Strong' : 'Watch', rows: [
+              { title: 'Financial Health', color: s.totalCash > s.totalDebt ? C.positive : C.warning, grade: s.totalCash > s.totalDebt ? 'Strong' : 'Watch', rows: [
                 { label: 'Total Cash', val: formatLargeNum(s.totalCash) },
                 { label: 'Total Debt', val: formatLargeNum(s.totalDebt) },
                 { label: 'Cash/Debt', val: s.totalDebt > 0 ? (s.totalCash / s.totalDebt).toFixed(2) : 'N/A' },
                 { label: 'Profit Margin', val: netMargin.toFixed(1) + '%' },
                 { label: 'Cash Class', val: s.cashClassification || 'N/A' },
               ]},
-              { title: 'Growth', color: revGrowth > 5 ? 'C.positive' : 'C.negative', grade: revGrowth > 5 ? 'Growing' : 'Stalling', rows: [
+              { title: 'Growth', color: revGrowth > 5 ? C.positive : C.negative, grade: revGrowth > 5 ? 'Growing' : 'Stalling', rows: [
                 { label: 'Revenue YoY', val: (revGrowth >= 0 ? '+' : '') + revGrowth.toFixed(1) + '%' },
                 { label: 'Avg P/E 6M', val: s.avgPe6Months ? s.avgPe6Months.toFixed(2) : 'N/A' },
                 { label: 'Projected Price', val: s.projectedPrice ? '$' + s.projectedPrice.toFixed(2) : 'N/A' },
@@ -4099,14 +4309,14 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
               ]},
             ].map(card => (
               <div key={card.title} style={cardBase}>
-                <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1.2px', color: C.textMuted, marginBottom: '14px', paddingBottom: '10px', borderBottom: '1px solid C.border' }}>{card.title}</div>
+                <div style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '1.2px', color: C.textMuted, marginBottom: '14px', paddingBottom: '10px', borderBottom: `1px solid ${C.border}` }}>{card.title}</div>
                 {card.rows.map((r, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', fontSize: F.sizeMd, borderTop: i > 0 ? '1px solid C.bg' : 'none' }}>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', fontSize: F.sizeMd, borderTop: i > 0 ? `1px solid ${C.bg}` : 'none' }}>
                     <span style={{ color: C.textMuted }}>{r.label}</span>
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: '500', color: C.textPrimary }}>{r.val}</span>
                   </div>
                 ))}
-                <div style={{ marginTop: '8px', paddingTop: '10px', borderTop: '1px solid C.border', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ marginTop: '8px', paddingTop: '10px', borderTop: `1px solid ${C.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: F.sizeSm, color: C.textMuted }}>Grade</span>
                   <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: R.sm, fontFamily: "'JetBrains Mono', monospace", fontSize: F.sizeMd, fontWeight: '600', background: card.color + '20', color: card.color }}>{card.grade}</span>
                 </div>
@@ -4117,9 +4327,9 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
           <div>
             <div style={{ fontSize: F.sizeXs, textTransform: 'uppercase', letterSpacing: '1.5px', color: C.textMuted, marginBottom: '16px' }}>Score Breakdown · 35/35/30 Weighting</div>
             {[
-              { label: 'Valuation', pct: Math.min(100, Math.max(10, pe > 0 && pe < 15 ? 80 : pe < 25 ? 60 : 40)), color: 'C.accentLight', max: '/35' },
-              { label: 'Financial Health', pct: Math.min(100, Math.max(10, s.totalCash > s.totalDebt ? 75 : 45)), color: 'C.positive', max: '/35' },
-              { label: 'Growth', pct: Math.min(100, Math.max(10, revGrowth > 10 ? 85 : revGrowth > 0 ? 60 : 30)), color: 'C.warning', max: '/30' },
+              { label: 'Valuation', pct: Math.min(100, Math.max(10, pe > 0 && pe < 15 ? 80 : pe < 25 ? 60 : 40)), color: C.accentLight, max: '/35' },
+              { label: 'Financial Health', pct: Math.min(100, Math.max(10, s.totalCash > s.totalDebt ? 75 : 45)), color: C.positive, max: '/35' },
+              { label: 'Growth', pct: Math.min(100, Math.max(10, revGrowth > 10 ? 85 : revGrowth > 0 ? 60 : 30)), color: C.warning, max: '/30' },
             ].map(b => (
               <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '14px' }}>
                 <span style={{ width: '120px', fontSize: F.sizeMd, color: C.textMuted }}>{b.label}</span>
@@ -4130,10 +4340,10 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
                 <span style={{ fontSize: F.sizeXs, color: C.textMuted, width: '40px' }}>{b.max}</span>
               </div>
             ))}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid C.border' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${C.border}` }}>
               <span style={{ width: '120px', fontSize: F.sizeMd, fontWeight: '600', color: C.textPrimary }}>Total Score</span>
               <div style={{ flex: 1, height: '24px', background: C.bgElevated, borderRadius: R.lg, overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: strengthScore + '%', borderRadius: R.lg, background: 'linear-gradient(90deg, C.accentLight, C.accentLight, C.positive)' }}></div>
+                <div style={{ height: '100%', width: strengthScore + '%', borderRadius: R.lg, background: `linear-gradient(90deg, ${C.accentLight}, ${C.accentLight}, ${C.positive})` }}></div>
               </div>
               <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: F.sizeLg, fontWeight: '700', color: C.textPrimary, width: '50px', textAlign: 'right' }}>{strengthScore}</span>
               <span style={{ fontSize: F.sizeXs, color: C.textMuted, width: '40px' }}>/100</span>
@@ -4143,10 +4353,10 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
       )}
 
       {page === 2 && (
-        <div style={{ background: C.bg, borderRadius: '16px', padding: '32px', border: '1px solid C.border' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '20px', borderBottom: '1px solid C.border' }}>
+        <div style={{ background: C.bg, borderRadius: '16px', padding: '32px', border: `1px solid ${C.border}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '20px', borderBottom: `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: F.sizeHero, fontWeight: '700', background: 'C.accentLight', color: C.textPrimary, padding: '6px 16px', borderRadius: R.md }}>{symbol}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: F.sizeHero, fontWeight: '700', background: C.accentLight, color: C.textPrimary, padding: '6px 16px', borderRadius: R.md }}>{symbol}</span>
               <div>
                 <div style={{ fontWeight: '600', fontSize: F.sizeLg, color: C.textPrimary }}>{companyName}</div>
                 <div style={{ fontSize: F.sizeSm, color: C.textMuted }}>Deep Dive</div>
@@ -4158,7 +4368,7 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
             </div>
           </div>
 
-          <div style={{ fontSize: F.sizeXs, textTransform: 'uppercase', letterSpacing: '2px', color: C.textMuted, marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid C.border' }}>Key Fundamentals</div>
+          <div style={{ fontSize: F.sizeXs, textTransform: 'uppercase', letterSpacing: '2px', color: C.textMuted, marginBottom: '16px', paddingBottom: '10px', borderBottom: `1px solid ${C.border}` }}>Key Fundamentals</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '28px' }}>
             {[
               ['Cash', formatLargeNum(s.totalCash)],
@@ -4170,15 +4380,15 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
               ['Target Low - High', q.targetMeanPrice ? '$' + q.targetMeanPrice.toFixed(2) : 'N/A'],
               ['Support / Resistance', t?.support && t?.resistance ? '$' + t.support.toFixed(2) + ' / $' + t.resistance.toFixed(2) : 'N/A'],
             ].map((r, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: C.bgCard, borderRadius: R.md, fontSize: F.sizeMd, border: '1px solid C.border' }}>
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', background: C.bgCard, borderRadius: R.md, fontSize: F.sizeMd, border: `1px solid ${C.border}` }}>
                 <span style={{ color: C.textMuted }}>{r[0]}</span>
                 <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: '500', color: C.textPrimary }}>{r[1]}</span>
               </div>
             ))}
           </div>
 
-          <div style={{ fontSize: F.sizeXs, textTransform: 'uppercase', letterSpacing: '2px', color: C.textMuted, marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid C.border' }}>Strategy & Targets</div>
-          <div style={{ background: 'linear-gradient(135deg, C.bg, C.bgCard)', border: '1px solid C.border', borderRadius: R.lg, padding: '20px', marginBottom: '28px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          <div style={{ fontSize: F.sizeXs, textTransform: 'uppercase', letterSpacing: '2px', color: C.textMuted, marginBottom: '16px', paddingBottom: '10px', borderBottom: `1px solid ${C.border}` }}>Strategy & Targets</div>
+          <div style={{ background: `linear-gradient(135deg, ${C.bg}, ${C.bgCard})`, border: `1px solid ${C.border}`, borderRadius: R.lg, padding: '20px', marginBottom: '28px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             <div>
               <div style={{ fontSize: F.sizeSm, marginBottom: '12px', color: C.textPrimary }}>Price Targets</div>
               {[
@@ -4189,7 +4399,7 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
                 ['Target 1', s.target1 ? '$' + s.target1.toFixed(2) : 'N/A'],
                 ['Target 2', s.target2 ? '$' + s.target2.toFixed(2) : 'N/A'],
               ].map((r, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: F.sizeMd, borderBottom: '1px solid C.bg' }}>
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: F.sizeMd, borderBottom: `1px solid ${C.bg}` }}>
                   <span style={{ color: C.textMuted }}>{r[0]}</span>
                   <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: '500', color: C.textPrimary }}>{r[1]}</span>
                 </div>
@@ -4209,10 +4419,10 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
             </div>
           </div>
 
-          <div style={{ textAlign: 'center', padding: '28px 20px', borderTop: '1px solid C.border' }}>
+          <div style={{ textAlign: 'center', padding: '28px 20px', borderTop: `1px solid ${C.border}` }}>
             <div style={{ fontSize: F.sizeXs, textTransform: 'uppercase', letterSpacing: '2px', color: C.textMuted, marginBottom: '8px' }}>Bottom Line</div>
             <div style={{ maxWidth: '500px', margin: '16px auto', height: '8px', background: C.bgElevated, borderRadius: '4px', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: gaugeScore + '%', background: gaugeScore <= 30 ? 'C.positive' : gaugeScore <= 60 ? 'C.warning' : 'C.negative', borderRadius: '4px' }}></div>
+              <div style={{ height: '100%', width: gaugeScore + '%', background: gaugeScore <= 30 ? C.positive : gaugeScore <= 60 ? C.warning : C.negative, borderRadius: '4px' }}></div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', maxWidth: '500px', margin: '6px auto 0', fontSize: '10px', color: C.textMuted }}>
               <span>Low Risk</span><span>Medium</span><span>High Risk</span>

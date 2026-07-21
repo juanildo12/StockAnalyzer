@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import YahooFinance from 'yahoo-finance2';
 
 const yf = new YahooFinance();
@@ -116,6 +118,10 @@ function decodeSignals(encoded: string): string[] {
 }
 
 export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const body = await req.json();
     const { action, difficulty, challengeIndex, userGuess, confidence } = body;

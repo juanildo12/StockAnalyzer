@@ -224,7 +224,7 @@ export default function CandlestickChart({ data, sma50, support, resistance, tre
           return (
             <rect key={`v${i}`} x={c.cx - candleWidth * 0.3} y={viewH - padB - barH}
               width={candleWidth * 0.6} height={barH}
-              fill={c.isUp ? `${C.positive}35` : `${C.negative}35`} rx="0.2" />
+              fill={c.isUp ? `${C.positive35}` : `${C.negative35}`} rx="0.2" />
           );
         })}
 
@@ -250,7 +250,7 @@ export default function CandlestickChart({ data, sma50, support, resistance, tre
 
             {/* Hover tooltip */}
             <rect x={Math.min(hoverCandle.cx + 1, viewW - 18)} y="0.5"
-              width="17" height="12" rx="0.8" fill={`${C.bgCard}F0`}
+              width="17" height="12" rx="0.8" fill={`${C.bgCardf0}`}
               stroke={C.borderLight} strokeWidth="0.3" />
             <text x={Math.min(hoverCandle.cx + 1.5, viewW - 17)} y="2.3"
               fontSize="2.2" fill={hoverCandle.isUp ? C.positive : C.negative} fontWeight="700">
@@ -279,7 +279,7 @@ export default function CandlestickChart({ data, sma50, support, resistance, tre
         {animate && animIdx < data.length && (
           <rect x={padL + (animIdx / data.length) * (viewW - padL - padR)} y="0"
             width={viewW} height={viewH}
-            fill={`${C.bgCard}CC`} />
+            fill={`${C.bgCardcc}`} />
         )}
       </svg>
     </div>

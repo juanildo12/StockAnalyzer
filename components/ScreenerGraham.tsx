@@ -42,8 +42,8 @@ interface ApiResponse {
   date: string;
 }
 
-const badgeBg = (pass: boolean) => pass ? `${C.positive}20` : `${C.negative}20`;
-const badgeBorder = (pass: boolean) => pass ? `${C.positive}40` : `${C.negative}40`;
+const badgeBg = (pass: boolean) => pass ? `${C.positive20}` : `${C.negative20}`;
+const badgeBorder = (pass: boolean) => pass ? `${C.positive40}` : `${C.negative40}`;
 const badgeText = (pass: boolean) => pass ? C.positive : C.negative;
 
 function MetricBadge({ pass, label }: { pass: boolean; label: string }) {
@@ -224,7 +224,7 @@ export default function ScreenerGraham({ onSelect }: { onSelect?: (symbol: strin
       {/* Error */}
       {error && (
         <div style={{
-          padding: '16px', background: `${C.negative}20`, border: '1px solid #f8514940',
+          padding: '16px', background: `${C.negative20}`, border: '1px solid #f8514940',
           borderRadius: '12px', color: C.negative, fontSize: '13px', textAlign: 'center',
         }}>
           {error}
@@ -284,8 +284,8 @@ export default function ScreenerGraham({ onSelect }: { onSelect?: (symbol: strin
                     <span style={{
                       display: 'inline-block', padding: '2px 8px', borderRadius: '10px',
                       fontSize: '11px', fontWeight: 500,
-                      background: r.nnwc.classification === 'excelente' || r.nnwc.classification === 'cumple' ? `${C.positive}20` : `${C.textMuted}20`,
-                      border: `1px solid ${r.nnwc.classification === 'excelente' || r.nnwc.classification === 'cumple' ? `${C.positive}40` : `${C.textMuted}40`}`,
+                      background: r.nnwc.classification === 'excelente' || r.nnwc.classification === 'cumple' ? `${C.positive20}` : `${C.textMuted20}`,
+                      border: `1px solid ${r.nnwc.classification === 'excelente' || r.nnwc.classification === 'cumple' ? `${C.positive40}` : `${C.textMuted40}`}`,
                       color: r.nnwc.classification === 'excelente' || r.nnwc.classification === 'cumple' ? C.positive : C.textMuted,
                     }}>
                       {formatClassification(r.nnwc.classification).label}

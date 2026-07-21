@@ -325,7 +325,7 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
           <span>Vol <strong style={{ color: C.textPrimary }}>{fmtNum(best.volume)}</strong></span>
           <span>IV <strong style={{ color: C.textPrimary }}>{(best.impliedVolatility * 100).toFixed(best.impliedVolatility < 0.01 ? 3 : 1)}%</strong></span>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 12px', fontSize: F.sizeXs, color: C.textSecondary, marginTop: 2, paddingTop: 4, borderTop: `1px solid ${C.divider}50` }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 12px', fontSize: F.sizeXs, color: C.textSecondary, marginTop: 2, paddingTop: 4, borderTop: `1px solid ${C.divider50}` }}>
           <span>Coste <strong style={{ color: C.textPrimary }}>${(premium * 100).toFixed(0)}</strong></span>
           <span>B/E {isCall ? '↑' : '↓'} <strong style={{ color: C.textPrimary }}>${breakeven.toFixed(1)}</strong></span>
           <span style={{ color: C.negative }}>SL <strong>${(premium * 100 * 0.5).toFixed(0)}</strong> (-50%)</span>
@@ -452,7 +452,7 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
               {/* Entry Zone — same original style for BUY/HOLD */}
               <div style={{
                 background: C.bg, borderRadius: R.md, padding: 12,
-                border: isBearish ? `1px solid ${C.negative}30` : `1px solid ${entry.color}30`,
+                border: isBearish ? `1px solid ${C.negative30}` : `1px solid ${entry.color}30`,
               }}>
                 <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   {entryLabel}
@@ -517,7 +517,7 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
               {/* SL */}
               <div style={{
                 background: C.bg, borderRadius: R.md, padding: 12,
-                border: `1px solid ${C.negative}30`,
+                border: `1px solid ${C.negative30}`,
               }}>
                 <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Stop Loss
@@ -600,7 +600,7 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
         {summary && (summary.peClassification || summary.cashClassification || summary.debtClassification || summary.peRatio || summary?.targetMeanPrice) && (
           <div style={{
             background: C.bg, borderRadius: R.md, padding: 12, marginBottom: 16,
-            border: `1px solid ${C.accent}30`,
+            border: `1px solid ${C.accent30}`,
           }}>
             <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Clasificaciones
@@ -710,8 +710,8 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
           {/* Items */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {checklist.map(item => {
-              const bgColor = item.check ? `${C.positive}15` : 'transparent';
-              const borderColor = item.check ? `${C.positive}30` : C.border;
+              const bgColor = item.check ? `${C.positive15}` : 'transparent';
+              const borderColor = item.check ? `${C.positive30}` : C.border;
               return (
                 <div
                   key={item.id}

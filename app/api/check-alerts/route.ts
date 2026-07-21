@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { getWatchlistFromFirestore, getAllWatchlistUsers, addAlertedSymbol, getAlertedSymbols } from '@/src/services/firebase';
 import { getStockQuote } from '@/src/services/yahooFinance';
 
@@ -22,7 +24,7 @@ async function sendEmail(to: string, symbol: string, currentPrice: number, targe
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'BreakoutFinder <alerts@resend.dev>',
+        from: 'Prospector <alerts@prospector.com>',
         to: to,
         subject: `${emoji} Alerta: ${symbol} ha ${direction} tu precio objetivo`,
         html: `
@@ -46,7 +48,6 @@ async function sendEmail(to: string, symbol: string, currentPrice: number, targe
       console.error('Error sending email:', error);
       return false;
     } else {
-      console.log('Email sent successfully to', to);
       return true;
     }
   } catch (error) {
@@ -56,65 +57,37 @@ async function sendEmail(to: string, symbol: string, currentPrice: number, targe
 }
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    const sessionToken = request.cookies.get('next-auth.session-token')?.value || request.cookies.get('__Secure-next-auth.session-token')?.value;
-    if (!sessionToken) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const logs: string[] = [];
   const results: any[] = [];
-  
-  console.log('=== Running manual alert check ===');
-  logs.push('=== Running manual alert check ===');
   
   if (!RESEND_API_KEY) {
     const msg = 'RESEND_API_KEY not configured!';
-    console.log(msg);
-    logs.push(msg);
-    return NextResponse.json({ error: msg, logs }, { status: 500 });
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
   
   try {
     const users = await getAllWatchlistUsers();
-    console.log(`Found ${users.length} users:`, JSON.stringify(users));
-    logs.push(`Found ${users.length} users: ${JSON.stringify(users)}`);
     
     for (const user of users) {
-      console.log(`\nProcessing user: ${user.email} (${user.userId})`);
-      logs.push(`\nProcessing user: ${user.email} (${user.userId})`);
-      
       const alertedSymbols = await getAlertedSymbols(user.userId);
-      console.log(`Already alerted:`, alertedSymbols);
-      logs.push(`Already alerted: ${JSON.stringify(alertedSymbols)}`);
       
       const watchlist = await getWatchlistFromFirestore(user.userId);
-      console.log(`Watchlist (${watchlist.length} items):`, JSON.stringify(watchlist));
-      logs.push(`Watchlist (${watchlist.length} items): ${JSON.stringify(watchlist)}`);
       
       for (const item of watchlist) {
-        console.log(`\nChecking ${item.symbol}:`);
-        logs.push(`\nChecking ${item.symbol}:`);
-        
         // Check alert settings
         if (!item.alertEnabled) {
-          console.log(`  -> SKIP: Alert not enabled`);
-          logs.push(`  -> SKIP: Alert not enabled`);
           continue;
         }
         
         if (!item.alertPrice || item.alertPrice <= 0) {
-          console.log(`  -> SKIP: No valid alert price`);
-          logs.push(`  -> SKIP: No valid alert price`);
           continue;
         }
         
         if (alertedSymbols.includes(item.symbol)) {
-          console.log(`  -> SKIP: Already alerted`);
-          logs.push(`  -> SKIP: Already alerted`);
           continue;
         }
         
@@ -122,33 +95,20 @@ export async function GET(request: NextRequest) {
         try {
           const quote = await getStockQuote(item.symbol);
           const currentPrice = quote.regularMarketPrice;
-          console.log(`  -> Current price: $${currentPrice}`);
-          logs.push(`  -> Current price: $${currentPrice}`);
           
           let shouldAlert = false;
           
           if (item.alertType === 'below' && currentPrice <= item.alertPrice) {
             shouldAlert = true;
-            console.log(`  -> CONDITION MET: below (${currentPrice} <= ${item.alertPrice})`);
-            logs.push(`  -> CONDITION MET: below (${currentPrice} <= ${item.alertPrice})`);
           } else if (item.alertType === 'above' && currentPrice >= item.alertPrice) {
             shouldAlert = true;
-            console.log(`  -> CONDITION MET: above (${currentPrice} >= ${item.alertPrice})`);
-            logs.push(`  -> CONDITION MET: above (${currentPrice} >= ${item.alertPrice})`);
           }
           
           if (shouldAlert) {
-            console.log(`  -> SENDING EMAIL...`);
-            logs.push(`  -> SENDING EMAIL...`);
             const emailSent = await sendEmail(user.email, item.symbol, currentPrice, item.alertPrice, item.alertType || 'above');
             
             if (emailSent) {
               await addAlertedSymbol(user.userId, item.symbol);
-              console.log(`  -> EMAIL SENT!`);
-              logs.push(`  -> EMAIL SENT!`);
-            } else {
-              console.log(`  -> EMAIL FAILED!`);
-              logs.push(`  -> EMAIL FAILED!`);
             }
             
             results.push({
@@ -158,28 +118,17 @@ export async function GET(request: NextRequest) {
               alertType: item.alertType,
               emailSent
             });
-          } else {
-            console.log(`  -> No alert: price not in range`);
-            logs.push(`  -> No alert: price not in range`);
           }
         } catch (error) {
-          console.log(`  -> ERROR getting price:`, error);
-          logs.push(`  -> ERROR getting price: ${String(error)}`);
         }
       }
     }
     
-    console.log(`\n=== DONE: ${results.length} emails sent ===`);
-    logs.push(`\n=== DONE: ${results.length} emails sent ===`);
-    
     return NextResponse.json({ 
-      message: 'Alert check completed',
-      results,
-      logs
+      message: 'Alert check completed'
     });
   } catch (error) {
     console.error('Error:', error);
-    logs.push(`Error: ${String(error)}`);
-    return NextResponse.json({ error: String(error), logs }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

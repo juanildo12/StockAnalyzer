@@ -133,7 +133,7 @@ export default function SharePreviewModal({
                   onClick={() => toggle(p.id)}
                   style={{
                     ...styles.platformBtn,
-                    background: selected[p.id] ? `${C.positive}18` : "transparent",
+                    background: selected[p.id] ? `${C.positive18}` : "transparent",
                     borderColor: selected[p.id] ? C.positive : C.border,
                     color: selected[p.id] ? C.positive : C.textMuted,
                   }}
