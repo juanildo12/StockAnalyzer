@@ -252,6 +252,10 @@ export default function Dashboard({
               onAddWatchlist={() => {}}
               inWatchlist={false}
             />
+            <FrameworkView
+              quote={quoteData}
+              summary={enrichedData?.summary}
+            />
             <EnrichedDataPanel
               polygon={enrichedData?.polygon}
               finnhub={enrichedData?.finnhub}
@@ -273,10 +277,6 @@ export default function Dashboard({
               summary={enrichedData?.summary ?? null}
               quote={quoteData}
               technical={technicalData}
-            />
-            <FrameworkView
-              quote={quoteData}
-              summary={enrichedData?.summary}
             />
           </div>
         ) : loading ? (
