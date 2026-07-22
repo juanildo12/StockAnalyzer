@@ -1347,7 +1347,7 @@ export default function Home() {
             {(data || loading || error) && (
               <div style={{
                 display: 'flex', gap: '10px', marginBottom: '24px', maxWidth: '480px',
-                position: 'relative',
+                position: 'relative', zIndex: 110,
               }}>
                 <div style={{ flex: 1, position: 'relative' }}>
                   <input
@@ -1374,14 +1374,15 @@ export default function Home() {
                     <div style={{
                       position: 'absolute', top: '100%', left: 0, right: 0,
                       background: C.bgCard, border: `1px solid ${C.border}`,
-                      borderRadius: R.lg, marginTop: '4px', zIndex: 100,
+                      borderRadius: R.lg, marginTop: '4px', zIndex: 120,
                       maxHeight: 220, overflow: 'auto', boxShadow: shadow.xl,
                     }}>
                       {suggestions.map(s => (
-                        <div key={s.symbol} onClick={() => { setSymbol(s.symbol); setShowSuggestions(false); searchStock(); }}
-                          style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: '10px' }}
+                        <div key={s.symbol}
+                          onMouseDown={e => { e.preventDefault(); setSymbol(s.symbol); setShowSuggestions(false); searchStock(); }}
+                          style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: '10px', background: C.bgCard }}
                           onMouseOver={e => (e.currentTarget.style.background = C.bgCardHover)}
-                          onMouseOut={e => (e.currentTarget.style.background = 'transparent')}>
+                          onMouseOut={e => (e.currentTarget.style.background = C.bgCard)}>
                           <span style={{ color: C.accentLight, fontWeight: 700, fontSize: F.sizeBase, fontFamily: F.mono }}>{s.symbol}</span>
                           <span style={{ color: C.textMuted, fontSize: F.sizeSm }}>{s.name}</span>
                         </div>
