@@ -1,6 +1,6 @@
 import YahooFinance from "yahoo-finance2";
 import { prisma } from "@/src/lib/prisma";
-import { STOCK_POOL } from "@/src/lib/stockPool";
+import { STOCK_POOL, fetchDynamicUniverse } from "@/src/lib/stockPool";
 import { getRaw } from "@/src/lib/technical/analysis";
 import {
   calcRSI,
@@ -14,9 +14,10 @@ import { SCREENER_MODELS, StockRow } from "@/src/lib/technical/screeners";
 const yf = new YahooFinance();
 
 async function fetchPoolData(): Promise<StockRow[]> {
+  const universe = await fetchDynamicUniverse();
   const rows: StockRow[] = [];
-  for (let i = 0; i < STOCK_POOL.length; i += 10) {
-    const batch = STOCK_POOL.slice(i, i + 10);
+  for (let i = 0; i < universe.length; i += 10) {
+    const batch = universe.slice(i, i + 10);
     const results = await Promise.all(
       batch.map(async (sym) => {
         try {
@@ -374,8 +375,14 @@ export async function computeMorningBriefing(): Promise<boolean> {
     picks.reduce((sum, p) => sum + (p.levels.riskReward || 0), 0) /
     Math.max(picks.length, 1);
 
+  const lastJob = await prisma.job_runs.findFirst({
+    where: { jobType: 'compute-breakout-scores' },
+    orderBy: { completedAt: 'desc' },
+  });
+  const totalScanned = (lastJob?.result as any)?.stocksScanned || STOCK_POOL.length;
+
   const summary = {
-    totalScanned: STOCK_POOL.length,
+    totalScanned,
     totalBreakouts: breakoutResults.length,
     highConfidence: picks.filter((p) => p.confidence === "HIGH").length,
     avgRiskReward: Math.round(avgRiskReward * 100) / 100,

@@ -1,28 +1,11 @@
 import { NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
 import { getQuote as finnhubQuote } from '@/src/services/finnhubClient';
+import { STOCK_POOL } from '@/src/lib/stockPool';
 
 const yf = new YahooFinance();
 
 export const dynamic = 'force-dynamic';
-
-const POOL = [
-  'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA', 'AMD', 'CRM',
-  'ORCL', 'ADBE', 'KO', 'PEP', 'WMT', 'COST', 'MCD', 'NKE', 'DIS',
-  'BA', 'CAT', 'GE', 'GS', 'MS', 'BAC', 'JPM', 'V', 'MA', 'AXP',
-  'T', 'VZ', 'CMCSA', 'PM', 'MDT', 'BMY', 'GILD', 'AMGN', 'TXN',
-  'QCOM', 'AVGO', 'NOW', 'INTU', 'MU', 'AMAT', 'UBER', 'IBM',
-  'SHOP', 'SQ', 'PYPL', 'SE', 'PLTR', 'COIN', 'HOOD', 'SNOW',
-  'PANW', 'CRWD', 'NET', 'DDOG', 'MDB', 'ZS', 'OKTA', 'TWLO',
-  'MRNA', 'VRTX', 'REGN', 'ILMN', 'ISRG', 'UNH', 'ABBV', 'LLY',
-  'MRK', 'PFE', 'ABT', 'NFLX', 'SPGI', 'BLK', 'SCHW', 'ICE',
-  'FDX', 'UPS', 'LUV', 'DAL', 'RCL', 'CCL', 'MGM', 'LVS',
-  'MAR', 'HLT', 'AZO', 'ORLY', 'ROST', 'BBY', 'DG', 'DLTR',
-  'CMG', 'SBUX', 'MELI', 'CPRT', 'FAST', 'PAYX', 'CTAS',
-  'SNPS', 'CDNS', 'FTNT', 'ANSS', 'WDAY', 'TEAM', 'TTD', 'HUBS',
-  'GDDY', 'SMAR', 'FIVN', 'WK', 'BR', 'TORO', 'ESTC', 'MNDY',
-  'STNE', 'PAGS', 'NU', 'SOFI', 'UPST', 'RKT', 'LC', 'ENV',
-];
 
 function getRaw(value: any): any {
   if (value && typeof value === 'object' && 'raw' in value) return value.raw;
@@ -259,8 +242,8 @@ export async function GET() {
       revenueGrowth: number | null; volume: number; avgVolume: number;
     }> = [];
 
-    for (let i = 0; i < POOL.length; i += 10) {
-      const batch = POOL.slice(i, i + 10);
+    for (let i = 0; i < STOCK_POOL.length; i += 10) {
+      const batch = STOCK_POOL.slice(i, i + 10);
       const results = await Promise.all(batch.map(async (sym) => {
         try {
           const [qs, q] = await Promise.all([
