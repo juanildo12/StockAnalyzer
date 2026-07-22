@@ -29,16 +29,27 @@ function formatNumber(num: number, decimals: number = 1): string {
   return num.toFixed(decimals);
 }
 
+const CACHE_KEY = 'screener_cache';
+
+function readCache() {
+  try { return JSON.parse(sessionStorage.getItem(CACHE_KEY) || '{}'); } catch { return {}; }
+}
+function writeCache(patch: Record<string, any>) {
+  const prev = readCache();
+  sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ...prev, ...patch }));
+}
+
 export default function ScreenerPage() {
+  const cache = readCache();
   const [activeTab, setActiveTab] = useState<'options' | 'fundamental'>('fundamental');
-  const [fundamentalData, setFundamentalData] = useState<any>(() => (globalThis as any).__screenerCache?.fundamental ?? null);
-  const [optionsData, setOptionsData] = useState<any>(() => (globalThis as any).__screenerCache?.options ?? null);
+  const [fundamentalData, setFundamentalData] = useState<any>(cache.fundamental ?? null);
+  const [optionsData, setOptionsData] = useState<any>(cache.options ?? null);
   const [fundamentalLoading, setFundamentalLoading] = useState(false);
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [error, setError] = useState('');
   const [fundamentalSort, setFundamentalSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'score', dir: 'desc' });
   const [optionsSort, setOptionsSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'suitabilityScore', dir: 'desc' });
-  const [lastFetchDate, setLastFetchDate] = useState<string>(() => (globalThis as any).__screenerCache?.date ?? '');
+  const [lastFetchDate, setLastFetchDate] = useState<string>(cache.date ?? '');
 
   const handleSort = (tab: 'fundamental' | 'options', key: string) => {
     if (tab === 'fundamental') {
@@ -98,9 +109,7 @@ export default function ScreenerPage() {
       setFundamentalData(json);
       const date = json.date || new Date().toISOString().split('T')[0];
       setLastFetchDate(date);
-      if (!(globalThis as any).__screenerCache) (globalThis as any).__screenerCache = {};
-      (globalThis as any).__screenerCache.fundamental = json;
-      (globalThis as any).__screenerCache.date = date;
+      writeCache({ fundamental: json, date });
     } catch (e) {
       console.error('Fundamental screener error:', e);
       setError('Error al cargar el screener fundamental');
@@ -119,9 +128,7 @@ export default function ScreenerPage() {
       setOptionsData(json);
       const date = json.screenerDate || new Date().toISOString().split('T')[0];
       setLastFetchDate(date);
-      if (!(globalThis as any).__screenerCache) (globalThis as any).__screenerCache = {};
-      (globalThis as any).__screenerCache.options = json;
-      (globalThis as any).__screenerCache.date = date;
+      writeCache({ options: json, date });
     } catch (e) {
       console.error('Options screener error:', e);
       setError('Error al cargar el screener de opciones');
