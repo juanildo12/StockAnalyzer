@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
+import ShareScreenshotModal from './ShareScreenshotModal';
 
 interface PrincipleResult {
   name: string;
@@ -155,6 +156,8 @@ export default function StockDetailPanel({
   const [aiLoading, setAiLoading] = useState(true);
   const [aiError, setAiError] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const p = safe(price);
   const ch = safe(change);
@@ -211,7 +214,8 @@ export default function StockDetailPanel({
   const scoreColor = signalScore >= 70 ? C.positive : signalScore >= 40 ? C.warning : C.negative;
 
   return (
-    <div style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: R.xl, overflow: 'hidden', boxShadow: shadow.lg, animation: 'fadeInScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' }}>
+    <>
+    <div ref={panelRef} style={{ background: C.bgCard, border: `1px solid ${C.border}`, borderRadius: R.xl, overflow: 'hidden', boxShadow: shadow.lg, animation: 'fadeInScale 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards' }}>
 
       {/* ═══ HERO HEADER ═══ */}
       <div style={{
@@ -549,103 +553,6 @@ export default function StockDetailPanel({
         </div>
       )}
 
-      {/* ═══ FRAMEWORK PRO ═══ */}
-      {(() => {
-        const fcf = summary?.freeCashflow ?? 0;
-        const fcfYield = marketCap ? (fcf / marketCap) * 100 : 0;
-        const pe = peRatio ?? 0;
-        const revGrowth = ((summary?.revenueGrowth ?? 0)) * 100;
-        const margin = ((summary?.profitMargins ?? 0)) * 100;
-        const isFCFPositive = fcf >= 0;
-
-        let score = 0;
-        if (isFCFPositive) score += 2;
-        if (fcfYield > 5) score += 2;
-        if (revGrowth > 15) score += 2;
-        if (margin > 15) score += 2;
-        if (pe > 0 && pe < 25) score += 2;
-
-        const decision = score >= 8 ? 'FUERTE COMPRA' : score >= 5 ? 'EVALUAR' : 'EVITAR';
-        const decisionIcon = score >= 8 ? '💎' : score >= 5 ? '🤔' : '❌';
-        const color = score >= 8 ? C.positive : score >= 5 ? C.warning : C.negative;
-
-        const isJoyas = fcfYield > 8 && pe < 25 && revGrowth > 5 && margin > 10;
-        const isGrowth = fcfYield < 3 && pe > 25 && revGrowth > 20 && margin > 0;
-        const isValueTrap = fcfYield > 8 && pe < 15 && revGrowth < 5 && margin < 10;
-        const isBomba = fcfYield < 0 && pe > 25 && revGrowth < 0 && margin < 0;
-
-        if (fcf === 0 && pe === 0 && revGrowth === 0 && margin === 0) return null;
-
-        return (
-          <div style={{ borderTop: `1px solid ${C.border}`, padding: `${S.xl} ${S.xxl}` }}>
-            {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: S.md, marginBottom: S.md }}>
-              <span style={{ fontSize: '16px' }}>🧠</span>
-              <span style={{ fontSize: F.sizeLg, fontWeight: 800, color: C.textPrimary, letterSpacing: '-0.01em' }}>
-                Framework Pro
-              </span>
-              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: S.sm }}>
-                <span style={{ fontSize: F.sizeSm, color: C.textMuted }}>Score:</span>
-                <span style={{
-                  fontSize: F.sizeLg, fontWeight: 800, color,
-                  padding: '2px 10px', borderRadius: R.md,
-                  background: `${color}15`,
-                }}>{score}/10</span>
-                <span style={{
-                  fontSize: F.sizeSm, fontWeight: 700, color,
-                  padding: '3px 10px', borderRadius: R.full,
-                  background: `${color}12`, border: `1px solid ${color}30`,
-                }}>{decisionIcon} {decision}</span>
-              </div>
-            </div>
-
-            {/* Metrics row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '16px' }}>
-              <div style={{ padding: '12px', background: C.bgCardHover, borderRadius: R.lg, borderLeft: `3px solid ${fcfYield > 5 ? C.positive : C.negative}` }}>
-                <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: '4px' }}>FCF Yield</div>
-                <div style={{ fontSize: F.sizeBase, fontWeight: 700, color: fcfYield > 5 ? C.positive : C.negative }}>{fcfYield.toFixed(1)}%</div>
-              </div>
-              <div style={{ padding: '12px', background: C.bgCardHover, borderRadius: R.lg, borderLeft: `3px solid ${pe > 0 && pe < 25 ? C.positive : C.negative}` }}>
-                <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: '4px' }}>PE Ratio</div>
-                <div style={{ fontSize: F.sizeBase, fontWeight: 700, color: pe > 0 && pe < 25 ? C.positive : C.negative }}>{pe.toFixed(1)}</div>
-              </div>
-              <div style={{ padding: '12px', background: C.bgCardHover, borderRadius: R.lg, borderLeft: `3px solid ${revGrowth > 15 ? C.positive : C.negative}` }}>
-                <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: '4px' }}>Revenue</div>
-                <div style={{ fontSize: F.sizeBase, fontWeight: 700, color: revGrowth > 15 ? C.positive : C.negative }}>{revGrowth > 0 ? '+' : ''}{revGrowth.toFixed(1)}%</div>
-              </div>
-              <div style={{ padding: '12px', background: C.bgCardHover, borderRadius: R.lg, borderLeft: `3px solid ${margin > 15 ? C.positive : C.negative}` }}>
-                <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: '4px' }}>Margen</div>
-                <div style={{ fontSize: F.sizeBase, fontWeight: 700, color: margin > 15 ? C.positive : C.negative }}>{margin.toFixed(1)}%</div>
-              </div>
-            </div>
-
-            {/* Scenarios */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-              <div style={{ padding: '10px 12px', background: C.bgCardHover, borderRadius: R.lg, border: isJoyas ? `2px solid ${C.positive}` : `1px solid ${C.border}` }}>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: C.positive, marginBottom: '4px' }}>💎 Joyas</div>
-                <div style={{ fontSize: '10px', color: C.textMuted }}>FCF +8% + PE bajo + crece</div>
-                {isJoyas && <div style={{ fontSize: '10px', fontWeight: 700, color: C.positive, marginTop: '4px' }}>✓ ACTIVO</div>}
-              </div>
-              <div style={{ padding: '10px 12px', background: C.bgCardHover, borderRadius: R.lg, border: isGrowth ? `2px solid ${C.accentLight}` : `1px solid ${C.border}` }}>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: C.accentLight, marginBottom: '4px' }}>🚀 Growth</div>
-                <div style={{ fontSize: '10px', color: C.textMuted }}>PE alto + Revenue &gt;20%</div>
-                {isGrowth && <div style={{ fontSize: '10px', fontWeight: 700, color: C.accentLight, marginTop: '4px' }}>✓ ACTIVO</div>}
-              </div>
-              <div style={{ padding: '10px 12px', background: C.bgCardHover, borderRadius: R.lg, border: isValueTrap ? `2px solid ${C.negative}` : `1px solid ${C.border}` }}>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: C.negative, marginBottom: '4px' }}>⚠️ Trap</div>
-                <div style={{ fontSize: '10px', color: C.textMuted }}>Barata pero estancada</div>
-                {isValueTrap && <div style={{ fontSize: '10px', fontWeight: 700, color: C.negative, marginTop: '4px' }}>✗ ALERTA</div>}
-              </div>
-              <div style={{ padding: '10px 12px', background: C.bgCardHover, borderRadius: R.lg, border: isBomba ? `2px solid ${C.negative}` : `1px solid ${C.border}` }}>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: C.negative, marginBottom: '4px' }}>💣 Bomba</div>
-                <div style={{ fontSize: '10px', color: C.textMuted }}>FCF neg + sin fundamentos</div>
-                {isBomba && <div style={{ fontSize: '10px', fontWeight: 700, color: C.negative, marginTop: '4px' }}>✗ ALERTA</div>}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
       {/* ═══ GRAHAM PRINCIPLES ═══ */}
       {fundamentals && (() => {
         const allPrinciples = PRINCIPLE_KEYS
@@ -934,8 +841,23 @@ export default function StockDetailPanel({
             onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; if (!inWatchlist) e.currentTarget.style.borderColor = C.border; }}
             onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.98)'; }}
             onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
-          >{inWatchlist ? '✓ Lista de seguimiento' : '+ Lista de seguimiento'}</button>
+           >{inWatchlist ? '✓ Lista de seguimiento' : '+ Lista de seguimiento'}</button>
         )}
+        <button
+          onClick={() => setShowShareModal(true)}
+          style={{
+            padding: `${S.sm} ${S.lg}`, borderRadius: R.md,
+            border: `1px solid ${C.border}`, background: 'transparent',
+            color: C.textSecondary, fontSize: F.sizeSm, fontWeight: 700,
+            cursor: 'pointer', fontFamily: F.family, transition: T.spring,
+            display: 'flex', alignItems: 'center', gap: S.xs,
+            animation: 'fadeInUp 0.2s ease 0.2s both',
+          }}
+          onMouseOver={e => { e.currentTarget.style.background = `${C.textMuted12}`; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+          onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.transform = 'translateY(0)'; }}
+          onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.98)'; }}
+          onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+        >📸 Compartir</button>
       </div>
 
       {/* ═══ TIMESTAMP ═══ */}
@@ -949,6 +871,16 @@ export default function StockDetailPanel({
         {new Date().toLocaleString()} — Prospector Research
       </div>
     </div>
+
+      {/* ═══ SHARE MODAL (fuera del ref para no capturarlo) ═══ */}
+      {showShareModal && (
+        <ShareScreenshotModal
+          targetRef={panelRef}
+          symbol={symbol}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
+    </>
   );
 }
 

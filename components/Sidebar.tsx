@@ -78,7 +78,6 @@ const NAV_GROUPS: NavGroup[] = [
     id: 'analysis',
     label: 'Análisis',
     items: [
-      { view: 'framework', label: 'Framework', icon: <Brain size={18} /> },
       { view: 'ai-coach', label: 'AI Coach', icon: <Bot size={18} />, badge: 'PRO', minPlan: 'pro' },
       { view: 'inversor-inteligente', label: 'Value Investing', icon: <Brain size={18} />, badge: 'ELITE', minPlan: 'elite' },
     ],

@@ -489,7 +489,7 @@ export default function Home() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [view, setView] = useState<'briefing' | 'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'framework' | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard' | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer' | 'alerts'>('analyzer');
+  const [view, setView] = useState<'briefing' | 'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard' | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer' | 'alerts'>('analyzer');
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -1021,7 +1021,6 @@ export default function Home() {
                 { id: 'options', icon: '🎯', label: 'Opciones', minPlan: 2 },
                 { id: 'watchlist', icon: '👁️', label: 'Watchlist', minPlan: 0 },
                 { id: 'backtest', icon: '🧪', label: 'Backtest', minPlan: 1 },
-                { id: 'framework', icon: '🧠', label: 'Framework', minPlan: 0 },
                 { id: 'ai-coach', icon: '🤖', label: 'AI Coach', minPlan: 1 },
                 { id: 'inversor-inteligente', icon: '💰', label: 'Value Investing', minPlan: 2 },
                 { id: 'trading-trainer', icon: '🎮', label: 'Trainer', minPlan: 0 },
@@ -2015,41 +2014,6 @@ export default function Home() {
             </div>
           </div>
         )
-      )}
-
-      {/* Vista de Framework PRO */}
-      {view === 'framework' && (
-        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
-          {data ? (
-            <FrameworkView data={data} />
-          ) : (
-            <div style={{ textAlign: 'center', padding: isMobile ? '40px 20px' : '80px 40px' }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🧠</div>
-              <h2 style={{ color: C.textPrimary, fontSize: F.sizeXl, marginBottom: '12px' }}>Framework Pro</h2>
-              <p style={{ color: C.textSecondary, fontSize: F.sizeBase, marginBottom: '8px', maxWidth: 480, margin: '0 auto 24px', lineHeight: 1.6 }}>
-                Analiza una acción para ver su score, escenarios y veredicto con el Framework de Inversión.
-              </p>
-              <div style={{ display: 'flex', gap: '12px', maxWidth: 500, margin: '0 auto' }}>
-                <input
-                  type="text"
-                  value={symbol}
-                  placeholder="Ej: AAPL"
-                  aria-label="Ticker para Framework"
-                  onKeyDown={e => { if (e.key === 'Enter') { setView('analyzer'); searchStock(); } }}
-                  onChange={e => { setSymbol(e.target.value); fetchSuggestions(e.target.value); }}
-                  style={{ flex: 1, padding: '14px 18px', borderRadius: R.lg, border: `1px solid ${C.borderHover}`, background: C.bgInput, color: C.textPrimary, fontSize: F.sizeBase, outline: 'none' }}
-                />
-                <button
-                  onClick={() => { setView('analyzer'); searchStock(); }}
-                  disabled={!symbol.trim()}
-                  style={{ padding: '14px 28px', borderRadius: R.lg, border: 'none', background: C.gradientPrimary, color: '#fff', fontSize: F.sizeBase, fontWeight: 700, cursor: symbol.trim() ? 'pointer' : 'not-allowed', opacity: symbol.trim() ? 1 : 0.5 }}
-                >
-                  Analizar
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
       )}
 
       {/* Vista de Opciones */}
@@ -4092,106 +4056,6 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
           )}
         </>
       )}
-    </div>
-  );
-}
-
-function FrameworkView({ data }: { data: any }) {
-  const fcfYield = data.quote.marketCap ? ((data.summary.freeCashflow || 0) / data.quote.marketCap) * 100 : 0;
-  const pe = data.quote?.peRatio || 0;
-  const revGrowth = (data.summary.revenueGrowth || 0) * 100;
-  const margin = (data.summary.profitMargins || 0) * 100;
-  const isFCFPositive = (data.summary.freeCashflow || 0) >= 0;
-
-  let score = 0;
-  if (isFCFPositive) score += 2;
-  if (fcfYield > 5) score += 2;
-  if (revGrowth > 15) score += 2;
-  if (margin > 15) score += 2;
-  if (pe > 0 && pe < 25) score += 2;
-
-  const decision = score >= 8 ? '💎 FUERTE COMPRA' : score >= 5 ? '🤔 EVALUAR' : '❌ EVITAR';
-  const color = score >= 8 ? C.positive : score >= 5 ? C.warning : C.negative;
-
-  const isJoyas = fcfYield > 8 && pe < 25 && revGrowth > 5 && margin > 10;
-  const isGrowth = fcfYield < 3 && pe > 25 && revGrowth > 20 && margin > 0;
-  const isValueTrap = fcfYield > 8 && pe < 15 && revGrowth < 5 && margin < 10;
-  const isBomba = fcfYield < 0 && pe > 25 && revGrowth < 0 && margin < 0;
-
-  return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', color: C.textPrimary }}>
-      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '28px', marginBottom: '8px' }}>🧠 FRAMEWORK PRO</h1>
-        <h2 style={{ fontSize: F.sizeXl, color: C.textMuted, fontWeight: 'normal' }}>¿Barata o Trampa?</h2>
-        <p style={{ color: C.accentLight, marginTop: '8px' }}>{data.quote?.shortName} ({data.quote?.symbol})</p>
-      </div>
-
-      {/* Filtro FCF */}
-      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '16px', borderLeft: `4px solid ${C.warning}` }}>
-        <h4 style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>🧩 Filtro Inicial</h4>
-        <p style={{ fontSize: F.sizeHero, fontWeight: 'bold', color: isFCFPositive ? C.positive : C.negative, margin: 0 }}>
-          {isFCFPositive ? '✅ FCF POSITIVO - Modo Valor' : '⚠️ FCF NEGATIVO - Modo Growth'}
-        </p>
-      </div>
-
-      {/* Métricas */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: `4px solid ${C.accentLight}` }}>
-          <h4 style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>💰 FCF Yield</h4>
-          <p style={{ fontSize: '28px', fontWeight: 'bold', color: fcfYield > 5 ? C.positive : C.negative, margin: 0 }}>{fcfYield.toFixed(1)}%</p>
-          <p style={{ fontSize: F.sizeSm, color: C.textMuted, margin: '4px 0 0' }}>{fcfYield > 10 ? '💎 Muy barata' : fcfYield > 5 ? '✅ Buena' : fcfYield > 3 ? '😐 Normal' : '⚠️ Cara'}</p>
-        </div>
-        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: `4px solid ${C.accentLight}` }}>
-          <h4 style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>📊 PE Ratio</h4>
-          <p style={{ fontSize: '28px', fontWeight: 'bold', color: pe < 25 ? C.positive : C.negative, margin: 0 }}>{pe.toFixed(1)}</p>
-          <p style={{ fontSize: F.sizeSm, color: C.textMuted, margin: '4px 0 0' }}>{pe < 15 ? 'Value' : pe < 25 ? 'Balanceada' : pe < 40 ? 'Growth' : '🚨 Alta'}</p>
-        </div>
-        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: `4px solid ${C.accentLight}` }}>
-          <h4 style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>📈 Revenue</h4>
-          <p style={{ fontSize: '28px', fontWeight: 'bold', color: revGrowth > 0 ? C.positive : C.negative, margin: 0 }}>{revGrowth > 0 ? '+' : ''}{revGrowth.toFixed(1)}%</p>
-          <p style={{ fontSize: F.sizeSm, color: C.textMuted, margin: '4px 0 0' }}>{revGrowth > 20 ? '🚀 Alto' : revGrowth > 10 ? '✅ Saludable' : revGrowth > 0 ? '🐢 Lento' : '🚨 Problema'}</p>
-        </div>
-        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: `4px solid ${C.accentLight}` }}>
-          <h4 style={{ margin: '0 0 8px', fontSize: F.sizeBase, color: C.textMuted }}>🧾 Margen</h4>
-          <p style={{ fontSize: '28px', fontWeight: 'bold', color: margin > 10 ? C.positive : C.negative, margin: 0 }}>{margin.toFixed(1)}%</p>
-          <p style={{ fontSize: F.sizeSm, color: C.textMuted, margin: '4px 0 0' }}>{margin > 20 ? '💪 Excelente' : margin > 10 ? '✅ Bueno' : '⚠️ Débil'}</p>
-        </div>
-      </div>
-
-      {/* Score */}
-      <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '24px', marginBottom: '24px', borderLeft: '4px solid ' + color }}>
-        <h3 style={{ margin: '0 0 16px', textAlign: 'center' }}>🧭 Score: {score}/10</h3>
-        <div style={{ padding: '20px', background: color + '20', borderRadius: R.lg, textAlign: 'center' }}>
-          <p style={{ fontSize: F.sizeHero, fontWeight: 'bold', color: color, margin: 0 }}>{decision}</p>
-        </div>
-      </div>
-
-      {/* Escenarios */}
-      <div>
-        <h3 style={{ margin: '0 0 16px', fontSize: F.sizeXl }}>🔥 AHORA LO IMPORTANTE: LA COMBINACIÓN</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
-          <div style={{ padding: '16px', background: C.bgCard, borderRadius: R.lg, border: isJoyas ? `2px solid ${C.positive}` : `1px solid ${C.border}` }}>
-            <h4 style={{ margin: '0 0 8px', color: C.positive, fontSize: '15px' }}>💎 ESCENARIO 1: Joyas Ocultas</h4>
-            <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>FCF Yield &gt;8% + PE bajo + Revenue crece + Margen sólido</p>
-            {isJoyas && <p style={{ margin: '8px 0 0', fontSize: F.sizeMd, fontWeight: 'bold', color: C.positive }}>✓ ACCIÓN BARATA + GENERA CASH + CRECE</p>}
-          </div>
-          <div style={{ padding: '16px', background: C.bgCard, borderRadius: R.lg, border: isGrowth ? `2px solid ${C.accentLight}` : `1px solid ${C.border}` }}>
-            <h4 style={{ margin: '0 0 8px', color: C.accentLight, fontSize: '15px' }}>🚀 ESCENARIO 2: Growth Caro</h4>
-            <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>FCF bajo/neg + PE alto + Revenue &gt;20% + Margen expandiéndose</p>
-            {isGrowth && <p style={{ margin: '8px 0 0', fontSize: F.sizeMd, fontWeight: 'bold', color: C.accentLight }}>✓ CARA HOY, PERO PUEDE SER GANADORA</p>}
-          </div>
-          <div style={{ padding: '16px', background: C.bgCard, borderRadius: R.lg, border: isValueTrap ? `2px solid ${C.negative}` : `1px solid ${C.border}` }}>
-            <h4 style={{ margin: '0 0 8px', color: C.negative, fontSize: '15px' }}>⚠️ ESCENARIO 3: Value Trap</h4>
-            <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>FCF Yield alto + PE bajo + Revenue estancado + Margen débil</p>
-            {isValueTrap && <p style={{ margin: '8px 0 0', fontSize: F.sizeMd, fontWeight: 'bold', color: C.negative }}>✗ PARECE BARATA... PERO ESTÁ MUERIENDO</p>}
-          </div>
-          <div style={{ padding: '16px', background: C.bgCard, borderRadius: R.lg, border: isBomba ? `2px solid ${C.negative}` : `1px solid ${C.border}` }}>
-            <h4 style={{ margin: '0 0 8px', color: C.negative, fontSize: '15px' }}>💣 ESCENARIO 4: Bomba de Tiempo</h4>
-            <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>FCF negativo + PE alto + No crece + Margen bajo</p>
-            {isBomba && <p style={{ margin: '8px 0 0', fontSize: F.sizeMd, fontWeight: 'bold', color: C.negative }}>✗ SOBREVALORADA + SIN FUNDAMENTOS</p>}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
