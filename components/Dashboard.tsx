@@ -487,7 +487,7 @@ function FrameworkView({ quote, summary }: { quote: any; summary: any }) {
   return (
     <div style={{ marginTop: S.md, animation: 'fadeInUp 0.3s ease forwards', fontFamily: F.family }}>
       <div style={{ background: C.bgCard, borderRadius: R.xl, padding: S.xl, border: `1px solid ${C.border}` }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
           <div style={{ padding: '14px', background: C.bgCardHover, borderRadius: R.lg, border: isJoyas ? `2px solid ${C.positive}` : `1px solid ${C.border}` }}>
             <h4 style={{ margin: '0 0 6px', color: C.positive, fontSize: F.sizeBase, fontFamily: F.family }}>💎 Joyas Ocultas</h4>
             <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted, fontFamily: F.family }}>FCF &gt;8% + PE bajo + crece + margen sólido</p>
