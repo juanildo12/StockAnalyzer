@@ -1452,7 +1452,7 @@ export default function Home() {
                   setShowAddModal(true);
                 }}
                 onAddWatchlist={() => openWatchlistModal(data.quote.symbol, data.quote.regularMarketPrice)}
-                onFullAnalysis={() => setView('informe')}
+                onFullAnalysis={() => setView('dashboard')}
                 inWatchlist={isInWatchlist(data.quote.symbol)}
               />
             )}
