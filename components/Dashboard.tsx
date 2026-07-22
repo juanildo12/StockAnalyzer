@@ -487,65 +487,23 @@ function FrameworkView({ quote, summary }: { quote: any; summary: any }) {
   return (
     <div style={{ marginTop: S.md, animation: 'fadeInUp 0.3s ease forwards', fontFamily: F.family }}>
       <div style={{ background: C.bgCard, borderRadius: R.xl, padding: S.xl, border: `1px solid ${C.border}` }}>
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <h3 style={{ fontSize: F.sizeXxl, margin: '0 0 4px', color: C.textPrimary, fontFamily: F.family }}>🧠 FRAMEWORK PRO</h3>
-          <p style={{ fontSize: F.sizeLg, color: C.textMuted, fontWeight: 'normal', margin: 0, fontFamily: F.family }}>¿Barata o Trampa?</p>
-        </div>
-
-        <div style={{ background: C.bgCardHover, borderRadius: R.lg, padding: '16px', marginBottom: '16px', borderLeft: `4px solid ${C.warning}` }}>
-          <h4 style={{ margin: '0 0 6px', fontSize: F.sizeSm, color: C.textMuted, fontFamily: F.family }}>🧩 Filtro Inicial</h4>
-          <p style={{ fontSize: F.sizeLg, fontWeight: 'bold', color: isFCFPositive ? C.positive : C.negative, margin: 0, fontFamily: F.family }}>
-            {isFCFPositive ? '✅ FCF POSITIVO — Modo Valor' : '⚠️ FCF NEGATIVO — Modo Growth'}
-          </p>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '20px' }}>
-          <div style={cardStyle}>
-            <h4 style={{ margin: '0 0 6px', fontSize: F.sizeSm, color: C.textMuted, fontFamily: F.family }}>💰 FCF Yield</h4>
-            <p style={{ fontSize: F.sizeXxl, fontWeight: 'bold', color: fcfYield > 5 ? C.positive : C.negative, margin: 0, fontFamily: F.family }}>{fcfYield.toFixed(1)}%</p>
-            <p style={{ fontSize: F.sizeXs, color: C.textMuted, margin: '4px 0 0', fontFamily: F.family }}>{fcfYield > 10 ? '💎 Muy barata' : fcfYield > 5 ? '✅ Buena' : fcfYield > 3 ? '😐 Normal' : '⚠️ Cara'}</p>
-          </div>
-          <div style={cardStyle}>
-            <h4 style={{ margin: '0 0 6px', fontSize: F.sizeSm, color: C.textMuted, fontFamily: F.family }}>📊 PE Ratio</h4>
-            <p style={{ fontSize: F.sizeXxl, fontWeight: 'bold', color: pe < 25 ? C.positive : C.negative, margin: 0, fontFamily: F.family }}>{pe.toFixed(1)}</p>
-            <p style={{ fontSize: F.sizeXs, color: C.textMuted, margin: '4px 0 0', fontFamily: F.family }}>{pe < 15 ? 'Value' : pe < 25 ? 'Balanceada' : pe < 40 ? 'Growth' : '🚨 Alta'}</p>
-          </div>
-          <div style={cardStyle}>
-            <h4 style={{ margin: '0 0 6px', fontSize: F.sizeSm, color: C.textMuted, fontFamily: F.family }}>📈 Revenue</h4>
-            <p style={{ fontSize: F.sizeXxl, fontWeight: 'bold', color: revGrowth > 0 ? C.positive : C.negative, margin: 0, fontFamily: F.family }}>{revGrowth > 0 ? '+' : ''}{revGrowth.toFixed(1)}%</p>
-            <p style={{ fontSize: F.sizeXs, color: C.textMuted, margin: '4px 0 0', fontFamily: F.family }}>{revGrowth > 20 ? '🚀 Alto' : revGrowth > 10 ? '✅ Saludable' : revGrowth > 0 ? '🐢 Lento' : '🚨 Problema'}</p>
-          </div>
-          <div style={cardStyle}>
-            <h4 style={{ margin: '0 0 6px', fontSize: F.sizeSm, color: C.textMuted, fontFamily: F.family }}>🧾 Margen</h4>
-            <p style={{ fontSize: F.sizeXxl, fontWeight: 'bold', color: margin > 10 ? C.positive : C.negative, margin: 0, fontFamily: F.family }}>{margin.toFixed(1)}%</p>
-            <p style={{ fontSize: F.sizeXs, color: C.textMuted, margin: '4px 0 0', fontFamily: F.family }}>{margin > 20 ? '💪 Excelente' : margin > 10 ? '✅ Bueno' : '⚠️ Débil'}</p>
-          </div>
-        </div>
-
-        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '20px', borderLeft: `4px solid ${color}` }}>
-          <h4 style={{ margin: '0 0 12px', textAlign: 'center', fontSize: F.sizeBase, fontFamily: F.family }}>🧭 Score: {score}/10</h4>
-          <div style={{ padding: '14px', background: color + '20', borderRadius: R.lg, textAlign: 'center' }}>
-            <p style={{ fontSize: F.sizeXxl, fontWeight: 'bold', color, margin: 0, fontFamily: F.family }}>{decision}</p>
-          </div>
-        </div>
-
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
-          <div style={{ padding: '14px', background: C.bgCard, borderRadius: R.lg, border: isJoyas ? `2px solid ${C.positive}` : `1px solid ${C.border}` }}>
+          <div style={{ padding: '14px', background: C.bgCardHover, borderRadius: R.lg, border: isJoyas ? `2px solid ${C.positive}` : `1px solid ${C.border}` }}>
             <h4 style={{ margin: '0 0 6px', color: C.positive, fontSize: F.sizeBase, fontFamily: F.family }}>💎 Joyas Ocultas</h4>
             <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted, fontFamily: F.family }}>FCF &gt;8% + PE bajo + crece + margen sólido</p>
             {isJoyas && <p style={{ margin: '6px 0 0', fontSize: F.sizeSm, fontWeight: 'bold', color: C.positive, fontFamily: F.family }}>✓ BARATA + GENERA CASH + CRECE</p>}
           </div>
-          <div style={{ padding: '14px', background: C.bgCard, borderRadius: R.lg, border: isGrowth ? `2px solid ${C.accentLight}` : `1px solid ${C.border}` }}>
+          <div style={{ padding: '14px', background: C.bgCardHover, borderRadius: R.lg, border: isGrowth ? `2px solid ${C.accentLight}` : `1px solid ${C.border}` }}>
             <h4 style={{ margin: '0 0 6px', color: C.accentLight, fontSize: F.sizeBase, fontFamily: F.family }}>🚀 Growth Caro</h4>
             <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted, fontFamily: F.family }}>FCF bajo + PE alto + Revenue &gt;20%</p>
             {isGrowth && <p style={{ margin: '6px 0 0', fontSize: F.sizeSm, fontWeight: 'bold', color: C.accentLight, fontFamily: F.family }}>✓ CARA, PERO PUEDE SER GANADORA</p>}
           </div>
-          <div style={{ padding: '14px', background: C.bgCard, borderRadius: R.lg, border: isValueTrap ? `2px solid ${C.negative}` : `1px solid ${C.border}` }}>
+          <div style={{ padding: '14px', background: C.bgCardHover, borderRadius: R.lg, border: isValueTrap ? `2px solid ${C.negative}` : `1px solid ${C.border}` }}>
             <h4 style={{ margin: '0 0 6px', color: C.negative, fontSize: F.sizeBase, fontFamily: F.family }}>⚠️ Value Trap</h4>
             <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted, fontFamily: F.family }}>FCF alto + PE bajo + revenue estancado</p>
             {isValueTrap && <p style={{ margin: '6px 0 0', fontSize: F.sizeSm, fontWeight: 'bold', color: C.negative, fontFamily: F.family }}>✗ PARECE BARATA... PERO MUERE</p>}
           </div>
-          <div style={{ padding: '14px', background: C.bgCard, borderRadius: R.lg, border: isBomba ? `2px solid ${C.negative}` : `1px solid ${C.border}` }}>
+          <div style={{ padding: '14px', background: C.bgCardHover, borderRadius: R.lg, border: isBomba ? `2px solid ${C.negative}` : `1px solid ${C.border}` }}>
             <h4 style={{ margin: '0 0 6px', color: C.negative, fontSize: F.sizeBase, fontFamily: F.family }}>💣 Bomba de Tiempo</h4>
             <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted, fontFamily: F.family }}>FCF negativo + PE alto + no crece</p>
             {isBomba && <p style={{ margin: '6px 0 0', fontSize: F.sizeSm, fontWeight: 'bold', color: C.negative, fontFamily: F.family }}>✗ SOBREVALORADA + SIN FUNDAMENTOS</p>}
