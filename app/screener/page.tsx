@@ -31,14 +31,14 @@ function formatNumber(num: number, decimals: number = 1): string {
 
 export default function ScreenerPage() {
   const [activeTab, setActiveTab] = useState<'options' | 'fundamental'>('fundamental');
-  const [fundamentalData, setFundamentalData] = useState<any>(null);
-  const [optionsData, setOptionsData] = useState<any>(null);
+  const [fundamentalData, setFundamentalData] = useState<any>(() => (globalThis as any).__screenerCache?.fundamental ?? null);
+  const [optionsData, setOptionsData] = useState<any>(() => (globalThis as any).__screenerCache?.options ?? null);
   const [fundamentalLoading, setFundamentalLoading] = useState(false);
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [error, setError] = useState('');
   const [fundamentalSort, setFundamentalSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'score', dir: 'desc' });
   const [optionsSort, setOptionsSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'suitabilityScore', dir: 'desc' });
-  const [lastFetchDate, setLastFetchDate] = useState<string>('');
+  const [lastFetchDate, setLastFetchDate] = useState<string>(() => (globalThis as any).__screenerCache?.date ?? '');
 
   const handleSort = (tab: 'fundamental' | 'options', key: string) => {
     if (tab === 'fundamental') {
@@ -96,7 +96,11 @@ export default function ScreenerPage() {
       if (!res.ok) throw new Error('Error loading screener');
       const json = await res.json();
       setFundamentalData(json);
-      setLastFetchDate(json.date || new Date().toISOString().split('T')[0]);
+      const date = json.date || new Date().toISOString().split('T')[0];
+      setLastFetchDate(date);
+      if (!(globalThis as any).__screenerCache) (globalThis as any).__screenerCache = {};
+      (globalThis as any).__screenerCache.fundamental = json;
+      (globalThis as any).__screenerCache.date = date;
     } catch (e) {
       console.error('Fundamental screener error:', e);
       setError('Error al cargar el screener fundamental');
@@ -113,7 +117,11 @@ export default function ScreenerPage() {
       if (!res.ok) throw new Error('Error loading screener');
       const json = await res.json();
       setOptionsData(json);
-      setLastFetchDate(json.screenerDate || new Date().toISOString().split('T')[0]);
+      const date = json.screenerDate || new Date().toISOString().split('T')[0];
+      setLastFetchDate(date);
+      if (!(globalThis as any).__screenerCache) (globalThis as any).__screenerCache = {};
+      (globalThis as any).__screenerCache.options = json;
+      (globalThis as any).__screenerCache.date = date;
     } catch (e) {
       console.error('Options screener error:', e);
       setError('Error al cargar el screener de opciones');
@@ -123,19 +131,16 @@ export default function ScreenerPage() {
   };
 
   useEffect(() => {
-    const checkAndRefresh = () => {
-      const today = new Date().toISOString().split('T')[0];
-      if (activeTab === 'fundamental') {
-        if (!fundamentalData || lastFetchDate !== today) {
-          loadFundamentalScreener();
-        }
-      } else if (activeTab === 'options') {
-        if (!optionsData || lastFetchDate !== today) {
-          loadOptionsScreener();
-        }
+    const today = new Date().toISOString().split('T')[0];
+    if (activeTab === 'fundamental') {
+      if (!fundamentalData || lastFetchDate !== today) {
+        loadFundamentalScreener();
       }
-    };
-    checkAndRefresh();
+    } else if (activeTab === 'options') {
+      if (!optionsData || lastFetchDate !== today) {
+        loadOptionsScreener();
+      }
+    }
   }, [activeTab]);
 
   return (
