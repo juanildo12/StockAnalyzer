@@ -282,22 +282,20 @@ export default function Dashboard({
         ) : loading ? (
           <LoadingState />
         ) : (
-          <div key={activeTab} style={{ display: 'flex', flexDirection: 'column', gap: S.xl, animation: 'slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
-            {activeTab === 'dashboard' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: S.xl }}>
+            <div style={{ display: activeTab === 'dashboard' ? 'flex' : 'none', flexDirection: 'column', gap: S.xl, animation: 'slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
               <MorningBriefing onSelectStock={handleStockClick} userPlan={userPlan} />
-            )}
-            {activeTab === 'screener' && (
-              <>
-                <TopWeeklyPicks onStockClick={handleStockClick} />
-                <ScreenerRankingsPanel onStockClick={handleStockClick} />
-              </>
-            )}
-            {activeTab === 'market' && (
+            </div>
+            <div style={{ display: activeTab === 'screener' ? 'flex' : 'none', flexDirection: 'column', gap: S.xl, animation: 'slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+              <TopWeeklyPicks onStockClick={handleStockClick} />
+              <ScreenerRankingsPanel onStockClick={handleStockClick} />
+            </div>
+            <div style={{ display: activeTab === 'market' ? 'flex' : 'none', flexDirection: 'column', gap: S.xl, animation: 'slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: S.lg }}>
                 <MarketOverviewPanel onStockClick={handleStockClick} />
                 <EarningsCalendarPanel />
               </div>
-            )}
+            </div>
           </div>
         )}
       </div>
