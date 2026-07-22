@@ -51,8 +51,10 @@ interface Summary {
   totalCash: number;
   totalDebt: number;
   debtToCash: number;
+  profitMargins: number;
   profitMarginsPercent: number;
   avgProfitMargin: number;
+  revenueGrowth: number;
   revenueGrowthPercent: number;
   peRatio: number;
   avgPe6Months: number;
@@ -70,6 +72,7 @@ interface Summary {
   cashClassification: string;
   debtClassification: string;
   totalRevenue: number;
+  freeCashflow: number;
 }
 
 interface Technical {
@@ -1341,30 +1344,51 @@ export default function Home() {
             )}
 
             {/* ═══ SEARCH BAR (compact, shown when loading or after search) ═══ */}
-            {(data || loading) && (
+            {(data || loading || error) && (
               <div style={{
                 display: 'flex', gap: '10px', marginBottom: '24px', maxWidth: '480px',
+                position: 'relative',
               }}>
-                <input
-                  type="text"
-                  value={symbol}
-                  placeholder="Otro ticker..."
-                  onKeyDown={e => { if (e.key === 'Enter') searchStock(); }}
-                  onChange={e => {
-                    setSymbol(e.target.value);
-                    setShowSuggestions(true);
-                    fetchSuggestions(e.target.value);
-                  }}
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                  style={{
-                    flex: 1, padding: '12px 16px', borderRadius: R.lg,
-                    border: `1px solid ${C.border}`, background: C.bgCard,
-                    color: C.textPrimary, fontSize: F.sizeBase, outline: 'none',
-                    fontFamily: F.family,
-                    transition: 'border-color 0.2s ease',
-                  }}
-                />
+                <div style={{ flex: 1, position: 'relative' }}>
+                  <input
+                    type="text"
+                    value={symbol}
+                    placeholder="Otro ticker..."
+                    onKeyDown={e => { if (e.key === 'Enter') searchStock(); }}
+                    onChange={e => {
+                      setSymbol(e.target.value);
+                      setShowSuggestions(true);
+                      fetchSuggestions(e.target.value);
+                    }}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                    style={{
+                      width: '100%', padding: '12px 16px', borderRadius: R.lg,
+                      border: `1px solid ${C.border}`, background: C.bgCard,
+                      color: C.textPrimary, fontSize: F.sizeBase, outline: 'none',
+                      fontFamily: F.family,
+                      transition: 'border-color 0.2s ease',
+                    }}
+                  />
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, right: 0,
+                      background: C.bgCard, border: `1px solid ${C.border}`,
+                      borderRadius: R.lg, marginTop: '4px', zIndex: 100,
+                      maxHeight: 220, overflow: 'auto', boxShadow: shadow.xl,
+                    }}>
+                      {suggestions.map(s => (
+                        <div key={s.symbol} onClick={() => { setSymbol(s.symbol); setShowSuggestions(false); searchStock(); }}
+                          style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: '10px' }}
+                          onMouseOver={e => (e.currentTarget.style.background = C.bgCardHover)}
+                          onMouseOut={e => (e.currentTarget.style.background = 'transparent')}>
+                          <span style={{ color: C.accentLight, fontWeight: 700, fontSize: F.sizeBase, fontFamily: F.mono }}>{s.symbol}</span>
+                          <span style={{ color: C.textMuted, fontSize: F.sizeSm }}>{s.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <button type="button" onClick={() => searchStock()} disabled={loading}
                   style={{
                     padding: '10px 20px', borderRadius: R.md, border: 'none',
@@ -1405,6 +1429,9 @@ export default function Home() {
                   stopLoss: data.summary.stopLoss,
                   projectedPrice: data.summary.projectedPrice,
                   potentialReturn: data.summary.potentialReturn,
+                  freeCashflow: data.summary.freeCashflow,
+                  revenueGrowth: data.summary.revenueGrowth,
+                  profitMargins: data.summary.profitMargins,
                 }}
                 recommendation={{
                   action: data.recommendation.action,
@@ -1988,9 +2015,37 @@ export default function Home() {
       )}
 
       {/* Vista de Framework PRO */}
-      {view === 'framework' && data && (
+      {view === 'framework' && (
         <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
-          <FrameworkView data={data} />
+          {data ? (
+            <FrameworkView data={data} />
+          ) : (
+            <div style={{ textAlign: 'center', padding: isMobile ? '40px 20px' : '80px 40px' }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🧠</div>
+              <h2 style={{ color: C.textPrimary, fontSize: F.sizeXl, marginBottom: '12px' }}>Framework Pro</h2>
+              <p style={{ color: C.textSecondary, fontSize: F.sizeBase, marginBottom: '8px', maxWidth: 480, margin: '0 auto 24px', lineHeight: 1.6 }}>
+                Analiza una acción para ver su score, escenarios y veredicto con el Framework de Inversión.
+              </p>
+              <div style={{ display: 'flex', gap: '12px', maxWidth: 500, margin: '0 auto' }}>
+                <input
+                  type="text"
+                  value={symbol}
+                  placeholder="Ej: AAPL"
+                  aria-label="Ticker para Framework"
+                  onKeyDown={e => { if (e.key === 'Enter') { setView('analyzer'); searchStock(); } }}
+                  onChange={e => { setSymbol(e.target.value); fetchSuggestions(e.target.value); }}
+                  style={{ flex: 1, padding: '14px 18px', borderRadius: R.lg, border: `1px solid ${C.borderHover}`, background: C.bgInput, color: C.textPrimary, fontSize: F.sizeBase, outline: 'none' }}
+                />
+                <button
+                  onClick={() => { setView('analyzer'); searchStock(); }}
+                  disabled={!symbol.trim()}
+                  style={{ padding: '14px 28px', borderRadius: R.lg, border: 'none', background: C.gradientPrimary, color: '#fff', fontSize: F.sizeBase, fontWeight: 700, cursor: symbol.trim() ? 'pointer' : 'not-allowed', opacity: symbol.trim() ? 1 : 0.5 }}
+                >
+                  Analizar
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

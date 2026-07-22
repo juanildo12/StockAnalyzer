@@ -285,6 +285,7 @@ export default function Dashboard({
           <div style={{ display: 'flex', flexDirection: 'column', gap: S.xl }}>
             <div style={{ display: activeTab === 'dashboard' ? 'flex' : 'none', flexDirection: 'column', gap: S.xl, animation: 'slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
               <MorningBriefing onSelectStock={handleStockClick} userPlan={userPlan} />
+              <FrameworkOverview />
             </div>
             <div style={{ display: activeTab === 'screener' ? 'flex' : 'none', flexDirection: 'column', gap: S.xl, animation: 'slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
               <TopWeeklyPicks onStockClick={handleStockClick} />
@@ -451,6 +452,39 @@ function LoadingState() {
           }} />
         </div>
       ))}
+    </div>
+  );
+}
+
+function FrameworkOverview() {
+  const scenarios = [
+    { icon: '💎', label: 'Joyas Ocultas', desc: 'FCF +8% + PE bajo + crece + margen sólido', color: C.positive },
+    { icon: '🚀', label: 'Growth Caro', desc: 'FCF bajo + PE alto + Revenue >20%', color: C.accentLight },
+    { icon: '⚠️', label: 'Value Trap', desc: 'FCF alto + PE bajo + revenue estancado', color: C.warning },
+    { icon: '💣', label: 'Bomba de Tiempo', desc: 'FCF negativo + PE alto + no crece', color: C.negative },
+  ];
+
+  return (
+    <div style={{ background: C.bgCard, borderRadius: R.xl, padding: S.xl, border: `1px solid ${C.border}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: S.md, marginBottom: S.lg }}>
+        <span style={{ fontSize: '16px' }}>🧠</span>
+        <span style={{ fontSize: F.sizeLg, fontWeight: 800, color: C.textPrimary }}>Framework Pro</span>
+        <span style={{ fontSize: F.sizeSm, color: C.textMuted, marginLeft: 'auto' }}>Analiza una acción para ver el score</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+        {scenarios.map((s) => (
+          <div key={s.label} style={{
+            padding: '14px', background: C.bgCardHover, borderRadius: R.lg,
+            border: `1px solid ${C.border}`,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: S.sm, marginBottom: '6px' }}>
+              <span>{s.icon}</span>
+              <span style={{ fontSize: F.sizeBase, fontWeight: 700, color: s.color }}>{s.label}</span>
+            </div>
+            <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted, lineHeight: 1.4 }}>{s.desc}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
