@@ -274,6 +274,10 @@ export default function Dashboard({
               quote={quoteData}
               technical={technicalData}
             />
+            <FrameworkView
+              quote={quoteData}
+              summary={enrichedData?.summary}
+            />
           </div>
         ) : loading ? (
           <LoadingState />
@@ -449,6 +453,105 @@ function LoadingState() {
           }} />
         </div>
       ))}
+    </div>
+  );
+}
+
+function FrameworkView({ quote, summary }: { quote: any; summary: any }) {
+  if (!quote || !summary) return null;
+
+  const marketCap = quote.marketCap || 0;
+  const fcfYield = marketCap > 0 ? ((summary.freeCashflow || 0) / marketCap) * 100 : 0;
+  const pe = quote.peRatio || 0;
+  const revGrowth = (summary.revenueGrowth || 0) * 100;
+  const margin = (summary.profitMargins || 0) * 100;
+  const isFCFPositive = (summary.freeCashflow || 0) >= 0;
+
+  let score = 0;
+  if (isFCFPositive) score += 2;
+  if (fcfYield > 5) score += 2;
+  if (revGrowth > 15) score += 2;
+  if (margin > 15) score += 2;
+  if (pe > 0 && pe < 25) score += 2;
+
+  const decision = score >= 8 ? '💎 FUERTE COMPRA' : score >= 5 ? '🤔 EVALUAR' : '❌ EVITAR';
+  const color = score >= 8 ? C.positive : score >= 5 ? C.warning : C.negative;
+
+  const isJoyas = fcfYield > 8 && pe < 25 && revGrowth > 5 && margin > 10;
+  const isGrowth = fcfYield < 3 && pe > 25 && revGrowth > 20 && margin > 0;
+  const isValueTrap = fcfYield > 8 && pe < 15 && revGrowth < 5 && margin < 10;
+  const isBomba = fcfYield < 0 && pe > 25 && revGrowth < 0 && margin < 0;
+
+  const cardStyle = { background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: `4px solid ${C.accentLight}` };
+
+  return (
+    <div style={{ marginTop: S.md, animation: 'fadeInUp 0.3s ease forwards' }}>
+      <div style={{ background: C.bgCard, borderRadius: R.xl, padding: S.xl, border: `1px solid ${C.border}` }}>
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <h3 style={{ fontSize: '22px', margin: '0 0 4px', color: C.textPrimary }}>🧠 FRAMEWORK PRO</h3>
+          <p style={{ fontSize: F.sizeLg, color: C.textMuted, fontWeight: 'normal', margin: 0 }}>¿Barata o Trampa?</p>
+        </div>
+
+        <div style={{ background: C.bgCardHover, borderRadius: R.lg, padding: '16px', marginBottom: '16px', borderLeft: `4px solid ${C.warning}` }}>
+          <h4 style={{ margin: '0 0 6px', fontSize: F.sizeSm, color: C.textMuted }}>🧩 Filtro Inicial</h4>
+          <p style={{ fontSize: F.sizeLg, fontWeight: 'bold', color: isFCFPositive ? C.positive : C.negative, margin: 0 }}>
+            {isFCFPositive ? '✅ FCF POSITIVO — Modo Valor' : '⚠️ FCF NEGATIVO — Modo Growth'}
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+          <div style={cardStyle}>
+            <h4 style={{ margin: '0 0 6px', fontSize: F.sizeSm, color: C.textMuted }}>💰 FCF Yield</h4>
+            <p style={{ fontSize: '24px', fontWeight: 'bold', color: fcfYield > 5 ? C.positive : C.negative, margin: 0 }}>{fcfYield.toFixed(1)}%</p>
+            <p style={{ fontSize: F.sizeXs, color: C.textMuted, margin: '4px 0 0' }}>{fcfYield > 10 ? '💎 Muy barata' : fcfYield > 5 ? '✅ Buena' : fcfYield > 3 ? '😐 Normal' : '⚠️ Cara'}</p>
+          </div>
+          <div style={cardStyle}>
+            <h4 style={{ margin: '0 0 6px', fontSize: F.sizeSm, color: C.textMuted }}>📊 PE Ratio</h4>
+            <p style={{ fontSize: '24px', fontWeight: 'bold', color: pe < 25 ? C.positive : C.negative, margin: 0 }}>{pe.toFixed(1)}</p>
+            <p style={{ fontSize: F.sizeXs, color: C.textMuted, margin: '4px 0 0' }}>{pe < 15 ? 'Value' : pe < 25 ? 'Balanceada' : pe < 40 ? 'Growth' : '🚨 Alta'}</p>
+          </div>
+          <div style={cardStyle}>
+            <h4 style={{ margin: '0 0 6px', fontSize: F.sizeSm, color: C.textMuted }}>📈 Revenue</h4>
+            <p style={{ fontSize: '24px', fontWeight: 'bold', color: revGrowth > 0 ? C.positive : C.negative, margin: 0 }}>{revGrowth > 0 ? '+' : ''}{revGrowth.toFixed(1)}%</p>
+            <p style={{ fontSize: F.sizeXs, color: C.textMuted, margin: '4px 0 0' }}>{revGrowth > 20 ? '🚀 Alto' : revGrowth > 10 ? '✅ Saludable' : revGrowth > 0 ? '🐢 Lento' : '🚨 Problema'}</p>
+          </div>
+          <div style={cardStyle}>
+            <h4 style={{ margin: '0 0 6px', fontSize: F.sizeSm, color: C.textMuted }}>🧾 Margen</h4>
+            <p style={{ fontSize: '24px', fontWeight: 'bold', color: margin > 10 ? C.positive : C.negative, margin: 0 }}>{margin.toFixed(1)}%</p>
+            <p style={{ fontSize: F.sizeXs, color: C.textMuted, margin: '4px 0 0' }}>{margin > 20 ? '💪 Excelente' : margin > 10 ? '✅ Bueno' : '⚠️ Débil'}</p>
+          </div>
+        </div>
+
+        <div style={{ background: C.bgCard, borderRadius: R.lg, padding: '20px', marginBottom: '20px', borderLeft: `4px solid ${color}` }}>
+          <h4 style={{ margin: '0 0 12px', textAlign: 'center', fontSize: F.sizeBase }}>🧭 Score: {score}/10</h4>
+          <div style={{ padding: '14px', background: color + '20', borderRadius: R.lg, textAlign: 'center' }}>
+            <p style={{ fontSize: '24px', fontWeight: 'bold', color, margin: 0 }}>{decision}</p>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
+          <div style={{ padding: '14px', background: C.bgCard, borderRadius: R.lg, border: isJoyas ? `2px solid ${C.positive}` : `1px solid ${C.border}` }}>
+            <h4 style={{ margin: '0 0 6px', color: C.positive, fontSize: '14px' }}>💎 Joyas Ocultas</h4>
+            <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>FCF &gt;8% + PE bajo + crece + margen sólido</p>
+            {isJoyas && <p style={{ margin: '6px 0 0', fontSize: F.sizeSm, fontWeight: 'bold', color: C.positive }}>✓ BARATA + GENERA CASH + CRECE</p>}
+          </div>
+          <div style={{ padding: '14px', background: C.bgCard, borderRadius: R.lg, border: isGrowth ? `2px solid ${C.accentLight}` : `1px solid ${C.border}` }}>
+            <h4 style={{ margin: '0 0 6px', color: C.accentLight, fontSize: '14px' }}>🚀 Growth Caro</h4>
+            <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>FCF bajo + PE alto + Revenue &gt;20%</p>
+            {isGrowth && <p style={{ margin: '6px 0 0', fontSize: F.sizeSm, fontWeight: 'bold', color: C.accentLight }}>✓ CARA, PERO PUEDE SER GANADORA</p>}
+          </div>
+          <div style={{ padding: '14px', background: C.bgCard, borderRadius: R.lg, border: isValueTrap ? `2px solid ${C.negative}` : `1px solid ${C.border}` }}>
+            <h4 style={{ margin: '0 0 6px', color: C.negative, fontSize: '14px' }}>⚠️ Value Trap</h4>
+            <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>FCF alto + PE bajo + revenue estancado</p>
+            {isValueTrap && <p style={{ margin: '6px 0 0', fontSize: F.sizeSm, fontWeight: 'bold', color: C.negative }}>✗ PARECE BARATA... PERO MUERE</p>}
+          </div>
+          <div style={{ padding: '14px', background: C.bgCard, borderRadius: R.lg, border: isBomba ? `2px solid ${C.negative}` : `1px solid ${C.border}` }}>
+            <h4 style={{ margin: '0 0 6px', color: C.negative, fontSize: '14px' }}>💣 Bomba de Tiempo</h4>
+            <p style={{ margin: 0, fontSize: F.sizeXs, color: C.textMuted }}>FCF negativo + PE alto + no crece</p>
+            {isBomba && <p style={{ margin: '6px 0 0', fontSize: F.sizeSm, fontWeight: 'bold', color: C.negative }}>✗ SOBREVALORADA + SIN FUNDAMENTOS</p>}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
