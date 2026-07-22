@@ -517,6 +517,7 @@ export default function Home() {
   const [editingAlert, setEditingAlert] = useState<{[key: string]: { alertType: 'above' | 'below'; alertPrice: number; alertEnabled: boolean; alertPriceInput: number }}>({});
   const [savingAlert, setSavingAlert] = useState<string | null>(null);
   const [dailyAnalysisCount, setDailyAnalysisCount] = useState(0);
+  const [dashboardSymbol, setDashboardSymbol] = useState<string | undefined>(undefined);
 
   const { data: session, status } = useSession();
 
@@ -1452,7 +1453,7 @@ export default function Home() {
                   setShowAddModal(true);
                 }}
                 onAddWatchlist={() => openWatchlistModal(data.quote.symbol, data.quote.regularMarketPrice)}
-                onFullAnalysis={() => setView('dashboard')}
+                onFullAnalysis={() => { setDashboardSymbol(data.quote.symbol); setView('dashboard'); }}
                 inWatchlist={isInWatchlist(data.quote.symbol)}
               />
             )}
@@ -2097,7 +2098,7 @@ export default function Home() {
       {/* Vista de Dashboard */}
       {view === 'dashboard' && (
         <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
-          <Dashboard onNavigateToAICoach={() => setView('ai-coach')} />
+          <Dashboard onNavigateToAICoach={() => setView('ai-coach')} initialSymbol={dashboardSymbol} />
         </div>
       )}
 

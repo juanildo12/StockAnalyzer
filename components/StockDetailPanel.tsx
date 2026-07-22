@@ -900,7 +900,7 @@ export default function StockDetailPanel({
             onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
           >
             {PLAN_HIERARCHY[userPlan] >= 1 ? (
-              <>Análisis IA Completo <span style={{ fontSize: 14 }}>&rarr;</span></>
+              <>Análisis Completo <span style={{ fontSize: 14 }}>&rarr;</span></>
             ) : (
               <>🔒 Análisis Completo <span style={{ fontSize: F.sizeXs, opacity: 0.7 }}>(Pro)</span></>
             )}

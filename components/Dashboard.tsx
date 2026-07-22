@@ -76,9 +76,11 @@ type DashboardTab = 'dashboard' | 'screener' | 'market';
 export default function Dashboard({
   onNavigateToAICoach,
   initialSection,
+  initialSymbol,
 }: {
   onNavigateToAICoach?: (symbol: string) => void;
   initialSection?: 'briefing' | 'signals' | 'bullsbears' | 'market' | 'opciones' | 'screeners';
+  initialSymbol?: string;
 }) {
   const { data: session } = useSession();
   const [signals, setSignals] = useState<SignalData[]>([]);
@@ -128,6 +130,12 @@ export default function Dashboard({
   useEffect(() => {
     loadSignals();
   }, [loadSignals]);
+
+  useEffect(() => {
+    if (initialSymbol) {
+      handleStockClick(initialSymbol);
+    }
+  }, [initialSymbol]);
 
   useEffect(() => {
     const interval = setInterval(() => {
