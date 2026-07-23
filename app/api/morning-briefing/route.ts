@@ -105,51 +105,59 @@ function computeBreakoutScore(
 ) {
   const reasons: string[] = [];
 
-  // Trend (0-30)
+  // Trend (0-30) — stricter: require alignment above both MAs
   let trend = 0;
-  if (sma50 !== null && price > sma50) { trend += 10; reasons.push('Above SMA50'); }
-  if (sma200 !== null && price > sma200) { trend += 8; reasons.push('Above SMA200'); }
-  if (sma50 !== null && sma200 !== null && sma50 > sma200) { trend += 7; reasons.push('Golden cross'); }
-  if (rsi !== null && rsi > 50 && rsi < 70) { trend += 5; reasons.push(`RSI ${Math.round(rsi)}`); }
-  else if (rsi !== null && rsi >= 70) trend += 2;
+  const aboveSma50 = sma50 !== null && price > sma50;
+  const aboveSma200 = sma200 !== null && price > sma200;
+  if (aboveSma50) trend += 8;
+  if (aboveSma200) trend += 6;
+  if (aboveSma50 && aboveSma200) { trend += 10; reasons.push('Price above SMA50+200'); }
+  if (sma50 !== null && sma200 !== null && sma50 > sma200 * 1.02) { trend += 6; reasons.push('Golden cross'); }
+  if (rsi !== null && rsi > 50 && rsi < 65) { trend += 5; reasons.push(`RSI ${Math.round(rsi)}`); }
+  else if (rsi !== null && rsi >= 65 && rsi < 75) trend += 2;
   trend = clamp(trend, 0, 30);
 
-  // Volume (0-30)
+  // Volume (0-30) — stricter: need sustained volume surge
   let vol = 0;
-  if (volRatio > 3.0) { vol += 25; reasons.push(`${volRatio.toFixed(1)}x volume`); }
-  else if (volRatio > 2.0) { vol += 20; reasons.push(`${volRatio.toFixed(1)}x volume`); }
-  else if (volRatio > 1.5) { vol += 15; }
-  else if (volRatio > 1.2) { vol += 10; }
-  if (changePercent > 0 && volRatio > 1.3) vol += 5;
+  if (volRatio > 4.0) { vol += 28; reasons.push(`${volRatio.toFixed(1)}x volume`); }
+  else if (volRatio > 3.0) { vol += 23; reasons.push(`${volRatio.toFixed(1)}x volume`); }
+  else if (volRatio > 2.0) { vol += 15; }
+  else if (volRatio > 1.5) { vol += 8; }
+  else { vol = 0; }
+  if (changePercent > 0 && volRatio > 2.0) vol += 5;
+  else if (changePercent > 0 && volRatio > 1.5) vol += 2;
   vol = clamp(vol, 0, 30);
 
-  // Structure (0-20)
+  // Structure (0-20) — stricter: require proximity + tight consolidation + good R/R
   let structure = 0;
   const proximityPct = levels.resistance > 0 ? ((levels.resistance - price) / price) * 100 : 50;
-  if (proximityPct < 1) { structure += 10; reasons.push('At resistance'); }
-  else if (proximityPct < 3) { structure += 8; reasons.push('Near resistance'); }
-  else if (proximityPct < 5) structure += 5;
+  if (proximityPct < 1) { structure += 8; reasons.push('At resistance'); }
+  else if (proximityPct < 2) { structure += 6; reasons.push('Near resistance'); }
+  else if (proximityPct < 4) structure += 3;
   const rangePct = levels.consolidationHigh > 0 ? ((levels.consolidationHigh - levels.consolidationLow) / levels.consolidationHigh) * 100 : 50;
-  if (rangePct < 5) { structure += 6; reasons.push('Tight consolidation'); }
-  else if (rangePct < 10) structure += 4;
-  if (levels.riskReward >= 2) { structure += 4; reasons.push(`R/R ${levels.riskReward.toFixed(1)}:1`); }
-  else if (levels.riskReward >= 1.5) structure += 2;
+  if (rangePct < 4) { structure += 7; reasons.push('Tight consolidation'); }
+  else if (rangePct < 8) structure += 4;
+  else if (rangePct < 12) structure += 2;
+  if (levels.riskReward >= 2.5) { structure += 5; reasons.push(`R/R ${levels.riskReward.toFixed(1)}:1`); }
+  else if (levels.riskReward >= 2.0) { structure += 3; reasons.push(`R/R ${levels.riskReward.toFixed(1)}:1`); }
+  else if (levels.riskReward >= 1.5) structure += 1;
   structure = clamp(structure, 0, 20);
 
-  // Safety (0-20)
+  // Safety (0-20) — stricter: need real growth + profitability + size
   let safety = 0;
-  if (peRatio !== null && peRatio > 0 && peRatio < 50) safety += 8;
-  else if (peRatio !== null && peRatio >= 50) safety += 3;
-  if (revenueGrowth !== null && revenueGrowth > 40) { safety += 8; reasons.push(`Rev +${Math.round(revenueGrowth)}%`); }
-  else if (revenueGrowth !== null && revenueGrowth > 25) { safety += 7; reasons.push(`Rev +${Math.round(revenueGrowth)}%`); }
-  else if (revenueGrowth !== null && revenueGrowth > 15) { safety += 6; reasons.push(`Rev +${Math.round(revenueGrowth)}%`); }
-  else if (revenueGrowth !== null && revenueGrowth > 5) safety += 4;
+  if (peRatio !== null && peRatio > 0 && peRatio < 30) safety += 8;
+  else if (peRatio !== null && peRatio > 0 && peRatio < 45) safety += 5;
+  else if (peRatio !== null && peRatio >= 45) safety += 2;
+  if (revenueGrowth !== null && revenueGrowth > 30) { safety += 8; reasons.push(`Rev +${Math.round(revenueGrowth)}%`); }
+  else if (revenueGrowth !== null && revenueGrowth > 20) { safety += 6; reasons.push(`Rev +${Math.round(revenueGrowth)}%`); }
+  else if (revenueGrowth !== null && revenueGrowth > 10) { safety += 4; }
   else if (revenueGrowth !== null && revenueGrowth > 0) safety += 2;
-  if (marketCap > 10e9) safety += 4;
-  else if (marketCap > 2e9) safety += 2;
+  if (marketCap > 20e9) safety += 4;
+  else if (marketCap > 5e9) safety += 3;
+  else if (marketCap > 2e9) safety += 1;
   safety = clamp(safety, 0, 20);
 
-  return { score: trend + vol + structure + safety, reasons: reasons.slice(0, 4) };
+  return { score: trend + vol + structure + safety, reasons: reasons.slice(0, 5) };
 }
 
 // ─── Morning Briefing Entry Type ─────────────────────────────────────────────
@@ -349,16 +357,22 @@ export async function GET() {
             const sma200 = calcSMA(closes, 200);
             const volRatio = row.volume / Math.max(row.avgVolume, 1);
 
+            // Require RSI between 35-75 for quality setups (no oversold/overbought traps)
+            if (rsi !== null && (rsi < 35 || rsi > 75)) return null;
+
             const levels = detectLevels(closes, highs, lows, row.price);
             const { score: rawScore, reasons } = computeBreakoutScore(
               row.price, row.changePercent, rsi, sma50, sma200,
               volRatio, row.peRatio, row.revenueGrowth, levels, row.marketCap,
             );
 
-            // Cooldown penalty: -15 if stock appeared in last 2 briefings
-            const score = cooldownSet.has(row.symbol) ? Math.max(0, rawScore - 15) : rawScore;
+            // Cooldown penalty: -20 if stock appeared in last 2 briefings
+            const score = cooldownSet.has(row.symbol) ? Math.max(0, rawScore - 20) : rawScore;
 
-            if (score < 55) return null;
+            // Require minimum quality: score >= 65, volume > 1M, market cap > 2B
+            if (score < 65) return null;
+            if (row.volume < 1_000_000) return null;
+            if (row.marketCap < 2_000_000_000) return null;
 
             const proximityPct = levels.resistance > 0 ? ((levels.resistance - row.price) / row.price) * 100 : 50;
 
