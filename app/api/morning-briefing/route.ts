@@ -369,10 +369,10 @@ export async function GET() {
             // Cooldown penalty: -20 if stock appeared in last 2 briefings
             const score = cooldownSet.has(row.symbol) ? Math.max(0, rawScore - 20) : rawScore;
 
-            // Require minimum quality: score >= 65, volume > 1M, market cap > 2B
+            // Require minimum quality: score >= 65, volume > 500K, market cap > 300M
             if (score < 65) return null;
-            if (row.volume < 1_000_000) return null;
-            if (row.marketCap < 2_000_000_000) return null;
+            if (row.volume < 500_000) return null;
+            if (row.marketCap < 300_000_000) return null;
 
             const proximityPct = levels.resistance > 0 ? ((levels.resistance - row.price) / row.price) * 100 : 50;
 
