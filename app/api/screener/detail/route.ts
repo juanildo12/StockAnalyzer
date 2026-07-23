@@ -86,7 +86,8 @@ export async function GET(request: Request) {
           rsi: rsi !== null ? Math.round(rsi * 10) / 10 : null,
           trend,
         };
-      } catch {
+      } catch (e) {
+        console.error('Screener detail error:', e);
         return null;
       }
     }));

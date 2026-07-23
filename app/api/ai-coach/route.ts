@@ -64,7 +64,7 @@ async function scrapeGoogleFinancePrice(symbol: string): Promise<number | null> 
       const html = await res.text();
       const match = html.match(/data-last-price="([\d.]+)"/);
       if (match) return parseFloat(match[1]);
-    } catch { continue; }
+    } catch (e) { console.error(`Google Finance price scrape error for ${exchange}:`, e); continue; }
   }
   return null;
 }

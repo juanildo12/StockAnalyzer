@@ -9,6 +9,7 @@ import EarningsCalendarPanel from './EarningsCalendarPanel';
 import ProSignalsPanel from './ProSignalsPanel';
 import RadarDashboardPanel from './RadarDashboardPanel';
 import MetricChartPanel from './MetricChartPanel';
+import ValuationGauge from './ValuationGauge';
 import VeredictoPanel from './VeredictoPanel';
 import ScreenerRankingsPanel from './ScreenerRankingsPanel';
 import TopWeeklyPicks from './TopWeeklyPicks';
@@ -100,6 +101,7 @@ export default function Dashboard({
   );
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [searching, setSearching] = useState(false);
 
   const loadSignals = useCallback(async (showLoading = true) => {
     try {
@@ -128,8 +130,12 @@ export default function Dashboard({
   }, []);
 
   useEffect(() => {
-    loadSignals();
-  }, [loadSignals]);
+    if (initialSection !== 'briefing') {
+      loadSignals();
+    } else {
+      setLoading(false);
+    }
+  }, [loadSignals, initialSection]);
 
   useEffect(() => {
     if (initialSymbol) {
@@ -138,11 +144,12 @@ export default function Dashboard({
   }, [initialSymbol]);
 
   useEffect(() => {
+    if (initialSection === 'briefing') return;
     const interval = setInterval(() => {
       loadSignals(false);
     }, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [loadSignals]);
+  }, [loadSignals, initialSection]);
 
   const handleStockClick = useCallback(async (symbol: string) => {
     setSelectedSymbol(symbol);
@@ -179,9 +186,12 @@ export default function Dashboard({
     setSearchQuery(query);
     clearTimeout(searchTimeout.current);
     if (query.length >= 1) {
+      setSearching(true);
       searchTimeout.current = setTimeout(() => {
-        handleStockClick(query.toUpperCase());
+        handleStockClick(query.toUpperCase()).finally(() => setSearching(false));
       }, 400);
+    } else {
+      setSearching(false);
     }
   }, [handleStockClick]);
 
@@ -226,6 +236,7 @@ export default function Dashboard({
           lastUpdated={lastUpdated}
           onRefresh={() => loadSignals(false)}
           refreshing={loading && !!lastUpdated}
+          searching={searching || detailLoading}
         />
 
         {selectedSymbol && detailData ? (
@@ -279,6 +290,9 @@ export default function Dashboard({
             <div style={{ marginTop: S.md }}>
               <MetricChartPanel symbol={selectedSymbol} />
             </div>
+            <div style={{ marginTop: S.md }}>
+              <ValuationGauge symbol={selectedSymbol} />
+            </div>
             <VeredictoPanel
               symbol={selectedSymbol}
               detailData={detailData}
@@ -287,13 +301,23 @@ export default function Dashboard({
               technical={technicalData}
             />
           </div>
+        ) : detailLoading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', gap: S.md }}>
+            <svg width="40" height="40" viewBox="0 0 40 40" style={{ animation: 'spin 1.2s linear infinite' }}>
+              <circle cx="20" cy="20" r="16" fill="none" stroke={C.bgElevated} strokeWidth="3" />
+              <circle cx="20" cy="20" r="16" fill="none" stroke={C.accent} strokeWidth="3"
+                strokeDasharray="80" strokeDashoffset="60" strokeLinecap="round" />
+            </svg>
+            <span style={{ fontSize: F.sizeBase, color: C.textMuted, fontFamily: F.family }}>
+              Cargando {selectedSymbol}...
+            </span>
+          </div>
         ) : loading ? (
           <LoadingState />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: S.xl }}>
             <div style={{ display: activeTab === 'dashboard' ? 'flex' : 'none', flexDirection: 'column', gap: S.xl, animation: 'slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
               <MorningBriefing onSelectStock={handleStockClick} userPlan={userPlan} />
-              <FrameworkOverview />
             </div>
             <div style={{ display: activeTab === 'screener' ? 'flex' : 'none', flexDirection: 'column', gap: S.xl, animation: 'slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
               <TopWeeklyPicks onStockClick={handleStockClick} />
@@ -315,11 +339,11 @@ export default function Dashboard({
 // ─── Header ──────────────────────────────────────────────────────────────────
 
 function DashboardHeader({
-  searchQuery, onSearchChange, activeTab, onTabChange, lastUpdated, onRefresh, refreshing,
+  searchQuery, onSearchChange, activeTab, onTabChange, lastUpdated, onRefresh, refreshing, searching,
 }: {
   searchQuery: string; onSearchChange: (q: string) => void;
   activeTab: DashboardTab; onTabChange: (v: DashboardTab) => void;
-  lastUpdated: Date | null; onRefresh: () => void; refreshing: boolean;
+  lastUpdated: Date | null; onRefresh: () => void; refreshing: boolean; searching: boolean;
 }) {
   const timeAgo = lastUpdated ? (() => {
     const diff = Math.floor((Date.now() - lastUpdated.getTime()) / 1000);
@@ -389,7 +413,10 @@ function DashboardHeader({
               onFocus={e => (e.currentTarget.style.borderColor = C.accentBorder)}
               onBlur={e => (e.currentTarget.style.borderColor = C.border)}
             />
-            <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: C.textMuted, fontSize: F.sizeSm }}>&#128269;</span>
+            <span style={{
+              position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)',
+              color: C.textMuted, fontSize: F.sizeSm,
+            }}>&#128269;</span>
           </div>
         </div>
       </div>

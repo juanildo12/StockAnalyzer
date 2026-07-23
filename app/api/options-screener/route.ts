@@ -149,7 +149,8 @@ function scoreForOptions(sym: string, data: any): OptionsScore | null {
       reason,
       marketCap: q.marketCap,
     };
-  } catch {
+  } catch (e) {
+    console.error('Options score error:', e);
     return null;
   }
 }
@@ -168,8 +169,8 @@ export async function GET(request: NextRequest) {
       if (!data.quote || !data.quote.regularMarketPrice) continue;
       const scored = scoreForOptions(sym, data);
       if (scored) results.push(scored);
-    } catch {
-      // skip
+    } catch (e) {
+      console.error(`Options screener error for ${sym}:`, e);
     }
   }
 

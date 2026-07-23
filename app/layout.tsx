@@ -1,5 +1,6 @@
 import { Providers } from './providers';
 import { ThemeProvider } from '@/src/components/ThemeProvider';
+import ThemeWrapper from '@/src/components/ThemeWrapper';
 import { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 
@@ -105,6 +106,17 @@ const globalStyles = `
     appearance: none;
     border-radius: 0;
     -webkit-border-radius: 0;
+  }
+
+  button {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-color: transparent;
+  }
+
+  button:hover {
+    background-color: inherit;
   }
 
   input:focus, textarea:focus, select:focus {
@@ -269,9 +281,11 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           <Providers>
-            <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--bg)' }} />}>
-              {children}
-            </Suspense>
+            <ThemeWrapper>
+              <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--bg)' }} />}>
+                {children}
+              </Suspense>
+            </ThemeWrapper>
           </Providers>
         </ThemeProvider>
         <script

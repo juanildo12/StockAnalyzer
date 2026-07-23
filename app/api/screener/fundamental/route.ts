@@ -467,7 +467,8 @@ export async function GET(request: NextRequest) {
           };
 
           return stock;
-        } catch {
+        } catch (e) {
+          console.error(`Fundamental screener error for ${sym}:`, e);
           return null;
         }
       })

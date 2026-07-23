@@ -491,7 +491,7 @@ export default function MorningBriefing({ onSelectStock, userPlan = 'free' }: Mo
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`/api/morning-briefing?t=${Date.now()}`);
+      const res = await fetch(`/api/v1/morning-briefing?t=${Date.now()}`);
       if (!res.ok) throw new Error('Error loading briefing');
       const json = await res.json();
       setData(json);

@@ -67,7 +67,7 @@ async function fetchPool(): Promise<StockRow[]> {
           weekHigh: q.fiftyTwoWeekHigh || q.regularMarketPrice,
           weekLow: q.fiftyTwoWeekLow || q.regularMarketPrice,
         };
-      } catch { return null; }
+      } catch (e) { console.error(`Top-weekly fetch error for ${sym}:`, e); return null; }
     }));
     rows.push(...results.filter(Boolean) as StockRow[]);
   }
@@ -253,7 +253,8 @@ export async function GET() {
           const rsi = calcRSI(closes);
           const trend = rsi !== null ? (rsi > 60 ? 'alcista' : rsi < 40 ? 'bajista' : 'neutral') : 'neutral';
           return { symbol: c.symbol, rsi, trend };
-        } catch {
+        } catch (e) {
+          console.error(`Top-weekly tech data error for ${c.symbol}:`, e);
           return { symbol: c.symbol, rsi: null, trend: 'neutral' };
         }
       }));
@@ -333,7 +334,7 @@ export async function GET() {
               changePercent: fh.dp || pick.changePercent,
             };
           }
-        } catch {}
+        } catch (e) { console.error('Top-weekly finnhub enrichment error:', e); }
         return pick;
       })
     );

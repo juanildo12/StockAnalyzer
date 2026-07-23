@@ -273,7 +273,7 @@ export async function GET(request: Request) {
             volume: q.regularMarketVolume || 0,
             avgVolume: getRaw(sd.averageVolume) || 1,
           };
-        } catch { return null; }
+        } catch (e) { console.error(`Breakout fetch error for ${sym}:`, e); return null; }
       }));
       rows.push(...(results.filter(Boolean) as typeof rows));
     }
@@ -339,7 +339,7 @@ export async function GET(request: Request) {
             proximityPct,
             direction,
           };
-        } catch { return null; }
+        } catch (e) { console.error(`Breakout enrichment error for ${row.symbol}:`, e); return null; }
       }));
       enriched.push(...results.filter(Boolean) as BreakoutStock[]);
     }
@@ -358,7 +358,7 @@ export async function GET(request: Request) {
           if (fh && fh.c > 0) {
             return { ...pick, price: fh.c, changePercent: fh.dp || pick.changePercent };
           }
-        } catch {}
+        } catch (e) { console.error('Breakout finnhub enrichment error:', e); }
         return pick;
       })
     );

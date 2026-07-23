@@ -59,9 +59,9 @@ const NAV_GROUPS: NavGroup[] = [
     id: 'core',
     label: '',
     items: [
-      { view: 'briefing', label: 'Briefing', icon: <Rocket size={18} />, badge: 'NEW' },
-      { view: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} /> },
-      { view: 'screener', label: 'Screener', icon: <Filter size={18} /> },
+      { view: 'briefing', label: 'Briefing', icon: <Rocket size={18} />, badge: 'PRO', minPlan: 'pro' },
+      { view: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} />, badge: 'PRO', minPlan: 'pro' },
+      { view: 'screener', label: 'Screener', icon: <Filter size={18} />, badge: 'PRO', minPlan: 'pro' },
     ],
   },
   {

@@ -89,7 +89,7 @@ async function fetchStockData(symbol: string): Promise<ScreenerStock | null> {
         modules: ['summaryDetail', 'defaultKeyStatistics', 'financialData', 'assetProfile']
       }),
       yf.quote(symbol)
-    ]).catch(() => [null, null]);
+    ]).catch((e) => { console.error(`Screener fetch error for ${symbol}:`, e); return [null, null]; });
 
     if (!quoteResult) return null;
 

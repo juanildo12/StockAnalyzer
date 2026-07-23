@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
 import { getQuote as finnhubQuote } from '@/src/services/finnhubClient';
-import { STOCK_POOL } from '@/src/lib/stockPool';
+import { fetchDynamicUniverse } from '@/src/lib/stockPool';
+import { cacheGet, cacheSet } from '@/src/lib/cache';
 
 const yf = new YahooFinance();
 
@@ -139,8 +140,11 @@ function computeBreakoutScore(
   let safety = 0;
   if (peRatio !== null && peRatio > 0 && peRatio < 50) safety += 8;
   else if (peRatio !== null && peRatio >= 50) safety += 3;
-  if (revenueGrowth !== null && revenueGrowth > 15) { safety += 8; reasons.push(`Rev +${Math.round(revenueGrowth)}%`); }
-  else if (revenueGrowth !== null && revenueGrowth > 5) safety += 5;
+  if (revenueGrowth !== null && revenueGrowth > 40) { safety += 8; reasons.push(`Rev +${Math.round(revenueGrowth)}%`); }
+  else if (revenueGrowth !== null && revenueGrowth > 25) { safety += 7; reasons.push(`Rev +${Math.round(revenueGrowth)}%`); }
+  else if (revenueGrowth !== null && revenueGrowth > 15) { safety += 6; reasons.push(`Rev +${Math.round(revenueGrowth)}%`); }
+  else if (revenueGrowth !== null && revenueGrowth > 5) safety += 4;
+  else if (revenueGrowth !== null && revenueGrowth > 0) safety += 2;
   if (marketCap > 10e9) safety += 4;
   else if (marketCap > 2e9) safety += 2;
   safety = clamp(safety, 0, 20);
@@ -235,6 +239,36 @@ async function getMarketContext() {
 
 export async function GET() {
   try {
+    // Check cache first (5 min TTL for morning briefing)
+    const cached = await cacheGet<any>('briefing:live:current');
+    if (cached) {
+      return NextResponse.json(cached, {
+        headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+      });
+    }
+
+    // ── Get dynamic universe + cooldown symbols ──
+    const universeCacheKey = 'briefing:universe:current';
+    const [universe, cooldownSymbols] = await Promise.all([
+      (async () => {
+        let u = await cacheGet<string[]>(universeCacheKey);
+        if (!u || u.length === 0) {
+          u = await fetchDynamicUniverse().catch(() => []);
+          await cacheSet(universeCacheKey, u, 1800);
+        }
+        return u;
+      })(),
+      Promise.all([
+        cacheGet<string[]>('briefing:picks:day0'),
+        cacheGet<string[]>('briefing:picks:day1'),
+      ]),
+    ]);
+
+    const cooldownSet = new Set([
+      ...(cooldownSymbols[0] || []),
+      ...(cooldownSymbols[1] || []),
+    ]);
+
     // ── Fetch fundamental data ──
     const rows: Array<{
       symbol: string; name: string; price: number; changePercent: number;
@@ -242,108 +276,146 @@ export async function GET() {
       revenueGrowth: number | null; volume: number; avgVolume: number;
     }> = [];
 
-    for (let i = 0; i < STOCK_POOL.length; i += 10) {
-      const batch = STOCK_POOL.slice(i, i + 10);
-      const results = await Promise.all(batch.map(async (sym) => {
-        try {
-          const [qs, q] = await Promise.all([
-            yf.quoteSummary(sym, { modules: ['summaryDetail', 'financialData', 'assetProfile'] }),
-            yf.quote(sym),
-          ]).catch(() => [null, null]);
-          if (!q || !q.regularMarketPrice) return null;
-          const sd = (qs as any)?.summaryDetail || {};
-          const fd = (qs as any)?.financialData || {};
-          return {
-            symbol: sym,
-            name: q.shortName || sym,
-            price: q.regularMarketPrice,
-            changePercent: q.regularMarketChangePercent || 0,
-            marketCap: getRaw(sd.marketCap) || 0,
-            sector: (qs as any)?.assetProfile?.sector || '',
-            peRatio: getRaw(sd.trailingPE) || null,
-            revenueGrowth: getRaw(fd.revenueGrowth) != null ? getRaw(fd.revenueGrowth) * 100 : null,
-            volume: q.regularMarketVolume || 0,
-            avgVolume: getRaw(sd.averageVolume) || 1,
-          };
-        } catch { return null; }
-      }));
-      rows.push(...(results.filter(Boolean) as typeof rows));
+    // Process all batches in parallel (max 5 concurrent batches to avoid rate limiting)
+    const BATCHConcurrency = 5;
+    const fundamentalBatches: Array<Promise<typeof rows>> = [];
+    for (let i = 0; i < universe.length; i += 10) {
+      const batch = universe.slice(i, i + 10);
+      fundamentalBatches.push(
+        Promise.all(batch.map(async (sym) => {
+          try {
+            const [qs, q] = await Promise.all([
+              yf.quoteSummary(sym, { modules: ['summaryDetail', 'financialData', 'assetProfile'] }),
+              yf.quote(sym),
+            ]).catch(() => [null, null]);
+            if (!q || !q.regularMarketPrice) return null;
+            const sd = (qs as any)?.summaryDetail || {};
+            const fd = (qs as any)?.financialData || {};
+            return {
+              symbol: sym,
+              name: q.shortName || sym,
+              price: q.regularMarketPrice,
+              changePercent: q.regularMarketChangePercent || 0,
+              marketCap: getRaw(sd.marketCap) || 0,
+              sector: (qs as any)?.assetProfile?.sector || '',
+              peRatio: getRaw(sd.trailingPE) || null,
+              revenueGrowth: getRaw(fd.revenueGrowth) != null ? getRaw(fd.revenueGrowth) * 100 : null,
+              volume: q.regularMarketVolume || 0,
+              avgVolume: getRaw(sd.averageVolume) || 1,
+            };
+          } catch { return null; }
+        })).then(results => results.filter(Boolean) as typeof rows)
+      );
     }
+
+    // Process in chunks of BATCHConcurrency
+    const allFundamentals: typeof rows = [];
+    for (let i = 0; i < fundamentalBatches.length; i += BATCHConcurrency) {
+      const chunk = fundamentalBatches.slice(i, i + BATCHConcurrency);
+      const chunkResults = await Promise.all(chunk);
+      for (const result of chunkResults) {
+        allFundamentals.push(...result);
+      }
+    }
+    rows.push(...allFundamentals);
 
     // ── Fetch historical data and compute breakout scores ──
     const enriched: BriefingPick[] = [];
     const BATCH_SIZE = 5;
 
+    // Process all batches in parallel (max 5 concurrent batches to avoid rate limiting)
+    const HISTConcurrency = 5;
+    const historicalBatches: Array<Promise<BriefingPick[]>> = [];
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       const batch = rows.slice(i, i + BATCH_SIZE);
-      const results = await Promise.all(batch.map(async (row) => {
-        try {
-          const hist: any = await yf.historical(row.symbol, {
-            period1: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
-            period2: new Date(),
-            interval: '1d',
-          }).catch(() => []);
+      historicalBatches.push(
+        Promise.all(batch.map(async (row) => {
+          try {
+            const hist: any = await yf.historical(row.symbol, {
+              period1: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
+              period2: new Date(),
+              interval: '1d',
+            }).catch(() => []);
 
-          const bars = (hist || []) as any[];
-          const closes = bars.map((b: any) => b.close).filter((c: number) => c > 0);
-          const highs = bars.map((b: any) => b.high).filter((h: number) => h > 0);
-          const lows = bars.map((b: any) => b.low).filter((l: number) => l > 0);
+            const bars = (hist || []) as any[];
+            const closes = bars.map((b: any) => b.close).filter((c: number) => c > 0);
+            const highs = bars.map((b: any) => b.high).filter((h: number) => h > 0);
+            const lows = bars.map((b: any) => b.low).filter((l: number) => l > 0);
 
-          if (closes.length < 20) return null;
+            if (closes.length < 20) return null;
 
-          const rsi = calcRSI(closes);
-          const sma50 = calcSMA(closes, 50);
-          const sma200 = calcSMA(closes, 200);
-          const volRatio = row.volume / Math.max(row.avgVolume, 1);
+            const rsi = calcRSI(closes);
+            const sma50 = calcSMA(closes, 50);
+            const sma200 = calcSMA(closes, 200);
+            const volRatio = row.volume / Math.max(row.avgVolume, 1);
 
-          const levels = detectLevels(closes, highs, lows, row.price);
-          const { score, reasons } = computeBreakoutScore(
-            row.price, row.changePercent, rsi, sma50, sma200,
-            volRatio, row.peRatio, row.revenueGrowth, levels, row.marketCap,
-          );
+            const levels = detectLevels(closes, highs, lows, row.price);
+            const { score: rawScore, reasons } = computeBreakoutScore(
+              row.price, row.changePercent, rsi, sma50, sma200,
+              volRatio, row.peRatio, row.revenueGrowth, levels, row.marketCap,
+            );
 
-          if (score < 55) return null;
+            // Cooldown penalty: -15 if stock appeared in last 2 briefings
+            const score = cooldownSet.has(row.symbol) ? Math.max(0, rawScore - 15) : rawScore;
 
-          const proximityPct = levels.resistance > 0 ? ((levels.resistance - row.price) / row.price) * 100 : 50;
+            if (score < 55) return null;
 
-          return {
-            symbol: row.symbol,
-            name: row.name,
-            price: row.price,
-            changePercent: row.changePercent,
-            sector: row.sector,
-            marketCap: row.marketCap,
-            breakoutScore: score,
-            confidence: getConfidence(score),
-            entryWindow: proximityPct < 1 ? 'Inmediato' : proximityPct < 3 ? 'Hoy' : 'Esta semana',
-            levels: {
-              entry: levels.resistance,
-              resistance: levels.resistance,
-              support: levels.support,
-              target1: levels.target1,
-              target2: levels.target2,
-              stopLoss: levels.stopLoss,
-              riskReward: levels.riskReward,
-            },
-            technicals: {
-              rsi: rsi !== null ? Math.round(rsi * 10) / 10 : null,
-              sma50: sma50 !== null ? Math.round(sma50 * 100) / 100 : null,
-              sma200: sma200 !== null ? Math.round(sma200 * 100) / 100 : null,
-              volRatio: Math.round(volRatio * 100) / 100,
-            },
-            reasons: reasons,
-            setup: getSetupLabel(reasons),
-            riskNote: getRiskNote(score, levels.riskReward, rsi),
-          };
-        } catch { return null; }
-      }));
-      enriched.push(...results.filter(Boolean) as BriefingPick[]);
+            const proximityPct = levels.resistance > 0 ? ((levels.resistance - row.price) / row.price) * 100 : 50;
+
+            return {
+              symbol: row.symbol,
+              name: row.name,
+              price: row.price,
+              changePercent: row.changePercent,
+              sector: row.sector,
+              marketCap: row.marketCap,
+              breakoutScore: score,
+              confidence: getConfidence(score),
+              entryWindow: proximityPct < 1 ? 'Inmediato' : proximityPct < 3 ? 'Hoy' : 'Esta semana',
+              levels: {
+                entry: levels.resistance,
+                resistance: levels.resistance,
+                support: levels.support,
+                target1: levels.target1,
+                target2: levels.target2,
+                stopLoss: levels.stopLoss,
+                riskReward: levels.riskReward,
+              },
+              technicals: {
+                rsi: rsi !== null ? Math.round(rsi * 10) / 10 : null,
+                sma50: sma50 !== null ? Math.round(sma50 * 100) / 100 : null,
+                sma200: sma200 !== null ? Math.round(sma200 * 100) / 100 : null,
+                volRatio: Math.round(volRatio * 100) / 100,
+              },
+              reasons: reasons,
+              setup: getSetupLabel(reasons),
+              riskNote: getRiskNote(score, levels.riskReward, rsi),
+            };
+          } catch { return null; }
+        })).then(results => results.filter(Boolean) as BriefingPick[])
+      );
+    }
+
+    // Process in chunks of HISTConcurrency
+    for (let i = 0; i < historicalBatches.length; i += HISTConcurrency) {
+      const chunk = historicalBatches.slice(i, i + HISTConcurrency);
+      const chunkResults = await Promise.all(chunk);
+      for (const result of chunkResults) {
+        enriched.push(...result);
+      }
     }
 
     // Sort and take top picks
     const topPicks = enriched
       .sort((a, b) => b.breakoutScore - a.breakoutScore)
       .slice(0, 5);
+
+    // Save picks to Redis for cooldown (rotate: day0 → day1, day1 expires)
+    const topSymbols = topPicks.map(p => p.symbol);
+    await Promise.all([
+      cacheSet('briefing:picks:day1', cooldownSymbols[0] || [], 172800), // 48h
+      cacheSet('briefing:picks:day0', topSymbols, 172800),               // 48h
+    ]);
 
     // Enrich top 5 with real-time Finnhub prices
     const finalPicks = await Promise.all(
@@ -372,7 +444,7 @@ export async function GET() {
     const dateStr = now.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const timeStr = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
-    return NextResponse.json({
+    const responseData = {
       date: dateStr,
       time: timeStr,
       market,
@@ -384,6 +456,10 @@ export async function GET() {
         topSectors: sectors.slice(0, 3),
       },
       picks: finalPicks,
+    };
+    await cacheSet('briefing:live:current', responseData, 300);
+    return NextResponse.json(responseData, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
     });
   } catch (error) {
     console.error('Morning briefing error:', error);
@@ -391,6 +467,7 @@ export async function GET() {
       date: '', time: '', market: { spy: null, vix: null },
       summary: { totalScanned: 0, totalBreakouts: 0, highConfidence: 0, avgRiskReward: 0, topSectors: [] },
       picks: [],
-    });
+      error: error instanceof Error ? error.message : 'Internal server error',
+    }, { status: 500 });
   }
 }

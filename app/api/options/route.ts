@@ -189,7 +189,8 @@ export async function GET(request: NextRequest) {
                 rationale: r.rationale,
               })),
             };
-          } catch {
+          } catch (e) {
+            console.error(`Options route error for ${sym}:`, e);
             return null;
           }
         })

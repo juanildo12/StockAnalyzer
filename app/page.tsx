@@ -26,8 +26,11 @@ import ScreenerGraham from '@/components/ScreenerGraham';
 import ScreenerPage from '@/app/screener/page';
 import TradingTrainer from '@/components/TradingTrainer';
 import StockDetailPanel from '@/components/StockDetailPanel';
+import ValuationGauge from '@/components/ValuationGauge';
 import SmartAlertsPanel from '@/components/SmartAlertsPanel';
-import { colors as C, radius as R, font as F, shadow, transition as T } from '@/src/utils/webTheme';
+import LandingHero from '@/components/LandingHero';
+import OnboardingModal from '@/components/OnboardingModal';
+import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 
 
 interface StockQuote {
@@ -486,6 +489,7 @@ export default function Home() {
   const [symbol, setSymbol] = useState('');
   const [suggestions, setSuggestions] = useState<{symbol: string; name: string}[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -765,14 +769,18 @@ export default function Home() {
   const fetchSuggestions = async (query: string) => {
     if (query.length < 1) {
       setSuggestions([]);
+      setSuggestionsLoading(false);
       return;
     }
+    setSuggestionsLoading(true);
     try {
       const res = await fetch(`/api/search?q=${query}`);
       const json = await res.json();
       setSuggestions(json.results || []);
     } catch (e) {
       setSuggestions([]);
+    } finally {
+      setSuggestionsLoading(false);
     }
   };
 
@@ -1014,9 +1022,9 @@ export default function Home() {
               const userLevel = planLevel[mobileUserPlan] ?? 0;
               const mobileItems = [
                 { id: 'analyzer', icon: '🏠', label: 'Inicio', minPlan: 0 },
-                { id: 'briefing', icon: '📰', label: 'Briefing', minPlan: 0 },
-                { id: 'dashboard', icon: '📈', label: 'Dashboard', minPlan: 0 },
-                { id: 'screener', icon: '🔎', label: 'Screener', minPlan: 0 },
+                { id: 'briefing', icon: '📰', label: 'Briefing', minPlan: 1 },
+                { id: 'dashboard', icon: '📈', label: 'Dashboard', minPlan: 1 },
+                { id: 'screener', icon: '🔎', label: 'Screener', minPlan: 1 },
                 { id: 'alerts', icon: '🔔', label: 'Smart Alerts', minPlan: 1 },
                 { id: 'options', icon: '🎯', label: 'Opciones', minPlan: 2 },
                 { id: 'watchlist', icon: '👁️', label: 'Watchlist', minPlan: 0 },
@@ -1058,233 +1066,23 @@ export default function Home() {
           <>
             {/* ═══ LANDING HERO (when no stock selected) ═══ */}
             {!data && !loading && !error && (
-              <div style={{
-                position: 'relative', overflow: 'hidden',
-                borderRadius: R.xl, marginBottom: '32px',
-                background: `linear-gradient(135deg, ${C.bgCard} 0%, ${C.bgElevated} 100%)`,
-                border: `1px solid ${C.border}`,
-                boxShadow: shadow.lg,
-                animation: `fadeInScale 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards`,
-              }}>
-                {/* Glow effects */}
-                <div style={{
-                  position: 'absolute', top: -100, right: -100,
-                  width: 300, height: 300, borderRadius: '50%',
-                  background: `${C.accent10}`, filter: 'blur(80px)',
-                  animation: 'pulseGlow 4s ease-in-out infinite',
-                }} />
-                <div style={{
-                  position: 'absolute', bottom: -60, left: -60,
-                  width: 200, height: 200, borderRadius: '50%',
-                  background: `${C.positive08}`, filter: 'blur(60px)',
-                }} />
-
-                <div style={{ position: 'relative', padding: '56px 48px 48px', textAlign: 'center' }}>
-                  {/* Badge */}
-                  <div style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '8px',
-                    padding: '6px 16px', borderRadius: R.full,
-                    background: `${C.accent12}`, border: `1px solid ${C.accent25}`,
-                    marginBottom: '24px',
-                    animation: 'fadeInUp 0.3s ease 0.05s both',
-                  }}>
-                    <span style={{ fontSize: F.sizeXs, color: C.accentLight, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                      AI-Powered Analysis
-                    </span>
-                  </div>
-
-                  {/* Headline */}
-                  <h1 style={{
-                    fontSize: F.sizeDisplay, fontWeight: 800, color: C.textPrimary,
-                    lineHeight: 1.1, letterSpacing: '-0.03em', margin: '0 0 16px',
-                    fontFamily: F.family,
-                    animation: 'fadeInUp 0.3s ease 0.1s both',
-                  }}>
-                    Analiza cualquier acción<br />
-                    <span style={{
-                      background: `${C.gradientPrimary}`,
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                    }}>como un profesional</span>
-                  </h1>
-
-                  <p style={{
-                    fontSize: F.sizeLg, color: C.textSecondary,
-                    margin: '0 auto 36px', maxWidth: 540,
-                    lineHeight: 1.7, letterSpacing: '-0.01em',
-                    animation: 'fadeInUp 0.3s ease 0.15s both',
-                  }}>
-                    Graham Principles, AI briefing, trade setups y levels automáticos en segundos.
-                  </p>
-
-                  {/* Search bar */}
-                  <div style={{
-                    display: 'flex', gap: '12px', maxWidth: 640, margin: '0 auto',
-                    position: 'relative',
-                    animation: 'fadeInUp 0.3s ease 0.2s both',
-                  }}>
-                    <div style={{ flex: 1, position: 'relative' }}>
-                      <span style={{
-                        position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)',
-                        fontSize: 18, color: C.textMuted, pointerEvents: 'none',
-                      }}>&#128269;</span>
-                      <input
-                        type="text"
-                        value={symbol}
-                        placeholder="AAPL, MSFT, GOOGL, NVDA..."
-                        aria-label="Buscar acción por ticker"
-                        onKeyDown={e => { if (e.key === 'Enter') searchStock(); }}
-                        onChange={e => {
-                          setSymbol(e.target.value);
-                          setShowSuggestions(true);
-                          fetchSuggestions(e.target.value);
-                        }}
-                        onFocus={() => setShowSuggestions(true)}
-                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                        style={{
-                          width: '100%', padding: '18px 18px 18px 48px',
-                          borderRadius: R.xl,
-                          border: `1px solid ${C.borderHover}`,
-                          background: C.bgInput,
-                          color: C.textPrimary,
-                          fontSize: F.sizeLg,
-                          outline: 'none',
-                          fontFamily: F.family,
-                          transition: 'all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1)',
-                          boxShadow: shadow.sm,
-                        }}
-                        onFocusCapture={e => {
-                          e.currentTarget.style.borderColor = C.accent;
-                          e.currentTarget.style.boxShadow = `0 0 0 3px ${C.accent15}, 0 4px 16px ${C.accent10}`;
-                        }}
-                        onBlurCapture={e => {
-                          e.currentTarget.style.borderColor = C.borderHover;
-                          e.currentTarget.style.boxShadow = 'none';
-                        }}
-                      />
-                      {showSuggestions && suggestions.length > 0 && (
-                        <div style={{
-                          position: 'absolute', top: '100%', left: 0, right: 0,
-                          background: C.bgCard, border: `1px solid ${C.border}`,
-                          borderRadius: R.xl, marginTop: '8px', zIndex: 100,
-                          maxHeight: 260, overflow: 'auto', boxShadow: shadow.xl,
-                          animation: 'slideDown 0.2s ease forwards',
-                        }}>
-                          {suggestions.map(s => (
-                            <div key={s.symbol} onClick={() => { setSymbol(s.symbol); setShowSuggestions(false); searchStock(); }}
-                              style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: '10px' }}
-                              onMouseOver={e => (e.currentTarget.style.background = C.bgCardHover)}
-                              onMouseOut={e => (e.currentTarget.style.background = 'transparent')}>
-                              <span style={{ color: C.accentLight, fontWeight: 700, fontSize: F.sizeBase, fontFamily: F.mono }}>{s.symbol}</span>
-                              <span style={{ color: C.textMuted, fontSize: F.sizeSm }}>{s.name}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => searchStock()}
-                      disabled={loading || (!(session?.user as any)?.plan || (session?.user as any)?.plan === 'free') && dailyAnalysisCount >= 5}
-                      aria-label="Analizar acción"
-                      style={{
-                        padding: '18px 36px', borderRadius: R.xl,
-                        border: 'none',
-                        background: `${C.gradientPrimary}`,
-                        color: '#fff',
-                        fontSize: F.sizeLg,
-                        fontWeight: 700,
-                        cursor: (loading || ((!(session?.user as any)?.plan || (session?.user as any)?.plan === 'free') && dailyAnalysisCount >= 5)) ? 'not-allowed' : 'pointer',
-                        opacity: (loading || ((!(session?.user as any)?.plan || (session?.user as any)?.plan === 'free') && dailyAnalysisCount >= 5)) ? 0.6 : 1,
-                        fontFamily: F.family,
-                        transition: 'all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1)',
-                        whiteSpace: 'nowrap',
-                        boxShadow: `0 4px 14px rgba(124, 58, 237, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2)`,
-                        letterSpacing: '-0.01em',
-                      }}
-                      onMouseOver={e => { if (!loading) { e.currentTarget.style.boxShadow = '0 4px 16px rgba(124, 58, 237, 0.35)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}}
-                      onMouseOut={e => { e.currentTarget.style.boxShadow = '0 1px 2px rgba(124, 58, 237, 0.2)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-                    >
-                      {loading ? 'Analizando...' : ((!(session?.user as any)?.plan || (session?.user as any)?.plan === 'free') && dailyAnalysisCount >= 5) ? 'Límite diario alcanzado — Actualiza a Pro' : 'Analizar'}
-                    </button>
-                  </div>
-
-                  {(!(session?.user as any)?.plan || (session?.user as any)?.plan === 'free') && (
-                    <p style={{
-                      fontSize: F.sizeXs, color: dailyAnalysisCount >= 5 ? '#ef4444' : C.textMuted,
-                      marginTop: '8px', textAlign: 'center',
-                      animation: 'fadeInUp 0.3s ease 0.25s both',
-                    }}>
-                      {dailyAnalysisCount} de 5 análisis gratuitos hoy
-                    </p>
-                  )}
-
-                  {/* Quick tickers */}
-                  <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    gap: '10px', marginTop: '24px', flexWrap: 'wrap',
-                    animation: 'fadeInUp 0.3s ease 0.3s both',
-                  }}>
-                    <span style={{ fontSize: F.sizeSm, color: C.textMuted, fontWeight: 500 }}>Popular:</span>
-                    {['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA'].map((t, i) => (
-                      <button key={t} onClick={() => { setSymbol(t); searchStock(); }}
-                        style={{
-                          padding: '6px 14px', borderRadius: R.full,
-                          border: `1px solid ${C.border}`, background: 'transparent',
-                          color: C.textSecondary, fontSize: F.sizeSm, fontWeight: 600,
-                          cursor: 'pointer', fontFamily: F.mono,
-                          transition: 'all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)',
-                          animation: `fadeInUp 0.2s ease ${0.35 + i * 0.04}s both`,
-                        }}
-                        onMouseOver={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accentLight; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = `0 2px 8px ${C.accent15}`; }}
-                        onMouseOut={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textSecondary; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Feature pills */}
-                  <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    gap: '12px', marginTop: '24px', flexWrap: 'wrap',
-                    animation: 'fadeInUp 0.3s ease 0.4s both',
-                  }}>
-                    {[
-                      { icon: '🧠', label: 'AI Briefing' },
-                      { icon: '📋', label: 'Graham Principles' },
-                      { icon: '🎯', label: 'Trade Setup' },
-                      { icon: '📊', label: 'Technical Matrix' },
-                    ].map((f, i) => (
-                      <div key={f.label} style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        padding: '8px 16px', borderRadius: R.full,
-                        background: `${C.bgElevated80}`, border: `1px solid ${C.border}`,
-                        fontSize: F.sizeSm, color: C.textSecondary, fontWeight: 500,
-                        transition: 'all 0.15s cubic-bezier(0.25, 0.1, 0.25, 1)',
-                        animation: `fadeInUp 0.2s ease ${0.45 + i * 0.05}s both`,
-                        cursor: 'default',
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.borderColor = C.accentBorder;
-                        e.currentTarget.style.background = C.accentGlow;
-                        e.currentTarget.style.color = C.accentLight;
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.borderColor = C.border;
-                        e.currentTarget.style.background = `${C.bgElevated80}`;
-                        e.currentTarget.style.color = C.textSecondary;
-                        e.currentTarget.style.transform = 'translateY(0)';
-                      }}
-                      >
-                        <span>{f.icon}</span>
-                        <span>{f.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <LandingHero
+                symbol={symbol}
+                onSymbolChange={(s) => {
+                  setSymbol(s);
+                  setShowSuggestions(true);
+                  fetchSuggestions(s);
+                }}
+                onSearch={() => searchStock()}
+                loading={loading}
+                dailyAnalysisCount={dailyAnalysisCount}
+                userPlan={(session?.user as any)?.plan || 'free'}
+                suggestions={suggestions}
+                suggestionsLoading={suggestionsLoading}
+                onFetchSuggestions={fetchSuggestions}
+                showSuggestions={showSuggestions}
+                onShowSuggestions={setShowSuggestions}
+              />
             )}
 
             {/* ═══ LOADING STATE ═══ */}
@@ -1370,13 +1168,19 @@ export default function Home() {
                       transition: 'border-color 0.2s ease',
                     }}
                   />
-                  {showSuggestions && suggestions.length > 0 && (
+                  {showSuggestions && (suggestions.length > 0 || suggestionsLoading) && (
                     <div style={{
                       position: 'absolute', top: '100%', left: 0, right: 0,
                       background: C.bgCard, border: `1px solid ${C.border}`,
                       borderRadius: R.lg, marginTop: '4px', zIndex: 120,
                       maxHeight: 220, overflow: 'auto', boxShadow: shadow.xl,
                     }}>
+                      {suggestionsLoading && suggestions.length === 0 && (
+                        <div style={{ padding: '14px', textAlign: 'center', color: C.textMuted, fontSize: F.sizeSm, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                          <span style={{ display: 'inline-block', animation: 'spin 0.8s linear infinite', fontSize: '14px' }}>&#8635;</span>
+                          Buscando...
+                        </div>
+                      )}
                       {suggestions.map(s => (
                         <div key={s.symbol}
                           onMouseDown={e => { e.preventDefault(); setSymbol(s.symbol); setShowSuggestions(false); searchStock(); }}
@@ -1404,6 +1208,7 @@ export default function Home() {
 
             {/* ═══ STOCK RESULT ═══ */}
             {data && (
+              <>
               <StockDetailPanel
                 symbol={data.quote.symbol}
                 name={data.quote.shortName || data.quote.longName}
@@ -1455,6 +1260,10 @@ export default function Home() {
                 onFullAnalysis={() => { setDashboardSymbol(data.quote.symbol); setView('dashboard'); }}
                 inWatchlist={isInWatchlist(data.quote.symbol)}
               />
+              <div style={{ marginTop: S.md }}>
+                <ValuationGauge symbol={data.quote.symbol} />
+              </div>
+            </>
             )}
           </>
         ) : view === 'portfolio' ? (
@@ -4361,6 +4170,8 @@ function RiskReport({ data, symbol }: { data: ApiResponse; symbol: string }) {
           </div>
         </div>
       )}
+
+      <OnboardingModal onSelectSymbol={(sym) => { setSymbol(sym); searchStock(sym); }} />
     </div>
   );
 }

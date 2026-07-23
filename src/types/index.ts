@@ -2,6 +2,7 @@ export interface TechnicalAnalysis {
   rsi: number;
   sma50: number;
   sma200: number;
+  ema200: number;
   currentPrice: number;
   trend: 'alcista' | 'bajista' | 'lateral';
   support: number;

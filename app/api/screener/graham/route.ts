@@ -181,7 +181,8 @@ export async function GET(request: Request) {
             totalMetrics,
             passesAny,
           };
-        } catch {
+        } catch (e) {
+          console.error(`Graham screener error for ${sym}:`, e);
           return null;
         }
       }));

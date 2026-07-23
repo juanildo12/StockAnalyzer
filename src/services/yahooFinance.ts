@@ -612,6 +612,16 @@ export async function getAnalystPriceTargets(
   }
 }
 
+function calcEMA(prices: number[], period: number): number {
+  if (prices.length < period) return prices[prices.length - 1];
+  const k = 2 / (period + 1);
+  let ema = prices.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < prices.length; i++) {
+    ema = prices[i] * k + ema * (1 - k);
+  }
+  return ema;
+}
+
 export async function getTechnicalAnalysis(
   symbol: string,
 ): Promise<TechnicalAnalysis | null> {
@@ -670,11 +680,13 @@ export async function getTechnicalAnalysis(
     else if (rsi > 70 && trend === 'bajista') signal = 'vender';
 
     const currentPrice = prices[prices.length - 1];
+    const ema200 = calcEMA(prices, 200);
     
     const data = {
       rsi,
       sma50,
       sma200,
+      ema200,
       currentPrice,
       trend,
       support,

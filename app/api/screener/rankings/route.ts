@@ -65,7 +65,7 @@ async function fetchPool(): Promise<StockRow[]> {
           weekHigh: q.fiftyTwoWeekHigh || price,
           weekLow: q.fiftyTwoWeekLow || price,
         };
-      } catch { return null; }
+      } catch (e) { console.error(`Rankings fetch error for ${sym}:`, e); return null; }
     }));
     rows.push(...results.filter(Boolean) as StockRow[]);
   }
