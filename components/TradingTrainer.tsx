@@ -8,6 +8,7 @@ import GameProgress from './GameProgress';
 import FreePractice from './FreePractice';
 import GameSession from './GameSession';
 import SessionReview from './SessionReview';
+import ThinkingOrbLoader from '@/src/components/ThinkingOrbLoader';
 
 const STORAGE_KEY = 'trading-trainer-state';
 const ACHIEVEMENTS_CONFIG: Omit<Achievement, 'unlockedAt'>[] = [
@@ -276,14 +277,7 @@ export default function TradingTrainer() {
       {activeTab === 'daily' && (
         <>
           {loading && (
-            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <div style={{
-                width: '40px', height: '40px', borderRadius: '50%',
-                border: `3px solid ${C.border}`, borderTopColor: C.accent,
-                animation: 'spin 1s linear infinite', margin: '0 auto 16px',
-              }} />
-              <p style={{ color: C.textSecondary }}>Preparando tu reto del día...</p>
-            </div>
+            <ThinkingOrbLoader state="solving" size={64} label="Preparando tu reto del día..." />
           )}
           {error && (
             <div style={{ background: `${C.negative18}`, color: C.negative, padding: '16px', borderRadius: R.lg, textAlign: 'center', marginBottom: '16px' }}>

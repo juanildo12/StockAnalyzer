@@ -30,6 +30,7 @@ import ValuationGauge from '@/components/ValuationGauge';
 import SmartAlertsPanel from '@/components/SmartAlertsPanel';
 import LandingHero from '@/components/LandingHero';
 import OnboardingModal from '@/components/OnboardingModal';
+import ThinkingOrbLoader, { InlineOrbLoader } from '@/src/components/ThinkingOrbLoader';
 import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 
 
@@ -1577,7 +1578,7 @@ export default function Home() {
                                 </div>
                               ) : (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <div style={{ width: '16px', height: '16px', borderRadius: R.full, border: `2px solid ${C.border}`, borderTopColor: C.accentLight, animation: 'spin 1s linear infinite' }}></div>
+                                  <InlineOrbLoader state="working" size={20} />
                                   <span style={{ color: C.textMuted, fontSize: F.sizeBase }}>Cargando...</span>
                                 </div>
                               )}
@@ -3543,8 +3544,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
           {/* Screener */}
           {screenerLoading ? (
             <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: R.full, border: `3px solid ${C.border}`, borderTopColor: C.accentLight, animation: 'spin 1s linear infinite', margin: '0 auto 16px' }}></div>
-              <p style={{ color: C.textMuted }}>Analizando acciones...</p>
+              <ThinkingOrbLoader state="searching" size={64} label="Analizando acciones..." />
             </div>
           ) : screenerData ? (
             <div>
@@ -3570,7 +3570,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
                     }}
                   >
                     {screenerLoading ? (
-                      <span style={{ display: 'inline-block', width: '14px', height: '14px', border: `2px solid ${C.border}`, borderTopColor: C.accentLight, borderRadius: R.full, animation: 'spin 1s linear infinite' }}></span>
+                      <InlineOrbLoader state="working" size={20} />
                     ) : (
                       '🔄'
                     )}

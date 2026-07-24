@@ -31,6 +31,7 @@
     "react-dom": "^18.2.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "thinking-orbs": "^0.1.1",
     "yahoo-finance2": "^3.15.3",
     "zod": "^4.4.3"
   },

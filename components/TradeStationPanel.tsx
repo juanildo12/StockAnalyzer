@@ -1,5 +1,6 @@
 'use client';
 import { colors as C, radius as R, font as F } from '@/src/utils/webTheme';
+import ThinkingOrbLoader from '@/src/components/ThinkingOrbLoader';
 
 import { useState, useEffect, useCallback } from 'react';
 
@@ -289,18 +290,7 @@ export default function TradeStationPanel() {
       </div>
 
       {loading && (
-        <div style={{ textAlign: 'center', padding: '40px', color: C.textMuted }}>
-          <span style={{
-            display: 'inline-block',
-            width: '24px',
-            height: '24px',
-            border: `3px solid ${C.border}`,
-            borderTopColor: C.accent,
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-          }} />
-          <p style={{ marginTop: '12px' }}>Cargando...</p>
-        </div>
+        <ThinkingOrbLoader state="working" size={64} label="Cargando..." />
       )}
 
       {!loading && (

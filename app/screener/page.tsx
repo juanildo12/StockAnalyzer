@@ -2,22 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { colors as C, radius as R, font as F } from '@/src/utils/webTheme';
+import ThinkingOrbLoader from '@/src/components/ThinkingOrbLoader';
 
 function ScreenerLoading() {
   return (
-    <div style={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      minHeight: '100vh',
-      background: C.bg,
-      color: C.textMuted
-    }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '24px', marginBottom: '16px' }}>⏳</div>
-        <p>Cargando Screener...</p>
-      </div>
-    </div>
+    <ThinkingOrbLoader state="searching" size={64} label="Cargando Screener..." />
   );
 }
 

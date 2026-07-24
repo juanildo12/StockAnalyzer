@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { SessionChallenge, ChallengeResult, SessionResult, SignalAction, ConfidenceLevel, DifficultyTier, TeachingPoint } from '@/src/types';
 import { colors as C, radius as R } from '@/src/utils/webTheme';
 import CandlestickChart from './CandlestickChart';
+import ThinkingOrbLoader from '@/src/components/ThinkingOrbLoader';
 
 interface Props {
   difficulty: DifficultyTier;
@@ -255,15 +256,12 @@ export default function GameSession({ difficulty, onComplete, onCancel, level }:
   if (loading) {
     return (
       <div style={{ background: C.bgCard, borderRadius: R.xl, padding: '60px 24px', textAlign: 'center' }}>
-        <div style={{
-          width: '48px', height: '48px', borderRadius: '50%',
-          border: `3px solid ${C.border}`, borderTopColor: DIFFICULTY_COLORS[difficulty],
-          animation: 'spin 1s linear infinite', margin: '0 auto 16px',
-        }} />
-        <p style={{ color: C.textSecondary, fontSize: '15px', marginBottom: '4px' }}>
-          Generando sesión de {DIFFICULTY_LABELS[difficulty]}...
-        </p>
-        <p style={{ color: C.textMuted, fontSize: '13px' }}>
+        <ThinkingOrbLoader
+          state="shaping"
+          size={64}
+          label={`Generando sesión de ${DIFFICULTY_LABELS[difficulty]}...`}
+        />
+        <p style={{ color: C.textMuted, fontSize: '13px', marginTop: -8 }}>
           Preparando retos con datos en vivo
         </p>
       </div>

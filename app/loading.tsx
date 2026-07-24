@@ -1,4 +1,11 @@
+'use client';
+
+import { ThinkingOrb } from 'thinking-orbs';
+import { useTheme } from '@/src/components/ThemeProvider';
+
 export default function Loading() {
+  const { theme } = useTheme();
+  
   return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -6,11 +13,9 @@ export default function Loading() {
       fontFamily: 'system-ui, -apple-system, sans-serif',
     }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: '50%',
-          border: '3px solid #1E293B', borderTopColor: '#7C3AED',
-          animation: 'spin 0.8s linear infinite', margin: '0 auto 16px',
-        }} />
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}>
+          <ThinkingOrb state="working" size={64} theme={theme as any} />
+        </div>
         <p style={{ fontSize: 14, margin: 0 }}>Cargando...</p>
       </div>
     </div>

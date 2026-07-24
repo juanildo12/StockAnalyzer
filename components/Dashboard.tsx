@@ -18,6 +18,7 @@ import Card from '@/src/components/ui/Card';
 import Badge from '@/src/components/ui/Badge';
 import Button from '@/src/components/ui/Button';
 import ScoreBar from '@/src/components/ui/ScoreBar';
+import ThinkingOrbLoader from '@/src/components/ThinkingOrbLoader';
 import { colors as C, radius as R, font as F, spacing as S, transition as T } from '@/src/utils/webTheme';
 
 const TOP_N_SIGNALS = 30;
@@ -302,16 +303,7 @@ export default function Dashboard({
             />
           </div>
         ) : detailLoading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', gap: S.md }}>
-            <svg width="40" height="40" viewBox="0 0 40 40" style={{ animation: 'spin 1.2s linear infinite' }}>
-              <circle cx="20" cy="20" r="16" fill="none" stroke={C.bgElevated} strokeWidth="3" />
-              <circle cx="20" cy="20" r="16" fill="none" stroke={C.accent} strokeWidth="3"
-                strokeDasharray="80" strokeDashoffset="60" strokeLinecap="round" />
-            </svg>
-            <span style={{ fontSize: F.sizeBase, color: C.textMuted, fontFamily: F.family }}>
-              Cargando {selectedSymbol}...
-            </span>
-          </div>
+          <ThinkingOrbLoader state="working" size={64} label={`Cargando ${selectedSymbol}...`} />
         ) : loading ? (
           <LoadingState />
         ) : (
