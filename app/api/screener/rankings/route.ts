@@ -1,76 +1,7 @@
 import { NextResponse } from 'next/server';
-import YahooFinance from 'yahoo-finance2';
 import { STOCK_POOL } from '@/src/lib/stockPool';
-
-const yf = new YahooFinance();
-
-function getRaw(value: any): any {
-  if (value && typeof value === 'object' && 'raw' in value) return value.raw;
-  return value;
-}
-
-interface StockRow {
-  symbol: string;
-  price: number;
-  changePercent: number;
-  marketCap: number;
-  sector: string;
-  peRatio: number | null;
-  pbRatio: number | null;
-  psRatio: number | null;
-  divYield: number;
-  roe: number | null;
-  profitMargin: number | null;
-  revenueGrowth: number | null;
-  earningsGrowth: number | null;
-  debtToEquity: number | null;
-  volume: number;
-  avgVolume: number;
-  weekHigh: number;
-  weekLow: number;
-}
-
-async function fetchPool(): Promise<StockRow[]> {
-  const rows: StockRow[] = [];
-  for (let i = 0; i < STOCK_POOL.length; i += 10) {
-    const batch = STOCK_POOL.slice(i, i + 10);
-    const results = await Promise.all(batch.map(async (sym) => {
-      try {
-        const [qs, q] = await Promise.all([
-          yf.quoteSummary(sym, { modules: ['summaryDetail', 'defaultKeyStatistics', 'financialData', 'assetProfile'] }),
-          yf.quote(sym),
-        ]).catch(() => [null, null]);
-        if (!q || !q.regularMarketPrice) return null;
-        const sd = (qs as any)?.summaryDetail || {};
-        const dk = (qs as any)?.defaultKeyStatistics || {};
-        const fd = (qs as any)?.financialData || {};
-        const price = q.regularMarketPrice;
-        return {
-          symbol: sym,
-          price,
-          changePercent: q.regularMarketChangePercent || 0,
-          marketCap: getRaw(sd.marketCap) || 0,
-          sector: (qs as any)?.assetProfile?.sector || '',
-          peRatio: getRaw(sd.trailingPE) || null,
-          pbRatio: getRaw(dk.priceToBook) || null,
-          psRatio: getRaw(sd.priceToSalesTrailing12Months) || null,
-          divYield: (getRaw(sd.dividendYield) || 0) * 100,
-          roe: getRaw(fd.returnOnEquity) != null ? getRaw(fd.returnOnEquity) * 100 : null,
-          profitMargin: getRaw(fd.profitMargins) != null ? getRaw(fd.profitMargins) * 100 : null,
-          revenueGrowth: getRaw(fd.revenueGrowth) != null ? getRaw(fd.revenueGrowth) * 100 : null,
-          earningsGrowth: getRaw(fd.earningsGrowth) != null ? getRaw(fd.earningsGrowth) * 100 : null,
-          debtToEquity: getRaw(fd.debtToEquity) || null,
-          volume: q.regularMarketVolume || 0,
-          avgVolume: getRaw(sd.averageVolume) || 1,
-          weekHigh: q.fiftyTwoWeekHigh || price,
-          weekLow: q.fiftyTwoWeekLow || price,
-        };
-      } catch (e) { console.error(`Rankings fetch error for ${sym}:`, e); return null; }
-    }));
-    rows.push(...results.filter(Boolean) as StockRow[]);
-  }
-  return rows;
-}
+import { fetchPoolData, PoolRow } from '@/src/lib/screenerPool';
+import { cacheGet, cacheSet } from '@/src/lib/cache';
 
 function clamp(v: number): number {
   return Math.min(100, Math.max(0, Math.round(v)));
@@ -83,7 +14,7 @@ const SCREENER_MODELS = [
     icon: '🔄',
     description: 'Capital flight into quality small and mid-cap companies ranked by institutional flow while mega-cap tech loses momentum.',
     formulas: ['Tech Flow', 'Net Options', 'Dark Pool'],
-    compute: (s: StockRow) => {
+    compute: (s: PoolRow) => {
       const isSmallMid = s.marketCap < 5e10 && s.marketCap > 1e8;
       const techFlow = clamp(
         (isSmallMid ? 30 : 0) +
@@ -112,7 +43,7 @@ const SCREENER_MODELS = [
     icon: '⚡',
     description: 'Stocks showing strong upward price momentum with high relative strength and volume confirmation.',
     formulas: ['RS Momentum', 'Volume Surge', 'Trend Strength'],
-    compute: (s: StockRow) => {
+    compute: (s: PoolRow) => {
       const weekPos = ((s.price - s.weekLow) / Math.max(s.weekHigh - s.weekLow, 1)) * 100;
       const rsMomentum = clamp(weekPos * 0.4 + Math.max(0, s.changePercent * 3) + (s.revenueGrowth != null && s.revenueGrowth > 10 ? 15 : 0));
       const volRatio = s.volume / Math.max(s.avgVolume, 1);
@@ -127,7 +58,7 @@ const SCREENER_MODELS = [
     icon: '🌊',
     description: 'Mean reversion and swing trade setups identified through RSI extremes and Bollinger Band proximity.',
     formulas: ['RSI Setup', 'Band Proximity', 'Volume Reversal'],
-    compute: (s: StockRow) => {
+    compute: (s: PoolRow) => {
       const weekPos = ((s.price - s.weekLow) / Math.max(s.weekHigh - s.weekLow, 1)) * 100;
       const rsiSetup = clamp(weekPos < 30 ? 70 : weekPos > 70 ? 30 : 50 + (weekPos < 25 ? 20 : 0));
       const bandProximity = clamp(weekPos < 20 ? 80 : weekPos < 35 ? 60 : weekPos > 80 ? 70 : weekPos > 65 ? 50 : 30);
@@ -142,7 +73,7 @@ const SCREENER_MODELS = [
     icon: '🚀',
     description: 'Stocks breaking above key resistance levels with above-average volume and strong sector tailwinds.',
     formulas: ['Resistance Break', 'Volume Spike', 'Sector Flow'],
-    compute: (s: StockRow) => {
+    compute: (s: PoolRow) => {
       const pctFromHigh = ((s.weekHigh - s.price) / Math.max(s.weekHigh - s.weekLow, 1)) * 100;
       const resistanceBreak = clamp((pctFromHigh < 5 ? 80 : pctFromHigh < 10 ? 65 : pctFromHigh < 20 ? 45 : 20) + (s.changePercent > 2 ? 15 : 0));
       const volRatio = s.volume / Math.max(s.avgVolume, 1);
@@ -157,7 +88,7 @@ const SCREENER_MODELS = [
     icon: '🌙',
     description: 'Unusual large-volume trades detected through abnormal volume patterns and accumulation/distribution analysis.',
     formulas: ['Large Trades', 'Accumulation', 'Delta Flow'],
-    compute: (s: StockRow) => {
+    compute: (s: PoolRow) => {
       const volRatio = s.volume / Math.max(s.avgVolume, 1);
       const largeTrades = clamp((volRatio > 2.5 ? 85 : volRatio > 1.8 ? 65 : volRatio > 1.3 ? 45 : 20) + (s.changePercent > 0 ? 10 : 0));
       const weekPos = (s.price - s.weekLow) / Math.max(s.weekHigh - s.weekLow, 1);
@@ -172,7 +103,7 @@ const SCREENER_MODELS = [
     icon: '💥',
     description: 'High short interest stocks with elevated option activity that could trigger a gamma squeeze event.',
     formulas: ['Short Interest', 'Option Flow', 'IV Spike'],
-    compute: (s: StockRow) => {
+    compute: (s: PoolRow) => {
       const weekPos = (s.price - s.weekLow) / Math.max(s.weekHigh - s.weekLow, 1);
       const shortInterest = clamp((s.changePercent < -1 && weekPos < 0.3 ? 75 : s.changePercent < 0 && weekPos < 0.5 ? 55 : 25) + (s.debtToEquity != null && s.debtToEquity > 100 ? 15 : 0));
       const volRatio = s.volume / Math.max(s.avgVolume, 1);
@@ -187,7 +118,7 @@ const SCREENER_MODELS = [
     icon: '🐂',
     description: 'High-conviction long setups combining institutional accumulation, strong fundamentals, and technical momentum.',
     formulas: ['Inst. Flow', 'Fundamentals', 'Tech Momentum'],
-    compute: (s: StockRow) => {
+    compute: (s: PoolRow) => {
       const instFlow = clamp(
         (s.roe != null && s.roe > 20 ? 30 : s.roe != null && s.roe > 10 ? 20 : 5) +
         (s.profitMargin != null && s.profitMargin > 15 ? 25 : 10) +
@@ -214,7 +145,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const rows = await fetchPool();
+    const rows = await fetchPoolData(STOCK_POOL);
     const now = new Date();
     const fmtTime = now.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
     const fmtDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;

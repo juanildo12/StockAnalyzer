@@ -1,88 +1,21 @@
 import { NextResponse } from 'next/server';
-import YahooFinance from 'yahoo-finance2';
 import { getQuote as finnhubQuote } from '@/src/services/finnhubClient';
 import { STOCK_POOL } from '@/src/lib/stockPool';
+import { fetchPoolData, PoolRow } from '@/src/lib/screenerPool';
+import YahooFinance from 'yahoo-finance2';
 
 const yf = new YahooFinance();
 
 export const dynamic = 'force-dynamic';
 
-function getRaw(value: any): any {
-  if (value && typeof value === 'object' && 'raw' in value) return value.raw;
-  return value;
-}
-
-interface StockRow {
-  symbol: string;
-  price: number;
-  changePercent: number;
-  marketCap: number;
-  sector: string;
-  peRatio: number | null;
-  pbRatio: number | null;
-  psRatio: number | null;
-  divYield: number;
-  roe: number | null;
-  profitMargin: number | null;
-  revenueGrowth: number | null;
-  earningsGrowth: number | null;
-  debtToEquity: number | null;
-  volume: number;
-  avgVolume: number;
-  weekHigh: number;
-  weekLow: number;
-}
-
-async function fetchPool(): Promise<StockRow[]> {
-  const rows: StockRow[] = [];
-  for (let i = 0; i < STOCK_POOL.length; i += 10) {
-    const batch = STOCK_POOL.slice(i, i + 10);
-    const results = await Promise.all(batch.map(async (sym) => {
-      try {
-        const [qs, q] = await Promise.all([
-          yf.quoteSummary(sym, { modules: ['summaryDetail', 'defaultKeyStatistics', 'financialData', 'assetProfile'] }),
-          yf.quote(sym),
-        ]).catch(() => [null, null]);
-        if (!q || !q.regularMarketPrice) return null;
-        const sd = (qs as any)?.summaryDetail || {};
-        const dk = (qs as any)?.defaultKeyStatistics || {};
-        const fd = (qs as any)?.financialData || {};
-        return {
-          symbol: sym,
-          price: q.regularMarketPrice,
-          changePercent: q.regularMarketChangePercent || 0,
-          marketCap: getRaw(sd.marketCap) || 0,
-          sector: (qs as any)?.assetProfile?.sector || '',
-          peRatio: getRaw(sd.trailingPE) || null,
-          pbRatio: getRaw(dk.priceToBook) || null,
-          psRatio: getRaw(sd.priceToSalesTrailing12Months) || null,
-          divYield: (getRaw(sd.dividendYield) || 0) * 100,
-          roe: getRaw(fd.returnOnEquity) != null ? getRaw(fd.returnOnEquity) * 100 : null,
-          profitMargin: getRaw(fd.profitMargins) != null ? getRaw(fd.profitMargins) * 100 : null,
-          revenueGrowth: getRaw(fd.revenueGrowth) != null ? getRaw(fd.revenueGrowth) * 100 : null,
-          earningsGrowth: getRaw(fd.earningsGrowth) != null ? getRaw(fd.earningsGrowth) * 100 : null,
-          debtToEquity: getRaw(fd.debtToEquity) || null,
-          volume: q.regularMarketVolume || 0,
-          avgVolume: getRaw(sd.averageVolume) || 1,
-          weekHigh: q.fiftyTwoWeekHigh || q.regularMarketPrice,
-          weekLow: q.fiftyTwoWeekLow || q.regularMarketPrice,
-        };
-      } catch (e) { console.error(`Top-weekly fetch error for ${sym}:`, e); return null; }
-    }));
-    rows.push(...results.filter(Boolean) as StockRow[]);
-  }
-  return rows;
-}
-
 function clamp(v: number): number {
   return Math.min(100, Math.max(0, Math.round(v)));
 }
 
-// Reuse the same 7 screener models
 const SCREENER_MODELS = [
   {
     id: 'small-mid-rotation', name: 'Small/Mid Rotation',
-    compute: (s: StockRow) => {
+    compute: (s: PoolRow) => {
       const isSmallMid = s.marketCap < 5e10 && s.marketCap > 1e8;
       const f1 = clamp((isSmallMid ? 30 : 0) + (s.roe != null ? Math.min(25, s.roe / 3) : 0) + (s.revenueGrowth != null ? Math.min(25, s.revenueGrowth / 2) : 0) + (s.changePercent > 0 ? 15 : 0));
       const f2 = clamp((s.peRatio != null && s.peRatio < 20 ? 25 : s.peRatio != null && s.peRatio < 35 ? 15 : 5) + (s.profitMargin != null ? Math.min(30, s.profitMargin) : 0) + (s.earningsGrowth != null && s.earningsGrowth > 10 ? 20 : 0) + (s.debtToEquity != null && s.debtToEquity < 100 ? 15 : 0));
@@ -93,7 +26,7 @@ const SCREENER_MODELS = [
   },
   {
     id: 'momentum', name: 'Momentum',
-    compute: (s: StockRow) => {
+    compute: (s: PoolRow) => {
       const weekPos = ((s.price - s.weekLow) / Math.max(s.weekHigh - s.weekLow, 1)) * 100;
       const f1 = clamp(weekPos * 0.4 + Math.max(0, s.changePercent * 3) + (s.revenueGrowth != null && s.revenueGrowth > 10 ? 15 : 0));
       const volRatio = s.volume / Math.max(s.avgVolume, 1);
@@ -104,7 +37,7 @@ const SCREENER_MODELS = [
   },
   {
     id: 'swing', name: 'Swing',
-    compute: (s: StockRow) => {
+    compute: (s: PoolRow) => {
       const weekPos = ((s.price - s.weekLow) / Math.max(s.weekHigh - s.weekLow, 1)) * 100;
       const f1 = clamp(weekPos < 30 ? 70 : weekPos > 70 ? 30 : 50 + (weekPos < 25 ? 20 : 0));
       const f2 = clamp(weekPos < 20 ? 80 : weekPos < 35 ? 60 : weekPos > 80 ? 70 : weekPos > 65 ? 50 : 30);
@@ -115,7 +48,7 @@ const SCREENER_MODELS = [
   },
   {
     id: 'breakout', name: 'Breakout',
-    compute: (s: StockRow) => {
+    compute: (s: PoolRow) => {
       const pctFromHigh = ((s.weekHigh - s.price) / Math.max(s.weekHigh - s.weekLow, 1)) * 100;
       const f1 = clamp((pctFromHigh < 5 ? 80 : pctFromHigh < 10 ? 65 : pctFromHigh < 20 ? 45 : 20) + (s.changePercent > 2 ? 15 : 0));
       const volRatio = s.volume / Math.max(s.avgVolume, 1);
@@ -126,7 +59,7 @@ const SCREENER_MODELS = [
   },
   {
     id: 'dark-pool', name: 'Dark Pool',
-    compute: (s: StockRow) => {
+    compute: (s: PoolRow) => {
       const volRatio = s.volume / Math.max(s.avgVolume, 1);
       const f1 = clamp((volRatio > 2.5 ? 85 : volRatio > 1.8 ? 65 : volRatio > 1.3 ? 45 : 20) + (s.changePercent > 0 ? 10 : 0));
       const weekPos = (s.price - s.weekLow) / Math.max(s.weekHigh - s.weekLow, 1);
@@ -137,7 +70,7 @@ const SCREENER_MODELS = [
   },
   {
     id: 'gamma-squeeze', name: 'Gamma Squeeze',
-    compute: (s: StockRow) => {
+    compute: (s: PoolRow) => {
       const weekPos = (s.price - s.weekLow) / Math.max(s.weekHigh - s.weekLow, 1);
       const f1 = clamp((s.changePercent < -1 && weekPos < 0.3 ? 75 : s.changePercent < 0 && weekPos < 0.5 ? 55 : 25) + (s.debtToEquity != null && s.debtToEquity > 100 ? 15 : 0));
       const volRatio = s.volume / Math.max(s.avgVolume, 1);
@@ -148,7 +81,7 @@ const SCREENER_MODELS = [
   },
   {
     id: 'bull-trades', name: 'Bull Trades',
-    compute: (s: StockRow) => {
+    compute: (s: PoolRow) => {
       const f1 = clamp((s.roe != null && s.roe > 20 ? 30 : s.roe != null && s.roe > 10 ? 20 : 5) + (s.profitMargin != null && s.profitMargin > 15 ? 25 : 10) + (s.debtToEquity != null && s.debtToEquity < 50 ? 20 : s.debtToEquity != null && s.debtToEquity < 100 ? 10 : 0));
       const f2 = clamp((s.revenueGrowth != null ? Math.min(30, s.revenueGrowth) : 0) + (s.earningsGrowth != null ? Math.min(25, s.earningsGrowth) : 0) + (s.peRatio != null && s.peRatio < 30 ? 15 : 0) + (s.divYield > 0 ? 10 : 0));
       const weekPos = (s.price - s.weekLow) / Math.max(s.weekHigh - s.weekLow, 1);
@@ -158,17 +91,6 @@ const SCREENER_MODELS = [
   },
 ];
 
-interface RankedPick {
-  symbol: string;
-  price: number;
-  changePercent: number;
-  sector: string;
-  marketCap: number;
-  compositeScore: number;
-  screenerHits: { id: string; name: string; rank: number }[];
-  reasons: string[];
-}
-
 function calcRSI(closes: number[]): number | null {
   if (closes.length < 15) return null;
   let gains = 0, losses = 0;
@@ -177,17 +99,14 @@ function calcRSI(closes: number[]): number | null {
     if (diff > 0) gains += diff;
     else losses -= diff;
   }
-  const avgGain = gains / 14;
-  const avgLoss = losses / 14;
-  if (avgLoss === 0) return 100;
-  return 100 - 100 / (1 + avgGain / avgLoss);
+  if (losses === 0) return 100;
+  return 100 - 100 / (1 + gains / losses);
 }
 
 export async function GET() {
   try {
-    const rows = await fetchPool();
+    const rows = await fetchPoolData(STOCK_POOL);
 
-    // Compute rankings for each screener model
     const screenerRankings = SCREENER_MODELS.map(model => {
       const ranked = rows
         .map(s => ({ symbol: s.symbol, ...model.compute(s) }))
@@ -195,7 +114,6 @@ export async function GET() {
       return { id: model.id, name: model.name, rankings: ranked };
     });
 
-    // For each stock, compute aggregate score across screeners
     const stockMap = new Map<string, {
       symbol: string;
       price: number;
@@ -223,22 +141,19 @@ export async function GET() {
           };
           stockMap.set(r.symbol, entry);
         }
-        // Only count top 15 positions
         if (rank <= 15) {
-          const points = Math.max(0, 16 - rank); // 1st=15pts, 15th=1pt
+          const points = Math.max(0, 16 - rank);
           entry.totalScore += points;
           entry.screenerHits.push({ id: sr.id, name: sr.name, rank });
         }
       });
     }
 
-    // Get technical data (RSI, trend) for top candidates
     const candidates = Array.from(stockMap.values())
       .sort((a, b) => b.totalScore - a.totalScore)
       .slice(0, 20);
 
     const techData = new Map<string, { rsi: number | null; trend: string }>();
-
     const BATCH_SIZE = 5;
     for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
       const batch = candidates.slice(i, i + BATCH_SIZE);
@@ -253,54 +168,33 @@ export async function GET() {
           const rsi = calcRSI(closes);
           const trend = rsi !== null ? (rsi > 60 ? 'alcista' : rsi < 40 ? 'bajista' : 'neutral') : 'neutral';
           return { symbol: c.symbol, rsi, trend };
-        } catch (e) {
-          console.error(`Top-weekly tech data error for ${c.symbol}:`, e);
-          return { symbol: c.symbol, rsi: null, trend: 'neutral' };
-        }
+        } catch { return { symbol: c.symbol, rsi: null, trend: 'neutral' }; }
       }));
       for (const r of results) techData.set(r.symbol, r);
     }
 
-    // Score and filter: prefer bullish/fresh, penalize overbought
     const scored = candidates.map(c => {
       const tech = techData.get(c.symbol) || { rsi: null, trend: 'neutral' };
       let score = c.totalScore;
-
-      // Penalize overbought (RSI > 70)
       if (tech.rsi !== null && tech.rsi > 70) score -= 10;
       if (tech.rsi !== null && tech.rsi > 80) score -= 15;
-
-      // Boost bullish trend
       if (tech.trend === 'alcista') score += 8;
       if (tech.trend === 'bajista') score -= 8;
-
-      // Boost positive momentum
       if (c.changePercent > 2) score += 5;
       if (c.changePercent < -2) score -= 5;
 
-      // Generate reasons
       const reasons: string[] = [];
       const topHits = c.screenerHits.filter(h => h.rank <= 5).sort((a, b) => a.rank - b.rank);
-      if (topHits.length > 0) {
-        const topScreener = topHits[0];
-        reasons.push(`#1 en ${topScreener.name} (pos #${topScreener.rank})`);
-      }
-      if (c.screenerHits.length >= 3) {
-        reasons.push(`Aparece en ${c.screenerHits.length} screeners`);
-      }
+      if (topHits.length > 0) reasons.push(`#1 en ${topHits[0].name} (pos #${topHits[0].rank})`);
+      if (c.screenerHits.length >= 3) reasons.push(`Aparece en ${c.screenerHits.length} screeners`);
       if (tech.trend === 'alcista') reasons.push(`Tendencia alcista`);
       if (tech.rsi !== null && tech.rsi >= 40 && tech.rsi <= 60) reasons.push(`RSI neutro (${Math.round(tech.rsi)})`);
       if (c.changePercent > 1) reasons.push(`+${c.changePercent.toFixed(1)}% semanal`);
-      if (c.sector) reasons.push(`Sector: ${c.sector}`);
 
-      // Determine direction (ALZA/BAJA)
       let direction: 'ALZA' | 'BAJA' = 'ALZA';
       if (tech.trend === 'bajista') direction = 'BAJA';
       else if (tech.trend === 'neutral' && tech.rsi !== null && tech.rsi > 60) direction = 'BAJA';
-      else if (tech.trend === 'neutral' && tech.rsi !== null && tech.rsi < 40) direction = 'ALZA';
       else if (tech.trend === 'neutral' && c.changePercent < -1) direction = 'BAJA';
-
-      const signalLabel = direction === 'ALZA' ? 'Compra' : 'Venta';
 
       return {
         symbol: c.symbol,
@@ -313,28 +207,19 @@ export async function GET() {
         rsi: tech.rsi,
         trend: tech.trend,
         direction,
-        signalLabel,
+        signalLabel: direction === 'ALZA' ? 'Compra' : 'Venta',
         reasons: reasons.slice(0, 3),
       };
     });
 
-    const top4 = scored
-      .sort((a, b) => b.compositeScore - a.compositeScore)
-      .slice(0, 4);
+    const top4 = scored.sort((a, b) => b.compositeScore - a.compositeScore).slice(0, 4);
 
-    // Enrich top picks with real-time prices from Finnhub
     const enrichedTop4 = await Promise.all(
       top4.map(async (pick) => {
         try {
           const fh = await finnhubQuote(pick.symbol);
-          if (fh && fh.c > 0) {
-            return {
-              ...pick,
-              price: fh.c,
-              changePercent: fh.dp || pick.changePercent,
-            };
-          }
-        } catch (e) { console.error('Top-weekly finnhub enrichment error:', e); }
+          if (fh && fh.c > 0) return { ...pick, price: fh.c, changePercent: fh.dp || pick.changePercent };
+        } catch {}
         return pick;
       })
     );

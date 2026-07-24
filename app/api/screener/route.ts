@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
 import { getTodayInLaPaz } from '../../../src/utils/dateUtils';
+import { cacheGet, cacheSet } from '../../../src/lib/cache';
 
 const yf = new YahooFinance();
 
@@ -156,11 +157,26 @@ export async function GET(request: Request) {
   try {
     if (action === 'screener') {
       const today = getTodayInLaPaz();
+      const dateStr = today.toISOString().split('T')[0];
+      const cacheKey = `screener:daily:${dateStr}`;
+
+      const cached = await cacheGet<{ stocks: ScreenerStock[] }>(cacheKey);
+      if (cached && cached.stocks && cached.stocks.length > 0) {
+        return NextResponse.json({
+          stocks: cached.stocks,
+          total: cached.stocks.length,
+          screenerStocks: cached.stocks,
+          timestamp: Date.now(),
+          date: dateStr,
+          dailyCount: cached.stocks.length,
+        });
+      }
+
       const dailySeed = dateToSeed(today);
       const dailyStocks = seededShuffle(SAMPLE_STOCKS, dailySeed).slice(0, 50);
-      
+
       const results: ScreenerStock[] = [];
-      
+
       const batchSize = 5;
       for (let i = 0; i < dailyStocks.length; i += batchSize) {
         const batch = dailyStocks.slice(i, i + batchSize);
@@ -168,7 +184,9 @@ export async function GET(request: Request) {
         results.push(...batchResults.filter((r): r is ScreenerStock => r !== null));
       }
 
-      const dateStr = today.toISOString().split('T')[0];
+      if (results.length > 0) {
+        await cacheSet(cacheKey, { stocks: results }, 3600);
+      }
 
       return NextResponse.json(
         {
