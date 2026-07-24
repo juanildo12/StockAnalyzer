@@ -105,7 +105,7 @@ function computeBreakoutScore(
 ) {
   const reasons: string[] = [];
 
-  // Trend (0-30) — stricter: require alignment above both MAs
+  // Trend (0-30)
   let trend = 0;
   const aboveSma50 = sma50 !== null && price > sma50;
   const aboveSma200 = sma200 !== null && price > sma200;
@@ -117,7 +117,7 @@ function computeBreakoutScore(
   else if (rsi !== null && rsi >= 65 && rsi < 75) trend += 2;
   trend = clamp(trend, 0, 30);
 
-  // Volume (0-30) — stricter: need sustained volume surge
+  // Volume (0-30)
   let vol = 0;
   if (volRatio > 4.0) { vol += 28; reasons.push(`${volRatio.toFixed(1)}x volume`); }
   else if (volRatio > 3.0) { vol += 23; reasons.push(`${volRatio.toFixed(1)}x volume`); }
@@ -128,7 +128,7 @@ function computeBreakoutScore(
   else if (changePercent > 0 && volRatio > 1.5) vol += 2;
   vol = clamp(vol, 0, 30);
 
-  // Structure (0-20) — stricter: require proximity + tight consolidation + good R/R
+  // Structure (0-20)
   let structure = 0;
   const proximityPct = levels.resistance > 0 ? ((levels.resistance - price) / price) * 100 : 50;
   if (proximityPct < 1) { structure += 8; reasons.push('At resistance'); }
@@ -143,7 +143,7 @@ function computeBreakoutScore(
   else if (levels.riskReward >= 1.5) structure += 1;
   structure = clamp(structure, 0, 20);
 
-  // Safety (0-20) — stricter: need real growth + profitability + size
+  // Safety (0-20)
   let safety = 0;
   if (peRatio !== null && peRatio > 0 && peRatio < 30) safety += 8;
   else if (peRatio !== null && peRatio > 0 && peRatio < 45) safety += 5;
@@ -160,7 +160,7 @@ function computeBreakoutScore(
   return { score: trend + vol + structure + safety, reasons: reasons.slice(0, 5) };
 }
 
-// ─── Morning Briefing Entry Type ─────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 interface BriefingPick {
   symbol: string;
@@ -203,7 +203,6 @@ function getSetupLabel(reasons: string[]): string {
   const hasResistance = reasons.some(r => r.includes('resistance'));
   const hasConsolidation = reasons.some(r => r.includes('consolidation'));
   const hasGoldenCross = reasons.some(r => r.includes('Golden cross'));
-
   if (hasResistance && hasVolume) return 'Breakout con Volumen';
   if (hasConsolidation && hasResistance) return 'Consolidación → Ruptura';
   if (hasGoldenCross && hasVolume) return 'Golden Cross + Accumulación';
@@ -219,37 +218,236 @@ function getRiskNote(score: number, riskReward: number, rsi: number | null): str
   return '✅ Setup válido — entry en breakout confirmado con volumen';
 }
 
-// ─── Market Context ──────────────────────────────────────────────────────────
-
 async function getMarketContext() {
   try {
     const [spy, vix] = await Promise.all([
       yf.quote('SPY').catch(() => null),
       yf.quote('^VIX').catch(() => null),
     ]);
-
     return {
-      spy: spy ? {
-        price: spy.regularMarketPrice,
-        change: spy.regularMarketChangePercent || 0,
-      } : null,
+      spy: spy ? { price: spy.regularMarketPrice, change: spy.regularMarketChangePercent || 0 } : null,
       vix: vix ? {
         level: vix.regularMarketPrice,
         label: vix.regularMarketPrice > 25 ? 'ALTA' : vix.regularMarketPrice > 15 ? 'MEDIA' : 'BAJA',
       } : null,
     };
-  } catch {
-    return { spy: null, vix: null };
-  }
+  } catch { return { spy: null, vix: null }; }
 }
 
-// ─── Main Handler ────────────────────────────────────────────────────────────
+// ─── Build briefing (runs once, caches for 24h) ────────────────────────────
+
+async function buildBriefing() {
+  const universeCacheKey = 'briefing:universe:current';
+  const [universe, cooldownSymbols] = await Promise.all([
+    (async () => {
+      let u = await cacheGet<string[]>(universeCacheKey);
+      if (!u || u.length === 0) {
+        u = await fetchDynamicUniverse().catch(() => []);
+        await cacheSet(universeCacheKey, u, 1800);
+      }
+      return u;
+    })(),
+    Promise.all([
+      cacheGet<string[]>('briefing:picks:day0'),
+      cacheGet<string[]>('briefing:picks:day1'),
+    ]),
+  ]);
+
+  const cooldownSet = new Set([
+    ...(cooldownSymbols[0] || []),
+    ...(cooldownSymbols[1] || []),
+  ]);
+
+  console.log(`[Briefing] Building for ${universe.length} stocks...`);
+
+  // ── Fetch fundamental data ──
+  const rows: Array<{
+    symbol: string; name: string; price: number; changePercent: number;
+    marketCap: number; sector: string; peRatio: number | null;
+    revenueGrowth: number | null; volume: number; avgVolume: number;
+  }> = [];
+
+  const BATCHConcurrency = 8;
+  const fundamentalBatches: Array<Promise<typeof rows>> = [];
+  for (let i = 0; i < universe.length; i += 15) {
+    const batch = universe.slice(i, i + 15);
+    fundamentalBatches.push(
+      Promise.all(batch.map(async (sym) => {
+        try {
+          const q = await yf.quote(sym).catch(() => null);
+          if (!q || !q.regularMarketPrice) return null;
+          const sd = (q as any)?.summaryDetail || {};
+          const fd = (q as any)?.financialData || {};
+          return {
+            symbol: sym,
+            name: q.shortName || sym,
+            price: q.regularMarketPrice,
+            changePercent: q.regularMarketChangePercent || 0,
+            marketCap: getRaw((q as any)?.marketCap) || getRaw(sd.marketCap) || 0,
+            sector: '',
+            peRatio: getRaw((q as any)?.trailingPE) || getRaw(sd.trailingPE) || null,
+            revenueGrowth: getRaw(fd.revenueGrowth) != null ? getRaw(fd.revenueGrowth) * 100 : null,
+            volume: q.regularMarketVolume || 0,
+            avgVolume: getRaw(sd.averageVolume) || 1,
+          };
+        } catch { return null; }
+      })).then(results => results.filter(Boolean) as typeof rows)
+    );
+  }
+
+  for (let i = 0; i < fundamentalBatches.length; i += BATCHConcurrency) {
+    const chunk = fundamentalBatches.slice(i, i + BATCHConcurrency);
+    const chunkResults = await Promise.all(chunk);
+    for (const result of chunkResults) rows.push(...result);
+  }
+
+  console.log(`[Briefing] Got quotes for ${rows.length}/${universe.length} stocks`);
+
+  // ── Fetch historical data and compute breakout scores ──
+  const enriched: BriefingPick[] = [];
+  const HISTConcurrency = 8;
+  const historicalBatches: Array<Promise<BriefingPick[]>> = [];
+
+  for (let i = 0; i < rows.length; i += 15) {
+    const batch = rows.slice(i, i + 15);
+    historicalBatches.push(
+      Promise.all(batch.map(async (row) => {
+        try {
+          const hist: any = await yf.historical(row.symbol, {
+            period1: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
+            period2: new Date(),
+            interval: '1d',
+          }).catch(() => []);
+
+          const bars = (hist || []) as any[];
+          const closes = bars.map((b: any) => b.close).filter((c: number) => c > 0);
+          const highs = bars.map((b: any) => b.high).filter((h: number) => h > 0);
+          const lows = bars.map((b: any) => b.low).filter((l: number) => l > 0);
+
+          if (closes.length < 20) return null;
+
+          const rsi = calcRSI(closes);
+          const sma50 = calcSMA(closes, 50);
+          const sma200 = calcSMA(closes, 200);
+          const volRatio = row.volume / Math.max(row.avgVolume, 1);
+
+          if (rsi !== null && (rsi < 35 || rsi > 75)) return null;
+
+          const levels = detectLevels(closes, highs, lows, row.price);
+          const { score: rawScore, reasons } = computeBreakoutScore(
+            row.price, row.changePercent, rsi, sma50, sma200,
+            volRatio, row.peRatio, row.revenueGrowth, levels, row.marketCap,
+          );
+
+          const score = cooldownSet.has(row.symbol) ? Math.max(0, rawScore - 20) : rawScore;
+
+          if (score < 65) return null;
+          if (row.volume < 500_000) return null;
+          if (row.marketCap < 300_000_000) return null;
+
+          const proximityPct = levels.resistance > 0 ? ((levels.resistance - row.price) / row.price) * 100 : 50;
+
+          return {
+            symbol: row.symbol,
+            name: row.name,
+            price: row.price,
+            changePercent: row.changePercent,
+            sector: row.sector,
+            marketCap: row.marketCap,
+            breakoutScore: score,
+            confidence: getConfidence(score),
+            entryWindow: proximityPct < 1 ? 'Inmediato' : proximityPct < 3 ? 'Hoy' : 'Esta semana',
+            levels: {
+              entry: levels.resistance,
+              resistance: levels.resistance,
+              support: levels.support,
+              target1: levels.target1,
+              target2: levels.target2,
+              stopLoss: levels.stopLoss,
+              riskReward: levels.riskReward,
+            },
+            technicals: {
+              rsi: rsi !== null ? Math.round(rsi * 10) / 10 : null,
+              sma50: sma50 !== null ? Math.round(sma50 * 100) / 100 : null,
+              sma200: sma200 !== null ? Math.round(sma200 * 100) / 100 : null,
+              volRatio: Math.round(volRatio * 100) / 100,
+            },
+            reasons,
+            setup: getSetupLabel(reasons),
+            riskNote: getRiskNote(score, levels.riskReward, rsi),
+          };
+        } catch { return null; }
+      })).then(results => results.filter(Boolean) as BriefingPick[])
+    );
+  }
+
+  for (let i = 0; i < historicalBatches.length; i += HISTConcurrency) {
+    const chunk = historicalBatches.slice(i, i + HISTConcurrency);
+    const chunkResults = await Promise.all(chunk);
+    for (const result of chunkResults) enriched.push(...result);
+  }
+
+  console.log(`[Briefing] ${enriched.length} breakout candidates`);
+
+  const topPicks = enriched.sort((a, b) => b.breakoutScore - a.breakoutScore).slice(0, 10);
+
+  // Save picks for cooldown
+  const topSymbols = topPicks.map(p => p.symbol);
+  await Promise.all([
+    cacheSet('briefing:picks:day1', cooldownSymbols[0] || [], 172800),
+    cacheSet('briefing:picks:day0', topSymbols, 172800),
+  ]);
+
+  // Enrich top picks with real-time Finnhub prices
+  const finalPicks = await Promise.all(
+    topPicks.map(async (pick) => {
+      try {
+        const fh = await finnhubQuote(pick.symbol);
+        if (fh && fh.c > 0) {
+          return { ...pick, price: fh.c, changePercent: fh.dp || pick.changePercent };
+        }
+      } catch {}
+      return pick;
+    })
+  );
+
+  const market = await getMarketContext();
+
+  const highConf = finalPicks.filter(p => p.confidence === 'HIGH').length;
+  const avgRR = finalPicks.length > 0
+    ? Math.round(finalPicks.reduce((a, p) => a + p.levels.riskReward, 0) / finalPicks.length * 100) / 100
+    : 0;
+  const sectors = Array.from(new Set(finalPicks.map(p => p.sector).filter(Boolean)));
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const timeStr = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+  const responseData = {
+    date: dateStr,
+    time: timeStr,
+    market,
+    summary: {
+      totalScanned: rows.length,
+      totalBreakouts: enriched.length,
+      highConfidence: highConf,
+      avgRiskReward: avgRR,
+      topSectors: sectors.slice(0, 3),
+    },
+    picks: finalPicks,
+  };
+
+  // Cache for 24h
+  await cacheSet('briefing:live:current', responseData, 86400);
+  console.log(`[Briefing] Cached ${finalPicks.length} picks for 24h`);
+
+  return responseData;
+}
+
+// ─── GET: serve from cache or build on first request ────────────────────────
 
 export async function GET() {
-  const controller = new AbortController();
-  const deadline = setTimeout(() => controller.abort(), 20000);
   try {
-    // Check cache first (5 min TTL for morning briefing)
     const cached = await cacheGet<any>('briefing:live:current');
     if (cached) {
       return NextResponse.json(cached, {
@@ -257,235 +455,13 @@ export async function GET() {
       });
     }
 
-    // ── Get dynamic universe + cooldown symbols ──
-    const universeCacheKey = 'briefing:universe:current';
-    const [universe, cooldownSymbols] = await Promise.all([
-      (async () => {
-        let u = await cacheGet<string[]>(universeCacheKey);
-        if (!u || u.length === 0) {
-          u = await fetchDynamicUniverse().catch(() => []);
-          await cacheSet(universeCacheKey, u, 1800);
-        }
-        return u;
-      })(),
-      Promise.all([
-        cacheGet<string[]>('briefing:picks:day0'),
-        cacheGet<string[]>('briefing:picks:day1'),
-      ]),
-    ]);
-
-    const cooldownSet = new Set([
-      ...(cooldownSymbols[0] || []),
-      ...(cooldownSymbols[1] || []),
-    ]);
-
-    // ── Fetch fundamental data ──
-    const rows: Array<{
-      symbol: string; name: string; price: number; changePercent: number;
-      marketCap: number; sector: string; peRatio: number | null;
-      revenueGrowth: number | null; volume: number; avgVolume: number;
-    }> = [];
-
-    // Process all batches in parallel (max 5 concurrent batches to avoid rate limiting)
-    const BATCHConcurrency = 5;
-    const fundamentalBatches: Array<Promise<typeof rows>> = [];
-    for (let i = 0; i < universe.length; i += 10) {
-      const batch = universe.slice(i, i + 10);
-      fundamentalBatches.push(
-        Promise.all(batch.map(async (sym) => {
-          try {
-            const q = await yf.quote(sym).catch(() => null);
-            if (!q || !q.regularMarketPrice) return null;
-            const sd = (q as any)?.summaryDetail || {};
-            const fd = (q as any)?.financialData || {};
-            return {
-              symbol: sym,
-              name: q.shortName || sym,
-              price: q.regularMarketPrice,
-              changePercent: q.regularMarketChangePercent || 0,
-              marketCap: getRaw((q as any)?.marketCap) || getRaw(sd.marketCap) || 0,
-              sector: '',
-              peRatio: getRaw((q as any)?.trailingPE) || getRaw(sd.trailingPE) || null,
-              revenueGrowth: getRaw(fd.revenueGrowth) != null ? getRaw(fd.revenueGrowth) * 100 : null,
-              volume: q.regularMarketVolume || 0,
-              avgVolume: getRaw(sd.averageVolume) || 1,
-            };
-          } catch { return null; }
-        })).then(results => results.filter(Boolean) as typeof rows)
-      );
-    }
-
-    // Process in chunks of BATCHConcurrency
-    const allFundamentals: typeof rows = [];
-    for (let i = 0; i < fundamentalBatches.length; i += BATCHConcurrency) {
-      const chunk = fundamentalBatches.slice(i, i + BATCHConcurrency);
-      const chunkResults = await Promise.all(chunk);
-      for (const result of chunkResults) {
-        allFundamentals.push(...result);
-      }
-    }
-    rows.push(...allFundamentals);
-
-    // ── Fetch historical data and compute breakout scores ──
-    const enriched: BriefingPick[] = [];
-    const BATCH_SIZE = 5;
-
-    // Process all batches in parallel (max 5 concurrent batches to avoid rate limiting)
-    const HISTConcurrency = 5;
-    const historicalBatches: Array<Promise<BriefingPick[]>> = [];
-    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-      const batch = rows.slice(i, i + BATCH_SIZE);
-      historicalBatches.push(
-        Promise.all(batch.map(async (row) => {
-          try {
-            const hist: any = await yf.historical(row.symbol, {
-              period1: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
-              period2: new Date(),
-              interval: '1d',
-            }).catch(() => []);
-
-            const bars = (hist || []) as any[];
-            const closes = bars.map((b: any) => b.close).filter((c: number) => c > 0);
-            const highs = bars.map((b: any) => b.high).filter((h: number) => h > 0);
-            const lows = bars.map((b: any) => b.low).filter((l: number) => l > 0);
-
-            if (closes.length < 20) return null;
-
-            const rsi = calcRSI(closes);
-            const sma50 = calcSMA(closes, 50);
-            const sma200 = calcSMA(closes, 200);
-            const volRatio = row.volume / Math.max(row.avgVolume, 1);
-
-            // Require RSI between 35-75 for quality setups (no oversold/overbought traps)
-            if (rsi !== null && (rsi < 35 || rsi > 75)) return null;
-
-            const levels = detectLevels(closes, highs, lows, row.price);
-            const { score: rawScore, reasons } = computeBreakoutScore(
-              row.price, row.changePercent, rsi, sma50, sma200,
-              volRatio, row.peRatio, row.revenueGrowth, levels, row.marketCap,
-            );
-
-            // Cooldown penalty: -20 if stock appeared in last 2 briefings
-            const score = cooldownSet.has(row.symbol) ? Math.max(0, rawScore - 20) : rawScore;
-
-            // Require minimum quality: score >= 65, volume > 500K, market cap > 300M
-            if (score < 65) return null;
-            if (row.volume < 500_000) return null;
-            if (row.marketCap < 300_000_000) return null;
-
-            const proximityPct = levels.resistance > 0 ? ((levels.resistance - row.price) / row.price) * 100 : 50;
-
-            return {
-              symbol: row.symbol,
-              name: row.name,
-              price: row.price,
-              changePercent: row.changePercent,
-              sector: row.sector,
-              marketCap: row.marketCap,
-              breakoutScore: score,
-              confidence: getConfidence(score),
-              entryWindow: proximityPct < 1 ? 'Inmediato' : proximityPct < 3 ? 'Hoy' : 'Esta semana',
-              levels: {
-                entry: levels.resistance,
-                resistance: levels.resistance,
-                support: levels.support,
-                target1: levels.target1,
-                target2: levels.target2,
-                stopLoss: levels.stopLoss,
-                riskReward: levels.riskReward,
-              },
-              technicals: {
-                rsi: rsi !== null ? Math.round(rsi * 10) / 10 : null,
-                sma50: sma50 !== null ? Math.round(sma50 * 100) / 100 : null,
-                sma200: sma200 !== null ? Math.round(sma200 * 100) / 100 : null,
-                volRatio: Math.round(volRatio * 100) / 100,
-              },
-              reasons: reasons,
-              setup: getSetupLabel(reasons),
-              riskNote: getRiskNote(score, levels.riskReward, rsi),
-            };
-          } catch { return null; }
-        })).then(results => results.filter(Boolean) as BriefingPick[])
-      );
-    }
-
-    // Process in chunks of HISTConcurrency
-    for (let i = 0; i < historicalBatches.length; i += HISTConcurrency) {
-      const chunk = historicalBatches.slice(i, i + HISTConcurrency);
-      const chunkResults = await Promise.all(chunk);
-      for (const result of chunkResults) {
-        enriched.push(...result);
-      }
-    }
-
-    // Sort and take top picks
-    const topPicks = enriched
-      .sort((a, b) => b.breakoutScore - a.breakoutScore)
-      .slice(0, 5);
-
-    // Save picks to Redis for cooldown (rotate: day0 → day1, day1 expires)
-    const topSymbols = topPicks.map(p => p.symbol);
-    await Promise.all([
-      cacheSet('briefing:picks:day1', cooldownSymbols[0] || [], 172800), // 48h
-      cacheSet('briefing:picks:day0', topSymbols, 172800),               // 48h
-    ]);
-
-    // Enrich top 5 with real-time Finnhub prices
-    const finalPicks = await Promise.all(
-      topPicks.map(async (pick) => {
-        try {
-          const fh = await finnhubQuote(pick.symbol);
-          if (fh && fh.c > 0) {
-            return { ...pick, price: fh.c, changePercent: fh.dp || pick.changePercent };
-          }
-        } catch {}
-        return pick;
-      })
-    );
-
-    // Market context
-    const market = await getMarketContext();
-
-    // Summary stats
-    const highConf = finalPicks.filter(p => p.confidence === 'HIGH').length;
-    const avgRR = finalPicks.length > 0
-      ? Math.round(finalPicks.reduce((a, p) => a + p.levels.riskReward, 0) / finalPicks.length * 100) / 100
-      : 0;
-    const sectors = Array.from(new Set(finalPicks.map(p => p.sector).filter(Boolean)));
-
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const timeStr = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-
-    const responseData = {
-      date: dateStr,
-      time: timeStr,
-      market,
-      summary: {
-        totalScanned: rows.length,
-        totalBreakouts: enriched.length,
-        highConfidence: highConf,
-        avgRiskReward: avgRR,
-        topSectors: sectors.slice(0, 3),
-      },
-      picks: finalPicks,
-    };
-    await cacheSet('briefing:live:current', responseData, 300);
-    clearTimeout(deadline);
-    return NextResponse.json(responseData, {
+    // No cache → build the full briefing (first request of the day)
+    const data = await buildBriefing();
+    return NextResponse.json(data, {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
     });
   } catch (error) {
-    clearTimeout(deadline);
     console.error('Morning briefing error:', error);
-    if ((error as any)?.name === 'AbortError') {
-      return NextResponse.json({
-        date: '', time: '', market: { spy: null, vix: null },
-        summary: { totalScanned: 0, totalBreakouts: 0, highConfidence: 0, avgRiskReward: 0, topSectors: [] },
-        picks: [],
-        error: 'Briefing timed out — too many stocks to process',
-      }, { status: 504 });
-    }
     return NextResponse.json({
       date: '', time: '', market: { spy: null, vix: null },
       summary: { totalScanned: 0, totalBreakouts: 0, highConfidence: 0, avgRiskReward: 0, topSectors: [] },
