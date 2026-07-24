@@ -258,7 +258,6 @@ export async function GET() {
     }
 
     // ── Get dynamic universe + cooldown symbols ──
-    const MAX_UNIVERSE = 60;
     const universeCacheKey = 'briefing:universe:current';
     const [universe, cooldownSymbols] = await Promise.all([
       (async () => {
@@ -267,7 +266,7 @@ export async function GET() {
           u = await fetchDynamicUniverse().catch(() => []);
           await cacheSet(universeCacheKey, u, 1800);
         }
-        return u.slice(0, MAX_UNIVERSE);
+        return u;
       })(),
       Promise.all([
         cacheGet<string[]>('briefing:picks:day0'),
