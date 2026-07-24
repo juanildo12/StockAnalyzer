@@ -7,6 +7,7 @@ import Button from '@/src/components/ui/Button';
 import ScoreBar from '@/src/components/ui/ScoreBar';
 import { SkeletonBriefing } from '@/src/components/ui/Skeleton';
 import EmptyState from '@/src/components/ui/EmptyState';
+import ThinkingOrbLoader from '@/src/components/ThinkingOrbLoader';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -505,7 +506,7 @@ export default function MorningBriefing({ onSelectStock, userPlan = 'free' }: Mo
   useEffect(() => { fetchData(); }, [fetchData]);
 
   // Loading
-  if (loading) return <SkeletonBriefing />;
+  if (loading) return <ThinkingOrbLoader state="searching" size={64} label="Buscando breakouts..." />;
 
   // Error
   if (error) {
