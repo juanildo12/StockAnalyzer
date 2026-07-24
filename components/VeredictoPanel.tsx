@@ -3,6 +3,25 @@
 import { useEffect, useState } from 'react';
 import { colors as C, radius as R, font as F, transition as T } from '@/src/utils/webTheme';
 
+interface AIAnalysis {
+  verdict: string;
+  conviction: string;
+  summary: string;
+  entry: { ideal: number; stopLoss: number; tp1: number; tp2: number; currentOk: boolean };
+  analysis: {
+    trend: { signal: string; detail: string; strength?: string };
+    ema: { signal: string; detail: string; alignment?: string };
+    breakout: { signal: string; detail: string; level?: number };
+    volume: { signal: string; detail: string; vsAverage?: number };
+    momentum: { signal: string; detail: string; rsi?: number; macd?: string };
+    risk: { signal: string; detail: string; atr?: number };
+  };
+  support: { price: number; type: string }[];
+  resistance: { price: number; type: string }[];
+  catalysts: string[];
+  warnings: string[];
+}
+
 interface DetailDataField {
   signal?: string;
   score?: number;
@@ -161,6 +180,15 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
   const [optionsData, setOptionsData] = useState<any>(null);
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [expIndex, setExpIndex] = useState(0);
+  const [ai, setAi] = useState<AIAnalysis | null>(null);
+
+  useEffect(() => {
+    if (!symbol) return;
+    fetch(`/api/v1/ai/analysis?symbol=${symbol}`)
+      .then(r => r.json())
+      .then(json => { if (json?.success && json.analysis) setAi(json.analysis); })
+      .catch(() => {});
+  }, [symbol]);
 
   // ─── Pre-entry Checklist ────────────────────────────────────
   const itemTrend = trend ?? technical?.trend ?? 'lateral';
@@ -336,18 +364,34 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
 
   const buyLow = summary?.buyZoneLow ?? price * 0.9;
   const buyHigh = summary?.buyZoneHigh ?? price * 0.97;
-  const rawTp1 = summary?.target1 ?? price * 1.15;
-  const rawTp2 = summary?.target2 ?? price * 1.25;
-  const rawSl = summary?.stopLoss ?? price * 0.85;
-  // Sanity clamp: TP cannot be >5x current price, SL cannot be <0
-  const tp1 = rawTp1 > 0 && rawTp1 < price * 5 ? rawTp1 : price * 1.15;
-  const tp2 = rawTp2 > 0 && rawTp2 < price * 10 ? rawTp2 : tp1 * 1.25;
-  const sl = rawSl > 0 && rawSl < price ? rawSl : price * 0.85;
-  const potRet = price > 0 ? ((tp1 - price) / price) * 100 : 0;
+
+  // Same computation chain as StockDetailPanel Configuración de Operación
+  const p = price || 0;
+  const aiEntry = ai?.entry?.ideal || 0;
+  const aiStop = ai?.entry?.stopLoss || 0;
+  const aiTp1 = ai?.entry?.tp1 || 0;
+  const aiTp2 = ai?.entry?.tp2 || 0;
+  const sumEntry = summary?.buyZoneLow || 0;
+  const sumStop = summary?.stopLoss || 0;
+  const sumTp1 = summary?.target1 || 0;
+  const sumTp2 = summary?.target2 || 0;
+  const techSupport = technical?.support || 0;
+  const techResistance = technical?.resistance || 0;
+
+  const entry = aiEntry || sumEntry || (techSupport > 0 && techSupport < p ? techSupport : 0);
+  const stop = aiStop || sumStop || (techSupport > 0 && techSupport < p ? +(techSupport * 0.97).toFixed(2) : 0);
+
+  const validTp1 = p > 0 && sumTp1 > 0 && sumTp1 < p * 5 ? sumTp1 : 0;
+  const validTp2 = p > 0 && sumTp2 > 0 && sumTp2 < p * 10 ? sumTp2 : 0;
+  const tp1 = aiTp1 || validTp1 || (techResistance > 0 && techResistance > p ? techResistance : +(p * 1.15).toFixed(2));
+  const tp2 = aiTp2 || validTp2 || (techResistance > 0 && techResistance > p ? +(techResistance * 1.05).toFixed(2) : +(tp1 * 1.25).toFixed(2));
+  const sl = stop;
+
+  const potRet = p > 0 ? ((tp1 - p) / p) * 100 : 0;
 
   const call = calcCallScore(signal, trend, rsi);
   const put = calcPutScore(signal, trend, rsi);
-  const entry = getEntryAdvice(price, buyLow, buyHigh);
+  const entryAdvice = getEntryAdvice(price, buyLow, buyHigh);
 
   const hasVerdicts = (framework.scenarios ?? []).some(s => s.match && s.verdict);
 
@@ -452,7 +496,7 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
               {/* Entry Zone — same original style for BUY/HOLD */}
               <div style={{
                 background: C.bg, borderRadius: R.md, padding: 12,
-                border: isBearish ? `1px solid ${C.negative30}` : `1px solid ${entry.color}30`,
+                border: isBearish ? `1px solid ${C.negative30}` : `1px solid ${entryAdvice.color}30`,
               }}>
                 <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   {entryLabel}
@@ -471,15 +515,15 @@ export default function VeredictoPanel({ symbol, detailData, summary, quote, tec
                     <div style={{ fontSize: F.sizeSm, fontWeight: 600, color: C.textPrimary }}>
                       ${buyLow.toFixed(2)} — ${buyHigh.toFixed(2)}
                     </div>
-                    <div style={{ fontSize: F.sizeXs, color: entry.color, marginTop: 4, fontWeight: 500 }}>
-                      {entry.label}
+                    <div style={{ fontSize: F.sizeXs, color: entryAdvice.color, marginTop: 4, fontWeight: 500 }}>
+                      {entryAdvice.label}
                     </div>
                     <div style={{ marginTop: 6 }}>
                       <div style={{ position: 'relative', height: 4, background: C.divider, borderRadius: 2 }}>
                         <div style={{
                           position: 'absolute', left: 0, top: 0, height: '100%',
                           width: `${Math.min(100, ((price - buyLow) / (buyHigh - buyLow)) * 100)}%`,
-                          background: entry.color, borderRadius: 2,
+                          background: entryAdvice.color, borderRadius: 2,
                         }} />
                       </div>
                     </div>
