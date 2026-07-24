@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
+import ThinkingOrbLoader from '@/src/components/ThinkingOrbLoader';
 
 interface Hit {
   id: string;
@@ -64,12 +65,7 @@ export default function TopWeeklyPicks({ onStockClick }: { onStockClick?: (symbo
         border: `1px solid ${C.border}`,
         fontFamily: 'Inter, system-ui, sans-serif',
       }}>
-        <div style={{ width: '180px', height: '24px', background: C.bgCard, borderRadius: R.sm, marginBottom: '20px' }} />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: S.lg }}>
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} style={{ background: C.bgCard, borderRadius: R.xl, height: '180px' }} />
-          ))}
-        </div>
+        <ThinkingOrbLoader state="working" size={64} label="Buscando top picks..." />
       </div>
     );
   }

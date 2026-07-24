@@ -246,6 +246,8 @@ async function getMarketContext() {
 // ─── Main Handler ────────────────────────────────────────────────────────────
 
 export async function GET() {
+  const controller = new AbortController();
+  const deadline = setTimeout(() => controller.abort(), 20000);
   try {
     // Check cache first (5 min TTL for morning briefing)
     const cached = await cacheGet<any>('briefing:live:current');
@@ -256,6 +258,7 @@ export async function GET() {
     }
 
     // ── Get dynamic universe + cooldown symbols ──
+    const MAX_UNIVERSE = 60;
     const universeCacheKey = 'briefing:universe:current';
     const [universe, cooldownSymbols] = await Promise.all([
       (async () => {
@@ -264,7 +267,7 @@ export async function GET() {
           u = await fetchDynamicUniverse().catch(() => []);
           await cacheSet(universeCacheKey, u, 1800);
         }
-        return u;
+        return u.slice(0, MAX_UNIVERSE);
       })(),
       Promise.all([
         cacheGet<string[]>('briefing:picks:day0'),
@@ -292,21 +295,18 @@ export async function GET() {
       fundamentalBatches.push(
         Promise.all(batch.map(async (sym) => {
           try {
-            const [qs, q] = await Promise.all([
-              yf.quoteSummary(sym, { modules: ['summaryDetail', 'financialData', 'assetProfile'] }),
-              yf.quote(sym),
-            ]).catch(() => [null, null]);
+            const q = await yf.quote(sym).catch(() => null);
             if (!q || !q.regularMarketPrice) return null;
-            const sd = (qs as any)?.summaryDetail || {};
-            const fd = (qs as any)?.financialData || {};
+            const sd = (q as any)?.summaryDetail || {};
+            const fd = (q as any)?.financialData || {};
             return {
               symbol: sym,
               name: q.shortName || sym,
               price: q.regularMarketPrice,
               changePercent: q.regularMarketChangePercent || 0,
-              marketCap: getRaw(sd.marketCap) || 0,
-              sector: (qs as any)?.assetProfile?.sector || '',
-              peRatio: getRaw(sd.trailingPE) || null,
+              marketCap: getRaw((q as any)?.marketCap) || getRaw(sd.marketCap) || 0,
+              sector: '',
+              peRatio: getRaw((q as any)?.trailingPE) || getRaw(sd.trailingPE) || null,
               revenueGrowth: getRaw(fd.revenueGrowth) != null ? getRaw(fd.revenueGrowth) * 100 : null,
               volume: q.regularMarketVolume || 0,
               avgVolume: getRaw(sd.averageVolume) || 1,
@@ -472,11 +472,21 @@ export async function GET() {
       picks: finalPicks,
     };
     await cacheSet('briefing:live:current', responseData, 300);
+    clearTimeout(deadline);
     return NextResponse.json(responseData, {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
     });
   } catch (error) {
+    clearTimeout(deadline);
     console.error('Morning briefing error:', error);
+    if ((error as any)?.name === 'AbortError') {
+      return NextResponse.json({
+        date: '', time: '', market: { spy: null, vix: null },
+        summary: { totalScanned: 0, totalBreakouts: 0, highConfidence: 0, avgRiskReward: 0, topSectors: [] },
+        picks: [],
+        error: 'Briefing timed out — too many stocks to process',
+      }, { status: 504 });
+    }
     return NextResponse.json({
       date: '', time: '', market: { spy: null, vix: null },
       summary: { totalScanned: 0, totalBreakouts: 0, highConfidence: 0, avgRiskReward: 0, topSectors: [] },

@@ -492,12 +492,19 @@ export default function MorningBriefing({ onSelectStock, userPlan = 'free' }: Mo
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`/api/morning-briefing?t=${Date.now()}`);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 25000);
+      const res = await fetch(`/api/morning-briefing?t=${Date.now()}`, { signal: controller.signal });
+      clearTimeout(timeout);
       if (!res.ok) throw new Error('Error loading briefing');
       const json = await res.json();
       setData(json);
     } catch (err: any) {
-      setError(err.message || 'Error desconocido');
+      if (err.name === 'AbortError') {
+        setError('El briefing está tardando demasiado. Intenta de nuevo.');
+      } else {
+        setError(err.message || 'Error desconocido');
+      }
     } finally {
       setLoading(false);
     }

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import ScreenerCard from './ScreenerCard';
 import ScreenerDetailView from './ScreenerDetailView';
 import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
+import ThinkingOrbLoader from '@/src/components/ThinkingOrbLoader';
 
 interface RankingRow {
   symbol: string;
@@ -234,66 +235,7 @@ function LoadingState() {
       padding: S.xxl,
       border: `1px solid ${C.border}`,
     }}>
-      <div style={{ marginBottom: '28px' }}>
-        <div style={{
-          width: '140px',
-          height: '28px',
-          background: C.bgCard,
-          borderRadius: R.sm,
-          marginBottom: S.sm,
-        }} />
-        <div style={{
-          width: '200px',
-          height: '14px',
-          background: C.bgCard,
-          borderRadius: R.sm,
-        }} />
-      </div>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        gap: S.xxl,
-      }}>
-        {[1, 2, 3].map(i => (
-          <div key={i} style={{
-            background: C.bgCard,
-            borderRadius: '20px',
-            padding: '28px',
-            height: '320px',
-          }}>
-            <div style={{ display: 'flex', gap: S.lg, marginBottom: S.xxl }}>
-              <div style={{
-                width: '52px',
-                height: '52px',
-                borderRadius: R.full,
-                background: C.bgElevated,
-              }} />
-              <div style={{ flex: 1 }}>
-                <div style={{
-                  width: '100px',
-                  height: '12px',
-                  background: C.bgElevated,
-                  borderRadius: R.sm,
-                  marginBottom: S.sm,
-                }} />
-                <div style={{
-                  width: '180px',
-                  height: '18px',
-                  background: C.bgElevated,
-                  borderRadius: R.sm,
-                  marginBottom: S.sm,
-                }} />
-                <div style={{
-                  width: '280px',
-                  height: '12px',
-                  background: C.bgElevated,
-                  borderRadius: R.sm,
-                }} />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <ThinkingOrbLoader state="searching" size={64} label="Cargando rankings..." />
     </div>
   );
 }
