@@ -531,13 +531,14 @@ export default function MorningBriefing({ onSelectStock, userPlan = 'free' }: Mo
 
   // Empty
   if (!data || data.picks.length === 0) {
+    const isGenerating = data?.loading;
     return (
       <EmptyState
-        icon={<span style={{ fontSize: 28 }}>◆</span>}
-        title="No breakouts today"
-        description="The market isn't showing clear setups right now. Check back tomorrow for a new scan."
-        actionLabel="Refresh"
-        onAction={fetchData}
+        icon={<span style={{ fontSize: 28 }}>{isGenerating ? '⏳' : '◆'}</span>}
+        title={isGenerating ? 'Generando briefing...' : 'No breakouts today'}
+        description={data?.message || "The market isn't showing clear setups right now. Check back tomorrow for a new scan."}
+        actionLabel={isGenerating ? 'Waiting...' : 'Refresh'}
+        onAction={isGenerating ? undefined : fetchData}
       />
     );
   }
