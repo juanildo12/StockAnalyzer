@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { colors as C, radius as R, font as F, shadow, spacing as S } from '@/src/utils/webTheme';
+import { colors as C, radius as R } from '@/src/utils/webTheme';
 
 interface ContractData {
   strike: number;
