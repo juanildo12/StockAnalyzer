@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import {
-  Rocket, LayoutDashboard, Filter, BarChart3, Target,
+  Rocket, LayoutDashboard, Filter, BarChart3, Target, Crosshair,
   Watch, FlaskConical, Brain, Bot, Gamepad2,
   ChevronDown, ChevronRight, Zap, LineChart, Bell,
   Lock, Crown, Gem, Building2, Sun, Moon,
@@ -68,7 +68,9 @@ const NAV_GROUPS: NavGroup[] = [
     id: 'trading',
     label: 'Trading',
     items: [
+      { view: 'trade-picks', label: 'Trade Picks', icon: <Crosshair size={18} />, badge: 'PRO', minPlan: 'pro' },
       { view: 'alerts', label: 'Smart Alerts', icon: <Bell size={18} />, badge: 'PRO', minPlan: 'pro' },
+      { view: 'algo-alerts', label: 'Algo Alerts', icon: <Bot size={18} />, badge: 'PRO', minPlan: 'pro' },
       { view: 'options', label: 'Opciones', icon: <Target size={18} />, badge: 'ELITE', minPlan: 'elite' },
       { view: 'watchlist', label: 'Watchlist', icon: <Watch size={18} /> },
       { view: 'backtest', label: 'Backtest', icon: <FlaskConical size={18} />, badge: 'PRO', minPlan: 'pro' },

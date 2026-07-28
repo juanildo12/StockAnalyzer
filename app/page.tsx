@@ -28,6 +28,8 @@ import TradingTrainer from '@/components/TradingTrainer';
 import StockDetailPanel from '@/components/StockDetailPanel';
 import ValuationGauge from '@/components/ValuationGauge';
 import SmartAlertsPanel from '@/components/SmartAlertsPanel';
+import AlgoAlertsPanel from '@/components/AlgoAlertsPanel';
+import TradePickView from '@/components/TradePickView';
 import LandingHero from '@/components/LandingHero';
 import OnboardingModal from '@/components/OnboardingModal';
 import ThinkingOrbLoader, { InlineOrbLoader } from '@/src/components/ThinkingOrbLoader';
@@ -494,7 +496,7 @@ export default function Home() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [view, setView] = useState<'briefing' | 'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard' | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer' | 'alerts'>('analyzer');
+  const [view, setView] = useState<'briefing' | 'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard' | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer' | 'alerts' | 'algo-alerts' | 'trade-picks'>('analyzer');
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -523,8 +525,11 @@ export default function Home() {
   const [savingAlert, setSavingAlert] = useState<string | null>(null);
   const [dailyAnalysisCount, setDailyAnalysisCount] = useState(0);
   const [dashboardSymbol, setDashboardSymbol] = useState<string | undefined>(undefined);
+  const [hasMounted, setHasMounted] = useState(false);
 
   const { data: session, status } = useSession();
+
+  useEffect(() => { setHasMounted(true); }, []);
 
   useEffect(() => {
     let active = true;
@@ -1027,6 +1032,8 @@ export default function Home() {
                 { id: 'dashboard', icon: '📈', label: 'Dashboard', minPlan: 1 },
                 { id: 'screener', icon: '🔎', label: 'Screener', minPlan: 1 },
                 { id: 'alerts', icon: '🔔', label: 'Smart Alerts', minPlan: 1 },
+                { id: 'algo-alerts', icon: '🤖', label: 'Algo Alerts', minPlan: 1 },
+                { id: 'trade-picks', icon: '🎯', label: 'Trade Picks', minPlan: 1 },
                 { id: 'options', icon: '🎯', label: 'Opciones', minPlan: 2 },
                 { id: 'watchlist', icon: '👁️', label: 'Watchlist', minPlan: 0 },
                 { id: 'backtest', icon: '🧪', label: 'Backtest', minPlan: 1 },
@@ -1776,9 +1783,11 @@ export default function Home() {
           </>
         ) : null}
       </div>
+
+      {hasMounted && (<>
       {/* Vista de Informe - Nuevo Formato Detallado */}
-      {view === 'informe' && (
-      <div key={view} style={{ width: '100%', maxWidth: isMobile ? '100%' : '1200px', margin: '0 auto', padding: isMobile ? '12px' : '20px', boxSizing: 'border-box', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+      <div style={{ display: view === 'informe' ? 'block' : 'none' }}>
+      <div style={{ width: '100%', maxWidth: isMobile ? '100%' : '1200px', margin: '0 auto', padding: isMobile ? '12px' : '20px', boxSizing: 'border-box', animation: view === 'informe' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
           {data?.informeDetail ? (
             <RenderInforme informe={data.informeDetail} data={data} />
           ) : data ? (
@@ -1801,12 +1810,12 @@ export default function Home() {
             </div>
           )}
         </div>
-      )}
+      </div>
 
       {/* Vista de Risk Report */}
-      {view === 'risk-report' && (
-        data ? <RiskReport data={data} symbol={symbol} /> : (
-          <div key={view} style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', textAlign: 'center', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+      <div style={{ display: view === 'risk-report' ? 'block' : 'none' }}>
+        {data ? <RiskReport data={data} symbol={symbol} /> : (
+          <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px', textAlign: 'center', animation: view === 'risk-report' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
             <div style={{ background: C.bgCard, borderRadius: '16px', padding: '80px 32px', border: `1px solid ${C.border}` }}>
               <p style={{ fontSize: '48px', margin: '0 0 16px' }}>📊</p>
               <p style={{ color: C.textPrimary, fontSize: F.sizeXl, marginBottom: '8px' }}>Sin Risk Report</p>
@@ -1823,12 +1832,12 @@ export default function Home() {
               </button>
             </div>
           </div>
-        )
-      )}
+        )}
+      </div>
 
       {/* Vista de Opciones */}
-      {view === 'options' && (
-        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+      <div style={{ display: view === 'options' ? 'block' : 'none' }}>
+        <div style={{ animation: view === 'options' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
           <OptionsView 
             initialSymbol={symbol} 
             currentSymbol={symbol} 
@@ -1839,28 +1848,28 @@ export default function Home() {
             }} 
           />
         </div>
-      )}
+      </div>
 
       {/* Vista de Screener */}
-      {view === 'screener' && (
-        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+      <div style={{ display: view === 'screener' ? 'block' : 'none' }}>
+        <div style={{ animation: view === 'screener' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
           <ScreenerPage />
         </div>
-      )}
+      </div>
 
       {/* Vista de Trade Validator */}
-      {view === 'trade-validator' && (
-        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+      <div style={{ display: view === 'trade-validator' ? 'block' : 'none' }}>
+        <div style={{ animation: view === 'trade-validator' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
           <TradeValidator initialSymbol={symbol} onSymbolChange={(sym) => setSymbol(sym)} />
         </div>
-      )}
+      </div>
 
       {/* Vista de TradeStation */}
-      {view === 'tradestation' && (
-        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+      <div style={{ display: view === 'tradestation' ? 'block' : 'none' }}>
+        <div style={{ animation: view === 'tradestation' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
           <TradeStationPanel />
         </div>
-      )}
+      </div>
 
       {/* Vista de Briefing — always mounted, hidden when inactive to preserve state */}
       <div style={{ display: view === 'briefing' ? 'block' : 'none' }}>
@@ -1870,20 +1879,20 @@ export default function Home() {
       </div>
 
       {/* Vista de Dashboard */}
-      {view === 'dashboard' && (
-        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+      <div style={{ display: view === 'dashboard' ? 'block' : 'none' }}>
+        <div style={{ animation: view === 'dashboard' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
           <Dashboard onNavigateToAICoach={() => setView('ai-coach')} initialSymbol={dashboardSymbol} />
         </div>
-      )}
+      </div>
 
       {/* Vista de AI Coach */}
-      {view === 'ai-coach' && (
-        (['pro', 'elite', 'enterprise'].includes((session?.user as any)?.plan || 'free')) ? (
-          <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+      <div style={{ display: view === 'ai-coach' ? 'block' : 'none' }}>
+        {(['pro', 'elite', 'enterprise'].includes((session?.user as any)?.plan || 'free')) ? (
+          <div style={{ animation: view === 'ai-coach' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
             <AICoach symbol={symbol} onAnalyzeSymbol={(sym) => setSymbol(sym)} />
           </div>
         ) : (
-          <div key={view} style={{ padding: '60px 20px', textAlign: 'center', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+          <div style={{ padding: '60px 20px', textAlign: 'center', animation: view === 'ai-coach' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
             <div style={{ width: '80px', height: '80px', borderRadius: R.full, background: `linear-gradient(135deg, #ff00ff15, #00d4ff15)`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '36px' }}>🤖</div>
             <h2 style={{ color: C.textPrimary, fontSize: F.sizeHero, marginBottom: '8px' }}>AI Coach</h2>
             <p style={{ color: C.textSecondary, fontSize: F.sizeLg, marginBottom: '8px' }}>Tu asistente personal de trading con AI</p>
@@ -1894,36 +1903,52 @@ export default function Home() {
               Desbloquear con Pro — $49/mes
             </button>
           </div>
-        )
-      )}
+        )}
+      </div>
 
       {/* Vista de Backtest */}
-      {view === 'backtest' && (
-        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+      <div style={{ display: view === 'backtest' ? 'block' : 'none' }}>
+        <div style={{ animation: view === 'backtest' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
           <BacktestPanel />
         </div>
-      )}
+      </div>
 
       {/* Vista de Inversor Inteligente */}
-      {view === 'inversor-inteligente' && (
-        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+      <div style={{ display: view === 'inversor-inteligente' ? 'block' : 'none' }}>
+        <div style={{ animation: view === 'inversor-inteligente' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
           <ScreenerGraham onSelect={(sym) => { setSymbol(sym); setView('analyzer'); }} />
         </div>
-      )}
+      </div>
 
       {/* Vista de Trading Trainer */}
-      {view === 'trading-trainer' && (
-        <div key={view} style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+      <div style={{ display: view === 'trading-trainer' ? 'block' : 'none' }}>
+        <div style={{ animation: view === 'trading-trainer' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
           <TradingTrainer />
         </div>
-      )}
+      </div>
 
       {/* Vista de Smart Alerts */}
-      {view === 'alerts' && (
-        <div key={view} style={{ padding: '24px', maxWidth: 900, margin: '0 auto', width: '100%', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+      <div style={{ display: view === 'alerts' ? 'block' : 'none' }}>
+        <div style={{ padding: '24px', maxWidth: 900, margin: '0 auto', width: '100%', animation: view === 'alerts' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
           <SmartAlertsPanel />
         </div>
-      )}
+      </div>
+
+      {/* Vista de Algo Alerts */}
+      <div style={{ display: view === 'algo-alerts' ? 'block' : 'none' }}>
+        <div style={{ padding: '24px', maxWidth: 1100, margin: '0 auto', width: '100%', animation: view === 'algo-alerts' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
+          <AlgoAlertsPanel onSelectStock={(sym) => { setSymbol(sym); setView('analyzer'); }} />
+        </div>
+      </div>
+
+      {/* Vista de Trade Picks */}
+      <div style={{ display: view === 'trade-picks' ? 'block' : 'none' }}>
+        <div style={{ padding: '24px', maxWidth: 620, margin: '0 auto', width: '100%', animation: view === 'trade-picks' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
+          <TradePickView />
+        </div>
+      </div>
+
+      </>)}
 
       {/* Modal para agregar a Watchlist */}
       {showWatchlistModal && (

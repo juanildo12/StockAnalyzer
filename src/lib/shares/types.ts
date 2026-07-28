@@ -14,6 +14,25 @@ export interface ShareTrigger {
   riskReward: number;
 }
 
+export interface ProspectPickTrigger {
+  symbol: string;
+  company: string;
+  direction: 'CALL' | 'PUT';
+  entry: number;
+  stop: number;
+  target: number;
+  riskReward: number;
+  confidence: number;
+  score: number;
+  reasons: string[];
+  contract: {
+    strike: number;
+    expiration: string;
+    premium: number;
+    delta: number | null;
+  } | null;
+}
+
 export interface ShareResult {
   platform: "twitter" | "linkedin" | "discord";
   success: boolean;

@@ -117,10 +117,10 @@ export const STOCK_POOL = [
 
 export async function fetchDynamicUniverse(): Promise<string[]> {
   const [gainers, losers, mostActive, trending] = await Promise.all([
-    yf.screener({ scrIds: 'day_gainers', count: 75 }).catch(() => null),
-    yf.screener({ scrIds: 'day_losers', count: 75 }).catch(() => null),
-    yf.screener({ scrIds: 'most_actives', count: 75 }).catch(() => null),
-    yf.trendingSymbols('US', { count: 50 }).catch(() => null),
+    yf.screener({ scrIds: 'day_gainers', count: 75 }).catch((e) => { console.warn('[Universe] gainers failed:', e?.message); return null; }),
+    yf.screener({ scrIds: 'day_losers', count: 75 }).catch((e) => { console.warn('[Universe] losers failed:', e?.message); return null; }),
+    yf.screener({ scrIds: 'most_actives', count: 75 }).catch((e) => { console.warn('[Universe] mostActives failed:', e?.message); return null; }),
+    yf.trendingSymbols('US', { count: 50 }).catch((e) => { console.warn('[Universe] trending failed:', e?.message); return null; }),
   ]);
 
   const dynamic: string[] = [];

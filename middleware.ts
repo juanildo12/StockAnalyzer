@@ -152,6 +152,7 @@ export async function middleware(req: NextRequest) {
       pathname.startsWith("/api/v1/screener") ||
       pathname.startsWith("/api/v1/morning-briefing") ||
       pathname.startsWith("/api/v1/payments") ||
+      pathname.startsWith("/api/v1/algo-alerts") ||
       pathname === "/api/v1/jobs";
 
     if (!isPublicV1 && !token) {
@@ -199,7 +200,10 @@ export async function middleware(req: NextRequest) {
       pathname.startsWith("/api/options-chain") ||
       pathname.startsWith("/api/pro-signals") ||
       pathname.startsWith("/api/historical-metrics") ||
-      pathname.startsWith("/api/watchlist");
+      pathname.startsWith("/api/watchlist") ||
+      pathname === "/api/ai-coach" ||
+      pathname.startsWith("/api/prospect-pick") ||
+      pathname.startsWith("/api/trade-picks");
 
     if (!publicLegacy && !token) {
       return NextResponse.json(

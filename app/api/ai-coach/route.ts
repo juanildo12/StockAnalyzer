@@ -23,11 +23,163 @@ ESTRUCTURA:
 1. **Riesgo Clave:** El mayor riesgo que muchos pasan por alto
 2. **Análisis:** Paso a paso con los datos de múltiples fuentes
 3. **Oportunidad:** De qué depende el potencial
-4. **Veredicto:** Compra/Mantiene/Vende + contexto de precio + confianza`;
+4. **Veredicto:** Compra/Mantiene/Vende + contexto de precio + confianza
+
+PROSPECT PICK (OBLIGATORIO cuando hay setup fuerte):
+Cuando detectes una oportunidad de trade con ALTA convicción (score >= 85 basado en tus datos), DEBES terminar tu respuesta con este bloque EXACTO al final:
+
+[PROSPECT_PICK]
+SYMBOL: {ticker}
+COMPANY: {nombre de la empresa}
+DIRECTION: CALL o PUT
+ENTRY: {precio de entrada}
+STOP: {stop loss}
+TARGET: {target price}
+CONFIDENCE: {0-100}
+SCORE: {0-100}
+REASONS: {razón 1},{razón 2},{razón 3},{razón 4},{razón 5}
+[/PROSPECT_PICK]
+
+Reglas del PROSPECT_PICK:
+- Solo emítelo cuando tengas ALTA convicción. No cada análisis merece un Prospect Pick.
+- El SCORE se calcula: +20 por tendencia fuerte, +20 por volumen alto, +20 por soporte/resistencia claro, +15 por RSI favorable, +15 por opciones con buen flujo, +10 por sin eventos negativos cercanos.
+- ENTRY = precio actual o cerca de soporte si hay gap
+- STOP = soporte clave o 3-5% debajo de entry
+- TARGET = resistencia o extensión Fibonacci
+- REASONS = máximo 5 razones técnicas concretas (no genéricas)
+- DIRECTION = CALL si el setup es alcista, PUT si es bajista`;
+
+const SKIP_WORDS = new Set([
+  'NO','ES','EL','LA','LO','LE','SE','ME','TE','UN','UNA','SON','POR',
+  'CON','SIN','DEL','QUE','LAS','LOS','LES','MAS','PERO','CADA','SUS',
+  'ERA','HAN','SER','ESTA','ESTE','ESE','ESA','ELLA','ELLOS','TAMBIEN',
+  'ENTRE','DONDE','THE','AND','FOR','NOT','ARE','BUT','HAS','HAD',
+  'ITS','ALL','CAN','HOW','NOW','MAY','BUY','HOLD','SELL','ALTO',
+  'BAJO','MUY','TIPO','PARTE','OTRO','OTRA','VALE',
+  'NEW','TOP','BIG','FAR','GET','WAY','YEAR','LONG','SHORT','WEEK',
+  'DAY','MONTH','ALSO','WILL','THAN','THAT','THIS','FROM','WITH',
+  'AA','AAA','BBB','CCC','A','B','C','D','F','BB','DD','FF',
+  'I','OK','US','IT','IF','DO','GO','UP','SO','AM','PM','AN'
+]);
+
+// ── Server-side Prospect Pick scoring ──────────────────────────────────────
+
+function computeProspectPick(data: {
+  q: any; s: any; t: any;
+  finnhubQuote: any; insiderTxns: any[]; sentiment: any; recTrends: any[];
+  bestPrice: number; frameworkScore: number;
+  revGrowth: number; margin: number; pe: number; fcfYield: number | null;
+  high52w: number; low52w: number;
+  insiderBuys: number; insiderSells: number;
+  recBuy: number; recHold: number; recSell: number;
+  tipranks: any;
+}): { score: number; direction: 'CALL' | 'PUT'; reasons: string[]; entry: number; stop: number; target: number } | null {
+  const { q, s, t, bestPrice, frameworkScore, revGrowth, margin, pe, fcfYield, high52w, low52w,
+    insiderBuys, insiderSells, recBuy, recHold, recSell, tipranks } = data;
+
+  if (!bestPrice || bestPrice <= 0) return null;
+
+  let score = 0;
+  const reasons: string[] = [];
+
+  // 1. Volume surge (0-20 points)
+  const avgVol = q.averageDailyVolume3Month || q.averageDailyVolume10Day || 0;
+  const curVol = q.regularMarketVolume || 0;
+  if (avgVol > 0 && curVol > 0) {
+    const volRatio = curVol / avgVol;
+    if (volRatio >= 3) { score += 20; reasons.push(`Volumen ${volRatio.toFixed(1)}x promedio — fuerte acumulación`); }
+    else if (volRatio >= 2) { score += 15; reasons.push(`Volumen ${volRatio.toFixed(1)}x promedio — por encima del normal`); }
+    else if (volRatio >= 1.5) { score += 10; reasons.push(`Volumen ${volRatio.toFixed(1)}x promedio`); }
+  }
+
+  // 2. Trend (0-20 points)
+  const trend = (t?.trend || '').toLowerCase();
+  const rsi = t?.rsi || 50;
+  const sma50 = t?.sma50 || 0;
+  const sma200 = t?.sma200 || 0;
+
+  if (trend === 'alcista') {
+    score += 15; reasons.push('Tendencia alcista confirmada');
+    if (sma50 > 0 && sma200 > 0 && sma50 > sma200) { score += 5; reasons.push('Golden cross activo (SMA50 > SMA200)'); }
+  } else if (trend === 'bajista') {
+    // BULLISH reversal setups can be opportunities
+    if (rsi < 35) { score += 12; reasons.push('Sobreventa en tendencia bajista — posible rebote'); }
+    else { return null; } // Too bearish, no pick
+  } else {
+    if (rsi > 40 && rsi < 65) { score += 8; reasons.push('Consolidación con RSI neutral-alcista'); }
+  }
+
+  // 3. RSI favorable (0-15 points)
+  if (rsi >= 40 && rsi <= 65) { score += 15; reasons.push(`RSI ${rsi.toFixed(0)} — zona óptima de entrada`); }
+  else if (rsi >= 30 && rsi < 40) { score += 10; reasons.push(`RSI ${rsi.toFixed(0)} — zona de sobreventa parcial`); }
+  else if (rsi > 65 && rsi <= 75) { score += 5; reasons.push(`RSI ${rsi.toFixed(0)} — momentum fuerte pero cuidado`); }
+  else { return null; } // RSI too extreme
+
+  // 4. Support/Resistance clarity (0-10 points)
+  const support = t?.support || 0;
+  const resistance = t?.resistance || 0;
+  if (support > 0 && resistance > 0 && resistance > support) {
+    const distToSupport = (bestPrice - support) / bestPrice;
+    if (distToSupport < 0.05) { score += 10; reasons.push(`Cerca del soporte $${fmt(support)} — buen risk/reward`); }
+    else if (distToSupport < 0.10) { score += 7; reasons.push(`Soporte cercano $${fmt(support)}`); }
+    else { score += 3; }
+  }
+
+  // 5. Framework score (0-15 points)
+  if (frameworkScore >= 8) { score += 15; reasons.push(`Fundamentos excelentes (${frameworkScore}/10)`); }
+  else if (frameworkScore >= 6) { score += 10; reasons.push(`Fundamentos sólidos (${frameworkScore}/10)`); }
+  else if (frameworkScore >= 4) { score += 5; }
+
+  // 6. Analyst sentiment (0-10 points)
+  const totalRec = recBuy + recHold + recSell;
+  if (totalRec > 0) {
+    const buyPct = recBuy / totalRec;
+    if (buyPct >= 0.7) { score += 10; reasons.push(`${recBuy} analistas bullish — consenso fuerte`); }
+    else if (buyPct >= 0.5) { score += 5; }
+  }
+
+  // 7. Insider activity (-10 to +5 points)
+  if (insiderBuys > insiderSells && insiderBuys > 2) { score += 5; reasons.push('Insiders comprando — señal institucional positiva'); }
+  else if (insiderSells > insiderBuys * 3 && insiderSells > 5) { score -= 10; } // Heavy selling = red flag
+
+  // 8. 52-week position bonus
+  if (high52w > low52w) {
+    const pctFromLow = ((bestPrice - low52w) / (high52w - low52w)) * 100;
+    if (pctFromLow > 70 && pctFromLow < 90) { score += 5; reasons.push('En rango alto del 52W — momentum'); }
+  }
+
+  // Determine direction
+  let direction: 'CALL' | 'PUT' = 'CALL';
+  if (trend === 'bajista' && rsi < 35) {
+    direction = 'CALL'; // Contrarian bounce
+  }
+
+  // Compute entry/stop/target
+  const entry = bestPrice;
+  const atr = t?.atr || (bestPrice * 0.02); // fallback 2%
+  const stop = direction === 'CALL'
+    ? Math.max(support > 0 ? support * 0.98 : bestPrice - atr * 1.5, bestPrice * 0.93)
+    : Math.min(resistance > 0 ? resistance * 1.02 : bestPrice + atr * 1.5, bestPrice * 1.07);
+  const target = direction === 'CALL'
+    ? resistance > 0 ? Math.max(resistance, bestPrice + atr * 3) : bestPrice + atr * 3
+    : support > 0 ? Math.min(support, bestPrice - atr * 3) : bestPrice - atr * 3;
+  const risk = Math.abs(entry - stop);
+  const reward = Math.abs(target - entry);
+  const rr = risk > 0 ? reward / risk : 0;
+
+  // Only qualify if score >= 70 (not 85 — be a bit more aggressive to generate picks)
+  if (score < 70) return null;
+
+  return { score: Math.min(score, 100), direction, reasons: reasons.slice(0, 5), entry, stop, target };
+}
 
 function extractTicker(text: string): string | null {
-  const match = text.match(/\b[A-Z]{1,5}\b/);
-  return match ? match[0] : null;
+  const words = text.match(/\b[A-Z]{2,6}\b/g);
+  if (!words) return null;
+  for (const w of words) {
+    if (!SKIP_WORDS.has(w) && /^[A-Z]{2,5}$/.test(w)) return w;
+  }
+  return null;
 }
 
 function detectRequestType(text: string): RequestType {
@@ -81,6 +233,7 @@ export async function POST(request: NextRequest) {
     const requestType = ticker ? detectRequestType(lastMsg) : 'full';
 
     let dataBlock = '';
+    let computedPick: { score: number; direction: string; entry: number; stop: number; target: number; reasons: string[]; company: string } | null = null;
 
     if (ticker) {
       // Fetch ALL sources in parallel — each catches its own errors
@@ -161,9 +314,9 @@ export async function POST(request: NextRequest) {
         // ----- Insider summary -----
         let insiderSection = '';
         if (insiderTxns.length > 0) {
-          const buys = insiderTxns.filter(t => t.transactionCode === 'P').length;
-          const sells = insiderTxns.filter(t => t.transactionCode === 'S').length;
-          const totalShares = insiderTxns.reduce((sum, t) => sum + (t.change || 0), 0);
+          const buys = insiderTxns.filter((tx: any) => tx.transactionCode === 'P').length;
+          const sells = insiderTxns.filter((tx: any) => tx.transactionCode === 'S').length;
+          const totalShares = insiderTxns.reduce((sum: number, tx: any) => sum + (tx.change || 0), 0);
           insiderSection = `\n[INSIDERS] Buys:${buys} | Sells:${sells} | NetShares:${totalShares.toLocaleString()} | Latest:${insiderTxns[0]?.name || ''} at $${fmt(insiderTxns[0]?.transactionPrice)}`;
         }
 
@@ -213,6 +366,49 @@ export async function POST(request: NextRequest) {
           + `\n[FRAMEWORK] Score:${frameworkScore}/10 | FCF+:${isFCFPositive ? 'YES' : 'NO'} | Joyas:${isJoyas ? 'YES' : 'NO'} | Growth:${isGrowth ? 'YES' : 'NO'} | ValueTrap:${isValueTrap ? 'YES' : 'NO'} | Bomba:${isBomba ? 'YES' : 'NO'}`
           + `\n[SECTOR] ${q.sector || ''}`
           + `${finnhubSection}${insiderSection}${sentimentSection}${peersSection}${recSection}${tipranksSection}${newsBlock}`;
+
+        // ── Server-side Prospect Pick detection ──────────────────────────────
+        {
+          const buys = insiderTxns.filter((tx: any) => tx.transactionCode === 'P').length;
+          const sells = insiderTxns.filter((tx: any) => tx.transactionCode === 'S').length;
+          const latestRec = recTrends.length > 0 ? recTrends[0] : null;
+
+          computedPick = computeProspectPick({
+            q, s, t,
+            finnhubQuote,
+            insiderTxns,
+            sentiment,
+            recTrends,
+            bestPrice,
+            frameworkScore,
+            revGrowth, margin, pe, fcfYield,
+            high52w, low52w,
+            insiderBuys: buys,
+            insiderSells: sells,
+            recBuy: (latestRec?.strongBuy || 0) + (latestRec?.buy || 0),
+            recHold: latestRec?.hold || 0,
+            recSell: (latestRec?.sell || 0) + (latestRec?.strongSell || 0),
+            tipranks,
+          }) as any;
+
+          if (computedPick) {
+            computedPick.company = shortName;
+
+            const prospectPickBlock = `[PROSPECT_PICK]
+SYMBOL: ${ticker}
+COMPANY: ${computedPick.company}
+DIRECTION: ${computedPick.direction}
+ENTRY: ${fmt(computedPick.entry)}
+STOP: ${fmt(computedPick.stop)}
+TARGET: ${fmt(computedPick.target)}
+CONFIDENCE: ${Math.min(computedPick.score, 98)}
+SCORE: ${computedPick.score}
+REASONS: ${computedPick.reasons.join(',')}
+[/PROSPECT_PICK]`;
+
+            dataBlock += `\n\n[PROSPECT_PICK_GENERATED] Score:${computedPick.score}/100 Direction:${computedPick.direction} Entry:$${fmt(computedPick.entry)} Stop:$${fmt(computedPick.stop)} Target:$${fmt(computedPick.target)}\nReasons: ${computedPick.reasons.join(' | ')}\n\nIMPORTANTE: Al final de tu respuesta, DEBES incluir este bloque EXACTO tal cual:\n${prospectPickBlock}`;
+          }
+        }
       } else {
         dataBlock = `[ERROR] No data for ticker: ${ticker}`;
       }
@@ -255,7 +451,13 @@ export async function POST(request: NextRequest) {
     }
 
     const json = await response.json();
-    const text = json?.choices?.[0]?.message?.content || 'No se generó respuesta.';
+    let text = json?.choices?.[0]?.message?.content || 'No se generó respuesta.';
+
+    // ── Fallback: inject PROSPECT_PICK if server computed one but AI didn't echo ──
+    if (ticker && !text.includes('[PROSPECT_PICK]') && computedPick) {
+      text += `\n\n[PROSPECT_PICK]\nSYMBOL: ${ticker}\nCOMPANY: ${computedPick.company}\nDIRECTION: ${computedPick.direction}\nENTRY: ${fmt(computedPick.entry)}\nSTOP: ${fmt(computedPick.stop)}\nTARGET: ${fmt(computedPick.target)}\nCONFIDENCE: ${Math.min(computedPick.score, 98)}\nSCORE: ${computedPick.score}\nREASONS: ${computedPick.reasons.join(',')}\n[/PROSPECT_PICK]`;
+    }
+
     const encoder = new TextEncoder();
 
     return new Response(

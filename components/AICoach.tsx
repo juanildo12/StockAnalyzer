@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { colors as C, radius as R, font as F } from '@/src/utils/webTheme';
+import ProspectPickCard, { ProspectPickData } from './ProspectPickCard';
 
 const MODEL = 'nvidia/nemotron-3-ultra-550b-a55b:free';
 
@@ -43,6 +44,8 @@ export default function AICoach({
   const [loading, setLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [currentTicker, setCurrentTicker] = useState<string | null>(null);
+  const [prospectPick, setProspectPick] = useState<ProspectPickData | null>(null);
+  const [prospectPickLoading, setProspectPickLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const hasAutoSent = useRef(false);
@@ -101,10 +104,65 @@ export default function AICoach({
     return null;
   };
 
+  const parseProspectPick = useCallback((text: string): Partial<ProspectPickData> | null => {
+    const match = text.match(/\[PROSPECT_PICK\]\s*([\s\S]*?)\[\/PROSPECT_PICK\]/);
+    if (!match) return null;
+    const block = match[1];
+    const get = (key: string) => {
+      const m = block.match(new RegExp(`${key}:\\s*(.+)`, 'i'));
+      return m ? m[1].trim() : '';
+    };
+    const symbol = get('SYMBOL');
+    if (!symbol) return null;
+    return {
+      symbol,
+      company: get('COMPANY') || symbol,
+      direction: (get('DIRECTION').toUpperCase() === 'PUT' ? 'PUT' : 'CALL') as 'CALL' | 'PUT',
+      entry: parseFloat(get('ENTRY')) || 0,
+      stop: parseFloat(get('STOP')) || 0,
+      target: parseFloat(get('TARGET')) || 0,
+      confidence: parseInt(get('CONFIDENCE')) || 75,
+      score: parseInt(get('SCORE')) || 85,
+      reasons: get('REASONS').split(',').map(r => r.trim()).filter(Boolean),
+    };
+  }, []);
+
+  const fetchProspectPickData = useCallback(async (parsed: Partial<ProspectPickData>) => {
+    if (!parsed.symbol) return;
+    setProspectPickLoading(true);
+    try {
+      const res = await fetch(`/api/prospect-pick?symbol=${parsed.symbol}&direction=${parsed.direction || 'CALL'}`);
+      if (res.ok) {
+        const apiData = await res.json();
+        const fullData: ProspectPickData = {
+          symbol: parsed.symbol!,
+          company: apiData.company || parsed.company || parsed.symbol!,
+          direction: parsed.direction || 'CALL',
+          entry: parsed.entry || apiData.currentPrice || 0,
+          stop: parsed.stop || 0,
+          target: parsed.target || 0,
+          riskReward: parsed.target && parsed.stop && parsed.entry
+            ? Math.abs(parsed.target - parsed.entry) / Math.abs(parsed.entry - parsed.stop)
+            : 0,
+          confidence: parsed.confidence || 75,
+          score: parsed.score || 85,
+          reasons: parsed.reasons || [],
+          contract: apiData.contract || null,
+        };
+        setProspectPick(fullData);
+      }
+    } catch (e) {
+      console.error('[ProspectPick] Fetch error:', e);
+    } finally {
+      setProspectPickLoading(false);
+    }
+  }, []);
+
   const streamResponse = async (content: string, model: string, context: Message[]) => {
     try {
       const res = await fetch('/api/ai-coach', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: context.map(m => ({ role: m.role, content: m.content })),
@@ -139,6 +197,10 @@ export default function AICoach({
         if (sym && sym !== symbol) {
           setCurrentTicker(sym);
         }
+        const parsed = parseProspectPick(finalContent);
+        if (parsed) {
+          fetchProspectPickData(parsed);
+        }
         return prev;
       });
     } catch (e: any) {
@@ -168,6 +230,10 @@ export default function AICoach({
 
   const handleSuggestionClick = (question: string) => {
     sendMessage(question);
+  };
+
+  const stripProspectMarker = (text: string) => {
+    return text.replace(/\[PROSPECT_PICK\][\s\S]*?\[\/PROSPECT_PICK\]/g, '').trim();
   };
 
   return (
@@ -238,7 +304,7 @@ export default function AICoach({
                     ul: ({ children }) => <ul style={styles.ul}>{children}</ul>,
                     li: ({ children }) => <li style={styles.li}>{children}</li>,
                   }}>
-                    {msg.content || ' '}
+                    {stripProspectMarker(msg.content) || ' '}
                   </ReactMarkdown>
                 </div>
               ) : (
@@ -257,6 +323,37 @@ export default function AICoach({
         )}
 
         <div ref={messagesEndRef} />
+
+        {prospectPickLoading && (
+          <div style={styles.prospectLoading}>
+            <div style={styles.prospectLoadingDot} />
+            <div style={{ ...styles.prospectLoadingDot, animationDelay: '0.2s' }} />
+            <div style={{ ...styles.prospectLoadingDot, animationDelay: '0.4s' }} />
+            <span style={{ color: '#555A70', fontSize: 12, marginLeft: 8 }}>Generando Prospect Pick...</span>
+          </div>
+        )}
+
+        {prospectPick && (
+          <ProspectPickCard
+            data={prospectPick}
+            onShare={async (data) => {
+              try {
+                const res = await fetch('/api/prospect-pick/share', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ data, platforms: ['twitter'] }),
+                });
+                const result = await res.json();
+                if (result.results?.[0]?.postUrl) {
+                  window.open(result.results[0].postUrl, '_blank');
+                }
+              } catch (e) {
+                console.error('Share error:', e);
+              }
+            }}
+            onClose={() => setProspectPick(null)}
+          />
+        )}
       </div>
 
       <div style={styles.quickActions}>
@@ -568,5 +665,21 @@ const styles: Record<string, React.CSSProperties> = {
   },
   li: {
     margin: '2px 0',
+  },
+  prospectLoading: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '12px 16px',
+    background: '#161b22',
+    borderRadius: '12px',
+    border: '1px solid #21262d',
+  },
+  prospectLoadingDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    background: '#2DD4BF',
+    marginRight: '4px',
+    animation: 'bounce 1.4s infinite ease-in-out',
   },
 };
