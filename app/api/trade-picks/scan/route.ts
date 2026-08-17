@@ -359,39 +359,23 @@ export async function GET(request: NextRequest) {
     let topPick: TradePickCandidate | null = null;
     let contract: any = null;
 
-    // Mega / large caps with proven liquid options — search ALL for best contract
+    // Liquid mega caps with proven options chains — used as fallback candidates
     const LIQUID_UNIVERSE = [
-      // Mega-cap tech
       'NVDA', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'AMD', 'NFLX', 'CRM',
-      'AVGO', 'ORCL', 'PLTR', 'ADBE', 'INTU', 'NOW', 'AMAT', 'TXN', 'QCOM', 'MU',
-      'SNPS', 'CDNS', 'PANW', 'CRWD', 'NET', 'DDOG', 'ZS', 'ARM', 'SMCI',
-      // Growth / fintech
-      'SHOP', 'SQ', 'PYPL', 'UBER', 'SE', 'COIN', 'HOOD', 'APP', 'DASH', 'SOFI',
-      'RBLX', 'SNAP', 'PINS', 'AI', 'SMAR', 'TTD', 'HUBS',
-      // Semis
-      'MRVL', 'NXPI', 'MCHP', 'KLAC', 'LRCX', 'ASML',
-      // Consumer
-      'COST', 'WMT', 'MCD', 'NKE', 'DIS', 'SBUX', 'CMG', 'LULU', 'HD', 'LOW',
-      'TGT', 'TJX', 'ROST', 'STZ', 'DEO',
-      // Financials
-      'V', 'MA', 'JPM', 'GS', 'MS', 'BAC', 'AXP', 'SCHW', 'BLK', 'SPGI',
-      'CME', 'ICE', 'COF', 'PGR', 'MMC',
-      // Healthcare
-      'LLY', 'UNH', 'ABBV', 'MRK', 'PFE', 'BMY', 'GILD', 'AMGN', 'MDT',
-      'ABT', 'ISRG', 'VRTX', 'REGN', 'ZTS', 'SYK', 'HIMS',
-      // Industrial / defense
-      'CAT', 'GE', 'HON', 'BA', 'LMT', 'RTX', 'DE', 'UPS', 'RTX',
-      // Energy
-      'XOM', 'CVX', 'COP', 'SLB', 'EOG', 'MPC',
-      // Comms
-      'T', 'VZ', 'CMCSA', 'TMUS',
-      // Crypto
-      'MSTR', 'MARA', 'RIOT', 'COIN', 'MELI',
+      'AVGO', 'ORCL', 'PLTR', 'ADBE', 'QCOM', 'MU', 'UBER', 'SQ', 'PYPL', 'COIN',
+      'SHOP', 'DIS', 'NKE', 'JPM', 'GS', 'V', 'MA', 'LLY', 'UNH', 'BA',
+      'CAT', 'XOM', 'MRVL', 'ARM', 'SMCI', 'INTU', 'NOW', 'AMAT', 'TXN',
     ];
 
-    // Build the contract search set: liquid mega caps first, then top candidates by stock score
+    // Build the contract search set: top scored candidates first, then liquid universe
     const searchSet = new Map<string, TradePickCandidate>();
+    // Prioritize top 15 scored candidates from the scan
+    for (const c of candidates.slice(0, 15)) {
+      searchSet.set(c.symbol, c);
+    }
+    // Add liquid universe stocks not already in the set
     for (const sym of LIQUID_UNIVERSE) {
+      if (searchSet.has(sym)) continue;
       const existing = candidates.find((c) => c.symbol === sym);
       if (existing) {
         searchSet.set(sym, existing);
@@ -408,15 +392,8 @@ export async function GET(request: NextRequest) {
         } catch { /* skip */ }
       }
     }
-    for (const c of candidates.slice(0, 30)) {
-      if (!searchSet.has(c.symbol)) searchSet.set(c.symbol, c);
-    }
-    const tryCandidates = Array.from(searchSet.values());
-    // Shuffle so no single stock always goes first
-    for (let i = tryCandidates.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [tryCandidates[i], tryCandidates[j]] = [tryCandidates[j], tryCandidates[i]];
-    }
+    // Sort by stock score descending — best stocks first
+    const tryCandidates = Array.from(searchSet.values()).sort((a, b) => b.score - a.score);
 
     interface BestCombo { stock: TradePickCandidate; contract: any; score: number }
     let bestCombo: BestCombo | null = null;
@@ -478,6 +455,8 @@ export async function GET(request: NextRequest) {
             bestCombo = { stock: pick, contract: combo, score: weightedScore };
           }
         }
+        // If we found an excellent combo, stop early to save time
+        if (bestCombo && bestCombo.score >= 230) break;
       } catch {
         continue;
       }
