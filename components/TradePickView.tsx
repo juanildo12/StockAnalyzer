@@ -118,7 +118,7 @@ export default function TradePickView() {
   const isCall = currentPick?.direction === 'CALL';
   const dirColor = isCall ? '#34D399' : '#FB7185';
   const expDate = currentPick?.contract?.expiration
-    ? new Date(currentPick.contract.expiration).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    ? new Date(currentPick.contract.expiration + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : null;
 
   return (
@@ -177,6 +177,12 @@ export default function TradePickView() {
           <div style={styles.priceSection}>
             <div style={styles.priceLabel}>Current Price</div>
             <div style={styles.priceValue}>${fmt(currentPick.price)}</div>
+            {expDate && (
+              <div style={styles.expiryRow}>
+                <span>📅 Expiration</span>
+                <span style={styles.expiryValue}>{expDate}</span>
+              </div>
+            )}
           </div>
 
           {/* ── Options Contract ── */}
@@ -445,6 +451,24 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 28,
     fontWeight: 800,
     color: C.textPrimary,
+  },
+  expiryRow: {
+    marginTop: 12,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '8px 18px',
+    borderRadius: 999,
+    background: '#2DD4BF14',
+    border: '1px solid #2DD4BF40',
+    fontSize: 13,
+    fontWeight: 600,
+    color: '#8B90A5',
+  },
+  expiryValue: {
+    fontSize: 15,
+    fontWeight: 800,
+    color: '#2DD4BF',
   },
   contractBlock: {
     margin: '0 20px',

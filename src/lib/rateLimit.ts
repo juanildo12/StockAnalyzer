@@ -4,7 +4,7 @@ import { Redis } from "@upstash/redis";
 // ─── Per-tier rate limits ────────────────────────────────────────────────────
 // These are used by middleware for per-user rate limiting
 export const TIER_LIMITS = {
-  free: 30,
+  free: 120,
   pro: 120,
   elite: 300,
   enterprise: 500,

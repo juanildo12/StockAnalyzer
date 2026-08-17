@@ -7,8 +7,6 @@ import Sidebar from '@/components/Sidebar';
 import { 
   savePortfolioToFirestore, 
   getPortfolioFromFirestore, 
-  updatePortfolioItem,
-  removePortfolioItem,
   PortfolioItem,
   getWatchlistFromFirestore,
   updateWatchlistItem,
@@ -534,25 +532,53 @@ export default function Home() {
   useEffect(() => {
     let active = true;
     if (session?.user?.email) {
-      saveUserEmail(session.user.email, session.user.email);
+      try { saveUserEmail(session.user.email, session.user.email); } catch {}
     }
+    const readLocal = (key: string) => {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : [];
+      } catch { return []; }
+    };
     const loadAll = async () => {
       if (session?.user?.email) {
-        try {
-          const items = await getPortfolioFromFirestore(session.user.email);
-          if (active) setPortfolio(items);
-        } catch (error) {
-          console.error('Error loading portfolio:', error);
+        // localStorage is the primary source of truth (Firestore has auth/permission issues).
+        const localPortfolio = readLocal(LOCAL_PORTFOLIO_KEY) as PortfolioItem[];
+        if (localPortfolio.length > 0) {
+          if (active) setPortfolio(localPortfolio);
+        } else {
+          try {
+            const items = await getPortfolioFromFirestore(session.user.email);
+            if (active && items.length > 0) {
+              setPortfolio(items);
+              localStorage.setItem(LOCAL_PORTFOLIO_KEY, JSON.stringify(items));
+            }
+          } catch (error) {
+            console.error('Error loading portfolio:', error);
+          }
         }
-        try {
-          const items = await getWatchlistFromFirestore(session.user.email);
+
+        const localWatchlist = readLocal(LOCAL_WATCHLIST_KEY) as WatchlistItem[];
+        if (localWatchlist.length > 0) {
           if (active) {
-            setWatchlist(items);
+            setWatchlist(localWatchlist);
             setWatchlistError('');
           }
-          if (active && items.length > 0) fetchWatchlistPrices(items.map(w => w.symbol));
-        } catch (error) {
-          console.error('Error loading watchlist:', error);
+          if (active) fetchWatchlistPrices(localWatchlist.map(w => w.symbol));
+        } else {
+          try {
+            const items = await getWatchlistFromFirestore(session.user.email);
+            if (active) {
+              setWatchlist(items);
+              setWatchlistError('');
+            }
+            if (active && items.length > 0) {
+              localStorage.setItem(LOCAL_WATCHLIST_KEY, JSON.stringify(items));
+              fetchWatchlistPrices(items.map(w => w.symbol));
+            }
+          } catch (error) {
+            console.error('Error loading watchlist:', error);
+          }
         }
       } else {
         const pLocal = localStorage.getItem(LOCAL_PORTFOLIO_KEY);
@@ -604,43 +630,47 @@ export default function Home() {
   }, [watchlist.length]);
 
   const loadPortfolio = async () => {
+    const local = localStorage.getItem(LOCAL_PORTFOLIO_KEY);
+    if (local) {
+      const items = JSON.parse(local) as PortfolioItem[];
+      setPortfolio(items);
+      return;
+    }
     if (session?.user?.email) {
       try {
         const items = await getPortfolioFromFirestore(session.user.email);
-        setPortfolio(items);
+        if (items.length > 0) {
+          setPortfolio(items);
+          localStorage.setItem(LOCAL_PORTFOLIO_KEY, JSON.stringify(items));
+        }
       } catch (error) {
         console.error('Error loading portfolio:', error);
-      }
-    } else {
-      const local = localStorage.getItem(LOCAL_PORTFOLIO_KEY);
-      if (local) {
-        const items = JSON.parse(local) as PortfolioItem[];
-        setPortfolio(items);
       }
     }
   };
 
   const loadWatchlist = async () => {
+    const local = localStorage.getItem(LOCAL_WATCHLIST_KEY);
+    if (local) {
+      const items = JSON.parse(local) as WatchlistItem[];
+      setWatchlist(items);
+      setWatchlistError('');
+      if (items.length > 0) {
+        fetchWatchlistPrices(items.map(w => w.symbol));
+      }
+      return;
+    }
     if (session?.user?.email) {
       try {
         const items = await getWatchlistFromFirestore(session.user.email);
         setWatchlist(items);
         setWatchlistError('');
         if (items.length > 0) {
+          localStorage.setItem(LOCAL_WATCHLIST_KEY, JSON.stringify(items));
           fetchWatchlistPrices(items.map(w => w.symbol));
         }
       } catch (error) {
         console.error('Error loading watchlist:', error);
-      }
-    } else {
-      const local = localStorage.getItem(LOCAL_WATCHLIST_KEY);
-      if (local) {
-        const items = JSON.parse(local) as WatchlistItem[];
-        setWatchlist(items);
-        setWatchlistError('');
-        if (items.length > 0) {
-          fetchWatchlistPrices(items.map(w => w.symbol));
-        }
       }
     }
   };
@@ -711,6 +741,16 @@ export default function Home() {
   };
 
   const updateWatchlistAlert = async (symbol: string, alertPrice: number, alertEnabled: boolean, alertType: 'above' | 'below') => {
+    const local = localStorage.getItem(LOCAL_WATCHLIST_KEY);
+    if (local) {
+      const items = JSON.parse(local) as WatchlistItem[];
+      const index = items.findIndex(w => w.symbol === symbol);
+      if (index !== -1) {
+        items[index] = { ...items[index], alertPrice, alertEnabled, alertType };
+        localStorage.setItem(LOCAL_WATCHLIST_KEY, JSON.stringify(items));
+        setWatchlist(items);
+      }
+    }
     if (session?.user?.email) {
       try {
         await updateWatchlistItem(session.user.email, symbol, {
@@ -718,42 +758,28 @@ export default function Home() {
           alertEnabled,
           alertType
         });
-        await loadWatchlist();
       } catch (error) {
         console.error('Error updating watchlist alert:', error);
-      }
-    } else {
-      const local = localStorage.getItem(LOCAL_WATCHLIST_KEY);
-      if (local) {
-        const items = JSON.parse(local) as WatchlistItem[];
-        const index = items.findIndex(w => w.symbol === symbol);
-        if (index !== -1) {
-          items[index] = { ...items[index], alertPrice, alertEnabled, alertType };
-          localStorage.setItem(LOCAL_WATCHLIST_KEY, JSON.stringify(items));
-          setWatchlist(items);
-        }
       }
     }
   };
 
   const removeFromWatchlist = async (symbol: string) => {
+    const local = localStorage.getItem(LOCAL_WATCHLIST_KEY);
+    if (local) {
+      const items = JSON.parse(local) as WatchlistItem[];
+      const filtered = items.filter(w => w.symbol !== symbol);
+      localStorage.setItem(LOCAL_WATCHLIST_KEY, JSON.stringify(filtered));
+      setWatchlist(filtered);
+      const prices = { ...watchlistPrices };
+      delete prices[symbol];
+      setWatchlistPrices(prices);
+    }
     if (session?.user?.email) {
       try {
         await removeWatchlistItem(session.user.email, symbol);
-        await loadWatchlist();
       } catch (error) {
         console.error('Error removing from watchlist:', error);
-      }
-    } else {
-      const local = localStorage.getItem(LOCAL_WATCHLIST_KEY);
-      if (local) {
-        const items = JSON.parse(local) as WatchlistItem[];
-        const filtered = items.filter(w => w.symbol !== symbol);
-        localStorage.setItem(LOCAL_WATCHLIST_KEY, JSON.stringify(filtered));
-        setWatchlist(filtered);
-        const prices = { ...watchlistPrices };
-        delete prices[symbol];
-        setWatchlistPrices(prices);
       }
     }
   };
@@ -762,13 +788,11 @@ export default function Home() {
     return watchlist.some(w => w.symbol === symbol.toUpperCase());
   };
 
-  const savePortfolio = async (items: PortfolioItem[]) => {
-    if (!session?.user?.email) return;
+  const persistPortfolio = (items: PortfolioItem[]) => {
+    localStorage.setItem(LOCAL_PORTFOLIO_KEY, JSON.stringify(items));
     setPortfolio(items);
-    try {
-      await savePortfolioToFirestore(session.user.email, items);
-    } catch (error) {
-      console.error('Error saving portfolio:', error);
+    if (session?.user?.email) {
+      try { savePortfolioToFirestore(session.user.email, items); } catch {}
     }
   };
 
@@ -883,12 +907,24 @@ export default function Home() {
     };
 
     try {
-      // Always use localStorage for now (Firebase has permission issues)
       const localData = localStorage.getItem(LOCAL_PORTFOLIO_KEY);
       const items: PortfolioItem[] = localData ? JSON.parse(localData) : [];
-      items.push(newItem);
-      localStorage.setItem(LOCAL_PORTFOLIO_KEY, JSON.stringify(items));
-      setPortfolio(items);
+      const existingIndex = items.findIndex(p => p.symbol === newItem.symbol);
+      if (existingIndex >= 0) {
+        const existing = items[existingIndex];
+        const totalShares = existing.shares + newItem.shares;
+        items[existingIndex] = {
+          ...existing,
+          shares: totalShares,
+          purchasePrice: (existing.purchasePrice * existing.shares + newItem.purchasePrice * newItem.shares) / totalShares,
+          purchaseDate: newItem.purchaseDate,
+          notes: newItem.notes || existing.notes,
+          targetPrice: newItem.targetPrice || existing.targetPrice,
+        };
+      } else {
+        items.push(newItem);
+      }
+      persistPortfolio(items);
       setShowAddModal(false);
       setAddForm({ shares: '', price: '', date: new Date().toISOString().split('T')[0], notes: '', targetPrice: '' });
     } catch (error) {
@@ -898,18 +934,10 @@ export default function Home() {
 
   const removeFromPortfolio = async (sym: string) => {
     try {
-      if (session?.user?.email) {
-        const updatedPortfolio = await removePortfolioItem(session.user.email, sym);
-        setPortfolio(updatedPortfolio);
-      } else {
-        const local = localStorage.getItem(LOCAL_PORTFOLIO_KEY);
-        if (local) {
-          const items: PortfolioItem[] = JSON.parse(local);
-          const filtered = items.filter(item => item.symbol !== sym);
-          localStorage.setItem(LOCAL_PORTFOLIO_KEY, JSON.stringify(filtered));
-          setPortfolio(filtered);
-        }
-      }
+      const local = localStorage.getItem(LOCAL_PORTFOLIO_KEY);
+      const items: PortfolioItem[] = local ? JSON.parse(local) : [];
+      const filtered = items.filter(item => item.symbol !== sym);
+      persistPortfolio(filtered);
     } catch (error) {
       console.error('Error removing from portfolio:', error);
     }
@@ -928,7 +956,7 @@ export default function Home() {
   };
 
   const saveEdit = async () => {
-    if (!editingItem || !addForm.shares || !session?.user?.email) return;
+    if (!editingItem || !addForm.shares) return;
     
     const updates: Partial<PortfolioItem> = {
       shares: parseFloat(addForm.shares),
@@ -939,8 +967,13 @@ export default function Home() {
     };
 
     try {
-      const updatedPortfolio = await updatePortfolioItem(session.user.email, editingItem.symbol, updates);
-      setPortfolio(updatedPortfolio);
+      const local = localStorage.getItem(LOCAL_PORTFOLIO_KEY);
+      const items: PortfolioItem[] = local ? JSON.parse(local) : [];
+      const index = items.findIndex(p => p.symbol === editingItem.symbol);
+      if (index >= 0) {
+        items[index] = { ...items[index], ...updates };
+        persistPortfolio(items);
+      }
       setShowEditModal(false);
       setEditingItem(null);
       setAddForm({ shares: '', price: '', date: new Date().toISOString().split('T')[0], notes: '', targetPrice: '' });
@@ -1835,9 +1868,8 @@ export default function Home() {
         )}
       </div>
 
-      {/* Vista de Opciones */}
-      <div style={{ display: view === 'options' ? 'block' : 'none' }}>
-        <div style={{ animation: view === 'options' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
+      {view === 'options' && (
+        <div style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <OptionsView 
             initialSymbol={symbol} 
             currentSymbol={symbol} 
@@ -1848,51 +1880,45 @@ export default function Home() {
             }} 
           />
         </div>
-      </div>
+      )}
 
-      {/* Vista de Screener */}
-      <div style={{ display: view === 'screener' ? 'block' : 'none' }}>
-        <div style={{ animation: view === 'screener' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
+      {view === 'screener' && (
+        <div style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <ScreenerPage />
         </div>
-      </div>
+      )}
 
-      {/* Vista de Trade Validator */}
-      <div style={{ display: view === 'trade-validator' ? 'block' : 'none' }}>
-        <div style={{ animation: view === 'trade-validator' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
+      {view === 'trade-validator' && (
+        <div style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <TradeValidator initialSymbol={symbol} onSymbolChange={(sym) => setSymbol(sym)} />
         </div>
-      </div>
+      )}
 
-      {/* Vista de TradeStation */}
-      <div style={{ display: view === 'tradestation' ? 'block' : 'none' }}>
-        <div style={{ animation: view === 'tradestation' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
+      {view === 'tradestation' && (
+        <div style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <TradeStationPanel />
         </div>
-      </div>
+      )}
 
-      {/* Vista de Briefing — always mounted, hidden when inactive to preserve state */}
-      <div style={{ display: view === 'briefing' ? 'block' : 'none' }}>
-        <div style={{ animation: view === 'briefing' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
+      {view === 'briefing' && (
+        <div style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <Dashboard onNavigateToAICoach={() => setView('ai-coach')} initialSection="briefing" />
         </div>
-      </div>
+      )}
 
-      {/* Vista de Dashboard */}
-      <div style={{ display: view === 'dashboard' ? 'block' : 'none' }}>
-        <div style={{ animation: view === 'dashboard' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
+      {view === 'dashboard' && (
+        <div style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <Dashboard onNavigateToAICoach={() => setView('ai-coach')} initialSymbol={dashboardSymbol} />
         </div>
-      </div>
+      )}
 
-      {/* Vista de AI Coach */}
-      <div style={{ display: view === 'ai-coach' ? 'block' : 'none' }}>
-        {(['pro', 'elite', 'enterprise'].includes((session?.user as any)?.plan || 'free')) ? (
-          <div style={{ animation: view === 'ai-coach' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
+      {view === 'ai-coach' && (
+        (['pro', 'elite', 'enterprise'].includes((session?.user as any)?.plan || 'free')) ? (
+          <div style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
             <AICoach symbol={symbol} onAnalyzeSymbol={(sym) => setSymbol(sym)} />
           </div>
         ) : (
-          <div style={{ padding: '60px 20px', textAlign: 'center', animation: view === 'ai-coach' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
+          <div style={{ padding: '60px 20px', textAlign: 'center', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
             <div style={{ width: '80px', height: '80px', borderRadius: R.full, background: `linear-gradient(135deg, #ff00ff15, #00d4ff15)`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', fontSize: '36px' }}>🤖</div>
             <h2 style={{ color: C.textPrimary, fontSize: F.sizeHero, marginBottom: '8px' }}>AI Coach</h2>
             <p style={{ color: C.textSecondary, fontSize: F.sizeLg, marginBottom: '8px' }}>Tu asistente personal de trading con AI</p>
@@ -1903,50 +1929,44 @@ export default function Home() {
               Desbloquear con Pro — $49/mes
             </button>
           </div>
-        )}
-      </div>
+        )
+      )}
 
-      {/* Vista de Backtest */}
-      <div style={{ display: view === 'backtest' ? 'block' : 'none' }}>
-        <div style={{ animation: view === 'backtest' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
+      {view === 'backtest' && (
+        <div style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <BacktestPanel />
         </div>
-      </div>
+      )}
 
-      {/* Vista de Inversor Inteligente */}
-      <div style={{ display: view === 'inversor-inteligente' ? 'block' : 'none' }}>
-        <div style={{ animation: view === 'inversor-inteligente' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
+      {view === 'inversor-inteligente' && (
+        <div style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <ScreenerGraham onSelect={(sym) => { setSymbol(sym); setView('analyzer'); }} />
         </div>
-      </div>
+      )}
 
-      {/* Vista de Trading Trainer */}
-      <div style={{ display: view === 'trading-trainer' ? 'block' : 'none' }}>
-        <div style={{ animation: view === 'trading-trainer' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
+      {view === 'trading-trainer' && (
+        <div style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <TradingTrainer />
         </div>
-      </div>
+      )}
 
-      {/* Vista de Smart Alerts */}
-      <div style={{ display: view === 'alerts' ? 'block' : 'none' }}>
-        <div style={{ padding: '24px', maxWidth: 900, margin: '0 auto', width: '100%', animation: view === 'alerts' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
+      {view === 'alerts' && (
+        <div style={{ padding: '24px', maxWidth: 900, margin: '0 auto', width: '100%', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <SmartAlertsPanel />
         </div>
-      </div>
+      )}
 
-      {/* Vista de Algo Alerts */}
-      <div style={{ display: view === 'algo-alerts' ? 'block' : 'none' }}>
-        <div style={{ padding: '24px', maxWidth: 1100, margin: '0 auto', width: '100%', animation: view === 'algo-alerts' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
+      {view === 'algo-alerts' && (
+        <div style={{ padding: '24px', maxWidth: 1100, margin: '0 auto', width: '100%', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <AlgoAlertsPanel onSelectStock={(sym) => { setSymbol(sym); setView('analyzer'); }} />
         </div>
-      </div>
+      )}
 
-      {/* Vista de Trade Picks */}
-      <div style={{ display: view === 'trade-picks' ? 'block' : 'none' }}>
-        <div style={{ padding: '24px', maxWidth: 620, margin: '0 auto', width: '100%', animation: view === 'trade-picks' ? 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' : 'none' }}>
+      {view === 'trade-picks' && (
+        <div style={{ padding: '24px', maxWidth: 620, margin: '0 auto', width: '100%', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <TradePickView />
         </div>
-      </div>
+      )}
 
       </>)}
 

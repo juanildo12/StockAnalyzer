@@ -73,6 +73,7 @@ const NAV_GROUPS: NavGroup[] = [
       { view: 'algo-alerts', label: 'Algo Alerts', icon: <Bot size={18} />, badge: 'PRO', minPlan: 'pro' },
       { view: 'options', label: 'Opciones', icon: <Target size={18} />, badge: 'ELITE', minPlan: 'elite' },
       { view: 'watchlist', label: 'Watchlist', icon: <Watch size={18} /> },
+      { view: 'portfolio', label: 'Portafolio', icon: <Building2 size={18} /> },
       { view: 'backtest', label: 'Backtest', icon: <FlaskConical size={18} />, badge: 'PRO', minPlan: 'pro' },
     ],
   },

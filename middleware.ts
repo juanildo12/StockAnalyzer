@@ -11,7 +11,7 @@ const PLAN_HIERARCHY: Record<string, number> = {
 };
 
 const TIER_RATE_LIMITS: Record<string, [number, string]> = {
-  free:      [30,  "60 s"],
+  free:      [120, "60 s"],
   pro:       [120, "60 s"],
   elite:     [300, "60 s"],
   enterprise:[500, "60 s"],

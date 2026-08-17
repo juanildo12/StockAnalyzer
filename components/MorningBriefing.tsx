@@ -530,7 +530,7 @@ export default function MorningBriefing({ onSelectStock, userPlan = 'free' }: Mo
   }
 
   // Empty
-  if (!data || data.picks.length === 0) {
+  if (!data?.picks?.length) {
     return (
       <EmptyState
         icon={<span style={{ fontSize: 28 }}>◆</span>}

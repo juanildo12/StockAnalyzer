@@ -70,7 +70,7 @@ export default function TopWeeklyPicks({ onStockClick }: { onStockClick?: (symbo
     );
   }
 
-  if (!data || data.picks.length === 0) return null;
+  if (!data?.picks?.length) return null;
 
   return (
     <div style={{

@@ -20,7 +20,8 @@ function getApp(): FirebaseApp {
   return _app;
 }
 
-function getDb(): Firestore {
+function getDb(): Firestore | null {
+  if (!isFirebaseConfigured()) return null;
   if (!_db) {
     _db = getFirestore(getApp());
   }
@@ -49,56 +50,60 @@ const googleProvider = isFirebaseConfigured() ? new GoogleAuthProvider() : null;
 
 export { auth, googleProvider, isFirebaseConfigured };
 
+async function withDb<T>(fn: (db: Firestore) => Promise<T>): Promise<T | null> {
+  const db = getDb();
+  if (!db) return null;
+  try {
+    return await fn(db);
+  } catch (e) {
+    console.warn('[Firebase] operation failed:', e);
+    return null;
+  }
+}
+
 export async function saveUserEmail(userId: string, email: string): Promise<void> {
-  const userDocRef = doc(getDb(), "users", userId);
-  await setDoc(userDocRef, { email, updatedAt: new Date().toISOString() });
+  await withDb(db => setDoc(doc(db, "users", userId), { email, updatedAt: new Date().toISOString() }));
 }
 
 export async function getUserEmail(userId: string): Promise<string | null> {
-  const userDocRef = doc(getDb(), "users", userId);
-  const docSnap = await getDoc(userDocRef);
-  if (docSnap.exists()) {
-    return docSnap.data().email || null;
-  }
-  return null;
+  return withDb(async db => {
+    const docSnap = await getDoc(doc(db, "users", userId));
+    return docSnap.exists() ? (docSnap.data().email || null) : null;
+  });
 }
 
 export async function getAllWatchlistUsers(): Promise<{ userId: string; email: string }[]> {
-  const usersRef = collection(getDb(), "users");
-  const snapshot = await getDocs(usersRef);
-  const users: { userId: string; email: string }[] = [];
-  snapshot.forEach((doc) => {
-    const data = doc.data();
-    if (data.email) {
-      users.push({ userId: doc.id, email: data.email });
-    }
+  const result = await withDb(async db => {
+    const snapshot = await getDocs(collection(db, "users"));
+    const users: { userId: string; email: string }[] = [];
+    snapshot.forEach(d => {
+      const data = d.data();
+      if (data.email) users.push({ userId: d.id, email: data.email });
+    });
+    return users;
   });
-  return users;
+  return result ?? [];
 }
 
 export async function getAlertedSymbols(userId: string): Promise<string[]> {
-  const userDocRef = doc(getDb(), "alerted", userId);
-  const docSnap = await getDoc(userDocRef);
-  if (docSnap.exists()) {
-    return docSnap.data().symbols || [];
-  }
-  return [];
+  const result = await withDb(async db => {
+    const docSnap = await getDoc(doc(db, "alerted", userId));
+    return docSnap.exists() ? (docSnap.data().symbols || []) : [];
+  });
+  return result ?? [];
 }
 
 export async function addAlertedSymbol(userId: string, symbol: string): Promise<void> {
   const alerted = await getAlertedSymbols(userId);
   if (!alerted.includes(symbol)) {
     alerted.push(symbol);
-    const userDocRef = doc(getDb(), "alerted", userId);
-    await setDoc(userDocRef, { symbols: alerted, updatedAt: new Date().toISOString() });
+    await withDb(db => setDoc(doc(db, "alerted", userId), { symbols: alerted, updatedAt: new Date().toISOString() }));
   }
 }
 
 export async function clearAlertedSymbol(userId: string, symbol: string): Promise<void> {
   const alerted = await getAlertedSymbols(userId);
-  const filtered = alerted.filter(s => s !== symbol);
-  const userDocRef = doc(getDb(), "alerted", userId);
-  await setDoc(userDocRef, { symbols: filtered, updatedAt: new Date().toISOString() });
+  await withDb(db => setDoc(doc(db, "alerted", userId), { symbols: alerted.filter(s => s !== symbol), updatedAt: new Date().toISOString() }));
 }
 
 export interface PortfolioItem {
@@ -112,18 +117,15 @@ export interface PortfolioItem {
 }
 
 export async function savePortfolioToFirestore(userId: string, portfolio: PortfolioItem[]): Promise<void> {
-  const userDocRef = doc(getDb(), "portfolios", userId);
-  await setDoc(userDocRef, { portfolio, updatedAt: new Date().toISOString() });
+  await withDb(db => setDoc(doc(db, "portfolios", userId), { portfolio, updatedAt: new Date().toISOString() }));
 }
 
 export async function getPortfolioFromFirestore(userId: string): Promise<PortfolioItem[]> {
-  const userDocRef = doc(getDb(), "portfolios", userId);
-  const docSnap = await getDoc(userDocRef);
-  
-  if (docSnap.exists()) {
-    return docSnap.data().portfolio || [];
-  }
-  return [];
+  const result = await withDb(async db => {
+    const docSnap = await getDoc(doc(db, "portfolios", userId));
+    return docSnap.exists() ? (docSnap.data().portfolio || []) : [];
+  });
+  return result ?? [];
 }
 
 export async function addPortfolioItem(userId: string, item: PortfolioItem): Promise<PortfolioItem[]> {
@@ -152,12 +154,10 @@ export async function addPortfolioItem(userId: string, item: PortfolioItem): Pro
 export async function updatePortfolioItem(userId: string, symbol: string, updates: Partial<PortfolioItem>): Promise<PortfolioItem[]> {
   const portfolio = await getPortfolioFromFirestore(userId);
   const index = portfolio.findIndex(p => p.symbol === symbol);
-  
   if (index >= 0) {
     portfolio[index] = { ...portfolio[index], ...updates };
     await savePortfolioToFirestore(userId, portfolio);
   }
-  
   return portfolio;
 }
 
@@ -178,52 +178,36 @@ export interface WatchlistItem {
 }
 
 export async function saveWatchlistToFirestore(userId: string, watchlist: WatchlistItem[]): Promise<void> {
-  const userDocRef = doc(getDb(), "watchlists", userId);
-  await setDoc(userDocRef, { watchlist, updatedAt: new Date().toISOString() });
+  await withDb(db => setDoc(doc(db, "watchlists", userId), { watchlist, updatedAt: new Date().toISOString() }));
 }
 
 export async function getWatchlistFromFirestore(userId: string): Promise<WatchlistItem[]> {
-  const userDocRef = doc(getDb(), "watchlists", userId);
-  const docSnap = await getDoc(userDocRef);
-  
-  if (docSnap.exists()) {
-    return docSnap.data().watchlist || [];
-  }
-  return [];
+  const result = await withDb(async db => {
+    const docSnap = await getDoc(doc(db, "watchlists", userId));
+    return docSnap.exists() ? (docSnap.data().watchlist || []) : [];
+  });
+  return result ?? [];
 }
 
 export async function addWatchlistItem(userId: string, item: WatchlistItem): Promise<WatchlistItem[]> {
   const watchlist = await getWatchlistFromFirestore(userId);
-  
   if (!watchlist.some(w => w.symbol === item.symbol)) {
     watchlist.push(item);
     await saveWatchlistToFirestore(userId, watchlist);
   }
-  
   return watchlist;
 }
 
 export async function updateWatchlistItem(userId: string, symbol: string, updates: Partial<WatchlistItem>): Promise<WatchlistItem[]> {
   const watchlist = await getWatchlistFromFirestore(userId);
   const index = watchlist.findIndex(w => w.symbol === symbol);
-  
   if (index >= 0) {
-    const oldItem = watchlist[index];
     watchlist[index] = { ...watchlist[index], ...updates };
-    
-    // If alert settings changed (price, type, or enabled), clear the alerted flag
-    // so user can receive new alerts
-    if (
-      updates.alertPrice !== undefined ||
-      updates.alertType !== undefined ||
-      updates.alertEnabled !== undefined
-    ) {
+    if (updates.alertPrice !== undefined || updates.alertType !== undefined || updates.alertEnabled !== undefined) {
       await clearAlertedSymbol(userId, symbol);
     }
-    
     await saveWatchlistToFirestore(userId, watchlist);
   }
-  
   return watchlist;
 }
 
