@@ -398,11 +398,10 @@ export async function GET(request: NextRequest) {
     interface BestCombo { stock: TradePickCandidate; contract: any; score: number }
     let bestCombo: BestCombo | null = null;
 
-    for (const pick of tryCandidates) {
+    async function searchContracts(pick: TradePickCandidate): Promise<BestCombo | null> {
       try {
-        // chain.options only holds the NEAREST expiration — fetch all expiration dates first
         const datesChain = await withTimeout(yf.options(pick.symbol), 8000);
-        if (!datesChain?.expirationDates?.length) continue;
+        if (!datesChain?.expirationDates?.length) return null;
 
         const daysUntil = (t: number) => Math.ceil((t - Date.now()) / (1000 * 60 * 60 * 24));
         const targetDates = datesChain.expirationDates
@@ -414,7 +413,7 @@ export async function GET(request: NextRequest) {
           .sort((a: Date, b: Date) => Math.abs(daysUntil(a.getTime()) - 38) - Math.abs(daysUntil(b.getTime()) - 38))
           .slice(0, 2);
 
-        let allCombos: any[] = [];
+        let bestForPick: BestCombo | null = null;
         for (const expDate of targetDates) {
           const expChain = await withTimeout(yf.options(pick.symbol, { date: expDate }), 8000);
           const exp = expChain?.options?.[0];
@@ -423,11 +422,11 @@ export async function GET(request: NextRequest) {
             ? exp.expirationDate.getTime()
             : new Date(exp.expirationDate).getTime();
           const days = daysUntil(expTime);
-          if (days < 3) continue; // HARD REJECT: expired or expiring within 2 days
+          if (days < 3) continue;
           const dateStr = expDate.toISOString().split('T')[0];
           const contracts = pick.direction === 'CALL' ? (exp.calls || []) : (exp.puts || []);
-          const candidates = bestContract(contracts, pick.price, pick.direction === 'CALL');
-          for (const c of candidates) {
+          const contractCandidates = bestContract(contracts, pick.price, pick.direction === 'CALL');
+          for (const c of contractCandidates) {
             const bid = c.bid || 0;
             const ask = c.ask || 0;
             const mid = (bid + ask) / 2;
@@ -435,7 +434,6 @@ export async function GET(request: NextRequest) {
             const spreadPct = parseFloat(((ask - bid) / mid * 100).toFixed(1));
             const vol = c.volume || 0;
             const oi = c.openInterest || 0;
-            // HARD REJECT: wide spread or illiquid — NEVER include
             if (spreadPct > 10 || vol < 100 || oi < 500) continue;
             const delta = c.delta || c.greeks?.delta || approxDelta(c.strike, pick.price, pick.direction === 'CALL');
             const dteScore = days >= 30 && days <= 45 ? 30 : days >= 14 && days <= 60 ? 20 : days >= 7 ? 8 : 2;
@@ -444,22 +442,31 @@ export async function GET(request: NextRequest) {
             const liqBonus = vol >= 1000 && oi >= 5000 ? 40 : vol >= 500 && oi >= 2000 ? 30 : vol >= 100 && oi >= 500 ? 18 : 8;
             const spreadScore = spreadPct <= 3 ? 40 : spreadPct <= 6 ? 30 : spreadPct <= 10 ? 20 : -50;
             const combScore = contractScore + expScore + (days >= 14 ? 50 : 0) + spreadScore + liqBonus;
-            allCombos.push({ strike: c.strike, expiration: dateStr, daysToExpiration: days, premium: c.lastPrice || mid || 0, bid, ask, spreadPct, delta, volume: c.volume || 0, openInterest: c.openInterest || 0, impliedVolatility: c.impliedVolatility || 0, _score: combScore });
+            const weightedScore = combScore + (pick.score || 0) * 0.3;
+            const combo = { strike: c.strike, expiration: dateStr, daysToExpiration: days, premium: c.lastPrice || mid || 0, bid, ask, spreadPct, delta, volume: c.volume || 0, openInterest: c.openInterest || 0, impliedVolatility: c.impliedVolatility || 0, _score: combScore };
+            if (!bestForPick || weightedScore > bestForPick.score) {
+              bestForPick = { stock: pick, contract: combo, score: weightedScore };
+            }
           }
         }
-
-        for (const combo of allCombos) {
-          // Weight combo score with stock score (max 100) for better differentiation
-          const weightedScore = combo._score + (pick.score || 0) * 0.3;
-          if (!bestCombo || weightedScore > bestCombo.score) {
-            bestCombo = { stock: pick, contract: combo, score: weightedScore };
-          }
-        }
-        // If we found an excellent combo, stop early to save time
-        if (bestCombo && bestCombo.score >= 230) break;
+        return bestForPick;
       } catch {
-        continue;
+        return null;
       }
+    }
+
+    // Process candidates in parallel batches of 5
+    const OPT_BATCH = 5;
+    for (let i = 0; i < tryCandidates.length; i += OPT_BATCH) {
+      const batch = tryCandidates.slice(i, i + OPT_BATCH);
+      const results = await Promise.all(batch.map(searchContracts));
+      for (const r of results) {
+        if (r && (!bestCombo || r.score > bestCombo.score)) {
+          bestCombo = r;
+        }
+      }
+      // If we found an excellent combo, stop early
+      if (bestCombo && bestCombo.score >= 230) break;
     }
 
     if (bestCombo) {
