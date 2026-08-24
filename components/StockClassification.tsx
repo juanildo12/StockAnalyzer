@@ -18,6 +18,8 @@ interface StockData {
   industry: string;
   category: 'joya' | 'growth' | 'valueTrap' | 'bomba' | null;
   reasons: string[];
+  ema200: number | null;
+  ema200Distance: number | null;
 }
 
 interface ApiResponse {
@@ -200,6 +202,17 @@ export default function StockClassification({ onSelect }: { onSelect?: (symbol: 
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {s.ema200Distance != null && (
+                    <span style={{
+                      fontSize: 11, padding: '2px 6px', borderRadius: 4,
+                      background: s.ema200Distance >= 0 ? '#2DD4BF15' : '#F8717115',
+                      color: s.ema200Distance >= 0 ? '#2DD4BF' : '#F87171',
+                      border: `1px solid ${s.ema200Distance >= 0 ? '#2DD4BF40' : '#F8717140'}`,
+                      whiteSpace: 'nowrap', fontWeight: 600,
+                    }}>
+                      EMA200 {s.ema200Distance >= 0 ? '+' : ''}{s.ema200Distance.toFixed(1)}%
+                    </span>
+                  )}
                   {s.reasons.map((r, i) => (
                     <span key={i} style={{
                       fontSize: 11, padding: '2px 6px', borderRadius: 4,

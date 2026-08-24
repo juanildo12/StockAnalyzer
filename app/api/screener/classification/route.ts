@@ -16,6 +16,16 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
   return Promise.race([p, new Promise<T | null>((r) => setTimeout(() => r(null), ms))]);
 }
 
+function calcEMA200(closes: number[]): number | null {
+  if (closes.length < 200) return null;
+  const k = 2 / 201;
+  let ema = closes.slice(0, 200).reduce((a, b) => a + b, 0) / 200;
+  for (let i = 200; i < closes.length; i++) {
+    ema = closes[i] * k + ema * (1 - k);
+  }
+  return ema;
+}
+
 interface StockData {
   symbol: string;
   name: string;
@@ -31,6 +41,8 @@ interface StockData {
   industry: string;
   category: 'joya' | 'growth' | 'valueTrap' | 'bomba' | null;
   reasons: string[];
+  ema200: number | null;
+  ema200Distance: number | null;
 }
 
 const UNIVERSE = [
@@ -121,6 +133,8 @@ async function fetchStock(symbol: string): Promise<StockData | null> {
       industry: ap.industry || '',
       category: null,
       reasons: [],
+      ema200: null,
+      ema200Distance: null,
     };
   } catch {
     return null;
@@ -195,6 +209,44 @@ export async function GET() {
     const growths = results.filter(s => s.category === 'growth').sort((a, b) => (b.revenueGrowth || 0) - (a.revenueGrowth || 0));
     const traps = results.filter(s => s.category === 'valueTrap').sort((a, b) => (b.fcfYield || 0) - (a.fcfYield || 0));
     const bombas = results.filter(s => s.category === 'bomba').sort((a, b) => (b.pe || 0) - (a.pe || 0));
+
+    // Fetch EMA 200 only for classified stocks (saves time)
+    const classified = [...joyas, ...growths, ...traps, ...bombas];
+    const emaBatchSize = 5;
+    for (let i = 0; i < classified.length; i += emaBatchSize) {
+      const batch = classified.slice(i, i + emaBatchSize);
+      const histResults = await Promise.all(
+        batch.map(async (s) => {
+          try {
+            const hist = await withTimeout(
+              yf.historical(s.symbol, {
+                period1: new Date(Date.now() - 300 * 86400000),
+                period2: new Date(),
+                interval: '1d',
+              }),
+              7000
+            );
+            if (!hist || hist.length < 200) return null;
+            const closes = hist.map(h => h.close);
+            const ema200 = calcEMA200(closes);
+            if (!ema200) return null;
+            const distance = ((s.price - ema200) / ema200) * 100;
+            return { symbol: s.symbol, ema200, distance };
+          } catch {
+            return null;
+          }
+        })
+      );
+      for (const r of histResults) {
+        if (r) {
+          const stock = classified.find(s => s.symbol === r.symbol);
+          if (stock) {
+            stock.ema200 = r.ema200;
+            stock.ema200Distance = r.distance;
+          }
+        }
+      }
+    }
 
     const data = { stocks: results, joyas, growths, traps, bombas, total: results.length, classified: joyas.length + growths.length + traps.length + bombas.length, timestamp: Date.now() };
     await cacheSet(cacheKey, data, 3600);
