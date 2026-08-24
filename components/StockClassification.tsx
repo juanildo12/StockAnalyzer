@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { colors as C, radius as R, font as F } from '@/src/utils/webTheme';
 
 interface StockData {
@@ -55,8 +55,11 @@ export default function StockClassification({ onSelect }: { onSelect?: (symbol: 
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<string>('joyas');
   const [searchInput, setSearchInput] = useState('');
+  const fetchedRef = useRef(false);
 
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
     setLoading(true);
     fetch('/api/screener/classification')
       .then(r => r.json())

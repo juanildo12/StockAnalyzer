@@ -41,7 +41,7 @@ const UNIVERSE = [
   'HPE','ANET','CIEN','ERIC','NOK','GLW',
   // Growth / fintech
   'SHOP','SQ','PYPL','UBER','SE','COIN','HOOD','APP','DASH','SOFI',
-  'RBLX','SNAP','PINS','AI','SMAR','TTD','HUBS','MDB','SNOW','PLTR',
+  'RBLX','SNAP','PINS','AI','SMAR','TTD','HUBS','MDB','SNOW',
   'UPST','RKT','AFRM','LMND','CVNA','W','DOCU','ZM','PTON','TWLO',
   // Semis
   'MRVL','NXPI','MCHP','KLAC','LRCX','ASML','ON','STM','TER',
@@ -177,13 +177,17 @@ export async function GET() {
     if (cached) return NextResponse.json(cached);
 
     const results: StockData[] = [];
+    const seen = new Set<string>();
     const batchSize = 8;
 
     for (let i = 0; i < UNIVERSE.length; i += batchSize) {
       const batch = UNIVERSE.slice(i, i + batchSize);
       const batchResults = await Promise.all(batch.map(fetchStock));
       for (const r of batchResults) {
-        if (r) results.push(classify(r));
+        if (r && !seen.has(r.symbol)) {
+          seen.add(r.symbol);
+          results.push(classify(r));
+        }
       }
     }
 
