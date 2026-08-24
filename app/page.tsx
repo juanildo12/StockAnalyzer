@@ -21,6 +21,7 @@ import Dashboard from '@/components/Dashboard';
 import AICoach from '@/components/AICoach';
 import BacktestPanel from '@/components/BacktestPanel';
 import ScreenerGraham from '@/components/ScreenerGraham';
+import StockClassification from '@/components/StockClassification';
 import ScreenerPage from '@/app/screener/page';
 import TradingTrainer from '@/components/TradingTrainer';
 import StockDetailPanel from '@/components/StockDetailPanel';
@@ -494,7 +495,7 @@ export default function Home() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [view, setView] = useState<'briefing' | 'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard' | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer' | 'alerts' | 'algo-alerts' | 'trade-picks'>('analyzer');
+  const [view, setView] = useState<'briefing' | 'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard' | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer' | 'alerts' | 'algo-alerts' | 'trade-picks' | 'classification'>('analyzer');
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -1941,6 +1942,12 @@ export default function Home() {
       {view === 'inversor-inteligente' && (
         <div style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <ScreenerGraham onSelect={(sym) => { setSymbol(sym); setView('analyzer'); }} />
+        </div>
+      )}
+
+      {view === 'classification' && (
+        <div style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+          <StockClassification onSelect={(sym) => { setSymbol(sym); setView('analyzer'); }} />
         </div>
       )}
 
