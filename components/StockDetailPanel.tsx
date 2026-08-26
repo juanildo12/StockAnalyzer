@@ -157,6 +157,7 @@ export default function StockDetailPanel({
   const [aiError, setAiError] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [classification, setClassification] = useState<{ category: string; label: string; emoji: string; color: string } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const p = safe(price);
@@ -167,6 +168,16 @@ export default function StockDetailPanel({
     const t = setTimeout(() => setMounted(true), 50);
     return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    setClassification(null);
+    fetch(`/api/screener/classify?symbol=${symbol}`)
+      .then(r => r.json())
+      .then(json => { if (active && json?.category) setClassification(json); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [symbol]);
 
   useEffect(() => {
     let active = true;
@@ -237,6 +248,15 @@ export default function StockDetailPanel({
               }}>
                 {symbol}
               </span>
+              {classification && (
+                <span style={{
+                  fontSize: F.sizeXs, fontWeight: 700, color: classification.color,
+                  background: `${classification.color}20`, padding: '3px 10px', borderRadius: R.full,
+                  border: `1px solid ${classification.color}50`, backdropFilter: 'blur(4px)',
+                }}>
+                  {classification.emoji} {classification.label}
+                </span>
+              )}
               {sector && (
                 <span style={{
                   fontSize: F.sizeXs, fontWeight: 600, color: C.textMuted,
