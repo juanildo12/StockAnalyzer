@@ -50,45 +50,62 @@ const UNIVERSE = [
   'AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','AMD','NFLX','CRM',
   'AVGO','ORCL','PLTR','ADBE','INTU','NOW','AMAT','TXN','QCOM','MU',
   'SNPS','CDNS','PANW','CRWD','NET','DDOG','ZS','ARM','SMCI','IBM','DELL',
-  'HPE','ANET','CIEN','ERIC','NOK','GLW',
+  'HPE','ANET','CIEN','ERIC','NOK','GLW','FTNT','OKTA','WDAY','TEAM',
+  'TTD','HUBS','SMAR','FIVN','ESTC','MNDY','MDB','TWLO','COHR','LITE',
   // Growth / fintech
   'SHOP','SQ','PYPL','UBER','SE','COIN','HOOD','APP','DASH','SOFI',
-  'RBLX','SNAP','PINS','AI','SMAR','TTD','HUBS','MDB','SNOW',
-  'UPST','RKT','AFRM','LMND','CVNA','W','DOCU','ZM','PTON','TWLO',
+  'RBLX','SNAP','PINS','AI','SNOW',
+  'UPST','RKT','AFRM','LMND','CVNA','W','DOCU','ZM','PTON',
+  'CLOV','VNET','BIDU','YELP','PATH','GTLB','CART','BROS',
+  'ENV','BR','TORO','APPF','GDDY','WK',
   // Semis
   'MRVL','NXPI','MCHP','KLAC','LRCX','ASML','ON','STM','TER',
+  'AMKR','AEHR','DIODE','WOLF','POWL','KEYS','COHU','FORM',
   // Consumer
   'KO','PEP','WMT','COST','MCD','NKE','DIS','SBUX','CMG','LULU',
   'TJX','ROST','BBY','DG','DLTR','TGT','HD','LOW','BURL','URBN',
   'PG','EL','CL','HSY','MNST','KDP','KHC','GIS','STZ','DEO',
-  'SHAK','CAKE','YUM','CHTR','TMUS',
+  'SHAK','CAKE','YUM','CHTR','TMUS','ANF','AEO','GPS','HBI',
+  'KMB','CLX','SJM','CAG','TPR','RL','VFC','CROX','SKX','BOOT',
+  'WING','DIN','JACK','CPRT','FAST','PAYX','CTAS',
   // Financials
   'GS','MS','BAC','JPM','V','MA','AXP','SCHW','BLK','SPGI',
   'ICE','COF','DFS','SYF','ALL','MET','PRU','AON','MMC','CME','CB',
-  'PGR','TRV','IBKR',
+  'PGR','TRV','IBKR','TFC','CFG','KEY','RF','WAL','EWBC',
+  'WSBC','SBCF','UMBF','HOMB','BANR','WAFD','COLB','OMF','SLM',
   // Healthcare
   'UNH','ABBV','LLY','MRK','PFE','BMY','GILD','AMGN','MDT',
-  'ABT','ISRG','VRTX','REGN','MRNA','ZTS','SYK','BSX',
-  'DXCM','HCA','TDOC','HIMS','NTRA','CRSP',
+  'ABT','ISRG','VRTX','REGN','MRNA','ZTS','SYK','BSX','EW','RMD',
+  'DXCM','HCA','UHS','CYH','SEM','AMED','ENSG','GMED',
+  'IRTC','NVCR','NTRA','CRSP','BEAM','EDIT','NTLA',
+  'RARE','SRPT','IONS','NBIX','BBIO','ARWR','ALKS','HALO',
+  'ITCI','SAGE','ACAD','PTCT','BMRN','EXEL','RGEN','INSM',
+  'DOCS','TDOC','AMWL','HIMS','GDRX','OSCR','MOH','ILMN','VEEV','HOLX','ALGN','TECH','IDXX',
   // Industrial
   'BA','CAT','GE','HON','UPS','FDX','DE','EMR','ETN','ITW',
-  'WM','DAL','UAL','LUV',
+  'WM','DAL','UAL','LUV','ROK','PH','CMI','XYL','AME','GWW',
+  'RSG','J','ACM','FYBR','AAL','JBLU','SKYW',
   // Aerospace / defense
-  'LMT','NOC','RTX','GD','TDG',
+  'LMT','NOC','RTX','GD','TDG','LHX','HII','HWM','CW','KTOS','LDOS','SAIC',
   // Energy
   'XOM','CVX','COP','SLB','EOG','MPC','PSX','VLO','DVN','HAL','BKR',
+  'PXD','FANG','HES','MRO','OVV','SM','AR','CIVI','MTDR','SWN','EQT','RRC',
+  'CHRD','NOG','CEIX','ARCH','AMR','BTU',
   // REITs
   'AMT','PLD','CCI','EQIX','SPG','O','PSA','WELL','DLR',
+  'AVB','EQR','VTR','ARE','MAA','UDR','ESS','VICI','EXR','VNO','BXP','KIM','REG','HST',
   // Utilities
-  'NEE','DUK','SO','D','AEP','SRE','XEL','AES',
+  'NEE','DUK','SO','D','AEP','SRE','EXC','XEL',
+  'ED','WEC','ES','AWK','DTE','ETR','FE','AES',
   // Materials
-  'LIN','APD','SHW','ECL','NEM','FCX','NUE','AA','CLF',
+  'LIN','APD','SHW','ECL','DD','NEM','FCX','NUE',
+  'STLD','CMC','AA','X','CLF','MT','SCCO',
   // Comms
-  'T','VZ','CMCSA','WBD','PARA','FOX',
+  'T','VZ','CMCSA','WBD','PARA','FOX','LYV','LUMN','DISH','MGNI','PUBM','DV','MAX',
   // Crypto
-  'MSTR','MARA','RIOT','MELI',
-  // Mid-cap growth
-  'CART','BROS','ENV','BR','TORO','IONQ','RGTI','APPF','GDDY',
+  'MSTR','MARA','RIOT','MELI','CLSK','IREN','HUT','BITF','CIFR','BTBT','CORZ','WULF',
+  // LatAm
+  'NU','STNE','PAGS','YPF','BMA','GGAL','SUPV','CRESY','TEO','TGS',
 ];
 
 async function fetchStock(symbol: string): Promise<StockData | null> {
