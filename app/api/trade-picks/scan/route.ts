@@ -268,17 +268,19 @@ function scoreStock(
     }
   }
 
-  // 7. Risk / reward (0-5)
+  // 7. Risk / reward (0-5) — wider stops, bigger targets for better R:R
   const entry = price;
   const stop = direction === 'CALL'
-    ? Math.max(support > 0 ? support * 0.98 : price - atr * 2, price * 0.93)
-    : Math.min(resistance > 0 ? resistance * 1.02 : price + atr * 2, price * 1.07);
+    ? Math.max(support > 0 ? support * 0.97 : price - atr * 3, price * 0.90)
+    : Math.min(resistance > 0 ? resistance * 1.03 : price + atr * 3, price * 1.10);
   const target = direction === 'CALL'
-    ? resistance > 0 ? Math.max(resistance, price + atr * 3) : price + atr * 3
-    : support > 0 ? Math.min(support, price - atr * 3) : price - atr * 3;
+    ? resistance > 0 ? Math.max(resistance * 1.02, price + atr * 5) : price + atr * 5
+    : support > 0 ? Math.min(support * 0.98, price - atr * 5) : price - atr * 5;
   const risk = Math.abs(entry - stop);
   const reward = Math.abs(target - entry);
   const riskReward = risk > 0 ? reward / risk : 0;
+  // Reject picks with poor risk/reward
+  if (riskReward < 2) return null;
   if (riskReward >= 3) { score += 5; reasons.push(`R:R ${riskReward.toFixed(1)}`); }
   else if (riskReward >= 2) { score += 3; }
 

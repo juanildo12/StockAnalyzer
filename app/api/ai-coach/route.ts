@@ -154,15 +154,15 @@ function computeProspectPick(data: {
     direction = 'CALL'; // Contrarian bounce
   }
 
-  // Compute entry/stop/target
+  // Compute entry/stop/target — wider stops, bigger targets for R:R >= 2
   const entry = bestPrice;
   const atr = t?.atr || (bestPrice * 0.02); // fallback 2%
   const stop = direction === 'CALL'
-    ? Math.max(support > 0 ? support * 0.98 : bestPrice - atr * 1.5, bestPrice * 0.93)
-    : Math.min(resistance > 0 ? resistance * 1.02 : bestPrice + atr * 1.5, bestPrice * 1.07);
+    ? Math.max(support > 0 ? support * 0.97 : bestPrice - atr * 3, bestPrice * 0.90)
+    : Math.min(resistance > 0 ? resistance * 1.03 : bestPrice + atr * 3, bestPrice * 1.10);
   const target = direction === 'CALL'
-    ? resistance > 0 ? Math.max(resistance, bestPrice + atr * 3) : bestPrice + atr * 3
-    : support > 0 ? Math.min(support, bestPrice - atr * 3) : bestPrice - atr * 3;
+    ? resistance > 0 ? Math.max(resistance * 1.02, bestPrice + atr * 5) : bestPrice + atr * 5
+    : support > 0 ? Math.min(support * 0.98, bestPrice - atr * 5) : bestPrice - atr * 5;
   const risk = Math.abs(entry - stop);
   const reward = Math.abs(target - entry);
   const rr = risk > 0 ? reward / risk : 0;
