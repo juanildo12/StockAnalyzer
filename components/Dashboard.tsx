@@ -491,7 +491,7 @@ function LoadingState() {
 
 function FrameworkOverview() {
   const scenarios = [
-    { icon: '💎', label: 'Joyas Ocultas', desc: 'FCF +8% + PE bajo + crece + margen sólido', color: C.positive },
+    { icon: '💎', label: 'Joyas Ocultas', desc: 'FCF >8% + PE bajo + crece + margen sólido', color: C.positive },
     { icon: '🚀', label: 'Growth Caro', desc: 'FCF bajo + PE alto + Revenue >20%', color: C.accentLight },
     { icon: '⚠️', label: 'Value Trap', desc: 'FCF alto + PE bajo + revenue estancado', color: C.warning },
     { icon: '💣', label: 'Bomba de Tiempo', desc: 'FCF negativo + PE alto + no crece', color: C.negative },
@@ -542,10 +542,10 @@ function FrameworkView({ quote, summary }: { quote: any; summary: any }) {
   const decision = score >= 8 ? '💎 FUERTE COMPRA' : score >= 5 ? '🤔 EVALUAR' : '❌ EVITAR';
   const color = score >= 8 ? C.positive : score >= 5 ? C.warning : C.negative;
 
-  const isJoyas = fcfYield > 8 && pe < 25 && revGrowth > 5 && margin > 10;
-  const isGrowth = fcfYield < 3 && pe > 25 && revGrowth > 20 && margin > 0;
-  const isValueTrap = fcfYield > 8 && pe < 15 && revGrowth < 5 && margin < 10;
-  const isBomba = fcfYield < 0 && pe > 25 && revGrowth < 0 && margin < 0;
+  const isJoyas = fcfYield > 8 && pe > 0 && pe < 20 && revGrowth > 5 && margin > 10;
+  const isGrowth = fcfYield < 5 && pe > 30 && revGrowth > 20;
+  const isValueTrap = fcfYield > 8 && pe > 0 && pe < 15 && revGrowth < 5;
+  const isBomba = fcfYield < 0 && pe > 25 && revGrowth < 5;
 
   const cardStyle = { background: C.bgCard, borderRadius: R.lg, padding: '20px', borderLeft: `4px solid ${C.accentLight}` };
 
