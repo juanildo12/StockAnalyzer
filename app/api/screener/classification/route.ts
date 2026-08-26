@@ -130,9 +130,9 @@ async function fetchStock(symbol: string): Promise<StockData | null> {
     const totalRevenue = getRaw(fd.totalRevenue) || 0;
     const revenueGrowth = getRaw(fd.revenueGrowth);
     const profitMargin = getRaw(fd.profitMargins);
-    const operatingCashFlow = getRaw(fd.operatingCashflow) || 0;
-    const fcfYield = marketCap > 0 && operatingCashFlow > 0
-      ? (operatingCashFlow / marketCap) * 100
+    const freeCashflow = getRaw(fd.freeCashflow) || 0;
+    const fcfYield = marketCap > 0 && freeCashflow > 0
+      ? (freeCashflow / marketCap) * 100
       : null;
 
     return {
@@ -203,7 +203,7 @@ function classify(s: StockData): StockData {
 
 export async function GET() {
   try {
-    const cacheKey = 'screener:classification:v2:' + new Date().toISOString().split('T')[0];
+    const cacheKey = 'screener:classification:v3:' + new Date().toISOString().split('T')[0];
     const cached = await cacheGet<{ stocks: StockData[]; joyas: StockData[]; growths: StockData[]; traps: StockData[]; bombas: StockData[] }>(cacheKey);
     if (cached) return NextResponse.json(cached);
 

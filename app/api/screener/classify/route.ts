@@ -35,9 +35,9 @@ export async function GET(request: NextRequest) {
     const marketCap = getRaw(sd.marketCap) || quote.marketCap || 0;
     const revenueGrowth = getRaw(fd.revenueGrowth);
     const profitMargin = getRaw(fd.profitMargins);
-    const operatingCashFlow = getRaw(fd.operatingCashflow) || 0;
-    const fcfYield = marketCap > 0 && operatingCashFlow > 0
-      ? (operatingCashFlow / marketCap) * 100
+    const freeCashflow = getRaw(fd.freeCashflow) || 0;
+    const fcfYield = marketCap > 0 && freeCashflow > 0
+      ? (freeCashflow / marketCap) * 100
       : null;
 
     const revGrowth = revenueGrowth != null ? revenueGrowth * 100 : null;
