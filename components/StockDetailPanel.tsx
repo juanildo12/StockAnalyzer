@@ -157,7 +157,7 @@ export default function StockDetailPanel({
   const [aiError, setAiError] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [classification, setClassification] = useState<{ category: string; label: string; emoji: string; color: string } | null>(null);
+  const [classification, setClassification] = useState<{ category: string; label: string; emoji: string; color: string; description?: string } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const p = safe(price);
@@ -570,6 +570,34 @@ export default function StockDetailPanel({
               <span style={{ color: C.textPrimary, fontWeight: 700 }}>{safe(technical?.rsi, NaN).toFixed(0)}</span>
             </span>
           )}
+        </div>
+      )}
+
+      {/* ═══ CLASSIFICATION ═══ */}
+      {classification && (
+        <div style={{
+          padding: `${S.md} ${S.xxl}`,
+          borderTop: `1px solid ${C.border}`,
+          animation: 'fadeInUp 0.3s ease 0.05s both',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: S.lg,
+            padding: `${S.md} ${S.lg}`, borderRadius: R.lg,
+            background: `${classification.color}10`,
+            border: `1px solid ${classification.color}30`,
+          }}>
+            <span style={{ fontSize: '24px' }}>{classification.emoji}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: F.sizeSm, fontWeight: 800, color: classification.color }}>
+                {classification.label}
+              </div>
+              {classification.description && (
+                <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginTop: 2 }}>
+                  {classification.description}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

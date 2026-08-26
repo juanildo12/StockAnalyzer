@@ -45,16 +45,16 @@ export async function GET(request: NextRequest) {
 
     // Same logic as classification/route.ts
     if (fcfYield != null && fcfYield > 8 && pe != null && pe > 0 && pe < 20 && revGrowth != null && revGrowth > 5 && margin != null && margin > 10) {
-      return NextResponse.json({ category: 'joya', label: 'Joyas Ocultas', emoji: '\uD83D\uDC8E', color: '#2DD4BF', fcfYield, pe, revenueGrowth: revGrowth, margin });
+      return NextResponse.json({ category: 'joya', label: 'Joyas Ocultas', emoji: '\uD83D\uDC8E', color: '#2DD4BF', description: 'FCF >8% + PE bajo + crece + margen sólido', fcfYield, pe, revenueGrowth: revGrowth, margin });
     }
     if (fcfYield != null && fcfYield < 5 && pe != null && pe > 30 && revGrowth != null && revGrowth > 20) {
-      return NextResponse.json({ category: 'growth', label: 'Growth Caro', emoji: '\uD83D\uDE80', color: '#A78BFA', fcfYield, pe, revenueGrowth: revGrowth, margin });
+      return NextResponse.json({ category: 'growth', label: 'Growth Caro', emoji: '\uD83D\uDE80', color: '#A78BFA', description: 'FCF bajo + PE alto + Revenue >20%', fcfYield, pe, revenueGrowth: revGrowth, margin });
     }
     if (fcfYield != null && fcfYield < 0 && pe != null && pe > 25 && revGrowth != null && revGrowth < 5) {
-      return NextResponse.json({ category: 'bomba', label: 'Bomba de Tiempo', emoji: '\uD83D\uDCA3', color: '#F87171', fcfYield, pe, revenueGrowth: revGrowth, margin });
+      return NextResponse.json({ category: 'bomba', label: 'Bomba de Tiempo', emoji: '\uD83D\uDCA3', color: '#F87171', description: 'FCF negativo + PE alto + no crece', fcfYield, pe, revenueGrowth: revGrowth, margin });
     }
     if (fcfYield != null && fcfYield > 8 && pe != null && pe > 0 && pe < 15 && revGrowth != null && revGrowth < 5) {
-      return NextResponse.json({ category: 'valueTrap', label: 'Value Trap', emoji: '\u26A0\uFE0F', color: '#FBBF24', fcfYield, pe, revenueGrowth: revGrowth, margin });
+      return NextResponse.json({ category: 'valueTrap', label: 'Value Trap', emoji: '\u26A0\uFE0F', color: '#FBBF24', description: 'FCF alto + PE bajo + revenue estancado', fcfYield, pe, revenueGrowth: revGrowth, margin });
     }
 
     return NextResponse.json({ category: null });
