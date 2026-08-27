@@ -1073,6 +1073,7 @@ export default function Home() {
                 { id: 'backtest', icon: '🧪', label: 'Backtest', minPlan: 1 },
                 { id: 'ai-coach', icon: '🤖', label: 'AI Coach', minPlan: 1 },
                 { id: 'inversor-inteligente', icon: '💰', label: 'Value Investing', minPlan: 2 },
+                { id: 'classification', icon: '🧪', label: 'Clasificación', minPlan: 1 },
                 { id: 'trading-trainer', icon: '🎮', label: 'Trainer', minPlan: 0 },
                 { id: 'portfolio', icon: '📁', label: 'Portafolio', minPlan: 0 },
               ];
