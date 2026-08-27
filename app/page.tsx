@@ -1948,7 +1948,7 @@ export default function Home() {
 
       {view === 'classification' && (
         <div style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
-          <StockClassification onSelect={(sym) => { setSymbol(sym); setView('analyzer'); searchStock(sym); }} />
+          <StockClassification onSelect={(sym) => { setSymbol(sym); setLoading(true); setView('analyzer'); searchStock(sym); }} />
         </div>
       )}
 
