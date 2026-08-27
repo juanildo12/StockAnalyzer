@@ -151,7 +151,7 @@ export default function StockClassification({ onSelect }: { onSelect?: (symbol: 
       {loading && (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: C.textMuted }}>
           <div style={{ fontSize: 28, marginBottom: 12, animation: 'bounce 1.4s infinite ease-in-out' }}>{activeCat.emoji}</div>
-          <p style={{ fontSize: 13 }}>Escaneando {150}+ acciones...</p>
+          <p style={{ fontSize: 13 }}>Escaneando {900}+ acciones (SPY + NASDAQ)...</p>
           <p style={{ fontSize: 11, color: C.textMuted, marginTop: 4 }}>Esto puede tardar 30-60 segundos</p>
         </div>
       )}

@@ -5,7 +5,6 @@ import { cacheGet, cacheSet } from '../../../../src/lib/cache';
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
-
 function getRaw(v: any): number | undefined {
   if (v && typeof v === 'object' && 'raw' in v) return v.raw;
   if (typeof v === 'number') return v;
@@ -75,7 +74,7 @@ const UNIVERSE = [
   'AMZN','TSLA','MCD','NKE','SBUX','TJX','ROST','DG','TGT','HD',
   'LOW','CMG','LULU','BBY','BURL','URBN','ANF','AEO','GPS','HBI',
   'SHAK','CAKE','YUM','DIN','JACK','WING','SKX','CROX','BOOT','CARG',
-  'CVNA','Carvana','RVLV','DBI','PLBY','LE','SCVL','CAL','FL','JWN',
+  'CVNA','RVLV','DBI','PLBY','LE','SCVL','CAL','FL','JWN',
   'KSS','M','DDS','BKE','BIRK','ONTO','SAH','PAG','LAD','ACLS',
   // ═══ Consumer staples ═══
   'KO','PEP','PG','CL','EL','HSY','MNST','KDP','KHC','GIS',
@@ -128,7 +127,7 @@ const UNIVERSE = [
   'ETSY','CHWY','BIRD','COUR','CART','BROS','CHUY','TXRH','WING','DIN',
   // ═══ Crypto / Blockchain ═══
   'MSTR','MARA','RIOT','CLSK','IREN','HUT','BITF','CIFR','BTBT','CORZ',
-  'WULF','HIVE','BITN','SI','EQOS','COIN','MELI','OSTK','SI','Voyager',
+  'WULF','HIVE','BITN','EQOS','COIN','MELI','OSTK',
   // ═══ Cybersecurity ═══
   'CRWD','PANW','FTNT','ZS','NET','S','OKTA','CYBR','QLYS','VRNS',
   'TENB','RPD','RBRX','SAIL','ESTC','SQ','DSGX','PPHM','KANG','NICE',
@@ -143,7 +142,112 @@ const UNIVERSE = [
   // ═══ LatAm ADRs ═══
   'NU','STNE','PAGS','YPF','BMA','GGAL','SUPV','CRESY','TEO','TGS',
   'VIV','BIOX','CEPU','CIG','ENIA','EEO','CAAP','LTM','SONA','BPAT',
+  'MELI','DESP','BRFS','BAP','SID','VALE','PBR','ERJ','UGP','ITUB',
+  'BBD','ABEV','CPLE','ELP','GGB','CSAN','RADL','FMX','PBRY',
+  // ═══ Rest of NASDAQ / S&P 500 (SPY constituents) ═══
+  'GOOGL','AMZN','NVDA','TSLA','BRK.B','UNH','LLY','AVGO','COST','NFLX',
+  'WMT','JNJ','HD','MRK','CRM','KO','PEP','LIN','TMO','ACN',
+  'MCD','CSCO','ABT','DHR','ORCL','TXN','PM','UPS','CAT','RTX',
+  'HON','AMGN','INTC','IBM','GE','SPGI','BA','BLK','ISRG','AXP',
+  'ADBE','NEE','LOW','SYK','PFE','T','GS','MS','CMCSA','BMY',
+  'GILD','MDT','AMAT','PLTR','QCOM','NOW','DLR','HCA','BUD','ELV',
+  'CI','CVS','LRCX','MU','MCO','USB','PGR','CB','META','AMD',
+  'NKE','TM','ORLY','MMM','TJX','MON','AZN','SNY','NVS','HSBC',
+  'RY','TD','BNS','BMO','BAM','SCHW','BLK','C','WFC','COP',
+  'GSK','DEO','NVO','NXPI','TGT','WBA','SBUX','FDX','ZTS','DE',
+  'MMM','DOW','APD','SHW','LIN','NEM','FCX','NUE','STLD','CMC',
+  'AA','X','CLF','MT','SCCO','RS','MLM','VMC','CE','PPG',
+  'IFF','EMN','ALB','LTHM','SQM','CAN','LAC','FUL','KWR','AVY',
+  'BALL','CCK','SEE','SON','AMCR','PKG','LPX','UFPI','WY','IP',
+  'RJA','UNH','WCN','MCHP','ADI','ANSS','CDW','CTSH','EPAM','GIB',
+  'JKHY','MKTX','PAYX','RNG','BMRN','BIIB','ALNY','INCY','MRNA','NTLA',
+  'NVS','AZN','GSK','EQT','TRGP','OKE','WMB','KMI','ENB','TRP',
+  'PPL','AEE','ATO','LNT','NI','CNP','EIX','PEG','AES','EVRG',
+  'LDAY','WTRG','CNP','DUK','SO','AEP','SRE','PPL','AEE','OGE',
+  // ═══ ETFs (SPY / QQQ / sector proxies included) ═══
+  'SPY','QQQ','DIA','IWM','VOO','VTI','IVE','IJK','IJH','IJR',
+  'XLK','XLF','XLE','XLV','XLY','XLP','XLI','XLB','XLU','XLC',
+  'SMH','SOXX','FDX','LMT','NOC','GD','HWM','TDG','LHX','TXT',
+  'AXON','FLIR','ATKR','MTZ','JBL','TDC','CIEN','LITE','SLAB',
+  'SWK','RHI','AZEK','TREX','BECN','WSC','CARR','OFLX','TT','DOV',
+  'PH','FAST','CTAS','GWW','AOS','MAS','MLI','WSO','VAL','FTV',
+  'PNR','ECL','EFX','TRU','VRSK','FTV','GPN','FIS','FISV','DKNG',
+  // ═══ Gaming / Entertainment ═══
+  'EA','TTWO','RBLX','U','DKNG','CHGG','DUOL','GME','HEAR','PLTK',
+  // ═══ E-commerce / Retail ═══
+  'EBAY','ETSY','WISH','W','BBY','TGT','COST','WMT','ROST','TJX',
+  'JD','BABA','PDD','SE','MELI','SHOP','SPOT','ABNB','BKNG','EXPE',
+  'UBER','LYFT','DASH','GRUB','AMZN','RIVN','LCID','NIO','XPEV','LI',
+  // ═══ Medical Devices / Diagnostics ═══
+  'BSX','MDT','SYK','ABT','EW','STE','RMD','PODD','ZBH','HOLX',
+  'DXCM','PEN','MASI','COO','ALGN','ILMN','TECH','IDXX','VEEV','QTNT',
+  'ISRG','SRDX','GKOS','ATRC','NVCR','IRTC','LIVN','PULS','ICUI','QSI',
+  // ═══ Logistics / Transportation ═══
+  'FDX','UPS','JBLU','DAL','UAL','LUV','ALK','SKYW','SAVE','ZIM',
+  'MATX','CMRE','SBLK','OSTS','EXPD','CHRW','ODFL','KNX','JBHT','SAIA',
+  // ═══ Aerospace ═══
+  'BA','LMT','NOC','GD','RTX','TDG','HWM','CW','AXON','SPR',
+  'HXL','HEI','RKLB','ASTS','MAXR','IRDM','GSAT','ERJ','MESO',
+  // ═══ Internet / Social ═══
+  'GOOG','META','SNAP','PINS','TWTR','SPOT','RBLX','BMBL','MTCH','YELP',
+  'Z','HOOD','COIN','PYPL','SQ','AFRM','SOFI','UPST','LC','QRTEA',
+  // ═══ Aerospace / Defense ═══
+  'LMT','NOC','RTX','GD','TDG','AXON','HWM','CW','KTOS','LDOS',
+  'SAIC','RKLB','MAXR','SPR','HXL','HEI','MTDR','FANG','EOG','DVN',
+  // ═══ Dividend blue chips ═══
+  'KO','PEP','PG','JNJ','ABBV','VZ','T','CVX','XOM','MCD',
+  'WMT','HD','LOW','UNH','TGT','O','PSA','SPG','DUK','SO',
+  'XEL','AEP','SRE','NEE','EXC','ES','WEC','CMS','AEE','ATO',
+  'D','PNW','AWK','WTRG','CWEN','BEP','SJR','CNP','LNT','NI',
+  // ═══ Growth mid-caps ═══
+  'DT','NTLA','IOVA','RXRX','VKTX','ALNY','DNA','EDIT','BEAM','CRSP',
+  'NTRA','ARWR','IONS','SRPT','UTHR','EXEL','INCY','PTGX','MRTX','KYMR',
+  // ═══ Energy mid/small ═══
+  'PXD','FANG','CTRA','MUR','EQT','AR','SWN','RRC','CHRD','NOG',
+  'CIVI','MTDR','SM','OVV','HES','FANG','EXE','PR','STR','VTLE',
+  // ═══ Banks / Regional ═══
+  'JPM','BAC','WFC','C','GS','MS','USB','TFC','PNC','COF',
+  'DFS','SYF','AXP','V','MA','SQ','BK','STT','NTRS','TRV',
+  'ALL','CB','AIG','AFG','EVR','LPLA','HOOD','IBKR','SCHW','ET',
+  // ═══ Insurance ═══
+  'MET','PRU','PGR','TRV','ALL','CB','AIG','AFG','MKL','ACGL',
+  'RE','EG','AXS','THG','MCY','KMPR','SAFT','HMN','EMBR','LMND',
+  // ═══ Real Estate Investment Trusts ═══
+  'AMT','PLD','CCI','EQIX','DLR','SPG','O','PSA','WELL','AVB',
+  'EQR','VTR','ARE','MAA','UDR','ESS','EXR','VNO','BXP','KIM',
+  'REG','FRT','BRX','SKT','KIM','SPR','MAC','PECO','IRT','ELME',
+  // ═══ Auto / EV ═══
+  'TSLA','RIVN','LCID','NIO','XPEV','LI','F','GM','STLA','TM',
+  'BMWYY','VWAGY','HMC','FCA','PSNY','GOEV','NKLA','RMO','HYLN','WKHS',
+  // ═══ Airlines ═══
+  'DAL','UAL','LUV','AAL','JBLU','ALK','SKYW','SAVE','HA','ULCC',
+  'GOL','ASR','CPA','AZUL','VLT',
+  // ═══ Food & Beverage ═══
+  'KO','PEP','MDLZ','HSY','K','GIS','CPB','KHC','STZ','TAP',
+  'SAM','DEO','STZ','CCE','COKE','FIZZ','MNST','BUD','TAP','SJM',
+  'HRL','TSN','SAFM','CALM','LANC','OMS','SWM','GIS','CPB','KHC',
+  // ═══ Advertising / Media ═══
+  'OMC','IPG','WPP','PUB','IZEA','CMCSA','CHTR','DIS','WBD','PARA',
+  'FOXA','NWSA','NYT','GCI','MGNI','PUBM','TSQ','QNST','MAX','DV',
+  // ═══ Business Services ═══
+  'ACN','IBM','IT','FISV','GPN','FIS','BR','EPAM','GLOB','CTSH',
+  'CDW','WIT','INFY','TCS','WNS','EXLS','ICTSI','BANX','VIPA','ASGN',
+  // ═══ Specialty Retail ═══
+  'LULU','NKE','SBUX','CMG','SHAK','TXRH','DIN','CAKE','BLMN','PNST',
+  'WSM','RH','ETSY','BURL','TJX','ROST','GPS','HBI','LEVI','CROX',
+  // ═══ Biotech (large) ═══
+  'AMGN','GILD','BIIB','REGN','VRTX','ALNY','MRNA','ILMN','HZNP','CI',
+  'AIZ','BMRN','UTHR','INCY','ARGX','DMAC','INVA','NUVL','RYTM','AXSM',
+  // ═══ Tech hardware ═══
+  'AAPL','HPQ','DELL','CSCO','JNPR','HPE','NTAP','STX','WDC','SMCI',
+  'LITE','COHR','AXT','LESL','IOVA','NOVT','JBL','FLEX','SANM','CLS',
+  // ═══ Telecom ═══
+  'T','VZ','TMUS','STK','LILAK','VOD','NOK','ERIC','AMX','TU',
+  'VIVO','TEF','ORAN','TKC','CHT','KT','SKM','AUD','O2','BT',
+  'MBT','TIMB','VZ','PHI','BIP','PEGI','ORAN','TDS','USM','FRTA',
 ];
+
+const UNIVERSE_DEDUPED = Array.from(new Set(UNIVERSE));
 
 async function fetchStock(symbol: string): Promise<StockData | null> {
   try {
@@ -240,16 +344,16 @@ function classify(s: StockData): StockData {
 
 export async function GET() {
   try {
-    const cacheKey = 'screener:classification:v4:' + new Date().toISOString().split('T')[0];
+    const cacheKey = 'screener:classification:v5:' + new Date().toISOString().split('T')[0];
     const cached = await cacheGet<{ stocks: StockData[]; joyas: StockData[]; growths: StockData[]; traps: StockData[]; bombas: StockData[] }>(cacheKey);
     if (cached) return NextResponse.json(cached);
 
     const results: StockData[] = [];
     const seen = new Set<string>();
-    const batchSize = 8;
+    const batchSize = 15;
 
-    for (let i = 0; i < UNIVERSE.length; i += batchSize) {
-      const batch = UNIVERSE.slice(i, i + batchSize);
+    for (let i = 0; i < UNIVERSE_DEDUPED.length; i += batchSize) {
+      const batch = UNIVERSE_DEDUPED.slice(i, i + batchSize);
       const batchResults = await Promise.all(batch.map(fetchStock));
       for (const r of batchResults) {
         if (r && !seen.has(r.symbol)) {
@@ -266,7 +370,7 @@ export async function GET() {
 
     // Fetch EMA 200 only for classified stocks (saves time)
     const classified = [...joyas, ...growths, ...traps, ...bombas];
-    const emaBatchSize = 5;
+    const emaBatchSize = 8;
     for (let i = 0; i < classified.length; i += emaBatchSize) {
       const batch = classified.slice(i, i + emaBatchSize);
       const histResults = await Promise.all(
