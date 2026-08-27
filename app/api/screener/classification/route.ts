@@ -46,66 +46,103 @@ interface StockData {
 }
 
 const UNIVERSE = [
-  // Mega-cap tech
-  'AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA','AMD','NFLX','CRM',
-  'AVGO','ORCL','PLTR','ADBE','INTU','NOW','AMAT','TXN','QCOM','MU',
-  'SNPS','CDNS','PANW','CRWD','NET','DDOG','ZS','ARM','SMCI','IBM','DELL',
-  'HPE','ANET','CIEN','ERIC','NOK','GLW','FTNT','OKTA','WDAY','TEAM',
-  'TTD','HUBS','SMAR','FIVN','ESTC','MNDY','MDB','TWLO','COHR','LITE',
-  // Growth / fintech
-  'SHOP','SQ','PYPL','UBER','SE','COIN','HOOD','APP','DASH','SOFI',
-  'RBLX','SNAP','PINS','AI','SNOW',
-  'UPST','RKT','AFRM','LMND','CVNA','W','DOCU','ZM','PTON',
-  'CLOV','VNET','BIDU','YELP','PATH','GTLB','CART','BROS',
-  'ENV','BR','TORO','APPF','GDDY','WK',
-  // Semis
-  'MRVL','NXPI','MCHP','KLAC','LRCX','ASML','ON','STM','TER',
-  'AMKR','AEHR','DIODE','WOLF','POWL','KEYS','COHU','FORM',
-  // Consumer
-  'KO','PEP','WMT','COST','MCD','NKE','DIS','SBUX','CMG','LULU',
-  'TJX','ROST','BBY','DG','DLTR','TGT','HD','LOW','BURL','URBN',
-  'PG','EL','CL','HSY','MNST','KDP','KHC','GIS','STZ','DEO',
-  'SHAK','CAKE','YUM','CHTR','TMUS','ANF','AEO','GPS','HBI',
-  'KMB','CLX','SJM','CAG','TPR','RL','VFC','CROX','SKX','BOOT',
-  'WING','DIN','JACK','CPRT','FAST','PAYX','CTAS',
-  // Financials
-  'GS','MS','BAC','JPM','V','MA','AXP','SCHW','BLK','SPGI',
-  'ICE','COF','DFS','SYF','ALL','MET','PRU','AON','MMC','CME','CB',
-  'PGR','TRV','IBKR','TFC','CFG','KEY','RF','WAL','EWBC',
-  'WSBC','SBCF','UMBF','HOMB','BANR','WAFD','COLB','OMF','SLM',
-  // Healthcare
-  'UNH','ABBV','LLY','MRK','PFE','BMY','GILD','AMGN','MDT',
-  'ABT','ISRG','VRTX','REGN','MRNA','ZTS','SYK','BSX','EW','RMD',
-  'DXCM','HCA','UHS','CYH','SEM','AMED','ENSG','GMED',
-  'IRTC','NVCR','NTRA','CRSP','BEAM','EDIT','NTLA',
-  'RARE','SRPT','IONS','NBIX','BBIO','ARWR','ALKS','HALO',
-  'ITCI','SAGE','ACAD','PTCT','BMRN','EXEL','RGEN','INSM',
-  'DOCS','TDOC','AMWL','HIMS','GDRX','OSCR','MOH','ILMN','VEEV','HOLX','ALGN','TECH','IDXX',
-  // Industrial
-  'BA','CAT','GE','HON','UPS','FDX','DE','EMR','ETN','ITW',
-  'WM','DAL','UAL','LUV','ROK','PH','CMI','XYL','AME','GWW',
-  'RSG','J','ACM','FYBR','AAL','JBLU','SKYW',
-  // Aerospace / defense
-  'LMT','NOC','RTX','GD','TDG','LHX','HII','HWM','CW','KTOS','LDOS','SAIC',
-  // Energy
+  // ═══ S&P 500 mega-cap / blue chips ═══
+  'AAPL','MSFT','GOOGL','GOOG','AMZN','NVDA','META','TSLA','BRK.B','UNH',
+  'XOM','LLY','JPM','V','MA','AVGO','TSLA','COST','NFLX','ABBV',
+  'WMT','PG','JNJ','HD','MRK','BAC','CRM','CVX','AMD','KO',
+  'PEP','LIN','TMO','COP','ADBE','ACN','MCD','CSCO','WFC','ABT',
+  'DHR','ORCL','TXN','PM','UPS','NEE','CAT','LOW','RTX','HON',
+  'AMGN','INTC','IBM','GE','SPGI','BA','BLK','ISRG','AXP','SYK',
+  // ═══ NASDAQ-100 / high-growth ═══
+  'NFLX','PLTR','ARM','SMCI','MU','QCOM','AMAT','NOW','PANW','CRWD',
+  'ANET','DDOG','ZS','NET','FTNT','SNOW','WDAY','TEAM','TTD','HUBS',
+  'MDB','MNDY','SMAR','FIVN','ESTC','COHR','LITE','OKTA','SPLK','DLTR',
+  // ═══ Tech mid/small cap ═══
+  'SNPS','CDNS','KLAC','LRCX','MRVL','NXPI','MCHP','ON','STM','TER',
+  'AMKR','AEHR','DIODE','WOLF','POWL','KEYS','COHU','FORM','BRKS','ICHR',
+  'ALGM','SWKS','QRVO','CRUS','DIOD','CEVA','PLAB','OSIS','TTMI','VIAV',
+  'AOSL','SMTC','POWI','LSCC','ALTR','ARM','KBR','NOVT','DAKT','NTCT',
+  // ═══ Software / SaaS ═══
+  'ADBE','INTU','NOW','PANW','CRWD','DDOG','ZS','NET','FTNT','OKTA',
+  'WDAY','TEAM','TTD','HUBS','SMAR','FIVN','ESTC','MNDY','MDB','TWLO',
+  'SNOW','VEEV','DOCS','HIMS','GDRX','PATH','GTLB','CART','AI','BROS',
+  'BR','ENV','APPF','GDDY','WK','SHLS','NUVB','VTEX','KPIT','SPT',
+  // ═══ Fintech / Payments ═══
+  'V','MA','AXP','PYPL','SQ','COIN','HOOD','SOFI','AFRM','UPST',
+  'LMND','RKT','BR','PAGS','STNE','NU','BMA','GGAL','SUPV','CRESY',
+  'PSEC','OFG','BNTG','VIST','LPRO','PFSI','RDN','MTG','ESMT','PRSO',
+  // ═══ Consumer discretionary ═══
+  'AMZN','TSLA','MCD','NKE','SBUX','TJX','ROST','DG','TGT','HD',
+  'LOW','CMG','LULU','BBY','BURL','URBN','ANF','AEO','GPS','HBI',
+  'SHAK','CAKE','YUM','DIN','JACK','WING','SKX','CROX','BOOT','CARG',
+  'CVNA','Carvana','RVLV','DBI','PLBY','LE','SCVL','CAL','FL','JWN',
+  'KSS','M','DDS','BKE','BIRK','ONTO','SAH','PAG','LAD','ACLS',
+  // ═══ Consumer staples ═══
+  'KO','PEP','PG','CL','EL','HSY','MNST','KDP','KHC','GIS',
+  'STZ','DEO','CHD','CLX','SJM','CAG','KMB','MKC','HRL','CPB',
+  'SYY','SJM','FLO','LANC','THS','SMPL','CALM','SENEA','JBSS','FARM',
+  // ═══ Healthcare ═══
+  'UNH','ABBV','LLY','MRK','PFE','BMY','GILD','AMGN','MDT','ABT',
+  'ISRG','VRTX','REGN','MRNA','ZTS','SYK','BSX','EW','RMD','DXCM',
+  'HCA','UHS','CYH','SEM','AMED','ENSG','GMED','IRTC','NVCR','NTRA',
+  'CRSP','BEAM','EDIT','NTLA','RARE','SRPT','IONS','NBIX','BBIO','ARWR',
+  'ALKS','HALO','ITCI','SAGE','ACAD','PTCT','BMRN','EXEL','RGEN','INSM',
+  'DOCS','TDOC','AMWL','OSCR','MOH','ILMN','VEEV','HOLX','ALGN','TECH',
+  'IDXX','NARI','SUPN','AMPH','PRGO','CTLT','OCUL','RVMD','KRTX','ARCT',
+  'PCVX','IRY','ZYNE','CPRX','ANAB','LGND','HZNP','HALO','INSM','RPTX',
+  // ═══ Industrials ═══
+  'CAT','GE','HON','UPS','FDX','DE','EMR','ETN','WM','ITW',
+  'MMM','GD','NOC','LMT','RTX','TDG','LHX','HII','HWM','CW',
+  'KTOS','LDOS','SAIC','DAL','UAL','LUV','AAL','JBLU','SKYW','ALK',
+  'ROK','PH','CMI','XYL','AME','GWW','ROST','TDG','SWX','CW',
+  'TXT','WAB','HXL','UFPI','PATK','DHI','LEN','PHM','TOL','NVR',
+  'MHK','SHW','BALL','SEE','BLL','AVY','CCK','SLGN','CENX','SON',
+  // ═══ Financials ═══
+  'GS','MS','BAC','JPM','SCHW','BLK','SPGI','ICE','CME','CB',
+  'PGR','TRV','ALL','MET','PRU','AON','MMC','COF','DFS','SYF',
+  'IBKR','TFC','CFG','KEY','RF','WAL','EWBC','WSBC','SBCF','UMBF',
+  'HOMB','BANR','WAFD','COLB','OMF','SLM','NYCB','PACW','FHN','WBS',
+  'ZION','CMA','EWBC','BPOP','IBOC','CBSH','UBSI','WSFS','FIBK','PPBI',
+  // ═══ Energy ═══
   'XOM','CVX','COP','SLB','EOG','MPC','PSX','VLO','DVN','HAL','BKR',
   'PXD','FANG','HES','MRO','OVV','SM','AR','CIVI','MTDR','SWN','EQT','RRC',
-  'CHRD','NOG','CEIX','ARCH','AMR','BTU',
-  // REITs
-  'AMT','PLD','CCI','EQIX','SPG','O','PSA','WELL','DLR',
-  'AVB','EQR','VTR','ARE','MAA','UDR','ESS','VICI','EXR','VNO','BXP','KIM','REG','HST',
-  // Utilities
-  'NEE','DUK','SO','D','AEP','SRE','EXC','XEL',
-  'ED','WEC','ES','AWK','DTE','ETR','FE','AES',
-  // Materials
-  'LIN','APD','SHW','ECL','DD','NEM','FCX','NUE',
-  'STLD','CMC','AA','X','CLF','MT','SCCO',
-  // Comms
-  'T','VZ','CMCSA','WBD','PARA','FOX','LYV','LUMN','DISH','MGNI','PUBM','DV','MAX',
-  // Crypto
-  'MSTR','MARA','RIOT','MELI','CLSK','IREN','HUT','BITF','CIFR','BTBT','CORZ','WULF',
-  // LatAm
+  'CHRD','NOG','CEIX','ARCH','AMR','BTU','TALO','MTDR','APLS','REI',
+  'PEAK','REPX','SNEX','VTLE','MGY','ESTE','WDRP','ARR','CRXT','CLMT',
+  // ═══ Real Estate ═══
+  'AMT','PLD','CCI','EQIX','SPG','O','PSA','WELL','DLR','AVB',
+  'EQR','VTR','ARE','MAA','UDR','ESS','VICI','EXR','VNO','BXP',
+  'KIM','REG','HST','BEE','RLJ','AHT','SHO','DRH','PEB','XHR',
+  'IIPR','GOOD','STAG','IPT','PINE','GTY','EPRT','NNN','WPC','NTST',
+  // ═══ Utilities ═══
+  'NEE','DUK','SO','D','AEP','SRE','EXC','XEL','ED','WEC',
+  'ES','AWK','DTE','ETR','FE','AES','PEG','WTRG','AVL','CMS',
+  'PNW','NRG','OKE','SUZ','AES','CEPU','TEO','YPF','CIG','ENIA',
+  // ═══ Materials ═══
+  'LIN','APD','SHW','ECL','DD','NEM','FCX','NUE','STLD','CMC',
+  'AA','X','CLF','MT','SCCO','RS','MLM','VMC','CE','PPG',
+  'IFF','EMN','ALB','LTHM','SQM','CAN','LAC','ALB','FUL','KWR',
+  // ═══ Communication Services ═══
+  'T','VZ','CMCSA','DIS','NFLX','TMUS','CHTR','WBD','PARA','FOX',
+  'LYV','LUMN','DISH','MGNI','PUBM','DV','MAX','GOOG','META','SNAP',
+  'PINS','RBLX','U','DKNG','TTWO','EA','ATVI','MSFT','ROKU','LUMN',
+  'ETSY','CHWY','BIRD','COUR','CART','BROS','CHUY','TXRH','WING','DIN',
+  // ═══ Crypto / Blockchain ═══
+  'MSTR','MARA','RIOT','CLSK','IREN','HUT','BITF','CIFR','BTBT','CORZ',
+  'WULF','HIVE','BITN','SI','EQOS','COIN','MELI','OSTK','SI','Voyager',
+  // ═══ Cybersecurity ═══
+  'CRWD','PANW','FTNT','ZS','NET','S','OKTA','CYBR','QLYS','VRNS',
+  'TENB','RPD','RBRX','SAIL','ESTC','SQ','DSGX','PPHM','KANG','NICE',
+  // ═══ Semiconductor equipment ═══
+  'ASML','KLAC','LRCX','AMAT','ENTG','IPGP','COHR','LITE','NOVT','ONTO',
+  'CAMT','ICHR','AOSL','SMTC','POWI','LSCC','ALTR','RMBS','DIOD','CEVA',
+  // ═══ Biotech speculative ═══
+  'CRSP','BEAM','EDIT','NTLA','RARE','SRPT','IONS','NBIX','BBIO','ARWR',
+  'ALKS','HALO','ITCI','SAGE','ACAD','PTCT','BMRN','EXEL','RGEN','INSM',
+  'KRTX','ARCT','PCVX','IRY','ZYNE','CPRX','ANAB','LGND','RPTX','RVMD',
+  'NUVB','VTEX','KPIT','SPT','BR','ENV','APPF','GDDY','WK','SHLS',
+  // ═══ LatAm ADRs ═══
   'NU','STNE','PAGS','YPF','BMA','GGAL','SUPV','CRESY','TEO','TGS',
+  'VIV','BIOX','CEPU','CIG','ENIA','EEO','CAAP','LTM','SONA','BPAT',
 ];
 
 async function fetchStock(symbol: string): Promise<StockData | null> {
@@ -203,7 +240,7 @@ function classify(s: StockData): StockData {
 
 export async function GET() {
   try {
-    const cacheKey = 'screener:classification:v3:' + new Date().toISOString().split('T')[0];
+    const cacheKey = 'screener:classification:v4:' + new Date().toISOString().split('T')[0];
     const cached = await cacheGet<{ stocks: StockData[]; joyas: StockData[]; growths: StockData[]; traps: StockData[]; bombas: StockData[] }>(cacheKey);
     if (cached) return NextResponse.json(cached);
 
