@@ -344,7 +344,7 @@ function classify(s: StockData): StockData {
 
 export async function GET() {
   try {
-    const cacheKey = 'screener:classification:v5:' + new Date().toISOString().split('T')[0];
+    const cacheKey = 'screener:classification:v6:' + new Date().toISOString().split('T')[0];
     const cached = await cacheGet<{ stocks: StockData[]; joyas: StockData[]; growths: StockData[]; traps: StockData[]; bombas: StockData[] }>(cacheKey);
     if (cached) return NextResponse.json(cached);
 
