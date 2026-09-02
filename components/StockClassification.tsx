@@ -69,6 +69,43 @@ export default function StockClassification({ onSelect }: { onSelect?: (symbol: 
       .catch(e => { setError(e.message); setLoading(false); });
   }, []);
 
+  useEffect(() => {
+    if (!data) return;
+    const allClassified = [...(data.joyas || []), ...(data.growths || []), ...(data.traps || []), ...(data.bombas || [])];
+    const needsEma = allClassified.filter(s => s.ema200Distance == null).map(s => s.symbol);
+    if (needsEma.length === 0) return;
+
+    let cancelled = false;
+    const chunkSize = 40;
+    const fetchChunk = (chunk: string[]) =>
+      fetch(`/api/screener/classification/ema?symbols=${encodeURIComponent(chunk.join(','))}`)
+        .then(r => r.json())
+        .then(json => {
+          if (cancelled || !json?.results) return;
+          setData(prev => {
+            if (!prev) return prev;
+            const apply = (arr: any[]) => arr.map(s => json.results[s.symbol] ? { ...s, ...json.results[s.symbol] } : s);
+            return {
+              ...prev,
+              joyas: apply(prev.joyas),
+              growths: apply(prev.growths),
+              traps: apply(prev.traps),
+              bombas: apply(prev.bombas),
+            };
+          });
+        })
+        .catch(() => {});
+
+    (async () => {
+      for (let i = 0; i < needsEma.length; i += chunkSize) {
+        if (cancelled) return;
+        await fetchChunk(needsEma.slice(i, i + chunkSize));
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [!!data]);
+
   const activeData = data ? ((data as any)[activeTab] || []) as StockData[] : [];
   const filtered = searchInput
     ? activeData.filter(s => s.symbol.toLowerCase().includes(searchInput.toLowerCase()) || s.name.toLowerCase().includes(searchInput.toLowerCase()))

@@ -254,8 +254,8 @@ async function fetchStock(symbol: string): Promise<StockData | null> {
     const [qs, quote] = await Promise.all([
       withTimeout(yf.quoteSummary(symbol, {
         modules: ['summaryDetail', 'financialData', 'assetProfile', 'defaultKeyStatistics'],
-      }), 8000),
-      withTimeout(yf.quote(symbol), 5000),
+      }), 6000),
+      withTimeout(yf.quote(symbol), 4000),
     ]);
 
     if (!quote || !qs) return null;
@@ -368,44 +368,7 @@ export async function GET() {
     const traps = results.filter(s => s.category === 'valueTrap').sort((a, b) => (b.fcfYield || 0) - (a.fcfYield || 0));
     const bombas = results.filter(s => s.category === 'bomba').sort((a, b) => (b.pe || 0) - (a.pe || 0));
 
-    // Fetch EMA 200 only for classified stocks (saves time)
-    const classified = [...joyas, ...growths, ...traps, ...bombas];
-    const emaBatchSize = 8;
-    for (let i = 0; i < classified.length; i += emaBatchSize) {
-      const batch = classified.slice(i, i + emaBatchSize);
-      const histResults = await Promise.all(
-        batch.map(async (s) => {
-          try {
-            const hist = await withTimeout(
-              yf.historical(s.symbol, {
-                period1: new Date(Date.now() - 300 * 86400000),
-                period2: new Date(),
-                interval: '1d',
-              }),
-              7000
-            );
-            if (!hist || hist.length < 200) return null;
-            const closes = hist.map(h => h.close);
-            const ema200 = calcEMA200(closes);
-            if (!ema200) return null;
-            const distance = ((s.price - ema200) / ema200) * 100;
-            return { symbol: s.symbol, ema200, distance };
-          } catch {
-            return null;
-          }
-        })
-      );
-      for (const r of histResults) {
-        if (r) {
-          const stock = classified.find(s => s.symbol === r.symbol);
-          if (stock) {
-            stock.ema200 = r.ema200;
-            stock.ema200Distance = r.distance;
-          }
-        }
-      }
-    }
-
+    // EMA 200 is now computed via /api/screener/classification/ema (client-side batch)
     const data = { stocks: results, joyas, growths, traps, bombas, total: results.length, classified: joyas.length + growths.length + traps.length + bombas.length, timestamp: Date.now() };
     await cacheSet(cacheKey, data, 3600);
 
