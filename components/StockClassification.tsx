@@ -84,7 +84,11 @@ export default function StockClassification({ onSelect }: { onSelect?: (symbol: 
           if (cancelled || !json?.results) return;
           setData(prev => {
             if (!prev) return prev;
-            const apply = (arr: any[]) => arr.map(s => json.results[s.symbol] ? { ...s, ...json.results[s.symbol] } : s);
+            const apply = (arr: any[]) => arr.map(s => {
+              const r = json.results[s.symbol];
+              if (!r) return s;
+              return { ...s, ...r, ema200Distance: r.distance != null ? r.distance : s.ema200Distance, ema200: r.ema200 != null ? r.ema200 : s.ema200 };
+            });
             return {
               ...prev,
               joyas: apply(prev.joyas),
