@@ -81,7 +81,7 @@ export default function StockClassification({ onSelect }: { onSelect?: (symbol: 
       fetch(`/api/screener/classification/ema?symbols=${encodeURIComponent(chunk.join(','))}`)
         .then(r => r.json())
         .then(json => {
-          if (cancelled || !json?.results) return;
+          if (cancelled || !json?.results) return null;
           setData(prev => {
             if (!prev) return prev;
             const apply = (arr: any[]) => arr.map(s => {
@@ -97,13 +97,26 @@ export default function StockClassification({ onSelect }: { onSelect?: (symbol: 
               bombas: apply(prev.bombas),
             };
           });
+          return json;
         })
-        .catch(() => {});
+        .catch(() => null);
 
     (async () => {
-      for (let i = 0; i < needsEma.length; i += chunkSize) {
-        if (cancelled) return;
-        await fetchChunk(needsEma.slice(i, i + chunkSize));
+      let pending = needsEma;
+      for (let attempt = 0; attempt < 3 && pending.length > 0; attempt++) {
+        const failed: string[] = [];
+        for (let i = 0; i < pending.length; i += chunkSize) {
+          if (cancelled) return;
+          const chunk = pending.slice(i, i + chunkSize);
+          const json = await fetchChunk(chunk);
+          if (!json?.results) { failed.push(...chunk); continue; }
+          for (const sym of chunk) {
+            const r = json.results[sym];
+            if (!r || r.distance == null) failed.push(sym);
+          }
+        }
+        pending = failed;
+        if (pending.length > 0 && attempt < 2) await new Promise(r => setTimeout(r, 1500));
       }
     })();
 
