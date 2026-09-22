@@ -103,6 +103,7 @@ export default function TradePickView() {
   const [showHistory, setShowHistory] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [prices, setPrices] = useState<Record<string, number | null>>({});
+  const [statusFilter, setStatusFilter] = useState<'all' | PickStatus>('all');
 
   const refreshPrices = useCallback(async (picks: TradePick[]) => {
     const syms = Array.from(new Set(picks.map(p => p.symbol)));
@@ -162,6 +163,19 @@ export default function TradePickView() {
   const pendingN = results.filter(s => s === 'pending').length;
   const closed = wins + losses;
   const winRate = closed > 0 ? (wins / closed) * 100 : null;
+
+  const RISK_PER_TRADE = 100;
+  const pnlRows = history.map(p => {
+    const st = getStatus(p, prices[p.symbol]);
+    let pnl = 0;
+    if (st === 'win') pnl = RISK_PER_TRADE * (p.riskReward || 1);
+    else if (st === 'loss') pnl = -RISK_PER_TRADE;
+    return { p, st, pnl };
+  });
+  const totalWon = pnlRows.reduce((a, r) => a + Math.max(0, r.pnl), 0);
+  const totalLost = pnlRows.reduce((a, r) => a + Math.min(0, r.pnl), 0);
+  const netPnl = totalWon + totalLost;
+  const toggleFilter = (f: 'all' | PickStatus) => setStatusFilter(statusFilter === f ? 'all' : f);
 
   const expDate = currentPick?.contract?.expiration
     ? new Date(currentPick.contract.expiration + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -326,30 +340,63 @@ export default function TradePickView() {
             {showHistory ? '▲' : '▼'} Pick History ({history.length})
           </button>
 
-          {winRate != null && (
-            <div style={styles.winRateBar}>
-              <span style={{ ...styles.winRateChip, background: '#34D39918', border: '1px solid #34D39950', color: '#34D399' }}>
-                ✅ {wins} W
-              </span>
-              <span style={{ ...styles.winRateChip, background: '#FB718518', border: '1px solid #FB718550', color: '#FB7185' }}>
-                ❌ {losses} L
-              </span>
-              <span style={{ ...styles.winRateChip, background: '#8B90A515', border: '1px solid #8B90A540', color: '#8B90A5' }}>
-                ⏳ {pendingN} en curso
-              </span>
-              <span style={{ ...styles.winRateChip, background: 'linear-gradient(135deg, #2DD4BF18, #34D39918)', border: '1px solid #2DD4BF55', color: '#2DD4BF', fontWeight: 800 }}>
-                Win Rate {winRate.toFixed(0)}%
-              </span>
-            </div>
+          {history.length > 1 && (
+            <>
+              <div style={styles.winRateBar}>
+                <button
+                  onClick={() => toggleFilter('win')}
+                  style={{ ...styles.winRateChip, background: statusFilter === 'win' ? '#34D39925' : '#34D39918', border: `1px solid ${statusFilter === 'win' ? '#34D399' : '#34D39950'}`, color: '#34D399', cursor: 'pointer' }}
+                >
+                  ✅ {wins} W
+                </button>
+                <button
+                  onClick={() => toggleFilter('loss')}
+                  style={{ ...styles.winRateChip, background: statusFilter === 'loss' ? '#FB718525' : '#FB718518', border: `1px solid ${statusFilter === 'loss' ? '#FB7185' : '#FB718550'}`, color: '#FB7185', cursor: 'pointer' }}
+                >
+                  ❌ {losses} L
+                </button>
+                <button
+                  onClick={() => toggleFilter('pending')}
+                  style={{ ...styles.winRateChip, background: statusFilter === 'pending' ? '#8B90A525' : '#8B90A515', border: `1px solid ${statusFilter === 'pending' ? '#8B90A5' : '#8B90A540'}`, color: '#8B90A5', cursor: 'pointer' }}
+                >
+                  ⏳ {pendingN} en curso
+                </button>
+                <button
+                  onClick={() => toggleFilter('all')}
+                  style={{ ...styles.winRateChip, background: statusFilter === 'all' ? '#2DD4BF25' : '#2DD4BF18', border: `1px solid ${statusFilter === 'all' ? '#2DD4BF' : '#2DD4BF40'}`, color: '#2DD4BF', cursor: 'pointer' }}
+                >
+                  Todos
+                </button>
+                <span style={{ ...styles.winRateChip, background: 'linear-gradient(135deg, #2DD4BF18, #34D39918)', border: '1px solid #2DD4BF55', color: '#2DD4BF', fontWeight: 800, cursor: 'default' }}>
+                  Win Rate {winRate != null ? `${winRate.toFixed(0)}%` : '—'}
+                </span>
+              </div>
+
+              <div style={styles.pnlBar}>
+                <span style={{ ...styles.pnlChip, color: '#34D399' }}>
+                  💵 Ganado +${totalWon.toFixed(0)}
+                </span>
+                <span style={{ ...styles.pnlChip, color: '#FB7185' }}>
+                  Perdido -${Math.abs(totalLost).toFixed(0)}
+                </span>
+                <span style={{ ...styles.pnlChip, color: netPnl >= 0 ? '#2DD4BF' : '#FB7185', fontWeight: 800 }}>
+                  Neto {netPnl >= 0 ? '+' : '-'}${Math.abs(netPnl).toFixed(0)}
+                </span>
+                <span style={{ ...styles.pnlChip, color: C.textMuted, cursor: 'help' }} title="Estimado con riesgo fijo de $100 por trade (ganancia = $100 × R/R)">
+                  <b>{RISK_PER_TRADE}</b> riesgo/trade
+                </span>
+              </div>
+            </>
           )}
 
           {showHistory && (
             <div style={styles.historyList}>
-              {history.slice(1).map((pick) => {
+              {history.slice(1).filter(p => statusFilter === 'all' || getStatus(p, prices[p.symbol]) === statusFilter).map((pick) => {
                 const g = getGrade(pick.score);
                 const dirCol = pick.direction === 'CALL' ? '#34D399' : '#FB7185';
                 const status = getStatus(pick, prices[pick.symbol]);
                 const sm = status ? STATUS_META[status] : null;
+                const stPnl = status === 'win' ? RISK_PER_TRADE * (pick.riskReward || 1) : status === 'loss' ? -RISK_PER_TRADE : 0;
                 const exp = pick.contract?.expiration
                   ? new Date(pick.contract.expiration + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                   : null;
@@ -399,6 +446,18 @@ export default function TradePickView() {
 
                     {expanded && (
                       <div style={styles.historyExpanded}>
+                        {stPnl !== 0 && (
+                          <div style={{
+                            marginBottom: 10, textAlign: 'center' as const,
+                            fontSize: 15, fontWeight: 800,
+                            color: stPnl >= 0 ? '#34D399' : '#FB7185',
+                            padding: '6px', borderRadius: R.sm,
+                            background: stPnl >= 0 ? '#34D39912' : '#FB718512',
+                            border: `1px solid ${stPnl >= 0 ? '#34D39940' : '#FB718540'}`,
+                          }}>
+                            {stPnl >= 0 ? '+' : '-'}${Math.abs(stPnl).toFixed(0)} P/L (${status === 'win' ? `ganancia = $${RISK_PER_TRADE} × R/R ${fmt(pick.riskReward, 1)}` : `pérdida = riesgo $${RISK_PER_TRADE}`})
+                          </div>
+                        )}
                         <div style={styles.hxGrid}>
                           <div style={styles.hxItem}>
                             <div style={styles.hxLabel}>Entry</div>
@@ -459,6 +518,11 @@ export default function TradePickView() {
                   </div>
                 );
               })}
+              {history.slice(1).filter(p => statusFilter === 'all' || getStatus(p, prices[p.symbol]) === statusFilter).length === 0 && (
+                <div style={styles.historyEmpty}>
+                  Sin picks en este estado{statusFilter !== 'all' && statusFilter ? ` (${STATUS_META[statusFilter].label})` : ''}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -781,6 +845,31 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '5px 12px',
     borderRadius: 999,
     whiteSpace: 'nowrap' as const,
+  },
+  pnlBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+    margin: '0 0 8px',
+  },
+  pnlChip: {
+    fontSize: 12,
+    fontWeight: 600,
+    padding: '5px 12px',
+    borderRadius: 999,
+    background: '#0d1117',
+    border: `1px solid ${C.border}`,
+    whiteSpace: 'nowrap' as const,
+  },
+  historyEmpty: {
+    padding: '18px 16px',
+    borderRadius: R.md,
+    border: `1px dashed ${C.border}`,
+    background: '#0d1117',
+    color: C.textMuted,
+    fontSize: 12,
+    textAlign: 'center' as const,
   },
   historyList: {
     marginTop: 8,
