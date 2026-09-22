@@ -57,6 +57,7 @@ export default function StockClassification({ onSelect }: { onSelect?: (symbol: 
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<string>('joyas');
   const [searchInput, setSearchInput] = useState('');
+  const [emaComplete, setEmaComplete] = useState(false);
   const fetchedRef = useRef(false);
 
   useEffect(() => {
@@ -76,7 +77,7 @@ export default function StockClassification({ onSelect }: { onSelect?: (symbol: 
     if (needsEma.length === 0) return;
 
     let cancelled = false;
-    const chunkSize = 40;
+    const chunkSize = 18;
     const fetchChunk = (chunk: string[]) =>
       fetch(`/api/screener/classification/ema?symbols=${encodeURIComponent(chunk.join(','))}`)
         .then(r => r.json())
@@ -103,7 +104,7 @@ export default function StockClassification({ onSelect }: { onSelect?: (symbol: 
 
     (async () => {
       let pending = needsEma;
-      for (let attempt = 0; attempt < 3 && pending.length > 0; attempt++) {
+      for (let attempt = 0; attempt < 4 && pending.length > 0; attempt++) {
         const failed: string[] = [];
         for (let i = 0; i < pending.length; i += chunkSize) {
           if (cancelled) return;
@@ -116,8 +117,9 @@ export default function StockClassification({ onSelect }: { onSelect?: (symbol: 
           }
         }
         pending = failed;
-        if (pending.length > 0 && attempt < 2) await new Promise(r => setTimeout(r, 1500));
+        if (pending.length > 0 && attempt < 3) await new Promise(r => setTimeout(r, 1500));
       }
+      if (!cancelled) setEmaComplete(true);
     })();
 
     return () => { cancelled = true; };
@@ -265,6 +267,16 @@ export default function StockClassification({ onSelect }: { onSelect?: (symbol: 
                       whiteSpace: 'nowrap', fontWeight: 600,
                     }}>
                       EMA200 {s.ema200Distance >= 0 ? '+' : ''}{s.ema200Distance.toFixed(1)}%
+                    </span>
+                  )}
+                  {emaComplete && s.ema200Distance == null && (
+                    <span style={{
+                      fontSize: 11, padding: '2px 6px', borderRadius: 4,
+                      background: C.bg, color: C.textMuted,
+                      border: `1px solid ${C.border}`, whiteSpace: 'nowrap', fontWeight: 600,
+                      cursor: 'help',
+                    }} title="Sin suficientes velas diarias (menos de 200) para calcular EMA200">
+                      EMA200 N/D
                     </span>
                   )}
                   {s.reasons.map((r, i) => (

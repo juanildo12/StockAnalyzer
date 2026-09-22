@@ -40,11 +40,11 @@ function emaWithPrice(closes: number[]): EmaResult | null {
 async function emaFromYahoo(symbol: string): Promise<EmaResult | null> {
   const hist = await withTimeout(
     yf.historical(symbol, {
-      period1: new Date(Date.now() - 300 * 86400000),
+      period1: new Date(Date.now() - 540 * 86400000),
       period2: new Date(),
       interval: '1d',
     }),
-    6000
+    7000
   );
   if (!hist || hist.length < 200) return null;
   const closes = hist.map(h => h.close).filter((c): c is number => typeof c === 'number' && c > 0);
@@ -53,10 +53,10 @@ async function emaFromYahoo(symbol: string): Promise<EmaResult | null> {
 
 async function emaFromFinnhub(symbol: string): Promise<EmaResult | null> {
   const now = Math.floor(Date.now() / 1000);
-  const from = now - 450 * 86400;
+  const from = now - 600 * 86400;
   const data = await withTimeout(
     finnhubGetCandles(symbol, 'D', from, now),
-    6000
+    8000
   );
   if (!data || data.s !== 'ok' || !Array.isArray(data.c) || data.c.length < 200) return null;
   const closes = data.c.filter((c): c is number => typeof c === 'number' && c > 0);
