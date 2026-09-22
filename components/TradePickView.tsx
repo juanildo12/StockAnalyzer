@@ -77,6 +77,7 @@ export default function TradePickView() {
   const [history, setHistory] = useState<TradePick[]>([]);
   const [error, setError] = useState('');
   const [showHistory, setShowHistory] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     const picks = loadPicks();
@@ -287,28 +288,91 @@ export default function TradePickView() {
                 const exp = pick.contract?.expiration
                   ? new Date(pick.contract.expiration + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                   : null;
+                const expanded = expandedId === pick.id;
                 return (
-                  <div key={pick.id} style={styles.historyItem} onClick={() => setCurrentPick(pick)}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={styles.historyLeft}>
-                        <span style={{ ...styles.historySymbol, color: g.color }}>{pick.symbol}</span>
-                        <span style={{ ...styles.historyDir, color: dirCol }}>{pick.direction}</span>
-                        <span style={{ color: g.color, fontWeight: 700 }}>{pick.score}</span>
-                        <span style={styles.historyDate}>{new Date(pick.createdAt).toLocaleDateString()}</span>
+                  <div key={pick.id}>
+                    <div style={styles.historyItem} onClick={() => setExpandedId(expanded ? null : pick.id)}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={styles.historyLeft}>
+                          <span style={{ ...styles.historySymbol, color: g.color }}>{pick.symbol}</span>
+                          <span style={{ ...styles.historyDir, color: dirCol }}>{pick.direction}</span>
+                          <span style={{ color: g.color, fontWeight: 700 }}>{pick.score}</span>
+                          <span style={styles.historyDate}>{new Date(pick.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <div style={styles.historyLevels}>
+                          <span style={styles.lvl}>Entry <b style={{ color: C.textPrimary }}>${fmt(pick.entry)}</b></span>
+                          <span style={styles.lvl}>Stop <b style={{ color: C.negative }}>${fmt(pick.stop)}</b></span>
+                          <span style={styles.lvl}>Target <b style={{ color: C.positive }}>${fmt(pick.target)}</b></span>
+                          <span style={styles.lvl}>R/R <b style={{ color: g.color }}>{fmt(pick.riskReward, 1)}</b></span>
+                          {pick.contract && (
+                            <span style={styles.lvlContract}>
+                              {pick.contract.strike} {exp || ''} @ ${fmt(pick.contract.premium)}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div style={styles.historyLevels}>
-                        <span style={styles.lvl}>Entry <b style={{ color: C.textPrimary }}>${fmt(pick.entry)}</b></span>
-                        <span style={styles.lvl}>Stop <b style={{ color: C.negative }}>${fmt(pick.stop)}</b></span>
-                        <span style={styles.lvl}>Target <b style={{ color: C.positive }}>${fmt(pick.target)}</b></span>
-                        <span style={styles.lvl}>R/R <b style={{ color: g.color }}>{fmt(pick.riskReward, 1)}</b></span>
+                      <span style={{ ...styles.historyChevron, color: expanded ? g.color : C.textMuted, transform: expanded ? 'rotate(90deg)' : undefined, transition: 'transform 0.15s' }}>›</span>
+                    </div>
+
+                    {expanded && (
+                      <div style={styles.historyExpanded}>
+                        <div style={styles.hxGrid}>
+                          <div style={styles.hxItem}>
+                            <div style={styles.hxLabel}>Entry</div>
+                            <div style={styles.hxValue}>${fmt(pick.entry)}</div>
+                          </div>
+                          <div style={styles.hxItem}>
+                            <div style={styles.hxLabel}>Stop</div>
+                            <div style={{ ...styles.hxValue, color: C.negative }}>${fmt(pick.stop)}</div>
+                          </div>
+                          <div style={styles.hxItem}>
+                            <div style={styles.hxLabel}>Target</div>
+                            <div style={{ ...styles.hxValue, color: C.positive }}>${fmt(pick.target)}</div>
+                          </div>
+                          <div style={styles.hxItem}>
+                            <div style={styles.hxLabel}>R/R</div>
+                            <div style={{ ...styles.hxValue, color: g.color }}>{fmt(pick.riskReward, 1)}</div>
+                          </div>
+                        </div>
+
                         {pick.contract && (
-                          <span style={styles.lvlContract}>
-                            {pick.contract.strike} {exp || ''} @ ${fmt(pick.contract.premium)}
-                          </span>
+                          <div style={styles.hxContract}>
+                            <div style={styles.hxContractTitle}>
+                              📊 {pick.contract.strike} {pick.direction} · {exp || 'N/A'}
+                            </div>
+                            <div style={styles.hxContractGrid}>
+                              <div style={styles.hxContractItem}>
+                                <div style={styles.hxLabel}>Premium</div>
+                                <div style={{ ...styles.hxValue, color: '#FBBF24' }}>${fmt(pick.contract.premium)}</div>
+                              </div>
+                              <div style={styles.hxContractItem}>
+                                <div style={styles.hxLabel}>Cost (x100)</div>
+                                <div style={styles.hxValue}>${fmt(pick.contract.premium * 100, 0)}</div>
+                              </div>
+                              <div style={styles.hxContractItem}>
+                                <div style={styles.hxLabel}>Delta</div>
+                                <div style={styles.hxValue}>{pick.contract.delta != null ? fmt(pick.contract.delta) : 'N/A'}</div>
+                              </div>
+                              <div style={styles.hxContractItem}>
+                                <div style={styles.hxLabel}>Open Interest</div>
+                                <div style={styles.hxValue}>{pick.contract.openInterest > 1000 ? `${(pick.contract.openInterest / 1000).toFixed(1)}K` : pick.contract.openInterest}</div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {pick.reasons.length > 0 && (
+                          <div style={styles.hxReasons}>
+                            {pick.reasons.map((r, i) => (
+                              <div key={i} style={styles.hxReason}>
+                                <span style={{ color: '#34D399', marginRight: 8 }}>✓</span>
+                                <span>{r}</span>
+                              </div>
+                            ))}
+                          </div>
                         )}
                       </div>
-                    </div>
-                    <span style={styles.historyChevron}>›</span>
+                    )}
                   </div>
                 );
               })}
@@ -682,6 +746,73 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 18,
     color: C.textMuted,
     flexShrink: 0,
+  },
+  historyExpanded: {
+    margin: '4px 0 4px',
+    padding: '14px 16px',
+    borderRadius: R.md,
+    border: `1px solid ${C.border}`,
+    background: '#161B22',
+  },
+  hxGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr 1fr 1fr',
+    gap: 8,
+  },
+  hxItem: {
+    textAlign: 'center' as const,
+    padding: '10px 6px',
+    background: '#0d1117',
+    borderRadius: R.sm,
+    border: `1px solid ${C.border}`,
+  },
+  hxLabel: {
+    fontSize: 10,
+    color: C.textMuted,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.5px',
+    marginBottom: 4,
+  },
+  hxValue: {
+    fontSize: 15,
+    fontWeight: 700,
+    color: C.textPrimary,
+  },
+  hxContract: {
+    marginTop: 12,
+    padding: '12px 14px',
+    background: '#0d1117',
+    borderRadius: R.sm,
+    border: `1px solid #2DD4BF30`,
+  },
+  hxContractTitle: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: '#2DD4BF',
+    marginBottom: 10,
+  },
+  hxContractGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr 1fr 1fr',
+    gap: 8,
+  },
+  hxContractItem: {
+    textAlign: 'center' as const,
+  },
+  hxReasons: {
+    marginTop: 12,
+    padding: '12px 14px',
+    background: '#0d1117',
+    borderRadius: R.sm,
+    border: `1px solid ${C.border}`,
+  },
+  hxReason: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    fontSize: 12,
+    color: C.textSecondary,
+    marginBottom: 5,
+    lineHeight: 1.4,
   },
   historyDate: {
     fontSize: 12,
