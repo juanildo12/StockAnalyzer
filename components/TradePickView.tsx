@@ -71,6 +71,30 @@ function getGrade(score: number): { label: string; color: string } {
   return { label: 'FAIR', color: '#FBBF24' };
 }
 
+type PickStatus = 'win' | 'loss' | 'pending' | null;
+
+function getStatus(pick: TradePick, price: number | null | undefined): PickStatus {
+  if (price == null || !isFinite(price)) return null;
+  if (pick.direction === 'CALL') {
+    if (price >= pick.target) return 'win';
+    if (price <= pick.stop) return 'loss';
+  } else {
+    if (price <= pick.target) return 'win';
+    if (price >= pick.stop) return 'loss';
+  }
+  return 'pending';
+}
+
+const STATUS_META: Record<string, { label: string; bg: string; border: string; color: string }> = {
+  win: { label: 'WIN', bg: '#34D39918', border: '#34D39955', color: '#34D399' },
+  loss: { label: 'LOSS', bg: '#FB718518', border: '#FB718555', color: '#FB7185' },
+  pending: { label: 'ACTIVO', bg: '#8B90A515', border: '#8B90A540', color: '#8B90A5' },
+};
+
+function fmtPct(n: number): string {
+  return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
+}
+
 export default function TradePickView() {
   const [scanning, setScanning] = useState(false);
   const [currentPick, setCurrentPick] = useState<TradePick | null>(null);
@@ -78,12 +102,24 @@ export default function TradePickView() {
   const [error, setError] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [prices, setPrices] = useState<Record<string, number | null>>({});
+
+  const refreshPrices = useCallback(async (picks: TradePick[]) => {
+    const syms = Array.from(new Set(picks.map(p => p.symbol)));
+    if (syms.length === 0) return;
+    try {
+      const res = await fetch(`/api/trade-picks/quotes?symbols=${encodeURIComponent(syms.join(','))}`);
+      const json = await res.json();
+      if (json?.prices) setPrices(prev => ({ ...prev, ...json.prices }));
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const picks = loadPicks();
     setHistory(picks);
     if (picks.length > 0) setCurrentPick(picks[0]);
-  }, []);
+    refreshPrices(picks);
+  }, [refreshPrices]);
 
   const scan = useCallback(async () => {
     setScanning(true);
@@ -108,16 +144,25 @@ export default function TradePickView() {
       const updated = [pick, ...history].slice(0, 20);
       setHistory(updated);
       savePicks(updated);
+      refreshPrices(updated);
     } catch (e: any) {
       setError(e.message || 'Error al escanear');
     } finally {
       setScanning(false);
     }
-  }, [history]);
+  }, [history, refreshPrices]);
 
   const grade = currentPick ? getGrade(currentPick.score) : null;
   const isCall = currentPick?.direction === 'CALL';
   const dirColor = isCall ? '#34D399' : '#FB7185';
+
+  const results = history.map(p => getStatus(p, prices[p.symbol]));
+  const wins = results.filter(s => s === 'win').length;
+  const losses = results.filter(s => s === 'loss').length;
+  const pendingN = results.filter(s => s === 'pending').length;
+  const closed = wins + losses;
+  const winRate = closed > 0 ? (wins / closed) * 100 : null;
+
   const expDate = currentPick?.contract?.expiration
     ? new Date(currentPick.contract.expiration + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : null;
@@ -280,30 +325,68 @@ export default function TradePickView() {
           <button onClick={() => setShowHistory(!showHistory)} style={styles.historyToggle}>
             {showHistory ? '▲' : '▼'} Pick History ({history.length})
           </button>
+
+          {winRate != null && (
+            <div style={styles.winRateBar}>
+              <span style={{ ...styles.winRateChip, background: '#34D39918', border: '1px solid #34D39950', color: '#34D399' }}>
+                ✅ {wins} W
+              </span>
+              <span style={{ ...styles.winRateChip, background: '#FB718518', border: '1px solid #FB718550', color: '#FB7185' }}>
+                ❌ {losses} L
+              </span>
+              <span style={{ ...styles.winRateChip, background: '#8B90A515', border: '1px solid #8B90A540', color: '#8B90A5' }}>
+                ⏳ {pendingN} en curso
+              </span>
+              <span style={{ ...styles.winRateChip, background: 'linear-gradient(135deg, #2DD4BF18, #34D39918)', border: '1px solid #2DD4BF55', color: '#2DD4BF', fontWeight: 800 }}>
+                Win Rate {winRate.toFixed(0)}%
+              </span>
+            </div>
+          )}
+
           {showHistory && (
             <div style={styles.historyList}>
               {history.slice(1).map((pick) => {
                 const g = getGrade(pick.score);
                 const dirCol = pick.direction === 'CALL' ? '#34D399' : '#FB7185';
+                const status = getStatus(pick, prices[pick.symbol]);
+                const sm = status ? STATUS_META[status] : null;
                 const exp = pick.contract?.expiration
                   ? new Date(pick.contract.expiration + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                   : null;
                 const expanded = expandedId === pick.id;
                 return (
                   <div key={pick.id}>
-                    <div style={styles.historyItem} onClick={() => setExpandedId(expanded ? null : pick.id)}>
+                    <div
+                      style={{
+                        ...styles.historyItem,
+                        background: sm?.bg || '#0d1117',
+                        borderColor: sm?.border || C.border,
+                      }}
+                      onClick={() => setExpandedId(expanded ? null : pick.id)}
+                    >
                       <div style={{ minWidth: 0 }}>
                         <div style={styles.historyLeft}>
                           <span style={{ ...styles.historySymbol, color: g.color }}>{pick.symbol}</span>
                           <span style={{ ...styles.historyDir, color: dirCol }}>{pick.direction}</span>
                           <span style={{ color: g.color, fontWeight: 700 }}>{pick.score}</span>
                           <span style={styles.historyDate}>{new Date(pick.createdAt).toLocaleDateString()}</span>
+                          {sm && (
+                            <span style={{
+                              fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 999,
+                              background: sm.bg, border: `1px solid ${sm.border}`, color: sm.color, letterSpacing: '0.5px',
+                            }}>
+                              {sm.label}
+                            </span>
+                          )}
                         </div>
                         <div style={styles.historyLevels}>
                           <span style={styles.lvl}>Entry <b style={{ color: C.textPrimary }}>${fmt(pick.entry)}</b></span>
                           <span style={styles.lvl}>Stop <b style={{ color: C.negative }}>${fmt(pick.stop)}</b></span>
                           <span style={styles.lvl}>Target <b style={{ color: C.positive }}>${fmt(pick.target)}</b></span>
                           <span style={styles.lvl}>R/R <b style={{ color: g.color }}>{fmt(pick.riskReward, 1)}</b></span>
+                          {status && prices[pick.symbol] != null && (
+                            <span style={styles.lvl}>Ahora <b style={{ color: status === 'win' ? '#34D399' : status === 'loss' ? '#FB7185' : C.textPrimary }}>${fmt(prices[pick.symbol]!)}</b></span>
+                          )}
                           {pick.contract && (
                             <span style={styles.lvlContract}>
                               {pick.contract.strike} {exp || ''} @ ${fmt(pick.contract.premium)}
@@ -311,7 +394,7 @@ export default function TradePickView() {
                           )}
                         </div>
                       </div>
-                      <span style={{ ...styles.historyChevron, color: expanded ? g.color : C.textMuted, transform: expanded ? 'rotate(90deg)' : undefined, transition: 'transform 0.15s' }}>›</span>
+                      <span style={{ ...styles.historyChevron, color: sm?.color || C.textMuted, transform: expanded ? 'rotate(90deg)' : undefined, transition: 'transform 0.15s' }}>›</span>
                     </div>
 
                     {expanded && (
@@ -684,6 +767,20 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     cursor: 'pointer',
     textAlign: 'center' as const,
+  },
+  winRateBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+    margin: '10px 0 8px',
+  },
+  winRateChip: {
+    fontSize: 11,
+    fontWeight: 700,
+    padding: '5px 12px',
+    borderRadius: 999,
+    whiteSpace: 'nowrap' as const,
   },
   historyList: {
     marginTop: 8,
