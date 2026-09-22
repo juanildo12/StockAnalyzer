@@ -91,6 +91,19 @@ const STATUS_META: Record<string, { label: string; bg: string; border: string; c
   pending: { label: 'ACTIVO', bg: '#8B90A515', border: '#8B90A540', color: '#8B90A5' },
 };
 
+const RISK_PER_TRADE = 100;
+
+function getProgress(pick: TradePick, price: number | null | undefined) {
+  if (price == null || !isFinite(price)) return null;
+  const risk = Math.abs(pick.entry - pick.stop);
+  const total = Math.abs(Math.max(pick.stop, pick.target) - Math.min(pick.stop, pick.target));
+  if (risk <= 0 || total <= 0) return null;
+  const pct = Math.max(0, Math.min(100, (pick.direction === 'CALL' ? (price - pick.stop) : (pick.stop - price)) / total * 100));
+  const favor = pick.direction === 'CALL' ? price - pick.entry : pick.entry - price;
+  const unreal = RISK_PER_TRADE * (favor / risk);
+  return { pct, unreal };
+}
+
 function fmtPct(n: number): string {
   return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
 }
@@ -164,7 +177,6 @@ export default function TradePickView() {
   const closed = wins + losses;
   const winRate = closed > 0 ? (wins / closed) * 100 : null;
 
-  const RISK_PER_TRADE = 100;
   const pnlRows = history.map(p => {
     const st = getStatus(p, prices[p.symbol]);
     let pnl = 0;
@@ -175,6 +187,10 @@ export default function TradePickView() {
   const totalWon = pnlRows.reduce((a, r) => a + Math.max(0, r.pnl), 0);
   const totalLost = pnlRows.reduce((a, r) => a + Math.min(0, r.pnl), 0);
   const netPnl = totalWon + totalLost;
+  const unrealTotal = history.reduce((a, p) => {
+    const prog = getProgress(p, prices[p.symbol]);
+    return a + (getStatus(p, prices[p.symbol]) === 'pending' && prog ? prog.unreal : 0);
+  }, 0);
   const toggleFilter = (f: 'all' | PickStatus) => setStatusFilter(statusFilter === f ? 'all' : f);
 
   const expDate = currentPick?.contract?.expiration
@@ -382,6 +398,11 @@ export default function TradePickView() {
                 <span style={{ ...styles.pnlChip, color: netPnl >= 0 ? '#2DD4BF' : '#FB7185', fontWeight: 800 }}>
                   Neto {netPnl >= 0 ? '+' : '-'}${Math.abs(netPnl).toFixed(0)}
                 </span>
+                {unrealTotal !== 0 && (
+                  <span style={{ ...styles.pnlChip, color: unrealTotal >= 0 ? '#67E8F9' : '#FB923C' }}>
+                    No realizado {unrealTotal >= 0 ? '+' : '-'}${Math.abs(unrealTotal).toFixed(0)}
+                  </span>
+                )}
                 <span style={{ ...styles.pnlChip, color: C.textMuted, cursor: 'help' }} title="Estimado con riesgo fijo de $100 por trade (ganancia = $100 × R/R)">
                   <b>{RISK_PER_TRADE}</b> riesgo/trade
                 </span>
@@ -397,6 +418,7 @@ export default function TradePickView() {
                 const status = getStatus(pick, prices[pick.symbol]);
                 const sm = status ? STATUS_META[status] : null;
                 const stPnl = status === 'win' ? RISK_PER_TRADE * (pick.riskReward || 1) : status === 'loss' ? -RISK_PER_TRADE : 0;
+                const prog = status === 'pending' ? getProgress(pick, prices[pick.symbol]) : null;
                 const exp = pick.contract?.expiration
                   ? new Date(pick.contract.expiration + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                   : null;
@@ -440,6 +462,23 @@ export default function TradePickView() {
                             </span>
                           )}
                         </div>
+                        {prog && (
+                          <div style={{ marginTop: 8, width: '100%' }}>
+                            <div style={styles.progressTrack}>
+                              <div style={{ ...styles.progressFill, width: `${prog.pct}%`, background: prog.unreal >= 0 ? '#2DD4BF' : '#FB7185' }} />
+                            </div>
+                            <div style={styles.progressLabels}>
+                              <span style={{ color: C.negative, fontSize: 10 }}>Stop ${fmt(pick.stop)}</span>
+                              <span style={{ color: prog.unreal >= 0 ? '#2DD4BF' : '#FB923C', fontSize: 11, fontWeight: 700 }}>
+                                Cómo va {prog.unreal >= 0 ? '+' : '-'}${Math.abs(prog.unreal).toFixed(0)}
+                                {prices[pick.symbol] != null && (
+                                  <span> · a ${fmt(Math.abs(pick.target - prices[pick.symbol]!))} del target</span>
+                                )}
+                              </span>
+                              <span style={{ color: C.positive, fontSize: 10 }}>Target ${fmt(pick.target)}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <span style={{ ...styles.historyChevron, color: sm?.color || C.textMuted, transform: expanded ? 'rotate(90deg)' : undefined, transition: 'transform 0.15s' }}>›</span>
                     </div>
@@ -870,6 +909,25 @@ const styles: Record<string, React.CSSProperties> = {
     color: C.textMuted,
     fontSize: 12,
     textAlign: 'center' as const,
+  },
+  progressTrack: {
+    height: 6,
+    borderRadius: 999,
+    background: '#21262d',
+    position: 'relative' as const,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 999,
+    transition: 'width 0.3s ease',
+  },
+  progressLabels: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 8,
   },
   historyList: {
     marginTop: 8,
