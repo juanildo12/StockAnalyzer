@@ -73,8 +73,23 @@ function getGrade(score: number): { label: string; color: string } {
 
 type PickStatus = 'win' | 'loss' | 'pending' | null;
 
+function getSettlement(pick: TradePick, price: number | null | undefined): { status: 'win' | 'loss'; pnl: number } | null {
+  if (price == null || !isFinite(price) || !pick.contract) return null;
+  const exp = new Date(pick.contract.expiration + 'T23:59:59').getTime();
+  if (!isFinite(exp) || exp >= Date.now()) return null;
+  const strike = pick.contract.strike;
+  const premium = pick.contract.premium || 0;
+  const intrinsic = pick.direction === 'CALL'
+    ? Math.max(0, price - strike)
+    : Math.max(0, strike - price);
+  const pnl = (intrinsic - premium) * 100;
+  return { status: pnl > 0 ? 'win' : 'loss', pnl };
+}
+
 function getStatus(pick: TradePick, price: number | null | undefined): PickStatus {
   if (price == null || !isFinite(price)) return null;
+  const settled = getSettlement(pick, price);
+  if (settled) return settled.status;
   if (pick.direction === 'CALL') {
     if (price >= pick.target) return 'win';
     if (price <= pick.stop) return 'loss';
@@ -92,6 +107,14 @@ const STATUS_META: Record<string, { label: string; bg: string; border: string; c
 };
 
 const RISK_PER_TRADE = 100;
+
+function getPnl(pick: TradePick, status: PickStatus, price: number | null | undefined): number {
+  const settled = getSettlement(pick, price);
+  if (settled) return settled.pnl;
+  if (status === 'win') return RISK_PER_TRADE * (pick.riskReward || 1);
+  if (status === 'loss') return -RISK_PER_TRADE;
+  return 0;
+}
 
 function getProgress(pick: TradePick, price: number | null | undefined) {
   if (price == null || !isFinite(price)) return null;
@@ -175,10 +198,7 @@ export default function TradePickView() {
 
   const pnlRows = history.map(p => {
     const st = getStatus(p, prices[p.symbol]);
-    let pnl = 0;
-    if (st === 'win') pnl = RISK_PER_TRADE * (p.riskReward || 1);
-    else if (st === 'loss') pnl = -RISK_PER_TRADE;
-    return { p, st, pnl };
+    return { p, st, pnl: getPnl(p, st, prices[p.symbol]) };
   });
   const totalWon = pnlRows.reduce((a, r) => a + Math.max(0, r.pnl), 0);
   const totalLost = pnlRows.reduce((a, r) => a + Math.min(0, r.pnl), 0);
@@ -413,7 +433,8 @@ export default function TradePickView() {
                 const dirCol = pick.direction === 'CALL' ? '#34D399' : '#FB7185';
                 const status = getStatus(pick, prices[pick.symbol]);
                 const sm = status ? STATUS_META[status] : null;
-                const stPnl = status === 'win' ? RISK_PER_TRADE * (pick.riskReward || 1) : status === 'loss' ? -RISK_PER_TRADE : 0;
+                const settled = getSettlement(pick, prices[pick.symbol]);
+                const stPnl = getPnl(pick, status, prices[pick.symbol]);
                 const prog = status === 'pending' ? getProgress(pick, prices[pick.symbol]) : null;
                 const exp = pick.contract?.expiration
                   ? new Date(pick.contract.expiration + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -490,7 +511,9 @@ export default function TradePickView() {
                             background: stPnl >= 0 ? '#34D39912' : '#FB718512',
                             border: `1px solid ${stPnl >= 0 ? '#34D39940' : '#FB718540'}`,
                           }}>
-                            {stPnl >= 0 ? '+' : '-'}${Math.abs(stPnl).toFixed(0)} P/L (${status === 'win' ? `ganancia = $${RISK_PER_TRADE} × R/R ${fmt(pick.riskReward, 1)}` : `pérdida = riesgo $${RISK_PER_TRADE}`})
+                            {stPnl >= 0 ? '+' : '-'}${Math.abs(stPnl).toFixed(0)} P/L ({settled
+                              ? `liquidado: opción ${status === 'win' ? 'ITM' : 'OTM'}`
+                              : status === 'win' ? `ganancia = $${RISK_PER_TRADE} × R/R ${fmt(pick.riskReward, 1)}` : `pérdida = riesgo $${RISK_PER_TRADE}`})
                           </div>
                         )}
                         <div style={styles.hxGrid}>
