@@ -104,10 +104,6 @@ function getProgress(pick: TradePick, price: number | null | undefined) {
   return { pct, unreal };
 }
 
-function fmtPct(n: number): string {
-  return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
-}
-
 export default function TradePickView() {
   const [scanning, setScanning] = useState(false);
   const [currentPick, setCurrentPick] = useState<TradePick | null>(null);
