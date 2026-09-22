@@ -104,7 +104,7 @@ export default function TradePickView() {
       };
 
       setCurrentPick(pick);
-      const updated = [pick, ...history.filter((p) => p.symbol !== pick.symbol)].slice(0, 20);
+      const updated = [pick, ...history].slice(0, 20);
       setHistory(updated);
       savePicks(updated);
     } catch (e: any) {
@@ -283,16 +283,32 @@ export default function TradePickView() {
             <div style={styles.historyList}>
               {history.slice(1).map((pick) => {
                 const g = getGrade(pick.score);
+                const dirCol = pick.direction === 'CALL' ? '#34D399' : '#FB7185';
+                const exp = pick.contract?.expiration
+                  ? new Date(pick.contract.expiration + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                  : null;
                 return (
                   <div key={pick.id} style={styles.historyItem} onClick={() => setCurrentPick(pick)}>
-                    <div style={styles.historyLeft}>
-                      <span style={{ ...styles.historySymbol, color: g.color }}>{pick.symbol}</span>
-                      <span style={{ ...styles.historyDir, color: pick.direction === 'CALL' ? '#34D399' : '#FB7185' }}>{pick.direction}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={styles.historyLeft}>
+                        <span style={{ ...styles.historySymbol, color: g.color }}>{pick.symbol}</span>
+                        <span style={{ ...styles.historyDir, color: dirCol }}>{pick.direction}</span>
+                        <span style={{ color: g.color, fontWeight: 700 }}>{pick.score}</span>
+                        <span style={styles.historyDate}>{new Date(pick.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <div style={styles.historyLevels}>
+                        <span style={styles.lvl}>Entry <b style={{ color: C.textPrimary }}>${fmt(pick.entry)}</b></span>
+                        <span style={styles.lvl}>Stop <b style={{ color: C.negative }}>${fmt(pick.stop)}</b></span>
+                        <span style={styles.lvl}>Target <b style={{ color: C.positive }}>${fmt(pick.target)}</b></span>
+                        <span style={styles.lvl}>R/R <b style={{ color: g.color }}>{fmt(pick.riskReward, 1)}</b></span>
+                        {pick.contract && (
+                          <span style={styles.lvlContract}>
+                            {pick.contract.strike} {exp || ''} @ ${fmt(pick.contract.premium)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div style={styles.historyRight}>
-                      <span style={{ color: g.color }}>{pick.score}</span>
-                      <span style={styles.historyDate}>{new Date(pick.createdAt).toLocaleDateString()}</span>
-                    </div>
+                    <span style={styles.historyChevron}>›</span>
                   </div>
                 );
               })}
@@ -615,6 +631,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
     padding: '10px 16px',
     borderRadius: R.md,
     border: `1px solid ${C.border}`,
@@ -642,6 +659,29 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 12,
     fontSize: 13,
     color: C.textMuted,
+  },
+  historyLevels: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
+    marginTop: 6,
+  },
+  lvl: {
+    fontSize: 11,
+    color: C.textMuted,
+    whiteSpace: 'nowrap' as const,
+  },
+  lvlContract: {
+    fontSize: 11,
+    color: '#FBBF24',
+    whiteSpace: 'nowrap' as const,
+    fontWeight: 700,
+  },
+  historyChevron: {
+    fontSize: 18,
+    color: C.textMuted,
+    flexShrink: 0,
   },
   historyDate: {
     fontSize: 12,
