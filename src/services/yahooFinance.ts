@@ -557,21 +557,22 @@ export async function getHistoricalData(
   const endDate = period2 || new Date();
 
   try {
-    const result: any = await yf.historical(sym, {
+    const result: any = await yf.chart(sym, {
       period1: startDate,
       period2: endDate,
       interval: '1d',
     });
 
-    const data = result.map((item: any) => ({
-      date: item.date.toISOString().split('T')[0],
+    const quotes = result?.quotes || [];
+    const data = quotes.map((item: any) => ({
+      date: item.date?.toISOString().split('T')[0],
       close: item.close,
       high: item.high,
       low: item.low,
       open: item.open,
       volume: item.volume,
     }));
-    
+
     setCache(cacheKey, data);
     return data;
   } catch (e) {
@@ -632,15 +633,16 @@ export async function getTechnicalAnalysis(
   if (cached) return cached;
 
   try {
-    const result: any = await yf.historical(sym, {
+    const result: any = await yf.chart(sym, {
       period1: new Date(Date.now() - 400 * 24 * 60 * 60 * 1000),
       period2: new Date(),
       interval: '1d',
     });
 
-    if (!result || result.length < 200) return null;
+    const quotes = result?.quotes || [];
+    if (quotes.length < 200) return null;
 
-    const prices = result.map((item: any) => item.close);
+    const prices = quotes.map((item: any) => item.close).filter((c: any) => typeof c === 'number' && c > 0);
     
     const tradingDays = prices.length;
     const sma50 = prices.slice(-50).reduce((a: number, b: number) => a + b, 0) / 50;
