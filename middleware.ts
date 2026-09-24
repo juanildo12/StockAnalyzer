@@ -194,6 +194,7 @@ export async function middleware(req: NextRequest) {
       pathname === "/api/health" ||
       pathname.startsWith("/api/search") ||
       pathname.startsWith("/api/calendar") ||
+      pathname.startsWith("/api/catalysts") ||
       pathname.startsWith("/api/radar") ||
       pathname.startsWith("/api/scraper") ||
       pathname.startsWith("/api/options-screener") ||
