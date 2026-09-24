@@ -159,12 +159,12 @@ export async function GET() {
       const batch = candidates.slice(i, i + BATCH_SIZE);
       const results = await Promise.all(batch.map(async (c) => {
         try {
-          const hist: any = await yf.historical(c.symbol, {
+          const hist: any = await yf.chart(c.symbol, {
             period1: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
             period2: new Date(),
             interval: '1d',
           });
-          const closes = (hist || []).map((h: any) => h.close).filter((v: number) => v > 0);
+          const closes = (hist?.quotes || []).map((h: any) => h.close).filter((v: number) => v > 0);
           const rsi = calcRSI(closes);
           const trend = rsi !== null ? (rsi > 60 ? 'alcista' : rsi < 40 ? 'bajista' : 'neutral') : 'neutral';
           return { symbol: c.symbol, rsi, trend };

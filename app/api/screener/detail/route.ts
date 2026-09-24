@@ -52,17 +52,17 @@ export async function GET(request: Request) {
       try {
         const [quote, hist, fh] = await Promise.all([
           yf.quote(sym).catch(() => null),
-          yf.historical(sym, {
+          yf.chart(sym, {
             period1: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
             period2: new Date(),
             interval: '1d',
-          }).catch(() => []),
+          }).catch(() => null),
           finnhubQuote(sym).catch(() => null),
         ]);
 
         if (!quote) return null;
 
-        const closes = (hist as any[] || []).map((h: any) => h.close).filter((c: number) => c > 0);
+        const closes = ((hist?.quotes as any[]) || []).map((h: any) => h.close).filter((c: number) => c > 0);
         const rsi = calcRSI(closes);
         const lastCloses = closes.slice(-8);
         const trend = rsi !== null

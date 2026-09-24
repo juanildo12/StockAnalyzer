@@ -286,13 +286,13 @@ export async function GET(request: Request) {
       const batch = rows.slice(i, i + BATCH_SIZE);
       const results = await Promise.all(batch.map(async (row) => {
         try {
-          const hist: any = await yf.historical(row.symbol, {
+          const hist: any = await yf.chart(row.symbol, {
             period1: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
             period2: new Date(),
             interval: '1d',
-          }).catch(() => []);
+          }).catch(() => null);
 
-          const bars = (hist || []) as any[];
+          const bars = (hist?.quotes || []) as any[];
           const closes = bars.map((b: any) => b.close).filter((c: number) => c > 0);
           const highs = bars.map((b: any) => b.high).filter((h: number) => h > 0);
           const lows = bars.map((b: any) => b.low).filter((l: number) => l > 0);

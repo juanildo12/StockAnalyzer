@@ -228,18 +228,18 @@ async function scanStocks(universe: string[]): Promise<AlgoAlert[]> {
         try {
           const [quote, hist] = await Promise.all([
             withTimeout(yf.quote(symbol), 5000),
-            withTimeout(yf.historical(symbol, { period1: new Date(Date.now() - 120 * 86400000), period2: new Date(), interval: '1d' }), 5000),
+            withTimeout(yf.chart(symbol, { period1: new Date(Date.now() - 120 * 86400000), period2: new Date(), interval: '1d' }), 5000),
           ]);
 
-          if (!quote || !hist || hist.length < 20) return null;
+          if (!quote || !hist || !hist.quotes || hist.quotes.length < 20) return null;
 
           const price = quote.regularMarketPrice || 0;
           if (price < 1 || !isFinite(price)) return null;
 
-          const closes = hist.map(h => h.close);
-          const highs = hist.map(h => h.high);
-          const lows = hist.map(h => h.low);
-          const volumes = hist.map(h => h.volume);
+          const closes = hist.quotes.map(h => h.close).filter((c): c is number => c != null);
+          const highs = hist.quotes.map(h => h.high).filter((h): h is number => h != null);
+          const lows = hist.quotes.map(h => h.low).filter((l): l is number => l != null);
+          const volumes = hist.quotes.map(h => h.volume).filter((v): v is number => v != null);
           const changePercent = quote.regularMarketChangePercent || 0;
           const volume = quote.regularMarketVolume || volumes[volumes.length - 1] || 0;
           const marketCap = quote.marketCap || 0;

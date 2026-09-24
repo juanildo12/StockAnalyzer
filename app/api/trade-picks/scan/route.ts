@@ -328,7 +328,7 @@ export async function GET(request: NextRequest) {
             const [quote, hist] = await Promise.all([
               withTimeout(yf.quote(symbol), 5000),
               withTimeout(
-                yf.historical(symbol, {
+                yf.chart(symbol, {
                   period1: new Date(Date.now() - 440 * 86400000),
                   period2: new Date(),
                   interval: '1d',
@@ -337,12 +337,12 @@ export async function GET(request: NextRequest) {
               ),
             ]);
 
-            if (!quote || !hist || hist.length < 10) return null;
+            if (!quote || !hist?.quotes || hist.quotes.length < 10) return null;
 
-            const closes = hist.map((h) => h.close);
-            const highs = hist.map((h) => h.high);
-            const lows = hist.map((h) => h.low);
-            const volumes = hist.map((h) => h.volume);
+            const closes = hist.quotes.map((h) => h.close).filter((c): c is number => c != null);
+            const highs = hist.quotes.map((h) => h.high).filter((h): h is number => h != null);
+            const lows = hist.quotes.map((h) => h.low).filter((l): l is number => l != null);
+            const volumes = hist.quotes.map((h) => h.volume).filter((v): v is number => v != null);
 
             return scoreStock(quote, closes, highs, lows, volumes);
           } catch {
@@ -385,10 +385,11 @@ export async function GET(request: NextRequest) {
         try {
           const [quote, hist] = await Promise.all([
             withTimeout(yf.quote(sym), 5000),
-            withTimeout(yf.historical(sym, { period1: new Date(Date.now() - 440 * 86400000), period2: new Date(), interval: '1d' }), 7000),
+            withTimeout(yf.chart(sym, { period1: new Date(Date.now() - 440 * 86400000), period2: new Date(), interval: '1d' }), 7000),
           ]);
-          const p = quote && hist && hist.length >= 200
-            ? scoreStock(quote, hist.map(h => h.close), hist.map(h => h.high), hist.map(h => h.low), hist.map(h => h.volume))
+          const q = hist?.quotes || [];
+          const p = quote && q.length >= 200
+            ? scoreStock(quote, q.map(h => h.close).filter((c): c is number => c != null), q.map(h => h.high).filter((h): h is number => h != null), q.map(h => h.low).filter((l): l is number => l != null), q.map(h => h.volume).filter((v): v is number => v != null))
             : null;
           if (p) searchSet.set(sym, p);
         } catch { /* skip */ }

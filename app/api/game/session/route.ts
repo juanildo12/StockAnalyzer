@@ -143,8 +143,8 @@ export async function POST(req: NextRequest) {
         const price = quote.regularMarketPrice;
         let closes: number[] = [];
         try {
-          const history = await yf.historical(sym, { period1: new Date(Date.now() - 365 * 86400000), period2: new Date() });
-          closes = history.map(h => h.close).filter(c => c != null) as number[];
+          const history: any = await yf.chart(sym, { period1: new Date(Date.now() - 365 * 86400000), period2: new Date(), interval: '1d' });
+          closes = (history?.quotes || []).map((h: any) => h.close).filter((c: number) => c != null) as number[];
         } catch {}
 
         const peRatio = quote.summaryDetail?.trailingPE || quote.trailingPE || quote.priceEarnings?.trailingPE || 0;
@@ -167,11 +167,11 @@ export async function POST(req: NextRequest) {
 
         let candles: any[] = [];
         try {
-          const history = await yf.historical(sym, { period1: new Date(Date.now() - 120 * 86400000), period2: new Date() });
-          candles = history
-            .filter(h => h.close != null && h.open != null && h.high != null && h.low != null)
+          const history: any = await yf.chart(sym, { period1: new Date(Date.now() - 120 * 86400000), period2: new Date(), interval: '1d' });
+          candles = (history?.quotes || [])
+            .filter((h: any) => h.close != null && h.open != null && h.high != null && h.low != null)
             .slice(-40)
-            .map(h => ({
+            .map((h: any) => ({
               t: i,
               o: h.open!,
               h: h.high!,

@@ -75,11 +75,11 @@ export async function GET() {
     let candles: { t: number; o: number; h: number; l: number; c: number; v: number }[] = [];
     let closes: number[] = [];
     try {
-      const history = await yf.historical(todaySymbol, { period1: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), period2: new Date() });
-      candles = history
-        .filter(h => h.close != null && h.open != null && h.high != null && h.low != null)
+      const history: any = await yf.chart(todaySymbol, { period1: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), period2: new Date(), interval: '1d' });
+      candles = (history?.quotes || [])
+        .filter((h: any) => h.close != null && h.open != null && h.high != null && h.low != null)
         .slice(-60)
-        .map((h, i) => ({
+        .map((h: any, i: number) => ({
           t: i,
           o: h.open!,
           h: h.high!,

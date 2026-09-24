@@ -849,13 +849,13 @@ export async function getOptionsAnalysis(symbol: string): Promise<OptionsAnalysi
   const sym = symbol.toUpperCase();
 
   try {
-    const [quote, historical, chainResult]: [any, any[], any] = await Promise.all([
+    const [quote, historical, chainResult]: [any, any, any] = await Promise.all([
       yf.quote(sym).catch(() => null),
-      yf.historical(sym, {
+      yf.chart(sym, {
         period1: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000),
         period2: new Date(),
         interval: '1d',
-      }).catch(() => []),
+      }).catch(() => null),
       yf.options(sym).catch(() => null),
     ]);
 
@@ -864,7 +864,7 @@ export async function getOptionsAnalysis(symbol: string): Promise<OptionsAnalysi
     }
 
     const currentPrice = quote.regularMarketPrice;
-    const prices = historical.map((h: any) => h.close);
+    const prices = (historical?.quotes || []).map((h: any) => h.close).filter((c: number) => c > 0);
 
     const sma50 = prices.slice(-50).reduce((a: number, b: number) => a + b, 0) / Math.min(50, prices.length);
     const sma200 = prices.slice(-200).reduce((a: number, b: number) => a + b, 0) / Math.min(200, prices.length);

@@ -165,14 +165,14 @@ export async function computeBreakoutScores(): Promise<{
       batch.map(async (row) => {
         try {
           const hist: any = await yf
-            .historical(row.symbol, {
+            .chart(row.symbol, {
               period1: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
               period2: new Date(),
               interval: "1d",
             })
-            .catch(() => []);
+            .catch(() => null);
 
-          const bars = (hist || []) as any[];
+          const bars = (hist?.quotes || []) as any[];
           const closes = bars
             .map((b: any) => b.close)
             .filter((c: number) => c > 0);
