@@ -34,6 +34,8 @@ interface TradePick {
 }
 
 const STORAGE_KEY = 'trade-picks-history';
+const HISTORY_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 1 mes
+const HISTORY_HARD_CAP = 200;
 
 function loadPicks(): TradePick[] {
   if (typeof window === 'undefined') return [];
@@ -43,9 +45,14 @@ function loadPicks(): TradePick[] {
   } catch { return []; }
 }
 
+function prunePicks(picks: TradePick[]): TradePick[] {
+  const cutoff = Date.now() - HISTORY_MAX_AGE_MS;
+  return picks.filter(p => new Date(p.createdAt).getTime() >= cutoff).slice(0, HISTORY_HARD_CAP);
+}
+
 function savePicks(picks: TradePick[]) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(picks.slice(0, 20)));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(prunePicks(picks)));
   } catch {}
 }
 
@@ -174,7 +181,7 @@ export default function TradePickView() {
       };
 
       setCurrentPick(pick);
-      const updated = [pick, ...history].slice(0, 20);
+      const updated = prunePicks([pick, ...history]);
       setHistory(updated);
       savePicks(updated);
       refreshPrices(updated);
