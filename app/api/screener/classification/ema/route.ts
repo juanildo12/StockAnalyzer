@@ -39,15 +39,16 @@ function emaWithPrice(closes: number[]): EmaResult | null {
 
 async function emaFromYahoo(symbol: string): Promise<EmaResult | null> {
   const hist = await withTimeout(
-    yf.historical(symbol, {
+    yf.chart(symbol, {
       period1: new Date(Date.now() - 540 * 86400000),
       period2: new Date(),
       interval: '1d',
     }),
     7000
   );
-  if (!hist || hist.length < 200) return null;
-  const closes = hist.map(h => h.close).filter((c): c is number => typeof c === 'number' && c > 0);
+  const quotes = hist?.quotes || [];
+  if (quotes.length < 200) return null;
+  const closes = quotes.map(q => q.close).filter((c): c is number => typeof c === 'number' && c > 0);
   return emaWithPrice(closes);
 }
 
