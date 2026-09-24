@@ -290,6 +290,18 @@ export async function getEconomicCalendar() {
   return (data?.economicCalendar || []) as any[];
 }
 
+// ---------- News ----------
+
+export async function getCompanyNews(symbol: string, from: string, to: string) {
+  const data = await fetchFinnhub(`/company-news?symbol=${symbol}&from=${from}&to=${to}`);
+  return (Array.isArray(data) ? data : []) as any[];
+}
+
+export async function getGeneralNews() {
+  const data = await fetchFinnhub('/news?category=general');
+  return (Array.isArray(data) ? data : []) as any[];
+}
+
 // ---------- Congressional Trading ----------
 
 export async function getCongressionalTrading(symbol: string) {

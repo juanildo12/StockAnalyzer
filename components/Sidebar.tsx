@@ -5,7 +5,7 @@ import {
   Rocket, LayoutDashboard, Filter, BarChart3, Target, Crosshair,
   Watch, FlaskConical, Brain, Bot, Gamepad2,
   ChevronDown, ChevronRight, Zap, LineChart, Bell,
-  Lock, Crown, Gem, Building2, Sun, Moon,
+  Lock, Crown, Gem, Building2, Sun, Moon, CalendarDays,
 } from 'lucide-react';
 import { colors as C, radius as R, font as F, spacing as S, transition as T } from '@/src/utils/webTheme';
 import { useTheme } from '@/src/components/ThemeProvider';
@@ -62,6 +62,7 @@ const NAV_GROUPS: NavGroup[] = [
       { view: 'briefing', label: 'Briefing', icon: <Rocket size={18} />, badge: 'PRO', minPlan: 'pro' },
       { view: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} />, badge: 'PRO', minPlan: 'pro' },
       { view: 'screener', label: 'Screener', icon: <Filter size={18} />, badge: 'PRO', minPlan: 'pro' },
+      { view: 'catalysts', label: 'Catalizadores', icon: <CalendarDays size={18} />, badge: 'PRO', minPlan: 'pro' },
     ],
   },
   {
