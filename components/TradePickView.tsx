@@ -35,7 +35,7 @@ interface TradePick {
 
 const STORAGE_KEY = 'trade-picks-history';
 const HISTORY_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 1 mes
-const HISTORY_HARD_CAP = 200;
+const HISTORY_HARD_CAP = 500; // techo de seguridad para localStorage (nunca se toca en un mes)
 
 function loadPicks(): TradePick[] {
   if (typeof window === 'undefined') return [];
