@@ -308,8 +308,13 @@ let memoryCache: { data: any; ts: number } | null = null;
 const CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours
 
 export async function GET(request: NextRequest) {
-  // Return cached result if fresh
-  if (memoryCache && Date.now() - memoryCache.ts < CACHE_TTL) {
+  const excludeRaw = request.nextUrl.searchParams.get('exclude');
+  const excludeSet = new Set<string>((excludeRaw || '').split(',').map((s) => s.trim().toUpperCase()).filter(Boolean));
+  // El cliente siempre envía ?exclude= → recalcular siempre (evita repetir picks del día)
+  const hasExclude = excludeRaw !== null;
+
+  // Return cached result if fresh (bypassed when the client requests exclusion-aware scan)
+  if (memoryCache && !hasExclude && Date.now() - memoryCache.ts < CACHE_TTL) {
     return NextResponse.json(memoryCache.data);
   }
 
@@ -358,6 +363,14 @@ export async function GET(request: NextRequest) {
 
     // Sort by score
     candidates.sort((a, b) => b.score - a.score);
+
+    // Exclude symbols already picked in the last day (client sends ?exclude=)
+    if (excludeSet.size > 0) {
+      for (let i = candidates.length - 1; i >= 0; i--) {
+        if (excludeSet.has(candidates[i].symbol)) candidates.splice(i, 1);
+      }
+    }
+
     let topPick: TradePickCandidate | null = null;
     let contract: any = null;
 
@@ -373,10 +386,12 @@ export async function GET(request: NextRequest) {
     const searchSet = new Map<string, TradePickCandidate>();
     // Prioritize top 15 scored candidates from the scan
     for (const c of candidates.slice(0, 15)) {
+      if (excludeSet.has(c.symbol)) continue;
       searchSet.set(c.symbol, c);
     }
     // Add liquid universe stocks not already in the set
     for (const sym of LIQUID_UNIVERSE) {
+      if (excludeSet.has(sym)) continue;
       if (searchSet.has(sym)) continue;
       const existing = candidates.find((c) => c.symbol === sym);
       if (existing) {

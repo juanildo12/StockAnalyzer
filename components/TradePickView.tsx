@@ -165,7 +165,11 @@ export default function TradePickView() {
     setScanning(true);
     setError('');
     try {
-      const res = await fetch('/api/trade-picks/scan');
+      const cutoff24h = Date.now() - 24 * 60 * 60 * 1000;
+      const excludedToday = Array.from(new Set(
+        history.filter(p => new Date(p.createdAt).getTime() > cutoff24h).map(p => p.symbol)
+      ));
+      const res = await fetch(`/api/trade-picks/scan?exclude=${encodeURIComponent(excludedToday.join(','))}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Scan failed');
 
@@ -200,6 +204,8 @@ export default function TradePickView() {
   const wins = results.filter(s => s === 'win').length;
   const losses = results.filter(s => s === 'loss').length;
   const pendingN = results.filter(s => s === 'pending').length;
+  const todayCutoff = Date.now() - 24 * 60 * 60 * 1000;
+  const excludedToday = Array.from(new Set(history.filter(p => new Date(p.createdAt).getTime() > todayCutoff).map(p => p.symbol)));
   const closed = wins + losses;
   const winRate = closed > 0 ? (wins / closed) * 100 : null;
 
@@ -243,6 +249,14 @@ export default function TradePickView() {
           )}
         </button>
       </div>
+
+      {/* Exclusión de repetidos del día */}
+      {excludedToday.length > 0 && (
+        <div style={styles.excludeHint}>
+          🔁 Sin repetir hoy: {excludedToday.length} {excludedToday.length === 1 ? 'símbolo' : 'símbolos'} ya elegidos en las últimas 24h (
+          {excludedToday.join(', ')})
+        </div>
+      )}
 
       {/* Error */}
       {error && (
@@ -649,6 +663,15 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
+  },
+  excludeHint: {
+    marginBottom: 14,
+    padding: '8px 12px',
+    borderRadius: R.sm,
+    background: C.warning + '14',
+    border: `1px solid ${C.warning}35`,
+    color: C.warning,
+    fontSize: 12,
   },
   spinner: {
     width: 14,
