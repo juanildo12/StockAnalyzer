@@ -174,7 +174,7 @@ export default function TradePickView() {
       if (!res.ok) throw new Error(data.error || 'Scan failed');
 
       if (!data.pick) {
-        setError('No se encontró ningún pick con score ≥ 70. Intenta más tarde cuando el mercado esté activo.');
+        setError('No se encontró ningún pick con score ≥ 80 (STRONG+). Espera a que el mercado esté activo y vuelve a intentar.');
         return;
       }
 

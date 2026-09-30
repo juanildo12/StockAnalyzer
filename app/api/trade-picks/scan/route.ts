@@ -306,6 +306,7 @@ function scoreStock(
 
 let memoryCache: { data: any; ts: number } | null = null;
 const CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours
+const MIN_PICK_SCORE = 80; // solo acciones con score alto (STRONG+ / ELITE)
 
 export async function GET(request: NextRequest) {
   const excludeRaw = request.nextUrl.searchParams.get('exclude');
@@ -364,6 +365,11 @@ export async function GET(request: NextRequest) {
     // Sort by score
     candidates.sort((a, b) => b.score - a.score);
 
+    // Solo acciones con score alto (≥ MIN_PICK_SCORE)
+    for (let i = candidates.length - 1; i >= 0; i--) {
+      if (candidates[i].score < MIN_PICK_SCORE) candidates.splice(i, 1);
+    }
+
     // Exclude symbols already picked in the last day (client sends ?exclude=)
     if (excludeSet.size > 0) {
       for (let i = candidates.length - 1; i >= 0; i--) {
@@ -406,7 +412,7 @@ export async function GET(request: NextRequest) {
           const p = quote && q.length >= 200
             ? scoreStock(quote, q.map(h => h.close).filter((c): c is number => c != null), q.map(h => h.high).filter((h): h is number => h != null), q.map(h => h.low).filter((l): l is number => l != null), q.map(h => h.volume).filter((v): v is number => v != null))
             : null;
-          if (p) searchSet.set(sym, p);
+          if (p && p.score >= MIN_PICK_SCORE) searchSet.set(sym, p);
         } catch { /* skip */ }
       }
     }
@@ -496,8 +502,15 @@ export async function GET(request: NextRequest) {
       topPick = candidates[0];
     }
 
+    // Seguridad final: nunca devolver una acción con score bajo
+    if (topPick && topPick.score < MIN_PICK_SCORE) {
+      topPick = null;
+      contract = null;
+    }
+
     const result = {
       pick: topPick ? { ...topPick, contract } : null,
+      minScore: MIN_PICK_SCORE,
       scanned: universe.length,
       candidates: candidates.length,
       searchedForContracts: tryCandidates.length,
