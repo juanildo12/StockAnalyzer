@@ -1036,6 +1036,11 @@ export default function Home() {
                 <img src={session.user.image} alt={session.user.name || 'User'} style={{ width: '32px', height: '32px', borderRadius: R.full }} />
               )}
               <span style={{ color: C.textSecondary, fontSize: F.sizeBase }}>{session.user?.name}</span>
+              {(session.user as any)?.trial && (
+                <span style={{ padding: '3px 10px', borderRadius: R.full, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#fbbf24', fontSize: F.sizeXs, fontWeight: '700', whiteSpace: 'nowrap' }}>
+                  Trial {(session.user as any).trial?.daysLeft ?? 30}d
+                </span>
+              )}
               <button onClick={() => signOut()} aria-label="Cerrar sesión" style={{ padding: '6px 12px', borderRadius: R.sm, border: `1px solid ${C.negative}`, background: 'transparent', color: C.negative, cursor: 'pointer', fontSize: F.sizeSm }}>Salir</button>
             </div>
           ) : (

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { prisma } from "@/src/lib/prisma";
+import { resolvePlan } from "@/src/lib/plan";
 import { PLANS, PlanTier } from "@/src/lib/payments/stripe";
 import { z } from "zod";
 
@@ -17,7 +18,17 @@ export async function GET() {
     where: { userId: session.user.id },
   });
 
-  const plan = (subscription?.plan as PlanTier) || "free";
+  const info = resolvePlan(subscription ?? null);
+
+  // Downgrade lazy si el trial ya expiró
+  if (subscription && info.expired) {
+    await prisma.subscriptions.update({
+      where: { userId: session.user.id },
+      data: { plan: 'free', status: 'expired_trial' },
+    });
+  }
+
+  const plan = (info.plan as PlanTier) || "free";
   const planConfig = PLANS[plan];
 
   return NextResponse.json({
@@ -25,8 +36,10 @@ export async function GET() {
     planName: planConfig.name,
     price: planConfig.price,
     features: planConfig.features,
-    status: subscription?.status || "active",
+    status: info.status,
+    isTrial: info.isTrial,
+    trialEndsAt: info.trialEndsAt,
+    trialDaysLeft: info.trialDaysLeft,
     currentPeriodEnd: subscription?.currentPeriodEnd,
-    cancelAt: subscription?.cancelAt,
   });
 }

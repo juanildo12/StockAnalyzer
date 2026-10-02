@@ -8,6 +8,9 @@ export default function BillingPage() {
   const [loading, setLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
+  const [isTrial, setIsTrial] = useState(false);
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
 
   const PLANS = [
     {
@@ -113,6 +116,9 @@ export default function BillingPage() {
       if (res.ok) {
         const data = await res.json();
         setCurrentPlan(data.plan);
+        setIsTrial(!!data.isTrial);
+        setTrialDaysLeft(data.trialDaysLeft ?? null);
+        setTrialEndsAt(data.trialEndsAt ?? null);
       }
     } catch (error) {
       console.error("Failed to fetch subscription:", error);
@@ -232,6 +238,35 @@ export default function BillingPage() {
             backdropFilter: "blur(10px)",
           }}>
             {message}
+          </div>
+        )}
+
+        {/* Trial banner */}
+        {isTrial && (
+          <div style={{
+            marginBottom: "28px", padding: "16px 22px", borderRadius: "14px",
+            background: "rgba(245,158,11,0.1)",
+            border: "1px solid rgba(245,158,11,0.35)",
+            color: "#fbbf24", fontSize: "14px", fontWeight: 600,
+            display: "flex", alignItems: "center", gap: "12px",
+            flexWrap: "wrap",
+          }}>
+            <span style={{ fontSize: "22px" }}>🎁</span>
+            <span>
+              Estás en un <strong>TRIAL de 1 mes</strong> del plan <strong>Elite</strong>!
+              {trialDaysLeft !== null && trialDaysLeft > 0 && (
+                <span> Te quedan <strong>{trialDaysLeft} {trialDaysLeft === 1 ? "día" : "días"}</strong> de prueba.</span>
+              )}
+              {trialEndsAt && (
+                <span style={{ opacity: 0.8 }}>
+                  {" "}Finaliza el{" "}
+                  {new Date(trialEndsAt).toLocaleDateString("es-ES", { day: "2-digit", month: "long", year: "numeric" })}.
+                </span>
+              )}
+            </span>
+            <span style={{ opacity: 0.75, fontWeight: 400, width: "100%", fontSize: "12px" }}>
+              Al terminar el trial se mantendrá tu suscripción activa; si no tienes un pago asociado, tu cuenta volverá al plan Free.
+            </span>
           </div>
         )}
 

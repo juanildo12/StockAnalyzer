@@ -1,6 +1,7 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/src/lib/prisma";
+import { resolvePlan } from "@/src/lib/plan";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -111,11 +112,23 @@ export const authOptions: NextAuthOptions = {
           if (dbUser) {
             const sub = await prisma.subscriptions.findUnique({
               where: { userId: dbUser.id },
-              select: { plan: true },
+              select: { plan: true, status: true, currentPeriodEnd: true },
             });
-            token.plan = sub?.plan ?? "free";
+            const resolved = resolvePlan(sub ?? null);
+            // Downgrade lazily cuando un trial ya expiró
+            if (sub && resolved.expired) {
+              await prisma.subscriptions.update({
+                where: { userId: dbUser.id },
+                data: { plan: 'free', status: 'expired_trial' },
+              });
+            }
+            token.plan = resolved.plan;
+            token.trial = resolved.isTrial
+              ? { daysLeft: resolved.trialDaysLeft, endsAt: resolved.trialEndsAt }
+              : null;
           } else {
             token.plan = "free";
+            token.trial = null;
           }
         }
       } catch (err) {
@@ -128,6 +141,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.sub as string;
         (session.user as any).plan = token.plan ?? "free";
+        (session.user as any).trial = token.trial ?? null;
       }
       return session;
     },
