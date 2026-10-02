@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
-import { STOCK_POOL, fetchDynamicUniverse } from '@/src/lib/stockPool';
+import { STOCK_POOL, fetchTradePickUniverse, TRADE_PICK_MIN_MARKET_CAP } from '@/src/lib/stockPool';
+import { cacheAside } from '@/src/lib/cache';
 
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
 export const dynamic = 'force-dynamic';
@@ -180,7 +181,7 @@ function scoreStock(
   if (price < 5 || !isFinite(price)) return null;
 
   const marketCap = quote.marketCap || 0;
-  if (marketCap > 0 && marketCap < 10_000_000_000) return null; // skip small caps (thin options)
+  if (marketCap > 0 && marketCap < TRADE_PICK_MIN_MARKET_CAP) return null; // skip names too small for options
 
   const avgVol = quote.averageDailyVolume3Month || quote.averageDailyVolume10Day || 0;
   const curVol = quote.regularMarketVolume || volumes[volumes.length - 1] || 0;
@@ -307,6 +308,55 @@ function scoreStock(
 let memoryCache: { data: any; ts: number } | null = null;
 const CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours
 const MIN_PICK_SCORE = 80; // solo acciones con score alto (STRONG+ / ELITE)
+const SCAN_CACHE_KEY = 'trade-picks:scan:candidates';
+const SCAN_CACHE_TTL = 30 * 60; // 30 min en Redis para la lista de candidatos
+
+/** Scores the whole universe. Expensive: ~2 Yahoo calls per symbol. */
+async function scoreUniverse(): Promise<{ universe: string[]; candidates: TradePickCandidate[] }> {
+  const universe = await fetchTradePickUniverse().catch(() => [...STOCK_POOL]);
+
+  const candidates: TradePickCandidate[] = [];
+  const batchSize = 40;
+
+  for (let i = 0; i < universe.length; i += batchSize) {
+    const batch = universe.slice(i, i + batchSize);
+    const results = await Promise.all(
+      batch.map(async (symbol) => {
+        try {
+          const [quote, hist] = await Promise.all([
+            withTimeout(yf.quote(symbol), 5000),
+            withTimeout(
+              yf.chart(symbol, {
+                period1: new Date(Date.now() - 440 * 86400000),
+                period2: new Date(),
+                interval: '1d',
+              }),
+              7000
+            ),
+          ]);
+
+          if (!quote || !hist?.quotes || hist.quotes.length < 10) return null;
+
+          const closes = hist.quotes.map((h) => h.close).filter((c): c is number => c != null);
+          const highs = hist.quotes.map((h) => h.high).filter((h): h is number => h != null);
+          const lows = hist.quotes.map((h) => h.low).filter((l): l is number => l != null);
+          const volumes = hist.quotes.map((h) => h.volume).filter((v): v is number => v != null);
+
+          return scoreStock(quote, closes, highs, lows, volumes);
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    for (const r of results) {
+      if (r) candidates.push(r);
+    }
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+  return { universe, candidates };
+}
 
 export async function GET(request: NextRequest) {
   const excludeRaw = request.nextUrl.searchParams.get('exclude');
@@ -320,50 +370,12 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Merge static pool with dynamic market movers (gainers, losers, most active, trending)
-    const universe = await fetchDynamicUniverse().catch(() => [...STOCK_POOL]);
-
-    const candidates: TradePickCandidate[] = [];
-    const batchSize = 20;
-
-    for (let i = 0; i < universe.length; i += batchSize) {
-      const batch = universe.slice(i, i + batchSize);
-      const results = await Promise.all(
-        batch.map(async (symbol) => {
-          try {
-            const [quote, hist] = await Promise.all([
-              withTimeout(yf.quote(symbol), 5000),
-              withTimeout(
-                yf.chart(symbol, {
-                  period1: new Date(Date.now() - 440 * 86400000),
-                  period2: new Date(),
-                  interval: '1d',
-                }),
-                7000
-              ),
-            ]);
-
-            if (!quote || !hist?.quotes || hist.quotes.length < 10) return null;
-
-            const closes = hist.quotes.map((h) => h.close).filter((c): c is number => c != null);
-            const highs = hist.quotes.map((h) => h.high).filter((h): h is number => h != null);
-            const lows = hist.quotes.map((h) => h.low).filter((l): l is number => l != null);
-            const volumes = hist.quotes.map((h) => h.volume).filter((v): v is number => v != null);
-
-            return scoreStock(quote, closes, highs, lows, volumes);
-          } catch {
-            return null;
-          }
-        })
-      );
-
-      for (const r of results) {
-        if (r) candidates.push(r);
-      }
-    }
-
-    // Sort by score
-    candidates.sort((a, b) => b.score - a.score);
+    // El universo se puntúa una vez y se cachea: escanear ~1.000 símbolos cuesta
+    // ~80 s contra Yahoo. El ?exclude= del cliente se aplica encima de la lista
+    // cacheada, así que sigue sin repetir picks sin pagar el escaneo cada vez.
+    const scanned = await cacheAside(SCAN_CACHE_KEY, SCAN_CACHE_TTL, scoreUniverse);
+    const universe = scanned.universe;
+    const candidates = scanned.candidates.slice();
 
     // Solo acciones con score alto (≥ MIN_PICK_SCORE)
     for (let i = candidates.length - 1; i >= 0; i--) {
