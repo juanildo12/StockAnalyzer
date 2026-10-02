@@ -57,6 +57,25 @@ interface MoversPayload {
   losers: MarketMover[];
 }
 
+type TabKey = 'catalysts' | 'movers';
+
+const TABS: { key: TabKey; emoji: string; label: string; color: string; sub: string }[] = [
+  {
+    key: 'catalysts',
+    emoji: '📅',
+    label: 'Catalizadores',
+    color: C.accent,
+    sub: 'Calendario semanal de ganancias, IPOs y eventos de mercado que mueven acciones',
+  },
+  {
+    key: 'movers',
+    emoji: '📈',
+    label: 'Market Movers',
+    color: C.warning,
+    sub: 'Top gainers y losers con las noticias de hoy',
+  },
+];
+
 function impChip(n: number) {
   if (n >= 85) return { label: `Alta ${n}`, color: '#F87171', bg: '#F8717115', border: '#F8717140' };
   if (n >= 60) return { label: `Notable ${n}`, color: '#FBBF24', bg: '#FBBF2415', border: '#FBBF2440' };
@@ -206,8 +225,10 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
   const [showSug, setShowSug] = useState(false);
   const [movers, setMovers] = useState<MoversPayload | null>(null);
   const [moversLoading, setMoversLoading] = useState(true);
+  const [tab, setTab] = useState<TabKey>('catalysts');
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const moversRequested = useRef(false);
 
   const loadCalendar = useCallback((offset: number) => {
     setLoading(true);
@@ -235,15 +256,26 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
       .catch(e => { setError(e.message); setLoading(false); });
   }, []);
 
+  // La ficha del ticker vive en la pestaña de Catalizadores, así que al tocar
+  // una fila de Movers saltamos allí en vez de dejarla fuera de pantalla.
+  const openMover = useCallback((sym: string) => {
+    setTab('catalysts');
+    loadSymbol(sym);
+  }, [loadSymbol]);
+
   useEffect(() => { loadCalendar(0); }, [loadCalendar]);
 
+  // Los movers solo se piden cuando se abre su pestaña: son ~12 llamadas a
+  // Finnhub que no queremos gastar si el usuario se queda en el calendario.
   useEffect(() => {
+    if (tab !== 'movers' || moversRequested.current) return;
+    moversRequested.current = true;
     fetch('/api/catalysts/movers')
       .then(r => r.json())
       .then(d => { if (!d.error) setMovers(d); })
       .catch(() => {})
       .finally(() => setMoversLoading(false));
-  }, []);
+  }, [tab]);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -268,6 +300,7 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
   };
 
   const visibleDays = days || [];
+  const activeTab = TABS.find(t => t.key === tab)!;
 
   return (
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 16px' }}>
@@ -279,11 +312,43 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
         <p style={{ fontSize: 13, color: C.textMuted, margin: '4px 0 0' }}>
           {selected
             ? `Próximos eventos que pueden mover a ${selected.symbol}`
-            : 'Calendario semanal de ganancias, IPOs y eventos de mercado que mueven acciones'}
+            : activeTab.sub}
         </p>
       </div>
 
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        {TABS.map(t => {
+          const active = tab === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '9px 14px', borderRadius: R.md,
+                border: `1px solid ${active ? t.color + '55' : C.border}`,
+                background: active ? t.color + '15' : C.bgCard,
+                color: active ? t.color : C.textSecondary,
+                cursor: 'pointer', fontWeight: active ? 700 : 500,
+                fontSize: 13, transition: 'all 0.15s ease', fontFamily: F.family,
+              }}
+              onMouseEnter={e => {
+                if (!active) e.currentTarget.style.borderColor = C.borderHover;
+              }}
+              onMouseLeave={e => {
+                if (!active) e.currentTarget.style.borderColor = C.border;
+              }}
+            >
+              <span style={{ fontSize: 15 }}>{t.emoji}</span>
+              <span>{t.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Search */}
+      {tab === 'catalysts' && (
       <div ref={searchRef} style={{ position: 'relative', marginBottom: 16 }}>
         <input
           type="text"
@@ -327,20 +392,21 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
           </div>
         )}
       </div>
+      )}
 
       {/* Loading */}
-      {loading && (
+      {tab === 'catalysts' && loading && (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: C.textMuted, fontSize: 13 }}>
           Buscando catalizadores...
         </div>
       )}
-      {error && (
+      {tab === 'catalysts' && error && (
         <div style={{ textAlign: 'center', padding: '40px 20px', color: C.negative, fontSize: 13 }}>
           Error: {error}
         </div>
       )}
 
-      {!loading && !error && selected && (
+      {tab === 'catalysts' && !loading && !error && selected && (
         <div>
           {/* Back */}
           <button
@@ -504,62 +570,8 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
       )}
 
       {/* Weekly calendar */}
-      {!loading && !error && !selected && (
+      {tab === 'catalysts' && !loading && !error && !selected && (
         <div>
-          {/* Market Movers Today */}
-          <div style={{
-            padding: '14px 16px', borderRadius: R.xl, marginBottom: 18,
-            background: C.gradientCard, border: `1px solid ${C.border}`,
-          }}>
-            <div style={{
-              display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-              gap: 10, flexWrap: 'wrap',
-            }}>
-              <h2 style={{
-                fontSize: 16, fontWeight: 800, color: C.textPrimary,
-                margin: 0, letterSpacing: '-0.2px',
-              }}>
-                Market Movers Today
-              </h2>
-              <span style={{ fontSize: 11, color: C.textMuted, fontFamily: F.mono }}>
-                {moversLoading
-                  ? 'Actualizando…'
-                  : movers
-                    ? `Updated ${fmtClock(movers.updatedAt)}`
-                    : 'Sin datos'}
-              </span>
-            </div>
-            <p style={{ fontSize: 12, color: C.textMuted, margin: '4px 0 0', lineHeight: 1.5 }}>
-              Top gainers and losers with today's news headlines. Tap any row to open the ticker page.
-            </p>
-
-            {moversLoading && (
-              <div style={{ padding: '28px 16px', textAlign: 'center', color: C.textMuted, fontSize: 12.5 }}>
-                Cargando mayores movimientos del día...
-              </div>
-            )}
-
-            {!moversLoading && movers && movers.gainers.length === 0 && movers.losers.length === 0 && (
-              <div style={{
-                marginTop: 12, padding: '18px 16px', borderRadius: R.md,
-                border: `1px dashed ${C.border}`, background: '#0d1117',
-                color: C.textMuted, fontSize: 12.5, textAlign: 'center',
-              }}>
-                Sin movimientos destacados ahora mismo. Vuelve más tarde.
-              </div>
-            )}
-
-            {!moversLoading && movers && (movers.gainers.length > 0 || movers.losers.length > 0) && (
-              <div style={{
-                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-                gap: 18, marginTop: 14,
-              }}>
-                <MoverColumn title="Gainers" movers={movers.gainers} onOpen={loadSymbol} />
-                <MoverColumn title="Losers" movers={movers.losers} onOpen={loadSymbol} />
-              </div>
-            )}
-          </div>
-
           {/* Legend */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', fontSize: 11 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -651,6 +663,62 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Market Movers Today */}
+      {tab === 'movers' && (
+        <div style={{
+          padding: '16px 18px', borderRadius: R.xl,
+          background: C.gradientCard, border: `1px solid ${C.border}`,
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+            gap: 10, flexWrap: 'wrap',
+          }}>
+            <h2 style={{
+              fontSize: 16, fontWeight: 800, color: C.textPrimary,
+              margin: 0, letterSpacing: '-0.2px',
+            }}>
+              Market Movers Today
+            </h2>
+            <span style={{ fontSize: 11, color: C.textMuted, fontFamily: F.mono }}>
+              {moversLoading
+                ? 'Actualizando…'
+                : movers
+                  ? `Updated ${fmtClock(movers.updatedAt)}`
+                  : 'Sin datos'}
+            </span>
+          </div>
+          <p style={{ fontSize: 12, color: C.textMuted, margin: '4px 0 0', lineHeight: 1.5 }}>
+            Top gainers and losers with today's news headlines. Tap any row to open the ticker page.
+          </p>
+
+          {moversLoading && (
+            <div style={{ padding: '48px 16px', textAlign: 'center', color: C.textMuted, fontSize: 12.5 }}>
+              Cargando mayores movimientos del día...
+            </div>
+          )}
+
+          {!moversLoading && movers && movers.gainers.length === 0 && movers.losers.length === 0 && (
+            <div style={{
+              marginTop: 14, padding: '24px 16px', borderRadius: R.md,
+              border: `1px dashed ${C.border}`, background: '#0d1117',
+              color: C.textMuted, fontSize: 12.5, textAlign: 'center',
+            }}>
+              Sin movimientos destacados ahora mismo. Vuelve más tarde.
+            </div>
+          )}
+
+          {!moversLoading && movers && (movers.gainers.length > 0 || movers.losers.length > 0) && (
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: 18, marginTop: 16,
+            }}>
+              <MoverColumn title="Gainers" movers={movers.gainers} onOpen={openMover} />
+              <MoverColumn title="Losers" movers={movers.losers} onOpen={openMover} />
+            </div>
+          )}
         </div>
       )}
     </div>
