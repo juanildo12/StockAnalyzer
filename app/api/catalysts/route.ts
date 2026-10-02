@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
 import {
   getEarningsCalendar,
+  getEarningsCalendarChunked,
   getIPOCalendar,
   getEconomicCalendar,
   getCompanyNews,
@@ -196,7 +197,7 @@ async function fetchMarketCalendar(
   const toIso = fmtDay(to);
 
   const [earnings, ipo, economic, generalNews] = await Promise.all([
-    getEarningsCalendar(fromIso, toIso).catch(() => []),
+    getEarningsCalendarChunked(fromIso, toIso).catch(() => []),
     getIPOCalendar(fromIso, toIso).catch(() => []),
     getEconomicCalendar().catch(() => []),
     getGeneralNews().catch(() => []),

@@ -141,6 +141,60 @@ export async function getEarningsCalendar(from: string, to: string) {
   return (data?.earningsCalendar || []) as any[];
 }
 
+const EARNINGS_ROW_CAP = 1490;
+
+async function getEarningsRange(from: string, to: string): Promise<any[]> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await getEarningsCalendar(from, to);
+    } catch (err) {
+      if (attempt === 2) throw err;
+      await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+    }
+  }
+  return [];
+}
+
+/**
+ * /calendar/earnings truncates at 1500 rows per response and spends that budget
+ * on the densest days of the range, so a whole-month request during earnings
+ * season came back with only Oct 20-29 and dropped Oct 1-19. Those days then
+ * rendered as empty even though they had reports.
+ *
+ * Rather than walking day by day (93 API calls for a 3-month view, which blows
+ * past Finnhub's 60/minute limit and loses rows to 429s), this asks for the
+ * range and only subdivides the halves when a response comes back at the cap,
+ * which is exactly when we know it was truncated. Dense ranges split down, thin
+ * ones cost a single call. Calls are serial and merges are de-duplicated by
+ * symbol+date because the midpoint day is fetched by both halves.
+ */
+export async function getEarningsCalendarChunked(from: string, to: string): Promise<any[]> {
+  const byKey = new Map<string, any>();
+
+  const walk = async (a: string, b: string, depth: number): Promise<void> => {
+    const rows = await getEarningsRange(a, b);
+    const truncated = rows.length >= EARNINGS_ROW_CAP;
+    const single = a === b;
+    if (!truncated || single || depth >= 8) {
+      for (const r of rows) byKey.set(`${r.date}|${r.symbol}`, r);
+      return;
+    }
+    const mid = new Date(new Date(`${a}T00:00:00Z`).getTime() / 2 + new Date(`${b}T00:00:00Z`).getTime() / 2)
+      .toISOString()
+      .slice(0, 10);
+    if (mid <= a || mid >= b) {
+      for (const r of rows) byKey.set(`${r.date}|${r.symbol}`, r);
+      return;
+    }
+    await walk(a, mid, depth + 1);
+    await walk(mid, b, depth + 1);
+  };
+
+  if (from > to) return [];
+  await walk(from, to, 0);
+  return Array.from(byKey.values());
+}
+
 // ---------- Recommendations ----------
 
 export async function getRecommendationTrends(symbol: string) {
