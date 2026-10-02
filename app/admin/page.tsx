@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { signOut } from "next-auth/react";
+import { useSession, signIn, signOut } from "next-auth/react";
 import { colors as C } from "@/src/utils/webTheme";
 
 interface UserRow {
@@ -30,6 +30,7 @@ const QUICK_ACTIONS = [
 ];
 
 export default function AdminPage() {
+  const { data: session, status } = useSession();
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
@@ -60,12 +61,18 @@ export default function AdminPage() {
   }
 
   useEffect(() => {
+    if (status !== "authenticated") {
+      setChecking(false);
+      return;
+    }
+    setChecking(true);
     (async () => {
       try {
+        setSessionEmail(session?.user?.email ?? null);
         const res = await fetch("/api/v1/admin/set-plan");
         const data = await res.json();
         setIsAdmin(!!data.isAdmin);
-        setSessionEmail(data.email ?? null);
+        if (data.email) setSessionEmail(data.email);
         if (!res.ok) setCheckError(`HTTP ${res.status}`);
         if (data.isAdmin) await loadUsers();
       } catch (err: any) {
@@ -75,7 +82,7 @@ export default function AdminPage() {
         setChecking(false);
       }
     })();
-  }, []);
+  }, [status, session?.user?.email]);
 
   const trialUsers = useMemo(() => users.filter((u) => u.status === "trial"), [users]);
 
@@ -126,10 +133,28 @@ export default function AdminPage() {
     }
   }
 
-  if (checking) {
+  if (status === "loading" || (status === "authenticated" && checking)) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, color: C.textSecondary, fontFamily: "system-ui, sans-serif" }}>
         Verificando...
+      </div>
+    );
+  }
+
+  if (status === "unauthenticated") {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, color: C.textSecondary, fontFamily: "system-ui, sans-serif", flexDirection: "column", gap: "16px", padding: "24px", textAlign: "center" }}>
+        <div style={{ fontSize: "40px" }}>🔐</div>
+        <h1 style={{ color: C.textPrimary, fontSize: "26px", margin: 0 }}>Panel de Administración</h1>
+        <p style={{ margin: 0, maxWidth: "380px", fontSize: "14px", color: C.textMuted, lineHeight: 1.5 }}>
+          Este es un área restringida. Inicia sesión con tu cuenta de administrador para continuar.
+        </p>
+        <button
+          onClick={() => signIn("google", { callbackUrl: "/admin" })}
+          style={{ marginTop: "8px", padding: "12px 24px", borderRadius: "12px", cursor: "pointer", background: C.accent, color: C.textPrimary, border: "none", fontWeight: 700, fontSize: "16px" }}
+        >
+          Iniciar sesión con Google
+        </button>
       </div>
     );
   }
@@ -142,21 +167,9 @@ export default function AdminPage() {
           Email de tu sesión: <strong style={{ color: sessionEmail ? C.textPrimary : C.negative }}>{sessionEmail ?? "(sin sesión)"}</strong>
         </div>
         {checkError && <div style={{ color: C.textMuted, fontSize: "12px" }}>Estado del check: {checkError}</div>}
-        {sessionEmail ? (
-          <div style={{ color: C.textMuted, fontSize: "13px" }}>
-            Con este email no están habilitados permisos de administrador. Pulsa "Cambiar cuenta" e inicia con tu cuenta admin.
-          </div>
-        ) : (
-          <div style={{ color: C.textMuted, fontSize: "13px" }}>
-            No hay sesión activa en este navegador.
-          </div>
-        )}
-        <button
-          onClick={() => { setChecking(true); window.location.reload(); }}
-          style={{ marginTop: "8px", padding: "8px 16px", borderRadius: "10px", border: `1px solid ${C.accent}`, background: "transparent", color: C.accentLight, cursor: "pointer" }}
-        >
-          Reintentar
-        </button>
+        <div style={{ color: C.textMuted, fontSize: "13px" }}>
+          Con este email no están habilitados permisos de administrador. Pulsa "Cambiar cuenta" e inicia con tu cuenta admin.
+        </div>
         <button
           onClick={() => signOut({ callbackUrl: "/admin" })}
           style={{ marginTop: "8px", padding: "8px 16px", borderRadius: "10px", border: `1px solid ${C.border}`, background: C.bgElevated, color: C.textSecondary, cursor: "pointer" }}
