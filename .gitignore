@@ -65,6 +65,9 @@ tsconfig.tsbuildinfo
 .expo/xcodebuild-error.log
 **/.expo/xcodebuild*.log
 
+# Expo prebuild dependency-hash cache (regenerated on every prebuild)
+**/.expo/prebuild/cached-packages.json
+
 # Ruby / CocoaPods
 **/Pods/
 /vendor/bundle/
