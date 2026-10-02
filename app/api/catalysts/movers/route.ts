@@ -19,6 +19,7 @@ const MIN_PRICE = 5;
 const MIN_MARKET_CAP = 1e9;
 const MIN_VOLUME = 100_000;
 const MAX_MOVE_PCT = 60;
+const NEWS_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 export interface MoverNews {
   headline: string;
@@ -100,45 +101,86 @@ function mentions(text: string, needle: string): boolean {
   return new RegExp(`(^|[^A-Za-z0-9])${escaped}([^A-Za-z0-9]|$)`, 'i').test(text);
 }
 
+const UP_WORDS =
+  /\b(soar|jump|surg|rall|climb|rise|ris|rose|gain|gains?|gained|win|wins|boost|upgrad|beat|beats|outperform|buyback|bullish|record high|all-time high|higher|advanc|rebound|recover)\w*/i;
+const DOWN_WORDS =
+  /\b(fall|falls|fell|drop|slide|slump|tumble|plunge|sink|sank|declin|downgrad|miss|misses|undercut|cut|slashes|selloff|bearish|warn|loss|loses|lose|weak|weaker|halt|probe|lawsuit|fraud|bankrupt|delay|slips)\w*/i;
+
+/** +1 bullish, -1 bearish, 0 neutral/unclear. */
+function headlineDirection(headline: string): number {
+  const up = UP_WORDS.test(headline);
+  const down = DOWN_WORDS.test(headline);
+  if (up === down) return 0;
+  return up ? 1 : -1;
+}
+
 /**
  * Finnhub mixes company headlines with broad market wires, so a headline only
- * counts when it is actually about this ticker.
+ * counts when it is about this ticker. It must also agree with the direction
+ * of today's move: attaching "stock tumbles" to a +12% day is worse than
+ * showing nothing at all.
  */
-function pickNews(items: any[], symbol: string, name: string, midnightTs: number): MoverNews | null {
-  const usable = (items || []).filter(n => n?.headline);
-  if (usable.length === 0) return null;
+function pickNews(
+  items: any[],
+  symbol: string,
+  name: string,
+  sign: number,
+  midnightTs: number,
+  windowStartTs: number
+): MoverNews | null {
+  interface Candidate extends MoverNews { _ts: number }
 
-  const aboutTicker = usable.filter(n =>
-    (Array.isArray(n.related) && n.related.includes(symbol)) || mentions(n.headline, symbol)
-  );
-  const aboutCompany = aboutTicker.length > 0
-    ? aboutTicker
-    : usable.filter(n => name && n.headline.toLowerCase().includes(name.toLowerCase()));
-
-  if (aboutCompany.length === 0) return null;
-
-  const top = aboutCompany.find(n => (n.datetime || 0) * 1000 >= midnightTs) || aboutCompany[0];
-  return {
-    headline: top.headline,
-    source: top.source || 'Market News',
-    url: top.url || '',
-    datetime: top.datetime || 0,
+  const toCandidate = (n: any): Candidate | null => {
+    const ts = (n.datetime || 0) * 1000;
+    if (!n.headline || ts < windowStartTs) return null;
+    const dir = headlineDirection(n.headline);
+    if (dir !== 0 && dir !== sign) return null;
+    return {
+      headline: n.headline,
+      source: n.source || 'Market News',
+      url: n.url || '',
+      datetime: n.datetime || 0,
+      _ts: ts,
+    };
   };
+
+  const candidates = ((items || []).map(toCandidate).filter(Boolean) as Candidate[])
+    .sort((a, b) => b.datetime - a.datetime);
+
+  if (candidates.length === 0) return null;
+
+  const aboutTicker = candidates.filter(n =>
+    (Array.isArray((n as any).related) && (n as any).related.includes(symbol)) ||
+    mentions(n.headline, symbol)
+  );
+  const pool = aboutTicker.length > 0
+    ? aboutTicker
+    : candidates.filter(n => name && n.headline.toLowerCase().includes(name.toLowerCase()));
+
+  if (pool.length === 0) return null;
+
+  const todays = pool.filter(n => n._ts >= midnightTs);
+  const top = todays[0] || pool[0];
+  return { headline: top.headline, source: top.source, url: top.url, datetime: top.datetime };
 }
 
 async function attachNews(movers: MarketMover[]): Promise<MarketMover[]> {
   const now = new Date();
-  const from = fmtDay(addDays(now, -2));
+  const from = fmtDay(addDays(now, -3));
   const to = fmtDay(now);
   const midnight = new Date(now);
   midnight.setHours(0, 0, 0, 0);
   const midnightTs = midnight.getTime();
+  const windowStartTs = now.getTime() - NEWS_WINDOW_MS;
 
   return Promise.all(
     movers.map(async m => {
       try {
         const items = ((await getCompanyNews(m.symbol, from, to)) as any[]) || [];
-        return { ...m, news: pickNews(items, m.symbol, m.name, midnightTs) };
+        return {
+          ...m,
+          news: pickNews(items, m.symbol, m.name, Math.sign(m.changePct), midnightTs, windowStartTs),
+        };
       } catch {
         return m;
       }
