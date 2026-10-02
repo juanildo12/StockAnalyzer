@@ -60,6 +60,11 @@ tsconfig.tsbuildinfo
 # Bundle artifact
 *.jsbundle
 
+# Expo / Xcode build logs
+.expo/xcodebuild.log
+.expo/xcodebuild-error.log
+**/.expo/xcodebuild*.log
+
 # Ruby / CocoaPods
 **/Pods/
 /vendor/bundle/
