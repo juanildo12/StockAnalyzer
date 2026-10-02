@@ -33,6 +33,7 @@ export default function AdminPage() {
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [checkError, setCheckError] = useState<string | null>(null);
 
   const [users, setUsers] = useState<UserRow[]>([]);
   const [search, setSearch] = useState("");
@@ -65,9 +66,11 @@ export default function AdminPage() {
         const data = await res.json();
         setIsAdmin(!!data.isAdmin);
         setSessionEmail(data.email ?? null);
+        if (!res.ok) setCheckError(`HTTP ${res.status}`);
         if (data.isAdmin) await loadUsers();
-      } catch {
+      } catch (err: any) {
         setIsAdmin(false);
+        setCheckError(err?.message || "Error de red");
       } finally {
         setChecking(false);
       }
@@ -135,15 +138,31 @@ export default function AdminPage() {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, color: C.negative, fontFamily: "system-ui, sans-serif", flexDirection: "column", gap: "8px", padding: "24px", textAlign: "center" }}>
         <div>No autorizado — no eres administrador.</div>
+        <div style={{ color: C.textSecondary, fontSize: "13px" }}>
+          Email de tu sesión: <strong style={{ color: sessionEmail ? C.textPrimary : C.negative }}>{sessionEmail ?? "(sin sesión)"}</strong>
+        </div>
+        {checkError && <div style={{ color: C.textMuted, fontSize: "12px" }}>Estado del check: {checkError}</div>}
         {sessionEmail ? (
           <div style={{ color: C.textMuted, fontSize: "13px" }}>
-            Sesión actual: <strong>{sessionEmail}</strong>. Si este es tu correo, recarga en unos minutos.
+            Con este email no están habilitados permisos de administrador. Pulsa "Cambiar cuenta" e inicia con tu cuenta admin.
           </div>
         ) : (
-          <button onClick={() => signOut()} style={{ marginTop: "8px", padding: "8px 16px", borderRadius: "10px", border: `1px solid ${C.accent}`, background: "transparent", color: C.accentLight, cursor: "pointer" }}>
-            Iniciar sesión / cambiar cuenta
-          </button>
+          <div style={{ color: C.textMuted, fontSize: "13px" }}>
+            No hay sesión activa en este navegador.
+          </div>
         )}
+        <button
+          onClick={() => { setChecking(true); window.location.reload(); }}
+          style={{ marginTop: "8px", padding: "8px 16px", borderRadius: "10px", border: `1px solid ${C.accent}`, background: "transparent", color: C.accentLight, cursor: "pointer" }}
+        >
+          Reintentar
+        </button>
+        <button
+          onClick={() => signOut({ callbackUrl: "/admin" })}
+          style={{ marginTop: "8px", padding: "8px 16px", borderRadius: "10px", border: `1px solid ${C.border}`, background: C.bgElevated, color: C.textSecondary, cursor: "pointer" }}
+        >
+          Cambiar cuenta
+        </button>
       </div>
     );
   }

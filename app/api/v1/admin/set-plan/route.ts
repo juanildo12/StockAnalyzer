@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/src/lib/prisma';
-import { isAdminEmail } from '@/src/lib/admin';
+import { isAdminSession } from '@/src/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,14 +11,14 @@ const VALID_PLANS = new Set(['free', 'pro', 'elite', 'enterprise']);
 export async function GET() {
   const session = await getServerSession(authOptions);
   return NextResponse.json({
-    isAdmin: isAdminEmail(session?.user?.email ?? null),
+    isAdmin: isAdminSession(session?.user?.email ?? null, (session?.user as any)?.plan ?? null),
     email: session?.user?.email ?? null,
   });
 }
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!isAdminEmail(session?.user?.email ?? null)) {
+  if (!isAdminSession(session?.user?.email ?? null, (session?.user as any)?.plan ?? null)) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
   }
 

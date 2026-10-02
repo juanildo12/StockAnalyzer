@@ -13,3 +13,13 @@ export function isAdminEmail(email?: string | null): boolean {
   const all = new Set([...envAdmins, ...DEFAULT_ADMIN_EMAILS])
   return all.has(normalized);
 }
+
+// Un usuario también es administrador si la sesión ya resolvió plan 'enterprise'
+// (p.ej. cuando el JWT se emitió como enterprise).
+export function isAdminSession(
+  email?: string | null,
+  plan?: string | null
+): boolean {
+  if (isAdminEmail(email)) return true;
+  return (plan || '').toLowerCase() === 'enterprise';
+}
