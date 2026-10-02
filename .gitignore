@@ -41,6 +41,10 @@ node_modules/
 npm-debug.log
 yarn-error.log
 
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
 # fastlane
 #
 # It is recommended to not store the screenshots in the git repo. Instead, use fastlane to re-generate the
