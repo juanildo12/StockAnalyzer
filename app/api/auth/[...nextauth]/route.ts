@@ -1,7 +1,7 @@
 import NextAuth, { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/src/lib/prisma";
-import { resolvePlan } from "@/src/lib/plan";
+import { resolvePlan, getManualGrant } from "@/src/lib/plan";
 import { isAdminEmail } from "@/src/lib/admin";
 
 export const authOptions: NextAuthOptions = {
@@ -101,31 +101,61 @@ export const authOptions: NextAuthOptions = {
           return token;
         }
 
-        if (user) {
-          const dbUser = await prisma.users.findUnique({
-            where: { email: user.email! },
-            select: { id: true },
-          });
-          if (dbUser) {
-            const sub = await prisma.subscriptions.findUnique({
-              where: { userId: dbUser.id },
-              select: { plan: true, status: true, currentPeriodEnd: true },
+        // DB-based plan (requiere DATABASE_URL en el entorno)
+        let dbOk = false;
+        const lookupEmail = user?.email ?? token.email;
+        if (process.env.DATABASE_URL && typeof lookupEmail === "string" && lookupEmail) {
+          try {
+            const dbUser = await prisma.users.findUnique({
+              where: { email: lookupEmail },
+              select: { id: true },
             });
-            const resolved = resolvePlan(sub ?? null);
-            // Downgrade lazily cuando un trial ya expiró
-            if (sub && resolved.expired) {
-              await prisma.subscriptions.update({
+            if (dbUser) {
+              const sub = await prisma.subscriptions.findUnique({
                 where: { userId: dbUser.id },
-                data: { plan: 'free', status: 'expired_trial' },
+                select: { plan: true, status: true, currentPeriodEnd: true },
               });
+              const resolved = resolvePlan(sub ?? null);
+              // Downgrade lazily cuando un trial ya expiró
+              if (sub && resolved.expired) {
+                await prisma.subscriptions.update({
+                  where: { userId: dbUser.id },
+                  data: { plan: 'free', status: 'expired_trial' },
+                });
+              }
+              token.plan = resolved.plan;
+              token.trial = resolved.isTrial
+                ? { daysLeft: resolved.trialDaysLeft, endsAt: resolved.trialEndsAt }
+                : null;
+            } else {
+              token.plan = "free";
+              token.trial = null;
             }
-            token.plan = resolved.plan;
-            token.trial = resolved.isTrial
-              ? { daysLeft: resolved.trialDaysLeft, endsAt: resolved.trialEndsAt }
-              : null;
+            dbOk = true;
+          } catch (err) {
+            console.error("[Auth] DB read failed, falling back:", err);
+          }
+        }
+
+        // Fallback sin DB: grants manuales en código (trial por tiempo)
+        if (!dbOk) {
+          const grant = getManualGrant(email);
+          if (grant) {
+            const startTs = typeof token.trialStart === "number" ? token.trialStart : Date.now();
+            token.trialStart = startTs;
+            const endMs = startTs + grant.trialDays * 86400000;
+            if (endMs > Date.now()) {
+              token.plan = grant.plan;
+              token.trial = {
+                daysLeft: Math.max(1, Math.ceil((endMs - Date.now()) / 86400000)),
+                endsAt: new Date(endMs).toISOString(),
+              };
+            } else {
+              token.plan = "free";
+              token.trial = null;
+            }
           } else {
-            token.plan = "free";
-            token.trial = null;
+            token.plan = token.plan || "free";
           }
         }
       } catch (err) {

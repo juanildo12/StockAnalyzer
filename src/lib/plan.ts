@@ -4,6 +4,24 @@ export interface RawSubscription {
   currentPeriodEnd?: Date | string | null;
 }
 
+export interface ManualGrant {
+  email: string;
+  plan: string;
+  trialDays: number;
+}
+
+// Grants manuales (solo se utilizan cuando DATABASE_URL NO está disponible
+// en el entorno; con DB configurada manda la tabla subscriptions).
+export const MANUAL_GRANTS: ManualGrant[] = [
+  { email: 'josiasrod310@gmail.com', plan: 'elite', trialDays: 30 },
+];
+
+export function getManualGrant(email?: string | null): ManualGrant | null {
+  if (!email) return null;
+  const normalized = email.trim().toLowerCase();
+  return MANUAL_GRANTS.find((g) => g.email.toLowerCase() === normalized) ?? null;
+}
+
 export interface ResolvedPlan {
   plan: string;
   status: string;
