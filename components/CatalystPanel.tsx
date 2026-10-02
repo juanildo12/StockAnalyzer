@@ -20,6 +20,7 @@ interface Catalyst {
 interface CalendarDay {
   iso: string;
   label: string;
+  total?: number;
   events: Catalyst[];
 }
 
@@ -57,7 +58,7 @@ interface MoversPayload {
   losers: MarketMover[];
 }
 
-type TabKey = 'catalysts' | 'movers';
+type TabKey = 'catalysts' | 'calendar' | 'movers';
 
 const TABS: { key: TabKey; emoji: string; label: string; color: string; sub: string }[] = [
   {
@@ -68,6 +69,13 @@ const TABS: { key: TabKey; emoji: string; label: string; color: string; sub: str
     sub: 'Calendario semanal de ganancias, IPOs y eventos de mercado que mueven acciones',
   },
   {
+    key: 'calendar',
+    emoji: '🗓️',
+    label: 'Catalyst Calendar',
+    color: C.info,
+    sub: 'Every tracked catalyst, on the day it happens',
+  },
+  {
     key: 'movers',
     emoji: '📈',
     label: 'Market Movers',
@@ -75,6 +83,37 @@ const TABS: { key: TabKey; emoji: string; label: string; color: string; sub: str
     sub: 'Top gainers y losers con las noticias de hoy',
   },
 ];
+
+const WEEKDAYS = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
+
+function ymOf(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function shiftYm(ym: string, delta: number): string {
+  const [y, m] = ym.split('-').map(Number);
+  return ymOf(new Date(y, m - 1 + delta, 1));
+}
+
+function monthLabelEs(ym: string): string {
+  const [y, m] = ym.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('es', { month: 'long', year: 'numeric' });
+}
+
+/** Celdas del mes, lunes primero, con `null` en los huecos de otros meses. */
+function monthCells(ym: string): (string | null)[] {
+  const [y, m] = ym.split('-').map(Number);
+  const first = new Date(y, m - 1, 1);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const lead = (first.getDay() + 6) % 7;
+
+  const cells: (string | null)[] = Array.from({ length: lead }, () => null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push(`${ym}-${String(d).padStart(2, '0')}`);
+  }
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
 
 function impChip(n: number) {
   if (n >= 85) return { label: `Alta ${n}`, color: '#F87171', bg: '#F8717115', border: '#F8717140' };
@@ -95,6 +134,10 @@ const TYPE_META: Record<string, { label: string; color: string }> = {
 function fmtDate(iso: string): string {
   const d = new Date(iso + 'T12:00:00');
   return d.toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function fmtDay(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function timeAgo(ts: number): string {
@@ -215,6 +258,261 @@ function MoverColumn({
   );
 }
 
+const CELL_MAX_CHIPS = 3;
+
+function DayCell({
+  iso, day, todayIso, isOpen, onToggle,
+}: {
+  iso: string;
+  day: CalendarDay | undefined;
+  todayIso: string;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  const num = Number(iso.slice(-2));
+  const isToday = iso === todayIso;
+  const events = day?.events ?? [];
+  const total = day?.total ?? events.length;
+  const hidden = Math.max(0, total - events.length);
+
+  return (
+    <div
+      onClick={total > 0 ? onToggle : undefined}
+      title={total > 0 ? `${total} catalizador${total === 1 ? '' : 'es'} — clic para ver todos` : undefined}
+      style={{
+        minHeight: 92, padding: '5px 6px', boxSizing: 'border-box',
+        borderRadius: R.sm, cursor: total > 0 ? 'pointer' : 'default',
+        background: isOpen ? C.accent12 : isToday ? C.bgCardHover : C.bgCard,
+        border: `1px solid ${isOpen ? C.accentBorder : isToday ? C.borderHover : C.border}`,
+        transition: 'background 0.15s ease, border-color 0.15s ease',
+        opacity: 1,
+      }}
+      onMouseEnter={e => {
+        if (total > 0 && !isOpen) e.currentTarget.style.background = C.bgCardHover;
+      }}
+      onMouseLeave={e => {
+        if (total > 0 && !isOpen) e.currentTarget.style.background = isToday ? C.bgCardHover : C.bgCard;
+      }}
+    >
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        fontSize: 11, fontWeight: isToday ? 800 : 600, marginBottom: 3,
+        color: isToday ? C.accent : C.textSecondary,
+      }}>
+        <span>{num}</span>
+        {total > 0 && (
+          <span style={{
+            fontSize: 9.5, fontWeight: 700, color: C.textMuted,
+            fontFamily: F.mono, padding: '0 4px', borderRadius: R.full,
+            background: C.bgElevated,
+          }}>
+            {total}
+          </span>
+        )}
+      </div>
+
+      {events.slice(0, CELL_MAX_CHIPS).map((c, i) => {
+        const tm = TYPE_META[c.type] || { label: c.type, color: C.textMuted };
+        return (
+          <div
+            key={i}
+            style={{
+              fontSize: 9.5, lineHeight: 1.35, padding: '1px 3px', marginBottom: 2,
+              borderRadius: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              background: tm.color + '16', color: tm.color,
+              borderLeft: `2px solid ${tm.color}`,
+            }}
+          >
+            {c.emoji} {c.title}
+          </div>
+        );
+      })}
+
+      {hidden > 0 && (
+        <div style={{ fontSize: 9.5, fontWeight: 700, color: C.accent, marginTop: 1 }}>
+          +{hidden} más
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface MonthCalendarProps {
+  ym: string;
+  days: CalendarDay[] | null;
+  loading: boolean;
+  openDay: string | null;
+  dayEvents: Catalyst[] | null;
+  dayLoading: boolean;
+  onShift: (delta: number) => void;
+  onToday: () => void;
+  onToggleDay: (iso: string) => void;
+  onOpenSymbol: (symbol: string) => void;
+}
+
+function MonthCalendar({
+  ym, days, loading, openDay, dayEvents, dayLoading,
+  onShift, onToday, onToggleDay, onOpenSymbol,
+}: MonthCalendarProps) {
+  const todayIso = fmtDay(new Date());
+  const byIso = new Map((days || []).map(d => [d.iso, d]));
+  const cells = monthCells(ym);
+
+  const navBtn = {
+    padding: '5px 11px', borderRadius: R.sm, border: `1px solid ${C.border}`,
+    background: C.bgCard, color: C.textSecondary, cursor: 'pointer',
+    fontSize: 12, fontFamily: F.family, transition: 'all 0.15s ease',
+  };
+
+  return (
+    <div style={{
+      padding: '16px 18px', borderRadius: R.xl,
+      background: C.gradientCard, border: `1px solid ${C.border}`,
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 10, marginBottom: 14, flexWrap: 'wrap',
+      }}>
+        <h2 style={{
+          fontSize: 16, fontWeight: 800, color: C.textPrimary,
+          margin: 0, letterSpacing: '-0.2px', textTransform: 'capitalize',
+        }}>
+          Catalyst Calendar
+        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => onShift(-1)} style={navBtn} aria-label="Mes anterior">←</button>
+          <span style={{
+            fontSize: 12.5, fontWeight: 700, color: C.textPrimary,
+            minWidth: 130, textAlign: 'center', textTransform: 'capitalize',
+          }}>
+            {loading ? '···' : monthLabelEs(ym)}
+          </span>
+          <button onClick={() => onShift(1)} style={navBtn} aria-label="Mes siguiente">→</button>
+          <button
+            onClick={onToday}
+            style={{ ...navBtn, fontSize: 11.5, color: C.accent, borderColor: C.accentBorder, background: C.accent12 }}
+          >
+            Hoy
+          </button>
+        </div>
+      </div>
+
+      {/* Weekday headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5, marginBottom: 5 }}>
+        {WEEKDAYS.map(w => (
+          <div
+            key={w}
+            style={{
+              fontSize: 10, fontWeight: 700, color: C.textMuted,
+              textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.4px',
+            }}
+          >
+            {w}
+          </div>
+        ))}
+      </div>
+
+      {/* Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5 }}>
+        {cells.map((iso, i) =>
+          iso ? (
+            <DayCell
+              key={iso}
+              iso={iso}
+              day={byIso.get(iso)}
+              todayIso={todayIso}
+              isOpen={openDay === iso}
+              onToggle={() => onToggleDay(iso)}
+            />
+          ) : (
+            <div key={`e${i}`} style={{ minHeight: 92, borderRadius: R.sm, background: 'transparent' }} />
+          )
+        )}
+      </div>
+
+      {/* Expanded day */}
+      {openDay && (
+        <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+          <div style={{
+            display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+            gap: 8, marginBottom: 8, flexWrap: 'wrap',
+          }}>
+            <div style={{ fontSize: 12.5, fontWeight: 800, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              {fmtDate(openDay)}
+            </div>
+            <button
+              onClick={() => onToggleDay(openDay)}
+              style={{ background: 'transparent', border: 'none', color: C.textMuted, cursor: 'pointer', fontSize: 12, fontFamily: F.family }}
+            >
+              cerrar ✕
+            </button>
+          </div>
+
+          {dayLoading && (
+            <div style={{ padding: '20px 0', textAlign: 'center', color: C.textMuted, fontSize: 12 }}>
+              Cargando catalizadores del día...
+            </div>
+          )}
+
+          {!dayLoading && dayEvents && dayEvents.length === 0 && (
+            <div style={{ color: C.textMuted, fontSize: 12.5 }}>Sin eventos.</div>
+          )}
+
+          {!dayLoading && dayEvents && dayEvents.length > 0 && (
+            <>
+              <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 8 }}>
+                {dayEvents.length} evento{dayEvents.length === 1 ? '' : 's'}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 380, overflowY: 'auto' }}>
+                {dayEvents.map((c, i) => {
+                  const im = impChip(c.importance);
+                  const tm = TYPE_META[c.type] || { label: c.type, color: C.textMuted };
+                  const sym = c.meta?.symbol;
+                  return (
+                    <div
+                      key={i}
+                      onClick={() => sym && onOpenSymbol(sym)}
+                      style={{
+                        display: 'flex', alignItems: 'flex-start', gap: 9,
+                        padding: '7px 9px', borderRadius: R.sm,
+                        border: `1px solid ${C.border}`, background: C.bgCard,
+                        borderLeft: `3px solid ${im.color}`,
+                        cursor: sym ? 'pointer' : 'default',
+                      }}
+                      onMouseEnter={e => { if (sym) e.currentTarget.style.background = C.bgCardHover; }}
+                      onMouseLeave={e => { if (sym) e.currentTarget.style.background = C.bgCard; }}
+                    >
+                      <span style={{ fontSize: 12 }}>{c.emoji}</span>
+                      <span style={{
+                        fontSize: 9.5, fontWeight: 800, padding: '1px 5px', borderRadius: 3,
+                        background: tm.color + '16', color: tm.color, flexShrink: 0, marginTop: 1,
+                      }}>
+                        {tm.label}
+                      </span>
+                      <span style={{
+                        flex: 1, minWidth: 0, fontSize: 12, fontWeight: 500,
+                        color: C.textPrimary, lineHeight: 1.4,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {c.title}
+                      </span>
+                      {sym && (
+                        <span style={{ fontSize: 9.5, fontWeight: 800, color: C.accentLight, flexShrink: 0 }}>
+                          {sym} →
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symbol: string) => void }) {
   const [days, setDays] = useState<CalendarDay[] | null>(null);
   const [selected, setSelected] = useState<Roadmap | null>(null);
@@ -226,6 +524,12 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
   const [movers, setMovers] = useState<MoversPayload | null>(null);
   const [moversLoading, setMoversLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>('catalysts');
+  const [calYm, setCalYm] = useState(() => ymOf(new Date()));
+  const [calDays, setCalDays] = useState<CalendarDay[] | null>(null);
+  const [calLoading, setCalLoading] = useState(false);
+  const [openDay, setOpenDay] = useState<string | null>(null);
+  const [dayEvents, setDayEvents] = useState<Catalyst[] | null>(null);
+  const [dayLoading, setDayLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const moversRequested = useRef(false);
@@ -276,6 +580,39 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
       .catch(() => {})
       .finally(() => setMoversLoading(false));
   }, [tab]);
+
+  // El mes se pide al abrir la pestaña y en cada navegación: el endpoint lo
+  // cachea por rango, así que volver atrás no vuelve a pegarle a Finnhub.
+  useEffect(() => {
+    if (tab !== 'calendar') return;
+    let alive = true;
+    setCalLoading(true);
+    fetch(`/api/catalysts?start=${calYm}&months=1`)
+      .then(r => r.json())
+      .then(d => { if (alive && !d.error) setCalDays(d.days || []); })
+      .catch(() => { if (alive) setCalDays([]); })
+      .finally(() => { if (alive) setCalLoading(false); });
+    return () => { alive = false; };
+  }, [tab, calYm]);
+
+  const shiftMonth = useCallback((delta: number) => {
+    setCalYm(prev => shiftYm(prev, delta));
+    setOpenDay(null);
+    setDayEvents(null);
+  }, []);
+
+  // La celda solo trae 6 eventos recortados; el resto se pide al desplegar.
+  const toggleDay = useCallback((iso: string) => {
+    if (openDay === iso) { setOpenDay(null); return; }
+    setOpenDay(iso);
+    setDayEvents(null);
+    setDayLoading(true);
+    fetch(`/api/catalysts?day=${iso}`)
+      .then(r => r.json())
+      .then(d => { setDayEvents(d.days?.[0]?.events || []); })
+      .catch(() => setDayEvents([]))
+      .finally(() => setDayLoading(false));
+  }, [openDay]);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -664,6 +1001,22 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
             );
           })}
         </div>
+      )}
+
+      {/* Catalyst Calendar */}
+      {tab === 'calendar' && (
+        <MonthCalendar
+          ym={calYm}
+          days={calDays}
+          loading={calLoading}
+          openDay={openDay}
+          dayEvents={dayEvents}
+          dayLoading={dayLoading}
+          onShift={shiftMonth}
+          onToday={() => { setCalYm(ymOf(new Date())); setOpenDay(null); setDayEvents(null); }}
+          onToggleDay={toggleDay}
+          onOpenSymbol={loadSymbol}
+        />
       )}
 
       {/* Market Movers Today */}

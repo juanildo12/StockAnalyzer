@@ -8,7 +8,7 @@ import {
   getGeneralNews,
   getRecommendationTrends,
 } from '@/src/services/finnhubClient';
-import { cacheGet, cacheSet } from '@/src/lib/cache';
+import { cacheAside, cacheGet, cacheSet } from '@/src/lib/cache';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -179,23 +179,35 @@ async function fetchStockRoadmap(symbol: string): Promise<StockRoadmap | null> {
   return result;
 }
 
-async function fetchMarketCalendar(): Promise<{ days: { iso: string; label: string; events: Catalyst[] }[] }> {
-  const now = new Date();
-  const from = addDays(now, -1);
-  const to = addDays(now, 7);
+interface CalendarRange {
+  from: Date;
+  to: Date;
+  includePast: boolean;
+  cap?: number;
+}
+
+const CALENDAR_DAY_CAP = 6;
+
+async function fetchMarketCalendar(
+  range: CalendarRange
+): Promise<{ days: { iso: string; label: string; total: number; events: Catalyst[] }[]; start: string; end: string }> {
+  const { from, to, includePast } = range;
+  const fromIso = fmtDay(from);
+  const toIso = fmtDay(to);
 
   const [earnings, ipo, economic, generalNews] = await Promise.all([
-    getEarningsCalendar(fmtDay(from), fmtDay(to)).catch(() => []),
-    getIPOCalendar(fmtDay(from), fmtDay(to)).catch(() => []),
+    getEarningsCalendar(fromIso, toIso).catch(() => []),
+    getIPOCalendar(fromIso, toIso).catch(() => []),
     getEconomicCalendar().catch(() => []),
     getGeneralNews().catch(() => []),
   ]);
 
-  const today = fmtDay(now);
+  const today = fmtDay(new Date());
   const daysMap = new Map<string, Catalyst[]>();
 
   const push = (iso: string, c: Catalyst) => {
-    if (iso < today) return;
+    if (iso < fromIso || iso > toIso) return;
+    if (!includePast && iso < today) return;
     if (!daysMap.has(iso)) daysMap.set(iso, []);
     daysMap.get(iso)!.push(c);
   };
@@ -254,7 +266,7 @@ async function fetchMarketCalendar(): Promise<{ days: { iso: string; label: stri
   for (const n of (generalNews as any[])) {
     const dt = new Date(n.datetime * 1000);
     const iso = fmtDay(dt);
-    if (iso < today || iso > fmtDay(to)) continue;
+    if (iso < fromIso || iso > toIso) continue;
     push(iso, {
       type: 'news',
       title: n.headline,
@@ -269,16 +281,52 @@ async function fetchMarketCalendar(): Promise<{ days: { iso: string; label: stri
     });
   }
 
+  // Un mes de calendario trae ~1.500 eventos (solo un día puede tener 300+).
+  // La rejilla no cabe con eso, así que recortamos por celda y exponemos
+  // `total` para que la UI diga "+N más" sin mentir. Un rango de un solo día
+  // no se recorta: es la petición que hace la celda al desplegarse.
+  const cap = range.cap ?? Number.POSITIVE_INFINITY;
+
   const days = Array.from(daysMap.keys())
     .sort()
-    .map(iso => ({ iso, label: iso === today ? 'Hoy' : dayLabel(iso), events: daysMap.get(iso)!.sort((a, b) => b.importance - a.importance) }));
+    .map(iso => {
+      const events = daysMap.get(iso)!.sort((a, b) => b.importance - a.importance);
+      return { iso, label: iso === today ? 'Hoy' : dayLabel(iso), total: events.length, events: events.slice(0, cap) };
+    });
 
-  // News = background; si hay muy pocos eventos un día, nada que hacer
-  return { days };
+  return { days, start: fromIso, end: toIso };
+}
+
+/**
+ * Tres modos:
+ *  - `day=YYYY-MM-DD`  → un único día, sin recortar (lo pide una celda al desplegarse)
+ *  - `start=YYYY-MM`   → mes(es) completo(s), recortado por celda para la rejilla
+ *  - sin params        → la vista semanal de siempre (hoy + 7 días)
+ */
+function resolveRange(start: string | null, months: number, day: string | null): CalendarRange {
+  const now = new Date();
+
+  if (day && /^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    const d = new Date(`${day}T00:00:00Z`);
+    return { from: d, to: d, includePast: true };
+  }
+
+  if (!start || !/^\d{4}-\d{2}(-\d{2})?$/.test(start)) {
+    return { from: addDays(now, -1), to: addDays(now, 7), includePast: false };
+  }
+
+  const span = Math.min(Math.max(Math.round(months) || 1, 1), 3);
+  const [y, m] = start.split('-').map(Number);
+  const from = new Date(Date.UTC(y, m - 1, 1));
+  const to = new Date(Date.UTC(y, m - 1 + span, 0));
+  return { from, to, includePast: true, cap: CALENDAR_DAY_CAP };
 }
 
 export async function GET(request: NextRequest) {
   const symbol = request.nextUrl.searchParams.get('symbol');
+  const start = request.nextUrl.searchParams.get('start');
+  const day = request.nextUrl.searchParams.get('day');
+  const months = Number(request.nextUrl.searchParams.get('months') || 1);
 
   try {
     if (symbol && symbol.trim()) {
@@ -288,7 +336,10 @@ export async function GET(request: NextRequest) {
       }
       return NextResponse.json(roadmap);
     }
-    const calendar = await fetchMarketCalendar();
+
+    const range = resolveRange(start, months, day);
+    const key = `catalysts:cal:${fmtDay(range.from)}:${fmtDay(range.to)}`;
+    const calendar = await cacheAside(key, CACHE_TTL, () => fetchMarketCalendar(range));
     return NextResponse.json(calendar);
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
