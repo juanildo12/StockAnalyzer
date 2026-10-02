@@ -69,10 +69,31 @@ function decodeJwtPayload(token: string): Record<string, any> | null {
   }
 }
 
+function getSessionCookieValue(req: NextRequest): string | null {
+  const names = [
+    "next-auth.session-token",
+    "__Secure-next-auth.session-token",
+    "_next_auth_session",
+  ];
+  for (const name of names) {
+    const value = req.cookies.get(name)?.value;
+    if (value) return value;
+  }
+  // Cookies fragmentadas (chunked) por superar el límite de tamaño:
+  // next-auth.session-token.0, .1, ...
+  let combined = "";
+  for (let i = 0; i < 10; i++) {
+    const chunk =
+      req.cookies.get(`next-auth.session-token.${i}`)?.value ||
+      req.cookies.get(`__Secure-next-auth.session-token.${i}`)?.value;
+    if (!chunk) break;
+    combined += chunk;
+  }
+  return combined || null;
+}
+
 function getTokenFromRequest(req: NextRequest): Record<string, any> | null {
-  const sessionToken =
-    req.cookies.get("next-auth.session-token")?.value ||
-    req.cookies.get("__Secure-next-auth.session-token")?.value;
+  const sessionToken = getSessionCookieValue(req);
   if (!sessionToken) return null;
   const payload = decodeJwtPayload(sessionToken);
   if (!payload) return null;
@@ -153,6 +174,7 @@ export async function middleware(req: NextRequest) {
       pathname.startsWith("/api/v1/morning-briefing") ||
       pathname.startsWith("/api/v1/payments") ||
       pathname.startsWith("/api/v1/algo-alerts") ||
+      pathname.startsWith("/api/v1/admin") ||
       pathname === "/api/v1/jobs";
 
     if (!isPublicV1 && !token) {
