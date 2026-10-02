@@ -13,6 +13,7 @@ const PLANS = [
 export default function AdminPage() {
   const [checking, setChecking] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [plan, setPlan] = useState("elite");
   const [trial, setTrial] = useState(true);
@@ -26,6 +27,7 @@ export default function AdminPage() {
         const res = await fetch("/api/v1/admin/set-plan");
         const data = await res.json();
         setIsAdmin(!!data.isAdmin);
+        setSessionEmail(data.email ?? null);
       } catch {
         setIsAdmin(false);
       } finally {
@@ -46,8 +48,13 @@ export default function AdminPage() {
 
   if (!isAdmin) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, color: C.negative, fontFamily: "system-ui, sans-serif" }}>
-        No autorizado — no eres administrador.
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, color: C.negative, fontFamily: "system-ui, sans-serif", flexDirection: "column", gap: "8px", padding: "24px", textAlign: "center" }}>
+        <div>No autorizado — no eres administrador.</div>
+        {sessionEmail && (
+          <div style={{ color: C.textMuted, fontSize: "13px" }}>
+            Sesión actual: <strong>{sessionEmail}</strong>. Si este es tu correo, se aplicó tras el despliegue; recarga la página en unos minutos.
+          </div>
+        )}
       </div>
     );
   }

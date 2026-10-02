@@ -2,6 +2,7 @@ import NextAuth, { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/src/lib/prisma";
 import { resolvePlan } from "@/src/lib/plan";
+import { isAdminEmail } from "@/src/lib/admin";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -93,13 +94,9 @@ export const authOptions: NextAuthOptions = {
     },
     async jwt({ token, user }) {
       try {
-        const adminEmails = (process.env.ADMIN_EMAILS || "")
-          .split(",")
-          .map((e) => e.trim().toLowerCase())
-          .filter(Boolean);
         const email = (token.email || user?.email || "").toLowerCase();
 
-        if (adminEmails.includes(email)) {
+        if (isAdminEmail(email)) {
           token.plan = "enterprise";
           return token;
         }

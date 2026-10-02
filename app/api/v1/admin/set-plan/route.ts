@@ -2,27 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/src/lib/prisma';
+import { isAdminEmail } from '@/src/lib/admin';
 
 export const dynamic = 'force-dynamic';
 
 const VALID_PLANS = new Set(['free', 'pro', 'elite', 'enterprise']);
 
-function isAdmin(email?: string | null): boolean {
-  const list = (process.env.ADMIN_EMAILS || '')
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-  return !!email && list.includes(email.toLowerCase());
-}
-
 export async function GET() {
   const session = await getServerSession(authOptions);
-  return NextResponse.json({ isAdmin: isAdmin(session?.user?.email ?? null) });
+  return NextResponse.json({
+    isAdmin: isAdminEmail(session?.user?.email ?? null),
+    email: session?.user?.email ?? null,
+  });
 }
 
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
-  if (!isAdmin(session?.user?.email ?? null)) {
+  if (!isAdminEmail(session?.user?.email ?? null)) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
   }
 
