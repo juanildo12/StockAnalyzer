@@ -34,6 +34,29 @@ interface Roadmap {
   generatedAt: number;
 }
 
+interface MoverNews {
+  headline: string;
+  source: string;
+  url: string;
+  datetime: number;
+}
+
+interface MarketMover {
+  symbol: string;
+  name: string;
+  price: number;
+  changePct: number;
+  volume: number;
+  marketCap: number;
+  news: MoverNews | null;
+}
+
+interface MoversPayload {
+  updatedAt: number;
+  gainers: MarketMover[];
+  losers: MarketMover[];
+}
+
 function impChip(n: number) {
   if (n >= 85) return { label: `Alta ${n}`, color: '#F87171', bg: '#F8717115', border: '#F8717140' };
   if (n >= 60) return { label: `Notable ${n}`, color: '#FBBF24', bg: '#FBBF2415', border: '#FBBF2440' };
@@ -62,6 +85,117 @@ function timeAgo(ts: number): string {
   return `hace ${Math.floor(s / 86400)} d`;
 }
 
+function fmtClock(ts: number): string {
+  const d = new Date(ts);
+  const h24 = d.getHours();
+  const meridiem = h24 >= 12 ? 'p.m.' : 'a.m.';
+  const h = h24 % 12 || 12;
+  return `${h}:${String(d.getMinutes()).padStart(2, '0')} ${meridiem}`;
+}
+
+function fmtCompact(v: number): string {
+  if (!v) return '—';
+  if (v >= 1e9) return `${(v / 1e9).toFixed(2)}B`;
+  if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
+  if (v >= 1e3) return `${(v / 1e3).toFixed(0)}K`;
+  return String(v);
+}
+
+function MoverRow({ mover, onOpen }: { mover: MarketMover; onOpen: (symbol: string) => void }) {
+  const up = mover.changePct >= 0;
+  const tint = up ? C.positive : C.negative;
+
+  return (
+    <div
+      onClick={() => onOpen(mover.symbol)}
+      style={{
+        display: 'flex', flexDirection: 'column', gap: 4,
+        padding: '9px 10px', borderRadius: R.md, cursor: 'pointer',
+        borderLeft: `3px solid ${tint}`, background: C.bgCardHover,
+        transition: 'background 0.15s ease',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.background = C.bgElevated; }}
+      onMouseLeave={e => { e.currentTarget.style.background = C.bgCardHover; }}
+    >
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+        <span style={{ fontSize: 13.5, fontWeight: 800, color: C.textPrimary, flexShrink: 0 }}>{mover.symbol}</span>
+        <span style={{
+          fontSize: 12.5, fontWeight: 800, color: tint,
+          fontFamily: F.mono, flexShrink: 0, marginLeft: 'auto',
+        }}>
+          {up ? '+' : ''}{mover.changePct.toFixed(2)}%
+        </span>
+      </div>
+
+      <div style={{
+        fontSize: 11.5, color: C.textMuted, overflow: 'hidden',
+        textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>
+        {mover.name} · ${mover.price.toFixed(2)} · Vol {fmtCompact(mover.volume)}
+      </div>
+
+      {mover.news && (
+        <div
+          onClick={e => {
+            if (mover.news?.url) {
+              e.stopPropagation();
+              window.open(mover.news.url, '_blank', 'noreferrer');
+            }
+          }}
+          style={{
+            display: 'flex', alignItems: 'flex-start', gap: 5,
+            marginTop: 2, cursor: mover.news.url ? 'pointer' : 'default',
+          }}
+        >
+          <span style={{ fontSize: 10.5, lineHeight: 1.5, flexShrink: 0 }}>📰</span>
+          <span style={{ minWidth: 0 }}>
+            <span style={{
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+              overflow: 'hidden', fontSize: 11.5, color: C.textSecondary, lineHeight: 1.4,
+            }}>
+              {mover.news.headline}
+            </span>
+            <span style={{ display: 'block', fontSize: 10.5, color: C.textMuted, marginTop: 2 }}>
+              {mover.news.source}
+              {mover.news.datetime ? ` · ${timeAgo(mover.news.datetime)}` : ''}
+            </span>
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MoverColumn({
+  title, movers, onOpen,
+}: { title: string; movers: MarketMover[]; onOpen: (symbol: string) => void }) {
+  const up = title.toLowerCase().includes('gan');
+  const tint = up ? C.positive : C.negative;
+
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8,
+        fontSize: 11.5, fontWeight: 800, letterSpacing: '0.6px', color: tint,
+        textTransform: 'uppercase',
+      }}>
+        {up ? '▲' : '▼'} {title}
+        <span style={{
+          fontSize: 10.5, fontWeight: 700, letterSpacing: 0,
+          padding: '1px 7px', borderRadius: R.full, color: tint,
+          background: up ? C.positiveBg : C.negativeBg,
+          border: `1px solid ${up ? C.positiveBorder : C.negativeBorder}`,
+        }}>
+          {movers.length}
+        </span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {movers.map(m => <MoverRow key={m.symbol} mover={m} onOpen={onOpen} />)}
+      </div>
+    </div>
+  );
+}
+
 export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symbol: string) => void }) {
   const [days, setDays] = useState<CalendarDay[] | null>(null);
   const [selected, setSelected] = useState<Roadmap | null>(null);
@@ -70,6 +204,8 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<{ symbol: string; name: string }[]>([]);
   const [showSug, setShowSug] = useState(false);
+  const [movers, setMovers] = useState<MoversPayload | null>(null);
+  const [moversLoading, setMoversLoading] = useState(true);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -100,6 +236,14 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
   }, []);
 
   useEffect(() => { loadCalendar(0); }, [loadCalendar]);
+
+  useEffect(() => {
+    fetch('/api/catalysts/movers')
+      .then(r => r.json())
+      .then(d => { if (!d.error) setMovers(d); })
+      .catch(() => {})
+      .finally(() => setMoversLoading(false));
+  }, []);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -362,6 +506,60 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
       {/* Weekly calendar */}
       {!loading && !error && !selected && (
         <div>
+          {/* Market Movers Today */}
+          <div style={{
+            padding: '14px 16px', borderRadius: R.xl, marginBottom: 18,
+            background: C.gradientCard, border: `1px solid ${C.border}`,
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+              gap: 10, flexWrap: 'wrap',
+            }}>
+              <h2 style={{
+                fontSize: 16, fontWeight: 800, color: C.textPrimary,
+                margin: 0, letterSpacing: '-0.2px',
+              }}>
+                Market Movers Today
+              </h2>
+              <span style={{ fontSize: 11, color: C.textMuted, fontFamily: F.mono }}>
+                {moversLoading
+                  ? 'Actualizando…'
+                  : movers
+                    ? `Updated ${fmtClock(movers.updatedAt)}`
+                    : 'Sin datos'}
+              </span>
+            </div>
+            <p style={{ fontSize: 12, color: C.textMuted, margin: '4px 0 0', lineHeight: 1.5 }}>
+              Top gainers and losers with today's news headlines. Tap any row to open the ticker page.
+            </p>
+
+            {moversLoading && (
+              <div style={{ padding: '28px 16px', textAlign: 'center', color: C.textMuted, fontSize: 12.5 }}>
+                Cargando mayores movimientos del día...
+              </div>
+            )}
+
+            {!moversLoading && movers && movers.gainers.length === 0 && movers.losers.length === 0 && (
+              <div style={{
+                marginTop: 12, padding: '18px 16px', borderRadius: R.md,
+                border: `1px dashed ${C.border}`, background: '#0d1117',
+                color: C.textMuted, fontSize: 12.5, textAlign: 'center',
+              }}>
+                Sin movimientos destacados ahora mismo. Vuelve más tarde.
+              </div>
+            )}
+
+            {!moversLoading && movers && (movers.gainers.length > 0 || movers.losers.length > 0) && (
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap: 18, marginTop: 14,
+              }}>
+                <MoverColumn title="Gainers" movers={movers.gainers} onOpen={loadSymbol} />
+                <MoverColumn title="Losers" movers={movers.losers} onOpen={loadSymbol} />
+              </div>
+            )}
+          </div>
+
           {/* Legend */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', fontSize: 11 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
