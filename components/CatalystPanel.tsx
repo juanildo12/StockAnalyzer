@@ -258,7 +258,8 @@ function MoverColumn({
   );
 }
 
-const CELL_MAX_CHIPS = 3;
+const CELL_HEIGHT = 96;
+const CELL_MAX_CHIPS = 2;
 
 function DayCell({
   iso, day, todayIso, isOpen, onToggle,
@@ -280,12 +281,12 @@ function DayCell({
       onClick={total > 0 ? onToggle : undefined}
       title={total > 0 ? `${total} catalizador${total === 1 ? '' : 'es'} — clic para ver todos` : undefined}
       style={{
-        minHeight: 92, padding: '5px 6px', boxSizing: 'border-box',
+        height: CELL_HEIGHT, padding: '4px 5px', boxSizing: 'border-box',
+        display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden',
         borderRadius: R.sm, cursor: total > 0 ? 'pointer' : 'default',
         background: isOpen ? C.accent12 : isToday ? C.bgCardHover : C.bgCard,
         border: `1px solid ${isOpen ? C.accentBorder : isToday ? C.borderHover : C.border}`,
         transition: 'background 0.15s ease, border-color 0.15s ease',
-        opacity: 1,
       }}
       onMouseEnter={e => {
         if (total > 0 && !isOpen) e.currentTarget.style.background = C.bgCardHover;
@@ -296,14 +297,15 @@ function DayCell({
     >
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        fontSize: 11, fontWeight: isToday ? 800 : 600, marginBottom: 3,
+        flexShrink: 0, marginBottom: 1,
+        fontSize: 10.5, fontWeight: isToday ? 800 : 600, lineHeight: 1.2,
         color: isToday ? C.accent : C.textSecondary,
       }}>
         <span>{num}</span>
         {total > 0 && (
           <span style={{
-            fontSize: 9.5, fontWeight: 700, color: C.textMuted,
-            fontFamily: F.mono, padding: '0 4px', borderRadius: R.full,
+            fontSize: 9, fontWeight: 700, color: C.textMuted,
+            fontFamily: F.mono, lineHeight: 1.4, padding: '0 4px', borderRadius: R.full,
             background: C.bgElevated,
           }}>
             {total}
@@ -317,8 +319,9 @@ function DayCell({
           <div
             key={i}
             style={{
-              fontSize: 9.5, lineHeight: 1.35, padding: '1px 3px', marginBottom: 2,
-              borderRadius: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              fontSize: 9.5, lineHeight: 1.28, padding: '1px 3px',
+              borderRadius: 3, overflow: 'hidden', wordBreak: 'break-word',
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
               background: tm.color + '16', color: tm.color,
               borderLeft: `2px solid ${tm.color}`,
             }}
@@ -329,7 +332,10 @@ function DayCell({
       })}
 
       {hidden > 0 && (
-        <div style={{ fontSize: 9.5, fontWeight: 700, color: C.accent, marginTop: 1 }}>
+        <div style={{
+          fontSize: 9.5, fontWeight: 700, color: C.accent,
+          marginTop: 'auto', lineHeight: 1.2, flexShrink: 0,
+        }}>
           +{hidden} más
         </div>
       )}
@@ -398,13 +404,13 @@ function MonthCalendar({
       </div>
 
       {/* Weekday headers */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5, marginBottom: 5 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
         {WEEKDAYS.map(w => (
           <div
             key={w}
             style={{
-              fontSize: 10, fontWeight: 700, color: C.textMuted,
-              textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.4px',
+              fontSize: 9.5, fontWeight: 700, color: C.textMuted,
+              textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.3px',
             }}
           >
             {w}
@@ -413,7 +419,7 @@ function MonthCalendar({
       </div>
 
       {/* Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
         {cells.map((iso, i) =>
           iso ? (
             <DayCell
@@ -425,7 +431,7 @@ function MonthCalendar({
               onToggle={() => onToggleDay(iso)}
             />
           ) : (
-            <div key={`e${i}`} style={{ minHeight: 92, borderRadius: R.sm, background: 'transparent' }} />
+            <div key={`e${i}`} style={{ height: CELL_HEIGHT, borderRadius: R.sm }} />
           )
         )}
       </div>
