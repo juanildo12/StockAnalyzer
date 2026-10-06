@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
 import { STOCK_POOL, fetchTradePickUniverse, TRADE_PICK_MIN_MARKET_CAP } from '@/src/lib/stockPool';
 import { cacheAside } from '@/src/lib/cache';
+import {
+  adrPct,
+  detectSetup,
+  emaState,
+  evalRegime,
+  relativeStrength,
+  type MarketRegime,
+} from '@/src/lib/tradePicks/momentum';
 
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
 export const dynamic = 'force-dynamic';
@@ -23,11 +31,6 @@ function calcRSI(closes: number[]): number | null {
   return 100 - 100 / (1 + gains / losses);
 }
 
-function calcSMA(closes: number[], period: number): number | null {
-  if (closes.length < period) return null;
-  return closes.slice(-period).reduce((a, b) => a + b, 0) / period;
-}
-
 function calcATR(highs: number[], lows: number[], closes: number[], period = 14): number | null {
   if (highs.length < period + 1) return null;
   const trs: number[] = [];
@@ -40,17 +43,6 @@ function calcATR(highs: number[], lows: number[], closes: number[], period = 14)
     trs.push(tr);
   }
   return trs.reduce((a, b) => a + b, 0) / period;
-}
-
-function detectSupportResistance(closes: number[], highs: number[], lows: number[], price: number) {
-  const lookback = Math.min(closes.length, 60);
-  const recentHighs = highs.slice(-lookback);
-  const recentLows = lows.slice(-lookback);
-  const highsAbove = recentHighs.filter(h => h > price * 0.98);
-  const resistance = highsAbove.length > 0 ? Math.min(...highsAbove) : price * 1.05;
-  const lowsBelow = recentLows.filter(l => l < price * 1.02);
-  const support = lowsBelow.length > 0 ? Math.max(...lowsBelow) : price * 0.95;
-  return { support, resistance };
 }
 
 function approxDelta(strike: number, price: number, isCall: boolean): number {
@@ -154,12 +146,16 @@ function bestContract(contracts: any[], price: number, isCall: boolean): any[] {
   return scored.slice(0, 3); // return top 3
 }
 
+// ── Sistema de momentum (Sean @SRxTrades) ──────────────────────────────────
+// Long-only: líderes alcistas sobre EMA 8/21/50, día verde, ADR > 2%,
+// base ajustada cerca de su trigger (o recién rota con volumen).
+
 interface TradePickCandidate {
   symbol: string;
   company: string;
   price: number;
   score: number;
-  direction: 'CALL' | 'PUT';
+  direction: 'CALL';
   reasons: string[];
   entry: number;
   stop: number;
@@ -168,6 +164,13 @@ interface TradePickCandidate {
   volumeRatio: number;
   rsi: number | null;
   trend: string;
+  setupState: 'near' | 'confirmed';
+  trigger: number;
+  triggerDist: number;
+  adr: number;
+  trail8: number | null;
+  trail21: number | null;
+  trail50: number | null;
 }
 
 function scoreStock(
@@ -176,144 +179,197 @@ function scoreStock(
   highs: number[],
   lows: number[],
   volumes: number[],
+  regime: MarketRegime,
+  spyCloses: number[],
 ): TradePickCandidate | null {
   const price = quote.regularMarketPrice || 0;
-  if (price < 5 || !isFinite(price)) return null;
+  if (!(price >= 3) || !isFinite(price)) return null; // gates = stockPool.ts
 
   const marketCap = quote.marketCap || 0;
   if (marketCap > 0 && marketCap < TRADE_PICK_MIN_MARKET_CAP) return null; // skip names too small for options
 
   const avgVol = quote.averageDailyVolume3Month || quote.averageDailyVolume10Day || 0;
-  const curVol = quote.regularMarketVolume || volumes[volumes.length - 1] || 0;
   if (avgVol < 500_000) return null; // not enough liquidity for options
-
+  const curVol = quote.regularMarketVolume || volumes[volumes.length - 1] || 0;
   const volRatio = avgVol > 0 && curVol > 0 ? curVol / avgVol : 1;
-  // Volume ratio is scored, not used as hard filter
+
+  // Gate: día verde (scan de Sean: Change > 0)
+  const changePct = typeof quote.regularMarketChangePercent === 'number'
+    ? quote.regularMarketChangePercent
+    : closes.length >= 2 && closes[closes.length - 2] > 0
+      ? (closes[closes.length - 1] / closes[closes.length - 2] - 1) * 100
+      : 0;
+  if (changePct <= 0) return null;
+
+  // Gate: ADR > 2% (accionaria con movimiento diario real)
+  const adr = adrPct(highs, lows, closes);
+  if (adr === null || adr < 2) return null;
+
+  // Gate: precio sobre EMA 8/21/50 (tendencia fuerte)
+  const emas = emaState(closes, price);
+  if (!emas.priceAboveAll) return null;
+
+  // Gate: base ajustada cerca de su trigger (a punto de romper o recién rota)
+  const setup = detectSetup(closes, highs, lows, volumes);
+  if (!setup || setup.rangePct > 12) return null;
 
   const rsi = calcRSI(closes);
-  const sma50 = calcSMA(closes, 50);
-  const sma200 = calcSMA(closes, 200);
-  if (rsi === null || sma50 === null || sma200 === null) return null;
-
   const atr = calcATR(highs, lows, closes) || price * 0.02;
-  const { support, resistance } = detectSupportResistance(closes, highs, lows, price);
+  const rs = relativeStrength(closes, spyCloses, 20);
 
-  // Determine trend and direction
-  const uptrend = sma50 > sma200;
-  let direction: 'CALL' | 'PUT' = 'CALL';
-  if (!uptrend) {
-    if (rsi > 60) direction = 'PUT';
-    else return null; // downtrend without overbought — skip
-  }
+  // Solo largo: los líderes alcistas son las únicas jugadas del sistema
+  const direction: 'CALL' = 'CALL';
+
+  // Entrada: el trigger si aún no rompió (buy stop), el precio si ya rompió
+  const entry = setup.state === 'confirmed' ? price : setup.trigger;
+  // Stop: piso de la base, acotado a 1.5 ATR (low of the day del rompimiento)
+  const stop = Math.max(setup.baseLow, entry - 1.5 * atr);
+  if (!(entry > stop)) return null;
+
+  // Target: proyección del impulso previo (asta) o la siguiente resistencia
+  const lookback = Math.min(closes.length, 60);
+  const aboveEntry = highs.slice(-lookback).filter((h) => h > entry * 1.03);
+  const nextResistance = aboveEntry.length > 0 ? Math.min(...aboveEntry) : 0;
+  const poleTarget = entry + Math.max(setup.poleHeight, atr * 3);
+  const target = Math.max(poleTarget, nextResistance);
+
+  const risk = entry - stop;
+  const reward = target - entry;
+  const riskReward = risk > 0 ? reward / risk : 0;
+  if (riskReward < 2) return null;
 
   let score = 0;
   const reasons: string[] = [];
 
-  // 1. Price quality (0-10)
-  if (price >= 50) { score += 10; }
-  else if (price >= 20) { score += 7; }
-  else if (price >= 10) { score += 4; }
+  // 1. Alineación EMA (0-20): gate sobre 8/21/50 + stack ordenado + no extendido
+  score += 10;
+  if (emas.stacked) score += 6;
+  const ext = emas.extFromEma8;
+  if (ext >= 0.3 && ext <= 6) { score += 4; reasons.push('Sobre EMA 8/21/50 — tendencia activa'); }
+  else if (ext < 0.3) score += 2;
+  else score += 1;
 
-  // 2. Volume surge (0-20)
-  if (volRatio >= 3) { score += 20; reasons.push(`Vol ${volRatio.toFixed(1)}x — acumulación fuerte`); }
-  else if (volRatio >= 2) { score += 15; reasons.push(`Vol ${volRatio.toFixed(1)}x — por encima normal`); }
-  else if (volRatio >= 1.5) { score += 10; reasons.push(`Vol ${volRatio.toFixed(1)}x — mayor a lo normal`); }
-  else { score += 5; reasons.push(`Vol ${volRatio.toFixed(1)}x`); }
+  // 2. Calidad de la base (0-20): tightness + volumen secándose
+  if (setup.rangePct <= 8) { score += 12; reasons.push(`Base ajustada: rango ${setup.rangePct.toFixed(1)}% en 15 sesiones`); }
+  else { score += 8; reasons.push(`Base de ${setup.rangePct.toFixed(1)}%`); }
+  if (setup.volDryUp) { score += 8; reasons.push(`Volumen ${setup.volChangePct.toFixed(0)}% en la consolidación`); }
+  else if (setup.volChangePct < 0) score += 5;
+  else score += 2;
 
-  // 3. Trend alignment (0-25)
-  if (uptrend) {
-    const trendStrength = (sma50 - sma200) / sma200;
-    if (trendStrength > 0.05) { score += 25; reasons.push('Tendencia alcista fuerte'); }
-    else if (trendStrength > 0.02) { score += 20; reasons.push('Tendencia alcista'); }
-    else { score += 15; reasons.push('Golden cross reciente'); }
-  } else if (direction === 'PUT') {
-    score += 15; reasons.push('Tendencia bajista — PUT');
-  }
-
-  // 4. RSI optimal zone (0-20)
-  if (direction === 'CALL') {
-    if (rsi >= 40 && rsi <= 55) { score += 20; reasons.push(`RSI ${rsi.toFixed(0)} — punto óptimo de entrada`); }
-    else if (rsi >= 55 && rsi <= 65) { score += 12; reasons.push(`RSI ${rsi.toFixed(0)} — momentum alcista`); }
-    else if (rsi >= 35 && rsi < 40) { score += 8; reasons.push(`RSI ${rsi.toFixed(0)} — rebote desde sobreventa`); }
-    else { score += 2; }
+  // 3. Breakout / trigger (0-25)
+  if (setup.state === 'confirmed') {
+    const extPast = -setup.distToTriggerPct; // % por encima del trigger
+    if (extPast > 3) score -= 12; // ya muy lejos del trigger → chasing
+    else if (extPast > 2) score -= 6; // ya algo extendido
+    else if (extPast > 1) score -= 3;
+    if (setup.volRatio >= 1.5) {
+      score += extPast > 2 ? 18 : 23; // menos bonus si ya extendido
+      reasons.push(`Breakout del trigger $${setup.trigger.toFixed(2)} con volumen ${setup.volRatio.toFixed(1)}x`);
+    } else {
+      score += extPast > 2 ? 12 : 16;
+      reasons.push(`Sobre el trigger $${setup.trigger.toFixed(2)} — falta volumen`);
+    }
   } else {
-    if (rsi >= 60 && rsi <= 75) { score += 20; reasons.push(`RSI ${rsi.toFixed(0)} — sobrecompra, posible retroceso`); }
-    else if (rsi > 75) { score += 10; reasons.push(`RSI ${rsi.toFixed(0)} — extremo, probable reversión`); }
-    else { score += 2; }
+    const d = setup.distToTriggerPct;
+    score += d <= 1 ? 18 : d <= 2 ? 16 : 12; // dar más peso a near
+    reasons.push(`Trigger $${setup.trigger.toFixed(2)} a ${d.toFixed(1)}% — a punto de romper`);
   }
 
-  // 5. Support/resistance proximity (0-10)
-  if (support > 0 && resistance > 0 && resistance > support) {
-    if (direction === 'CALL') {
-      const distToSupport = (price - support) / price;
-      if (distToSupport < 0.03) { score += 10; reasons.push(`Cerca del soporte $${support.toFixed(2)}`); }
-      else if (distToSupport < 0.06) { score += 7; reasons.push(`Soporte cercano $${support.toFixed(2)}`); }
-      else { score += 3; }
-    } else {
-      const distToResistance = (resistance - price) / price;
-      if (distToResistance < 0.03) { score += 10; reasons.push(`Cerca de resistencia $${resistance.toFixed(2)}`); }
-      else if (distToResistance < 0.06) { score += 7; reasons.push(`Resistencia cercana $${resistance.toFixed(2)}`); }
-      else { score += 3; }
-    }
+  // Bonus: preferir setups "near" (a punto de romper) vs confirmados extendidos
+  if (setup.state === 'near') score += 4;
+  else if (setup.state === 'confirmed' && (-setup.distToTriggerPct) <= 1.5) score += 2;
+
+  // 4. Fuerza relativa vs SPY (0-15): los líderes le ganan al mercado
+  if (rs !== null) {
+    if (rs >= 10) { score += 15; reasons.push(`Fuerza relativa +${rs.toFixed(1)}% vs SPY (20d)`); }
+    else if (rs >= 5) { score += 12; reasons.push(`Fuerza relativa +${rs.toFixed(1)}% vs SPY (20d)`); }
+    else if (rs >= 0) score += 8;
   }
 
-  // 6. Momentum (0-10) — positive but not extended
-  if (closes.length >= 5) {
-    const last5Return = (closes[closes.length - 1] - closes[closes.length - 5]) / closes[closes.length - 5];
-    if (direction === 'CALL') {
-      if (last5Return > 0.01 && last5Return < 0.08) { score += 10; reasons.push(`+${(last5Return * 100).toFixed(1)}% en 5d`); }
-      else if (last5Return > 0 && last5Return <= 0.01) { score += 5; }
-      else if (last5Return < -0.02) { score -= 5; } // falling
-    } else {
-      if (last5Return < -0.01 && last5Return > -0.08) { score += 10; reasons.push(`${(last5Return * 100).toFixed(1)}% en 5d`); }
-    }
-  }
+  // 5. Liquidez / ADR (0-10)
+  if (volRatio >= 2) { score += 6; reasons.push(`Vol ${volRatio.toFixed(1)}x vs promedio`); }
+  else if (volRatio >= 1.3) score += 4;
+  else if (volRatio >= 1) score += 2;
+  score += adr >= 3 ? 4 : 2;
 
-  // 7. Risk / reward (0-5) — wider stops, bigger targets for better R:R
-  const entry = price;
-  const stop = direction === 'CALL'
-    ? Math.max(support > 0 ? support * 0.97 : price - atr * 3, price * 0.90)
-    : Math.min(resistance > 0 ? resistance * 1.03 : price + atr * 3, price * 1.10);
-  const target = direction === 'CALL'
-    ? resistance > 0 ? Math.max(resistance * 1.02, price + atr * 5) : price + atr * 5
-    : support > 0 ? Math.min(support * 0.98, price - atr * 5) : price - atr * 5;
-  const risk = Math.abs(entry - stop);
-  const reward = Math.abs(target - entry);
-  const riskReward = risk > 0 ? reward / risk : 0;
-  // Reject picks with poor risk/reward
-  if (riskReward < 2) return null;
+  // 6. Régimen de mercado (0-10): SPY/QQQ sobre EMA 8/21/50 = convicción completa
+  if (regime.level === 'BULL') { score += 10; reasons.push('SPY/QQQ sobre EMA 8/21/50'); }
+  else if (regime.level === 'MIXED') score += 5;
+
+  // 7. Risk / reward (0-5)
   if (riskReward >= 3) { score += 5; reasons.push(`R:R ${riskReward.toFixed(1)}`); }
-  else if (riskReward >= 2) { score += 3; }
+  else if (riskReward >= 2) score += 3;
 
-  // Minimum score threshold — only show good picks
+  // Penalizaciones: extendido de la EMA8, sobrecomprado o staircase tardío
+  if (ext > 8) score -= 10;
+  if (ext > 12) score -= 8;
+  if (rsi !== null && rsi > 75) score -= 8;
+  if (closes.length > 61 && (closes[closes.length - 1] / closes[closes.length - 61] - 1) * 100 > 40) score -= 8;
+
   if (score < 50) return null;
 
   return {
     symbol: quote.symbol,
     company: quote.shortName || quote.longName || quote.symbol,
     price,
-    score: Math.min(score, 100),
+    score: Math.max(0, Math.min(score, 100)),
     direction,
-    reasons: reasons.slice(0, 5),
+    reasons: reasons.slice(0, 6),
     entry,
     stop,
     target,
     riskReward,
     volumeRatio: volRatio,
     rsi,
-    trend: uptrend ? 'alcista' : 'bajista',
+    trend: 'alcista',
+    setupState: setup.state,
+    trigger: setup.trigger,
+    triggerDist: setup.distToTriggerPct,
+    adr,
+    trail8: emas.ema8,
+    trail21: emas.ema21,
+    trail50: emas.ema50,
   };
+}
+
+/** SPY y QQQ sobre EMA 8/21/50 → régimen de mercado (y closes de SPY para la fuerza relativa). */
+async function fetchRegime(): Promise<{ regime: MarketRegime; spyCloses: number[] }> {
+  try {
+    const period1 = new Date(Date.now() - 440 * 86400000);
+    const [spy, qqq] = await Promise.all([
+      withTimeout(yf.chart('SPY', { period1, period2: new Date(), interval: '1d' }), 8000),
+      withTimeout(yf.chart('QQQ', { period1, period2: new Date(), interval: '1d' }), 8000),
+    ]);
+    const closesOf = (h: any): number[] =>
+      (h?.quotes || []).map((q: any) => q.close).filter((c: any): c is number => c != null);
+    const spyCloses = closesOf(spy);
+    const qqqCloses = closesOf(qqq);
+    if (spyCloses.length < 60 || qqqCloses.length < 60) throw new Error('regime data short');
+    return { regime: evalRegime(spyCloses, qqqCloses), spyCloses };
+  } catch {
+    return { regime: { level: 'MIXED', spyAbove: false, qqqAbove: false }, spyCloses: [] };
+  }
+}
+
+interface ScanData {
+  universe: string[];
+  candidates: TradePickCandidate[];
+  regime: MarketRegime;
+  spyCloses: number[];
 }
 
 let memoryCache: { data: any; ts: number } | null = null;
 const CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours
-const MIN_PICK_SCORE = 80; // solo acciones con score alto (STRONG+ / ELITE)
-const SCAN_CACHE_KEY = 'trade-picks:scan:candidates';
+const MIN_PICK_SCORE = 80; // pick titular: solo A / A+
+const FOCUS_MIN_SCORE = 70; // focus list: B+ o mejor
+const FOCUS_SIZE = 5;
+const SCAN_CACHE_KEY = 'trade-picks:scan:candidates:v2';
 const SCAN_CACHE_TTL = 30 * 60; // 30 min en Redis para la lista de candidatos
 
 /** Scores the whole universe. Expensive: ~2 Yahoo calls per symbol. */
-async function scoreUniverse(): Promise<{ universe: string[]; candidates: TradePickCandidate[] }> {
+async function scoreUniverse(): Promise<ScanData> {
   const universe = await fetchTradePickUniverse().catch(() => [...STOCK_POOL]);
+  const { regime, spyCloses } = await fetchRegime();
 
   const candidates: TradePickCandidate[] = [];
   const batchSize = 40;
@@ -342,7 +398,7 @@ async function scoreUniverse(): Promise<{ universe: string[]; candidates: TradeP
           const lows = hist.quotes.map((h) => h.low).filter((l): l is number => l != null);
           const volumes = hist.quotes.map((h) => h.volume).filter((v): v is number => v != null);
 
-          return scoreStock(quote, closes, highs, lows, volumes);
+          return scoreStock(quote, closes, highs, lows, volumes, regime, spyCloses);
         } catch {
           return null;
         }
@@ -355,7 +411,7 @@ async function scoreUniverse(): Promise<{ universe: string[]; candidates: TradeP
   }
 
   candidates.sort((a, b) => b.score - a.score);
-  return { universe, candidates };
+  return { universe, candidates, regime, spyCloses };
 }
 
 export async function GET(request: NextRequest) {
@@ -375,12 +431,11 @@ export async function GET(request: NextRequest) {
     // cacheada, así que sigue sin repetir picks sin pagar el escaneo cada vez.
     const scanned = await cacheAside(SCAN_CACHE_KEY, SCAN_CACHE_TTL, scoreUniverse);
     const universe = scanned.universe;
-    const candidates = scanned.candidates.slice();
+    const regime = scanned.regime;
+    const spyCloses = scanned.spyCloses || [];
 
-    // Solo acciones con score alto (≥ MIN_PICK_SCORE)
-    for (let i = candidates.length - 1; i >= 0; i--) {
-      if (candidates[i].score < MIN_PICK_SCORE) candidates.splice(i, 1);
-    }
+    // Solo candidatos con score de focus list (≥ FOCUS_MIN_SCORE = B+)
+    const candidates = scanned.candidates.filter((c) => c.score >= FOCUS_MIN_SCORE);
 
     // Exclude symbols already picked in the last day (client sends ?exclude=)
     if (excludeSet.size > 0) {
@@ -388,9 +443,6 @@ export async function GET(request: NextRequest) {
         if (excludeSet.has(candidates[i].symbol)) candidates.splice(i, 1);
       }
     }
-
-    let topPick: TradePickCandidate | null = null;
-    let contract: any = null;
 
     // Liquid mega caps with proven options chains — used as fallback candidates
     const LIQUID_UNIVERSE = [
@@ -402,29 +454,34 @@ export async function GET(request: NextRequest) {
 
     // Build the contract search set: top scored candidates first, then liquid universe
     const searchSet = new Map<string, TradePickCandidate>();
-    // Prioritize top 15 scored candidates from the scan
-    for (const c of candidates.slice(0, 15)) {
+    // Prioritize top 10 scored candidates from the scan
+    for (const c of candidates.slice(0, 10)) {
       if (excludeSet.has(c.symbol)) continue;
       searchSet.set(c.symbol, c);
     }
-    // Add liquid universe stocks not already in the set
-    for (const sym of LIQUID_UNIVERSE) {
-      if (excludeSet.has(sym)) continue;
-      if (searchSet.has(sym)) continue;
-      const existing = candidates.find((c) => c.symbol === sym);
-      if (existing) {
-        searchSet.set(sym, existing);
-      } else {
+    // Si hay muy pocos candidatos (chop / mercado sin setups), reescanea mega caps líquidas
+    if (searchSet.size < FOCUS_SIZE) {
+      for (const sym of LIQUID_UNIVERSE) {
+        if (excludeSet.has(sym)) continue;
+        if (searchSet.has(sym)) continue;
         try {
           const [quote, hist] = await Promise.all([
             withTimeout(yf.quote(sym), 5000),
             withTimeout(yf.chart(sym, { period1: new Date(Date.now() - 440 * 86400000), period2: new Date(), interval: '1d' }), 7000),
           ]);
           const q = hist?.quotes || [];
-          const p = quote && q.length >= 200
-            ? scoreStock(quote, q.map(h => h.close).filter((c): c is number => c != null), q.map(h => h.high).filter((h): h is number => h != null), q.map(h => h.low).filter((l): l is number => l != null), q.map(h => h.volume).filter((v): v is number => v != null))
+          const p = quote && q.length >= 60
+            ? scoreStock(
+                quote,
+                q.map((h) => h.close).filter((c): c is number => c != null),
+                q.map((h) => h.high).filter((h): h is number => h != null),
+                q.map((h) => h.low).filter((l): l is number => l != null),
+                q.map((h) => h.volume).filter((v): v is number => v != null),
+                regime,
+                spyCloses,
+              )
             : null;
-          if (p && p.score >= MIN_PICK_SCORE) searchSet.set(sym, p);
+          if (p && p.score >= FOCUS_MIN_SCORE) searchSet.set(sym, p);
         } catch { /* skip */ }
       }
     }
@@ -432,9 +489,8 @@ export async function GET(request: NextRequest) {
     const tryCandidates = Array.from(searchSet.values()).sort((a, b) => b.score - a.score);
 
     interface BestCombo { stock: TradePickCandidate; contract: any; score: number }
-    let bestCombo: BestCombo | null = null;
 
-    async function searchContracts(pick: TradePickCandidate): Promise<BestCombo | null> {
+    const searchContracts = async (pick: TradePickCandidate): Promise<BestCombo | null> => {
       try {
         const datesChain = await withTimeout(yf.options(pick.symbol), 8000);
         if (!datesChain?.expirationDates?.length) return null;
@@ -491,27 +547,38 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Process candidates in parallel batches of 5
+    // Busca contratos en lotes de 5 hasta tener la focus list completa
+    const combos: BestCombo[] = [];
     const OPT_BATCH = 5;
-    for (let i = 0; i < tryCandidates.length; i += OPT_BATCH) {
+    for (let i = 0; i < tryCandidates.length && combos.length < FOCUS_SIZE; i += OPT_BATCH) {
       const batch = tryCandidates.slice(i, i + OPT_BATCH);
       const results = await Promise.all(batch.map(searchContracts));
       for (const r of results) {
-        if (r && (!bestCombo || r.score > bestCombo.score)) {
-          bestCombo = r;
-        }
+        if (r) combos.push(r);
       }
-      // If we found an excellent combo, stop early
-      if (bestCombo && bestCombo.score >= 230) break;
     }
 
+    // Focus list: top 5 candidatos (con contrato si se encontró uno líquido)
+    const contractBySymbol = new Map<string, any>();
+    for (const c of combos) contractBySymbol.set(c.stock.symbol, c.contract);
+    const focusList = tryCandidates.slice(0, FOCUS_SIZE).map((c) => ({
+      ...c,
+      contract: contractBySymbol.get(c.symbol) ?? null,
+    }));
+
+    // Pick titular: mejor combo con score de acción A/A+ (≥ MIN_PICK_SCORE).
+    // Si ninguna A/A+ consiguió contrato, se devuelve la mejor A/A+ sin contrato
+    // (nunca se adjunta un contrato de spread ancho / ilíquido).
+    let topPick: TradePickCandidate | null = null;
+    let contract: any = null;
+    const bestCombo =
+      combos.filter((c) => c.stock.score >= MIN_PICK_SCORE).sort((a, b) => b.score - a.score)[0] || null;
     if (bestCombo) {
       topPick = bestCombo.stock;
       contract = bestCombo.contract;
-    } else if (candidates.length > 0) {
-      // No contract passed the strict filters — return the best pick WITHOUT a contract
-      // rather than nothing. Never attach a wide-spread / illiquid contract.
-      topPick = candidates[0];
+    } else {
+      const withoutContract = focusList.find((f) => f.score >= MIN_PICK_SCORE);
+      if (withoutContract) topPick = withoutContract;
     }
 
     // Seguridad final: nunca devolver una acción con score bajo
@@ -522,6 +589,8 @@ export async function GET(request: NextRequest) {
 
     const result = {
       pick: topPick ? { ...topPick, contract } : null,
+      focusList,
+      regime,
       minScore: MIN_PICK_SCORE,
       scanned: universe.length,
       candidates: candidates.length,

@@ -29,9 +29,28 @@ interface TradePick {
   volumeRatio: number;
   rsi: number | null;
   trend: string;
+  setupState?: 'near' | 'confirmed';
+  trigger?: number;
+  triggerDist?: number;
+  adr?: number;
+  trail8?: number | null;
+  trail21?: number | null;
+  trail50?: number | null;
   contract: ContractData | null;
   createdAt: string;
 }
+
+interface Regime {
+  level: 'BULL' | 'MIXED' | 'CHOP';
+  spyAbove: boolean;
+  qqqAbove: boolean;
+}
+
+const REGIME_META: Record<Regime['level'], { icon: string; title: string; text: string; color: string; bg: string; border: string }> = {
+  BULL: { icon: '📈', title: 'Mercado alcista', text: 'SPY/QQQ sobre EMA 8/21/50 — convicción completa', color: '#34D399', bg: '#34D39914', border: '#34D39940' },
+  MIXED: { icon: '🟡', title: 'Mercado mixto', text: 'SPY o QQQ sin tendencia clara — convicción normal', color: '#FBBF24', bg: '#FBBF2414', border: '#FBBF2440' },
+  CHOP: { icon: '🔴', title: 'Mercado chop', text: 'Reduce el tamaño: SPY/QQQ sin tendencia sobre EMA 8/21/50', color: '#FB7185', bg: '#FB718514', border: '#FB718540' },
+};
 
 const STORAGE_KEY = 'trade-picks-history';
 const HISTORY_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 1 mes
@@ -72,10 +91,12 @@ function formatDate(iso: string): string {
 }
 
 function getGrade(score: number): { label: string; color: string } {
-  if (score >= 90) return { label: 'ELITE', color: '#2DD4BF' };
-  if (score >= 80) return { label: 'STRONG', color: '#34D399' };
-  if (score >= 70) return { label: 'GOOD', color: '#67E8F9' };
-  return { label: 'FAIR', color: '#FBBF24' };
+  if (score >= 90) return { label: 'A+', color: '#2DD4BF' };
+  if (score >= 80) return { label: 'A', color: '#34D399' };
+  if (score >= 70) return { label: 'B+', color: '#67E8F9' };
+  if (score >= 60) return { label: 'B', color: '#FBBF24' };
+  if (score >= 50) return { label: 'C+', color: '#FB923C' };
+  return { label: 'C', color: '#F97316' };
 }
 
 type PickStatus = 'win' | 'loss' | 'pending' | null;
@@ -143,6 +164,8 @@ export default function TradePickView() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [prices, setPrices] = useState<Record<string, number | null>>({});
   const [statusFilter, setStatusFilter] = useState<'all' | PickStatus>('all');
+  const [regime, setRegime] = useState<Regime | null>(null);
+  const [focusList, setFocusList] = useState<TradePick[]>([]);
 
   const refreshPrices = useCallback(async (picks: TradePick[]) => {
     const syms = Array.from(new Set(picks.map(p => p.symbol)));
@@ -173,10 +196,25 @@ export default function TradePickView() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Scan failed');
 
+      const genAt = data.generatedAt || new Date().toISOString();
+      setRegime(data.regime || null);
+      const focus: TradePick[] = (data.focusList || []).map((f: any) => ({
+        ...f,
+        id: `focus-${f.symbol}-${genAt}`,
+        createdAt: genAt,
+      }));
+      setFocusList(focus);
+
       if (!data.pick) {
-        setError('No se encontró ningún pick con score ≥ 80 (STRONG+). Espera a que el mercado esté activo y vuelve a intentar.');
+        setCurrentPick(null);
+        setError(
+          focus.length > 0
+            ? 'Ningún setup A/A+ hoy. Revisa la focus list (B+) más abajo.'
+            : 'Sin setups de momentum hoy. Espera a que SPY/QQQ recuperen las EMA 8/21/50.'
+        );
         return;
       }
+      setError('');
 
       const pick: TradePick = {
         ...data.pick,
@@ -255,6 +293,14 @@ export default function TradePickView() {
         <div style={styles.excludeHint}>
           🔁 Sin repetir hoy: {excludedToday.length} {excludedToday.length === 1 ? 'símbolo' : 'símbolos'} ya elegidos en las últimas 24h (
           {excludedToday.join(', ')})
+        </div>
+      )}
+
+      {/* Régimen de mercado — SPY/QQQ vs EMA 8/21/50 */}
+      {regime && (
+        <div style={{ ...styles.regimeBanner, background: REGIME_META[regime.level].bg, borderColor: REGIME_META[regime.level].border, color: REGIME_META[regime.level].color }}>
+          <span>{REGIME_META[regime.level].icon}</span>
+          <span><b>{REGIME_META[regime.level].title}</b> — {REGIME_META[regime.level].text}</span>
         </div>
       )}
 
@@ -369,11 +415,64 @@ export default function TradePickView() {
             </div>
           )}
 
+          {/* Plan de gestión — trims en cuartos sobre las EMAs */}
+          {(currentPick.trail8 || currentPick.trail21 || currentPick.trail50) && (
+            <div style={styles.planSection}>
+              <div style={styles.planTitle}>Plan de gestión — trims en ¼</div>
+              <div style={styles.planRow}>
+                <span>1) 25% en el target <b style={{ color: C.positive }}>${fmt(currentPick.target)}</b></span>
+                <span>2) 25% al cerrar bajo EMA8 <b style={{ color: C.textPrimary }}>${fmt(currentPick.trail8 ?? null)}</b></span>
+                <span>3) 25% bajo EMA21 <b style={{ color: C.textPrimary }}>${fmt(currentPick.trail21 ?? null)}</b></span>
+                <span>4) Salida bajo EMA50 <b style={{ color: C.negative }}>${fmt(currentPick.trail50 ?? null)}</b></span>
+              </div>
+            </div>
+          )}
+
           {/* Footer */}
           <div style={styles.footer}>
             <span style={styles.footerTime}>Locked {formatDate(currentPick.createdAt)}</span>
             <span style={styles.lockedBadge}>🔒 LOCKED TODAY</span>
           </div>
+        </div>
+      )}
+
+      {/* Focus list — top 5 setups del escaneo */}
+      {focusList.length > 0 && (
+        <div style={styles.focusSection}>
+          <div style={styles.focusTitle}>FOCUS LIST — mejores setups del scan</div>
+          {focusList.map((f) => {
+            const fg = getGrade(f.score);
+            const active = currentPick?.symbol === f.symbol;
+            const setupText = f.setupState === 'confirmed'
+              ? 'BREAKOUT'
+              : f.triggerDist != null ? `TRG ${f.trigger != null ? f.trigger.toFixed(2) : ''} · ${f.triggerDist >= 0 ? '+' : ''}${f.triggerDist.toFixed(1)}%` : 'SETUP';
+            const setupColor = f.setupState === 'confirmed' ? '#34D399' : '#67E8F9';
+            const fExp = f.contract?.expiration
+              ? new Date(f.contract.expiration + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              : null;
+            return (
+              <div
+                key={f.symbol}
+                onClick={() => setCurrentPick(f)}
+                style={{ ...styles.focusItem, borderColor: active ? fg.color : C.border, background: active ? fg.color + '0A' : '#0d1117' }}
+                title="Toca para ver este setup"
+              >
+                <div style={styles.focusLeft}>
+                  <span style={{ ...styles.focusSymbol, color: fg.color }}>{f.symbol}</span>
+                  <span style={{ ...styles.focusGrade, background: fg.color + '18', borderColor: fg.color + '50', color: fg.color }}>{fg.label}</span>
+                  <span style={{ ...styles.focusChip, color: setupColor, borderColor: setupColor + '50', background: setupColor + '12' }}>{setupText}</span>
+                </div>
+                <div style={styles.focusRight}>
+                  {f.contract ? (
+                    <span style={styles.focusContract}>{f.contract.strike}C {fExp} · ${fmt(f.contract.premium)}</span>
+                  ) : (
+                    <span style={{ fontSize: 11, color: C.textMuted }}>sin contrato líquido</span>
+                  )}
+                  <span style={{ fontSize: 13, fontWeight: 800, color: fg.color }}>{f.score}</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -673,6 +772,17 @@ const styles: Record<string, React.CSSProperties> = {
     color: C.warning,
     fontSize: 12,
   },
+  regimeBanner: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+    padding: '10px 14px',
+    borderRadius: R.sm,
+    border: '1px solid',
+    fontSize: 12.5,
+    lineHeight: 1.4,
+  },
   spinner: {
     width: 14,
     height: 14,
@@ -868,6 +978,94 @@ const styles: Record<string, React.CSSProperties> = {
     color: C.textSecondary,
     marginBottom: 6,
     lineHeight: 1.4,
+  },
+  planSection: {
+    margin: '0 24px 20px',
+    padding: '14px 16px',
+    background: '#161B22',
+    borderRadius: R.md,
+    border: '1px solid #21262d',
+  },
+  planTitle: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#8B90A5',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '1px',
+    marginBottom: 8,
+  },
+  planRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 5,
+    fontSize: 12.5,
+    color: C.textSecondary,
+    lineHeight: 1.5,
+  },
+  focusSection: {
+    marginTop: 24,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 6,
+  },
+  focusTitle: {
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#8B90A5',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '1.5px',
+    marginBottom: 4,
+  },
+  focusItem: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    padding: '12px 16px',
+    borderRadius: R.md,
+    border: `1px solid ${C.border}`,
+    background: '#0d1117',
+    cursor: 'pointer',
+    transition: 'border-color 0.15s, background 0.15s',
+  },
+  focusLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: 0,
+    flexWrap: 'wrap' as const,
+  },
+  focusSymbol: {
+    fontSize: 15,
+    fontWeight: 800,
+  },
+  focusGrade: {
+    fontSize: 10,
+    fontWeight: 800,
+    padding: '2px 8px',
+    borderRadius: 999,
+    border: '1px solid',
+    letterSpacing: '0.5px',
+  },
+  focusChip: {
+    fontSize: 9.5,
+    fontWeight: 800,
+    padding: '2px 8px',
+    borderRadius: 999,
+    border: '1px solid',
+    letterSpacing: '0.5px',
+  },
+  focusRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    flexShrink: 0,
+  },
+  focusContract: {
+    fontSize: 11,
+    color: '#FBBF24',
+    fontWeight: 700,
+    whiteSpace: 'nowrap' as const,
   },
   footer: {
     display: 'flex',

@@ -201,7 +201,7 @@ export async function fetchDynamicUniverse(): Promise<string[]> {
 // anything dropped below would have been rejected by scoreStock() anyway, it
 // just costs us two Yahoo round-trips per symbol to find out.
 
-export const TRADE_PICK_MIN_PRICE = 5;
+export const TRADE_PICK_MIN_PRICE = 3;
 export const TRADE_PICK_MIN_MARKET_CAP = 300_000_000;
 export const TRADE_PICK_MIN_AVG_VOLUME = 500_000;
 
@@ -221,6 +221,7 @@ export async function fetchTradePickUniverse(): Promise<string[]> {
     if (row.price < TRADE_PICK_MIN_PRICE) continue;
     if (row.marketCap < TRADE_PICK_MIN_MARKET_CAP) continue;
     if (row.avgVol < TRADE_PICK_MIN_AVG_VOLUME) continue;
+    if (row.changePercent <= 0) continue; // solo día verde (scan de Sean: Change > 0)
     eligible.add(row.symbol);
   }
   // Trending has no screener metadata; let the scan's own gates judge it.

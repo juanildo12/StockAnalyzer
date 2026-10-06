@@ -2,11 +2,18 @@ import { Redis } from "@upstash/redis";
 
 let redis: Redis | null = null;
 
-function getRedis(): Redis {
-  if (!redis) {
-    redis = Redis.fromEnv();
+function getRedis(): Redis | null {
+  if (process.env.CACHE_DISABLED === '1' || !process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
+    return null;
   }
-  return redis;
+  try {
+    if (!redis) {
+      redis = Redis.fromEnv();
+    }
+    return redis;
+  } catch {
+    return null;
+  }
 }
 
 export interface CacheOptions {
@@ -17,6 +24,7 @@ export interface CacheOptions {
 export async function cacheGet<T>(key: string): Promise<T | null> {
   try {
     const r = getRedis();
+    if (!r) return null;
     const data = await r.get(key);
     return data as T | null;
   } catch (error) {
@@ -32,6 +40,7 @@ export async function cacheSet<T>(
 ): Promise<void> {
   try {
     const r = getRedis();
+    if (!r) return;
     await r.set(key, value, { ex: ttl });
   } catch (error) {
     console.warn(`[Cache] SET error for ${key}:`, error);
@@ -41,6 +50,7 @@ export async function cacheSet<T>(
 export async function cacheDel(key: string): Promise<void> {
   try {
     const r = getRedis();
+    if (!r) return;
     await r.del(key);
   } catch (error) {
     console.warn(`[Cache] DEL error for ${key}:`, error);
@@ -50,6 +60,7 @@ export async function cacheDel(key: string): Promise<void> {
 export async function cacheInvalidate(pattern: string): Promise<void> {
   try {
     const r = getRedis();
+    if (!r) return;
     const keys = await r.keys(pattern);
     if (keys.length > 0) {
       await r.del(...keys);
@@ -65,10 +76,14 @@ export async function cacheAside<T>(
   ttl: number,
   fetcher: () => Promise<T>
 ): Promise<T> {
-  // Try cache first
-  const cached = await cacheGet<T>(key);
-  if (cached !== null) {
-    return cached;
+  try {
+    // Try cache first
+    const cached = await cacheGet<T>(key);
+    if (cached !== null) {
+      return cached;
+    }
+  } catch {
+    // Ignore cache read errors and proceed to fetch
   }
 
   // Cache miss — fetch from source
