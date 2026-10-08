@@ -12,6 +12,15 @@ interface ContractData {
   volume: number;
   openInterest: number;
   impliedVolatility: number;
+  breakeven?: number;
+  breakevenPct?: number;
+  expectedReturn?: number;
+  targetReachable?: boolean;
+  earningsSoon?: boolean;
+  callWall?: number | null;
+  putWall?: number | null;
+  targetBlockedByOi?: boolean;
+  optionScore?: number;
 }
 
 interface TradePick {
@@ -44,6 +53,8 @@ interface Regime {
   level: 'BULL' | 'MIXED' | 'CHOP';
   spyAbove: boolean;
   qqqAbove: boolean;
+  vix?: number | null;
+  breadth?: number | null;
 }
 
 const REGIME_META: Record<Regime['level'], { icon: string; title: string; text: string; color: string; bg: string; border: string }> = {
@@ -301,6 +312,8 @@ export default function TradePickView() {
         <div style={{ ...styles.regimeBanner, background: REGIME_META[regime.level].bg, borderColor: REGIME_META[regime.level].border, color: REGIME_META[regime.level].color }}>
           <span>{REGIME_META[regime.level].icon}</span>
           <span><b>{REGIME_META[regime.level].title}</b> — {REGIME_META[regime.level].text}</span>
+          {typeof regime.vix === 'number' && <span style={{ marginLeft: 'auto', opacity: 0.85 }}>VIX {regime.vix.toFixed(1)}</span>}
+          {typeof regime.breadth === 'number' && <span style={{ opacity: 0.85 }}>· {Math.round(regime.breadth)}% sobre MA50</span>}
         </div>
       )}
 
@@ -379,6 +392,45 @@ export default function TradePickView() {
                   <div style={styles.contractValue}>${fmt(currentPick.contract.premium * 100, 0)}</div>
                 </div>
               </div>
+              {(currentPick.contract.breakeven != null || currentPick.contract.impliedVolatility > 0) && (
+                <div style={styles.contractGrid}>
+                  {currentPick.contract.breakeven != null && (
+                    <div style={styles.contractItem}>
+                      <div style={styles.contractLabel}>Breakeven</div>
+                      <div style={styles.contractValue}>${fmt(currentPick.contract.breakeven)}{currentPick.contract.breakevenPct != null ? ` (+${currentPick.contract.breakevenPct}%)` : ''}</div>
+                    </div>
+                  )}
+                  {currentPick.contract.impliedVolatility > 0 && (
+                    <div style={styles.contractItem}>
+                      <div style={styles.contractLabel}>IV</div>
+                      <div style={styles.contractValue}>{(currentPick.contract.impliedVolatility * 100).toFixed(0)}%</div>
+                    </div>
+                  )}
+                  {currentPick.contract.expectedReturn != null && (
+                    <div style={styles.contractItem}>
+                      <div style={styles.contractLabel}>Return al target</div>
+                      <div style={{ ...styles.contractValue, color: currentPick.contract.expectedReturn >= 0 ? C.positive : C.negative }}>
+                        {currentPick.contract.expectedReturn >= 0 ? '+' : ''}{(currentPick.contract.expectedReturn * 100).toFixed(0)}%
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {currentPick.contract.earningsSoon && (
+                <div style={{ ...styles.warnLine, borderColor: '#FB718550', color: '#FB7185' }}>
+                  ⚠️ Earnings dentro de la ventana del contrato — riesgo de evento
+                </div>
+              )}
+              {currentPick.contract.targetBlockedByOi && currentPick.contract.callWall != null && (
+                <div style={{ ...styles.warnLine, borderColor: '#FBBF2450', color: '#FBBF24' }}>
+                  ⚠️ Muro de OI en ${fmt(currentPick.contract.callWall)} por debajo del target
+                </div>
+              )}
+              {currentPick.contract.targetReachable === false && (
+                <div style={{ ...styles.warnLine, borderColor: '#FBBF2450', color: '#FBBF24' }}>
+                  ⚠️ Breakeven fuera del movimiento esperado para este DTE
+                </div>
+              )}
             </div>
           )}
 
@@ -917,6 +969,17 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr 1fr',
     gap: 12,
+    marginBottom: 12,
+  },
+  warnLine: {
+    fontSize: 12,
+    fontWeight: 600 as const,
+    padding: '8px 10px',
+    borderRadius: R.sm,
+    borderWidth: 1,
+    borderStyle: 'solid' as const,
+    marginTop: 8,
+    textAlign: 'center' as const,
   },
   contractItem: {
     textAlign: 'center' as const,

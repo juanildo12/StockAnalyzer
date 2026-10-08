@@ -7,7 +7,8 @@
     "build": "prisma generate && cp -r node_modules/@litertjs/core/wasm public/litert-wasm && next build",
     "postinstall": "cp -r node_modules/@litertjs/core/wasm public/litert-wasm",
     "start": "next start",
-    "lint": "echo 'lint disabled'"
+    "lint": "echo 'lint disabled'",
+    "test": "vitest run src/lib/tradePicks"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.83",
@@ -40,6 +41,9 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "sharp": "^0.34.5",
-    "typescript": "^5.0.0"
+    "tsx": "^4.23.15",
+    "typescript": "^5.0.0",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.3"
   }
 }

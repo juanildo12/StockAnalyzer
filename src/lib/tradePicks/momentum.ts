@@ -54,6 +54,8 @@ export interface MarketRegime {
   level: RegimeLevel;
   spyAbove: boolean;
   qqqAbove: boolean;
+  vix?: number | null;
+  breadth?: number | null; // % del universo por encima de MA50
 }
 
 /** SPY/QQQ sobre EMA 8/21/50 = BULL (convicción completa); uno = MIXED; ninguno = CHOP. */

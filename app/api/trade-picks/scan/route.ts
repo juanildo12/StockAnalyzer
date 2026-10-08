@@ -10,6 +10,17 @@ import {
   relativeStrength,
   type MarketRegime,
 } from '@/src/lib/tradePicks/momentum';
+import { calcATR, calcRSI, calcSMA } from '@/src/lib/technical/analysis';
+import {
+  SECTOR_ETF,
+  breadthAdjust,
+  earningsInWindow,
+  ivAdjustment,
+  oiLevelsFromChain,
+  realizedVol,
+  swingLevels,
+  tradeability,
+} from '@/src/lib/tradePicks/deep';
 
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
 export const dynamic = 'force-dynamic';
@@ -17,32 +28,6 @@ export const maxDuration = 60;
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   return Promise.race([promise, new Promise<null>((r) => setTimeout(() => r(null), ms))]);
-}
-
-function calcRSI(closes: number[]): number | null {
-  if (closes.length < 15) return null;
-  let gains = 0, losses = 0;
-  for (let i = closes.length - 14; i < closes.length; i++) {
-    const diff = closes[i] - closes[i - 1];
-    if (diff > 0) gains += diff;
-    else losses -= diff;
-  }
-  if (losses === 0) return 100;
-  return 100 - 100 / (1 + gains / losses);
-}
-
-function calcATR(highs: number[], lows: number[], closes: number[], period = 14): number | null {
-  if (highs.length < period + 1) return null;
-  const trs: number[] = [];
-  for (let i = highs.length - period; i < highs.length; i++) {
-    const tr = Math.max(
-      highs[i] - lows[i],
-      Math.abs(highs[i] - closes[i - 1]),
-      Math.abs(lows[i] - closes[i - 1])
-    );
-    trs.push(tr);
-  }
-  return trs.reduce((a, b) => a + b, 0) / period;
 }
 
 function approxDelta(strike: number, price: number, isCall: boolean): number {
@@ -77,12 +62,13 @@ function bestContract(contracts: any[], price: number, isCall: boolean): any[] {
   };
 
   // Prefer contracts with TIGHT SPREAD + HIGH volume + HIGH open interest
+  const effDelta = (c: any) => c.delta || c.greeks?.delta || approxDelta(c.strike, price, isCall);
   let pool = contracts.filter((c: any) =>
     (c.openInterest || 0) >= 500 &&
     (c.volume || 0) >= 100 &&
     (c.bid || 0) > 0 &&
     (c.ask || 0) > 0 &&
-    Math.abs(c.delta || c.greeks?.delta || 0) < 0.80 && // skip deep ITM
+    Math.abs(effDelta(c)) < 0.80 && // skip deep ITM
     tight(c)
   );
   if (pool.length === 0) {
@@ -92,7 +78,7 @@ function bestContract(contracts: any[], price: number, isCall: boolean): any[] {
       (c.volume || 0) >= 20 &&
       (c.bid || 0) > 0 &&
       (c.ask || 0) > 0 &&
-      Math.abs(c.delta || c.greeks?.delta || 0) < 0.80 &&
+      Math.abs(effDelta(c)) < 0.80 &&
       semiTight(c)
     );
   }
@@ -101,7 +87,7 @@ function bestContract(contracts: any[], price: number, isCall: boolean): any[] {
   const scored = pool.map((c: any) => {
     const oi = c.openInterest || 0;
     const vol = c.volume || 0;
-    const delta = c.delta || c.greeks?.delta || 0;
+    const delta = effDelta(c);
     const bid = c.bid || 0;
     const ask = c.ask || 0;
     const mid = (bid + ask) / 2;
@@ -171,6 +157,11 @@ interface TradePickCandidate {
   trail8: number | null;
   trail21: number | null;
   trail50: number | null;
+  rv20: number | null; // vol anualizada 20d (para comparar con la IV)
+  earningsTs: Date | number | null;
+  sectorEtf: string | null;
+  support: number;
+  resistance: number;
 }
 
 function scoreStock(
@@ -209,29 +200,42 @@ function scoreStock(
   const emas = emaState(closes, price);
   if (!emas.priceAboveAll) return null;
 
-  // Gate: base ajustada cerca de su trigger (a punto de romper o recién rota)
+  // Gate: base cerca de su trigger (a punto de romper o recién rota).
+  // ≤12% = base ajustada (Sean); 12-18% = base amplia, se permite con
+  // penalización (breakouts legítimos de bases grandes no se descartan).
   const setup = detectSetup(closes, highs, lows, volumes);
-  if (!setup || setup.rangePct > 12) return null;
+  if (!setup || setup.rangePct > 18) return null;
+  const wideBase = setup.rangePct > 12;
 
   const rsi = calcRSI(closes);
   const atr = calcATR(highs, lows, closes) || price * 0.02;
   const rs = relativeStrength(closes, spyCloses, 20);
+  const rv20 = realizedVol(closes);
+  const vix = typeof regime.vix === 'number' ? regime.vix : null;
 
   // Solo largo: los líderes alcistas son las únicas jugadas del sistema
   const direction: 'CALL' = 'CALL';
 
   // Entrada: el trigger si aún no rompió (buy stop), el precio si ya rompió
   const entry = setup.state === 'confirmed' ? price : setup.trigger;
-  // Stop: piso de la base, acotado a 1.5 ATR (low of the day del rompimiento)
-  const stop = Math.max(setup.baseLow, entry - 1.5 * atr);
+
+  // Niveles reales por swing pivots (no cada mero high de la barra)
+  const sw = swingLevels(highs, lows, price);
+  const support = sw.supports[0] ?? setup.baseLow;
+  const resistance = sw.resistances[0] ?? 0;
+
+  // Stop: piso de la base / soporte estructural (si está ≥1 ATR debajo) / 1.5 ATR
+  const structural = sw.supports.find((s) => s <= entry - atr);
+  const stop = Math.max(setup.baseLow, entry - 1.5 * atr, structural ?? 0);
   if (!(entry > stop)) return null;
 
-  // Target: proyección del impulso previo (asta) o la siguiente resistencia
-  const lookback = Math.min(closes.length, 60);
-  const aboveEntry = highs.slice(-lookback).filter((h) => h > entry * 1.03);
-  const nextResistance = aboveEntry.length > 0 ? Math.min(...aboveEntry) : 0;
+  // Target: proyección del impulso previo (medida del asta). El muro real de
+  // resistencia NO anula el setup: se usa como tope realista para el contrato
+  // (tradeability) y como penalización si está en el camino.
+  const wall = sw.resistances.find((r) => r > entry * 1.03);
   const poleTarget = entry + Math.max(setup.poleHeight, atr * 3);
-  const target = Math.max(poleTarget, nextResistance);
+  const target = poleTarget;
+  const wallInPath = wall !== undefined && wall < poleTarget;
 
   const risk = entry - stop;
   const reward = target - entry;
@@ -251,7 +255,8 @@ function scoreStock(
 
   // 2. Calidad de la base (0-20): tightness + volumen secándose
   if (setup.rangePct <= 8) { score += 12; reasons.push(`Base ajustada: rango ${setup.rangePct.toFixed(1)}% en 15 sesiones`); }
-  else { score += 8; reasons.push(`Base de ${setup.rangePct.toFixed(1)}%`); }
+  else if (setup.rangePct <= 12) { score += 8; reasons.push(`Base de ${setup.rangePct.toFixed(1)}%`); }
+  else { score += 0; reasons.push(`Base amplia: ${setup.rangePct.toFixed(1)}% — más riesgo en la entrada`); }
   if (setup.volDryUp) { score += 8; reasons.push(`Volumen ${setup.volChangePct.toFixed(0)}% en la consolidación`); }
   else if (setup.volChangePct < 0) score += 5;
   else score += 2;
@@ -296,9 +301,24 @@ function scoreStock(
   if (regime.level === 'BULL') { score += 10; reasons.push('SPY/QQQ sobre EMA 8/21/50'); }
   else if (regime.level === 'MIXED') score += 5;
 
+  // 6b. Volatilidad de fondo: VIX alto castiga (eventos, squeezes), VIX bajo ayuda
+  if (vix !== null) {
+    if (vix > 30) { score -= 10; reasons.push(`VIX ${vix.toFixed(1)} — volatilidad extrema`); }
+    else if (vix > 25) { score -= 6; reasons.push(`VIX ${vix.toFixed(1)} — volatilidad alta`); }
+    else if (vix <= 16) { score += 2; reasons.push(`VIX ${vix.toFixed(1)} — entorno calmado`); }
+  }
+
   // 7. Risk / reward (0-5)
   if (riskReward >= 3) { score += 5; reasons.push(`R:R ${riskReward.toFixed(1)}`); }
   else if (riskReward >= 2) score += 3;
+
+  if (resistance > 0) reasons.push(`Estructura: soporte $${support.toFixed(2)} / resistencia $${resistance.toFixed(2)}`);
+  // Muro de resistencia dentro del camino proyectado → el movimiento realista
+  // está acotado: penaliza y avisa (el contrato usa el target realista).
+  if (wallInPath && wall !== undefined) {
+    score -= 3;
+    reasons.push(`Resistencia real $${wall.toFixed(2)} en el camino — tope realista del target`);
+  }
 
   // Penalizaciones: extendido de la EMA8, sobrecomprado o staircase tardío
   if (ext > 8) score -= 10;
@@ -314,7 +334,7 @@ function scoreStock(
     price,
     score: Math.max(0, Math.min(score, 100)),
     direction,
-    reasons: reasons.slice(0, 6),
+    reasons: reasons.slice(0, 8),
     entry,
     stop,
     target,
@@ -329,25 +349,32 @@ function scoreStock(
     trail8: emas.ema8,
     trail21: emas.ema21,
     trail50: emas.ema50,
+    rv20,
+    earningsTs: quote.earningsTimestamp ?? null,
+    sectorEtf: null,
+    support,
+    resistance,
   };
 }
 
-/** SPY y QQQ sobre EMA 8/21/50 → régimen de mercado (y closes de SPY para la fuerza relativa). */
+/** SPY y QQQ sobre EMA 8/21/50 → régimen de mercado, más VIX (riesgo de fondo). */
 async function fetchRegime(): Promise<{ regime: MarketRegime; spyCloses: number[] }> {
   try {
     const period1 = new Date(Date.now() - 440 * 86400000);
-    const [spy, qqq] = await Promise.all([
+    const [spy, qqq, vixQ] = await Promise.all([
       withTimeout(yf.chart('SPY', { period1, period2: new Date(), interval: '1d' }), 8000),
       withTimeout(yf.chart('QQQ', { period1, period2: new Date(), interval: '1d' }), 8000),
+      withTimeout(yf.quote('^VIX'), 5000),
     ]);
     const closesOf = (h: any): number[] =>
       (h?.quotes || []).map((q: any) => q.close).filter((c: any): c is number => c != null);
     const spyCloses = closesOf(spy);
     const qqqCloses = closesOf(qqq);
     if (spyCloses.length < 60 || qqqCloses.length < 60) throw new Error('regime data short');
-    return { regime: evalRegime(spyCloses, qqqCloses), spyCloses };
+    const vix = typeof vixQ?.regularMarketPrice === 'number' ? vixQ.regularMarketPrice : null;
+    return { regime: { ...evalRegime(spyCloses, qqqCloses), vix }, spyCloses };
   } catch {
-    return { regime: { level: 'MIXED', spyAbove: false, qqqAbove: false }, spyCloses: [] };
+    return { regime: { level: 'MIXED', spyAbove: false, qqqAbove: false, vix: null }, spyCloses: [] };
   }
 }
 
@@ -359,12 +386,12 @@ interface ScanData {
 }
 
 let memoryCache: { data: any; ts: number } | null = null;
-const CACHE_TTL = 4 * 60 * 60 * 1000; // 4 hours
+const CACHE_TTL = 15 * 60 * 1000; // 15 min (solo si el cliente no manda ?exclude)
 const MIN_PICK_SCORE = 80; // pick titular: solo A / A+
 const FOCUS_MIN_SCORE = 70; // focus list: B+ o mejor
 const FOCUS_SIZE = 5;
-const SCAN_CACHE_KEY = 'trade-picks:scan:candidates:v2';
-const SCAN_CACHE_TTL = 30 * 60; // 30 min en Redis para la lista de candidatos
+const SCAN_CACHE_KEY = 'trade-picks:scan:candidates:v3'; // v3: análisis profundo (IV/earnings/OI/sector/breadth)
+const SCAN_CACHE_TTL = 15 * 60; // 15 min en Redis: picks intradía frescos
 
 /** Scores the whole universe. Expensive: ~2 Yahoo calls per symbol. */
 async function scoreUniverse(): Promise<ScanData> {
@@ -373,6 +400,8 @@ async function scoreUniverse(): Promise<ScanData> {
 
   const candidates: TradePickCandidate[] = [];
   const batchSize = 40;
+  let above50 = 0;
+  let withData = 0;
 
   for (let i = 0; i < universe.length; i += batchSize) {
     const batch = universe.slice(i, i + batchSize);
@@ -398,7 +427,15 @@ async function scoreUniverse(): Promise<ScanData> {
           const lows = hist.quotes.map((h) => h.low).filter((l): l is number => l != null);
           const volumes = hist.quotes.map((h) => h.volume).filter((v): v is number => v != null);
 
-          return scoreStock(quote, closes, highs, lows, volumes, regime, spyCloses);
+          // Amplitud: ¿el precio está sobre MA50? (se cuenta aunque falle el scoring)
+          let over50 = false;
+          if (closes.length >= 50) {
+            const sma50 = calcSMA(closes, 50);
+            const p = quote.regularMarketPrice || closes[closes.length - 1];
+            over50 = sma50 !== null && p > sma50;
+          }
+
+          return { cand: scoreStock(quote, closes, highs, lows, volumes, regime, spyCloses), over50 };
         } catch {
           return null;
         }
@@ -406,8 +443,24 @@ async function scoreUniverse(): Promise<ScanData> {
     );
 
     for (const r of results) {
-      if (r) candidates.push(r);
+      if (!r) continue;
+      withData++;
+      if (r.over50) above50++;
+      if (r.cand) candidates.push(r.cand);
     }
+  }
+
+  // Amplitud del mercado: más del 65% del universo sobre MA50 = monto sanamente
+  // direccional; <35% = solo unas pocas name funcionando (riesgo de promedio).
+  const breadth = withData > 0 ? (above50 / withData) * 100 : null;
+  const bAdj = breadthAdjust(breadth);
+  if (bAdj !== 0 && candidates.length > 0) {
+    for (const c of candidates) {
+      c.score = Math.max(0, Math.min(c.score + bAdj, 100));
+      if (bAdj > 0) c.reasons.push(`Amplitud: ${(breadth as number).toFixed(0)}% del universo sobre MA50`);
+      else c.reasons.push(`Amplitud débil: ${(breadth as number).toFixed(0)}% sobre MA50`);
+    }
+    if (breadth !== null) regime.breadth = Math.round(breadth);
   }
 
   candidates.sort((a, b) => b.score - a.score);
@@ -452,6 +505,30 @@ export async function GET(request: NextRequest) {
       'CAT', 'XOM', 'MRVL', 'ARM', 'SMCI', 'INTU', 'NOW', 'AMAT', 'TXN',
     ];
 
+    // Scoring de una megacap líquida (fallback con los mismos gates que el universo)
+    const scoreLiquidCandidate = async (sym: string): Promise<TradePickCandidate | null> => {
+      try {
+        const [quote, hist] = await Promise.all([
+          withTimeout(yf.quote(sym), 5000),
+          withTimeout(yf.chart(sym, { period1: new Date(Date.now() - 440 * 86400000), period2: new Date(), interval: '1d' }), 7000),
+        ]);
+        const q = hist?.quotes || [];
+        if (!quote || q.length < 60) return null;
+        const p = scoreStock(
+          quote,
+          q.map((h) => h.close).filter((c): c is number => c != null),
+          q.map((h) => h.high).filter((h): h is number => h != null),
+          q.map((h) => h.low).filter((l): l is number => l != null),
+          q.map((h) => h.volume).filter((v): v is number => v != null),
+          regime,
+          spyCloses,
+        );
+        return p && p.score >= FOCUS_MIN_SCORE ? p : null;
+      } catch {
+        return null;
+      }
+    };
+
     // Build the contract search set: top scored candidates first, then liquid universe
     const searchSet = new Map<string, TradePickCandidate>();
     // Prioritize top 10 scored candidates from the scan
@@ -464,29 +541,81 @@ export async function GET(request: NextRequest) {
       for (const sym of LIQUID_UNIVERSE) {
         if (excludeSet.has(sym)) continue;
         if (searchSet.has(sym)) continue;
-        try {
-          const [quote, hist] = await Promise.all([
-            withTimeout(yf.quote(sym), 5000),
-            withTimeout(yf.chart(sym, { period1: new Date(Date.now() - 440 * 86400000), period2: new Date(), interval: '1d' }), 7000),
-          ]);
-          const q = hist?.quotes || [];
-          const p = quote && q.length >= 60
-            ? scoreStock(
-                quote,
-                q.map((h) => h.close).filter((c): c is number => c != null),
-                q.map((h) => h.high).filter((h): h is number => h != null),
-                q.map((h) => h.low).filter((l): l is number => l != null),
-                q.map((h) => h.volume).filter((v): v is number => v != null),
-                regime,
-                spyCloses,
-              )
-            : null;
-          if (p && p.score >= FOCUS_MIN_SCORE) searchSet.set(sym, p);
-        } catch { /* skip */ }
+        const p = await scoreLiquidCandidate(sym);
+        if (p) searchSet.set(sym, p);
       }
     }
     // Sort by stock score descending — best stocks first
-    const tryCandidates = Array.from(searchSet.values()).sort((a, b) => b.score - a.score);
+    let tryCandidates = Array.from(searchSet.values()).sort((a, b) => b.score - a.score);
+
+    // ── Fase de profundidad: fuerza relativa vs SECTOR ──────────────────────
+    // El líder real supera a su sector, no solo al SPY. Se resuelve el sector
+    // vía quoteSummary y se compara contra el ETF del sector (XLK, XLF, ...).
+    try {
+      const finalists = tryCandidates.slice(0, 8);
+      const enriched = await Promise.all(
+        finalists.map(async (c) => {
+          const [qs, hist] = await Promise.all([
+            withTimeout(yf.quoteSummary(c.symbol, { modules: ['assetProfile'] }), 5000),
+            withTimeout(
+              yf.chart(c.symbol, { period1: new Date(Date.now() - 120 * 86400000), period2: new Date(), interval: '1d' }),
+              7000
+            ),
+          ]);
+          const closes = (hist?.quotes || [])
+            .map((h: any) => h.close)
+            .filter((x: any): x is number => x != null);
+          return { cand: c, sector: (qs as any)?.assetProfile?.sector ?? null, closes };
+        })
+      );
+
+      const etfNeeded = Array.from(
+        new Set(
+          enriched
+            .map((e) => (e.sector ? SECTOR_ETF[e.sector] : null))
+            .filter((t): t is string => !!t)
+        )
+      );
+      const etfCloses = new Map<string, number[]>();
+      await Promise.all(
+        etfNeeded.map(async (etf) => {
+          try {
+            const h = await withTimeout(
+              yf.chart(etf, { period1: new Date(Date.now() - 120 * 86400000), period2: new Date(), interval: '1d' }),
+              7000
+            );
+            const closes = (h?.quotes || [])
+              .map((q: any) => q.close)
+              .filter((x: any): x is number => x != null);
+            if (closes.length >= 21) etfCloses.set(etf, closes);
+          } catch { /* sin ETF → sin ajuste */ }
+        })
+      );
+
+      const adjusted = new Map<string, TradePickCandidate>();
+      for (const { cand, sector, closes } of enriched) {
+        const etf = sector ? SECTOR_ETF[sector] : null;
+        const bench = etf ? etfCloses.get(etf) : null;
+        const copy: TradePickCandidate = { ...cand, sectorEtf: etf ?? null };
+        if (bench && closes.length >= 21) {
+          const rsSec = relativeStrength(closes, bench, 20);
+          if (rsSec !== null) {
+            if (rsSec < -5) {
+              copy.score = Math.max(0, copy.score - 6);
+              copy.reasons = [`Rezaga a su sector ${etf} (${rsSec.toFixed(1)}% 20d)`, ...copy.reasons];
+            } else if (rsSec >= 5) {
+              copy.score = Math.min(100, copy.score + 3);
+              copy.reasons = [`Lidera su sector ${etf} (+${rsSec.toFixed(1)}% 20d)`, ...copy.reasons];
+            }
+          }
+        }
+        adjusted.set(cand.symbol, copy);
+      }
+      // Reordena con los scores ya ajustados por sector
+      tryCandidates = Array.from(
+        new Map(tryCandidates.map((c) => [c.symbol, adjusted.get(c.symbol) ?? c] as [string, TradePickCandidate])).values()
+      ).sort((a, b) => b.score - a.score);
+    } catch { /* sin datos de sector → sigue sin ajustar */ }
 
     interface BestCombo { stock: TradePickCandidate; contract: any; score: number }
 
@@ -518,6 +647,17 @@ export async function GET(request: NextRequest) {
           const dateStr = expDate.toISOString().split('T')[0];
           const contracts = pick.direction === 'CALL' ? (exp.calls || []) : (exp.puts || []);
           const contractCandidates = bestContract(contracts, pick.price, pick.direction === 'CALL');
+
+          // Muros de OI de esta cadena: callWall frena el target, putWall respalda el stop
+          const walls = oiLevelsFromChain(exp);
+          const isCall = pick.direction === 'CALL';
+          // Target realista para el contrato: si hay una resistencia real entre
+          // la entrada y la proyección, el movimiento esperado está acotado.
+          const realisticTarget =
+            pick.resistance > 0 && pick.resistance > pick.entry && pick.resistance < pick.target
+              ? pick.resistance
+              : pick.target;
+
           for (const c of contractCandidates) {
             const bid = c.bid || 0;
             const ask = c.ask || 0;
@@ -527,15 +667,65 @@ export async function GET(request: NextRequest) {
             const vol = c.volume || 0;
             const oi = c.openInterest || 0;
             if (spreadPct > 10 || vol < 100 || oi < 500) continue;
-            const delta = c.delta || c.greeks?.delta || approxDelta(c.strike, pick.price, pick.direction === 'CALL');
+            const delta = c.delta || c.greeks?.delta || approxDelta(c.strike, pick.price, isCall);
+            const iv = c.impliedVolatility || c.greeks?.impliedVolatility || null;
+            const premium = c.lastPrice || mid;
+
+            // Componentes del lado de la opción (0-100)
+            const contractScore = c._score || 0; // spread + liquidez + delta + OTM (sin duplicar)
             const dteScore = days >= 30 && days <= 45 ? 30 : days >= 14 && days <= 60 ? 20 : days >= 7 ? 8 : 2;
-            const expScore = dteScore + (30 - Math.abs(days - 38)) * 0.3;
-            const contractScore = c._score || 0;
-            const liqBonus = vol >= 1000 && oi >= 5000 ? 40 : vol >= 500 && oi >= 2000 ? 30 : vol >= 100 && oi >= 500 ? 18 : 8;
-            const spreadScore = spreadPct <= 3 ? 40 : spreadPct <= 6 ? 30 : spreadPct <= 10 ? 20 : -50;
-            const combScore = contractScore + expScore + (days >= 14 ? 50 : 0) + spreadScore + liqBonus;
-            const weightedScore = combScore + (pick.score || 0) * 0.3;
-            const combo = { strike: c.strike, expiration: dateStr, daysToExpiration: days, premium: c.lastPrice || mid || 0, bid, ask, spreadPct, delta, volume: c.volume || 0, openInterest: c.openInterest || 0, impliedVolatility: c.impliedVolatility || 0, _score: combScore };
+            const expScore = dteScore + (30 - Math.abs(days - 38)) * 0.3; // ~0-39
+            const trade = tradeability({
+              price: pick.price,
+              target: realisticTarget,
+              strike: c.strike,
+              premium,
+              delta,
+              dte: days,
+              adr: pick.adr,
+              isCall,
+            });
+            const ivAdj = ivAdjustment(iv, pick.rv20);
+            const earningsSoon = earningsInWindow(pick.earningsTs, days);
+            const earningsAdj = earningsSoon ? -30 : 0;
+            const wallBlocked =
+              walls.callWall !== null && walls.callWall > pick.price && pick.target > walls.callWall;
+            const oiAdj = wallBlocked ? -10 : 0;
+
+            const optionScore = Math.max(
+              0,
+              Math.min(
+                contractScore * 0.55 + expScore * 0.55 + trade.score + ivAdj + earningsAdj + oiAdj,
+                100
+              )
+            );
+            // La acción manda (60%): el contrato no puede rescatar una acción mediocre
+            const weightedScore = (pick.score || 0) * 0.6 + optionScore * 0.4;
+
+            const combo = {
+              strike: c.strike,
+              expiration: dateStr,
+              daysToExpiration: days,
+              premium,
+              bid,
+              ask,
+              spreadPct,
+              delta,
+              volume: vol,
+              openInterest: oi,
+              impliedVolatility: iv || 0,
+              breakeven: trade.breakeven,
+              breakevenPct: parseFloat(trade.breakevenPct.toFixed(1)),
+              expectedReturn: parseFloat(trade.expectedReturn.toFixed(2)),
+              targetReachable: trade.reachable,
+              earningsSoon,
+              callWall: walls.callWall,
+              putWall: walls.putWall,
+              targetBlockedByOi: wallBlocked,
+              ivAdj,
+              optionScore: Math.round(optionScore),
+              _score: contractScore,
+            };
             if (!bestForPick || weightedScore > bestForPick.score) {
               bestForPick = { stock: pick, contract: combo, score: weightedScore };
             }
@@ -548,14 +738,45 @@ export async function GET(request: NextRequest) {
     }
 
     // Busca contratos en lotes de 5 hasta tener la focus list completa
-    const combos: BestCombo[] = [];
     const OPT_BATCH = 5;
+    const combos: BestCombo[] = [];
     for (let i = 0; i < tryCandidates.length && combos.length < FOCUS_SIZE; i += OPT_BATCH) {
       const batch = tryCandidates.slice(i, i + OPT_BATCH);
       const results = await Promise.all(batch.map(searchContracts));
       for (const r of results) {
         if (r) combos.push(r);
       }
+    }
+
+    // Los líderes momentum suelen tener cadenas finas (spread ancho / OI bajo).
+    // Si faltan contratos, busca en megacaps líquidas con cadena probada —
+    // los filtros de spread/volumen/OI NUNCA se relajan.
+    let liquidFallbackScored = 0;
+    if (combos.length < FOCUS_SIZE) {
+      const already = new Set(tryCandidates.map((c) => c.symbol));
+      const pool = LIQUID_UNIVERSE.filter(
+        (s) => !already.has(s) && !excludeSet.has(s)
+      ).slice(0, 10);
+      const extra: TradePickCandidate[] = [];
+      for (let i = 0; i < pool.length; i += 5) {
+        const rs = await Promise.all(pool.slice(i, i + 5).map(scoreLiquidCandidate));
+        for (const r of rs) if (r) extra.push(r);
+      }
+      liquidFallbackScored = extra.length;
+      if (extra.length > 0) {
+        extra.sort((a, b) => b.score - a.score);
+        tryCandidates = [...tryCandidates, ...extra].sort((a, b) => b.score - a.score);
+        for (let i = 0; i < extra.length && combos.length < FOCUS_SIZE; i += OPT_BATCH) {
+          const batch = extra.slice(i, i + OPT_BATCH);
+          const results = await Promise.all(batch.map(searchContracts));
+          for (const r of results) {
+            if (r && !combos.some((x) => x.stock.symbol === r.stock.symbol)) combos.push(r);
+          }
+        }
+      }
+      console.log(
+        `[TradePicks/Scan] combos=${combos.length}/${FOCUS_SIZE} liquidPool=${pool.length} liquidScored=${liquidFallbackScored}`
+      );
     }
 
     // Focus list: top 5 candidatos (con contrato si se encontró uno líquido)
@@ -595,6 +816,7 @@ export async function GET(request: NextRequest) {
       scanned: universe.length,
       candidates: candidates.length,
       searchedForContracts: tryCandidates.length,
+      liquidFallbackScored,
       generatedAt: new Date().toISOString(),
     };
 
