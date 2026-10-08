@@ -393,6 +393,36 @@ const FOCUS_SIZE = 5;
 const SCAN_CACHE_KEY = 'trade-picks:scan:candidates:v3'; // v3: análisis profundo (IV/earnings/OI/sector/breadth)
 const SCAN_CACHE_TTL = 15 * 60; // 15 min en Redis: picks intradía frescos
 
+// ── Filtro USA-only ─────────────────────────────────────────────────────────
+// El universo de screeners incluye ADR/dual-listing (ej. CMBT — Bélgica —
+// cotiza en NYSE en USD). quote() no trae país: se consulta assetProfile vía
+// quoteSummary con caché por símbolo. Si la consulta falla, se conserva el
+// símbolo (mejor un falso positivo que perder un pick válido por timeout).
+const countryCache = new Map<string, string | null>();
+async function isUSCompany(symbol: string): Promise<boolean> {
+  if (countryCache.has(symbol)) return countryCache.get(symbol) === 'United States';
+  try {
+    const qs = await withTimeout(yf.quoteSummary(symbol, { modules: ['assetProfile'] }), 5000);
+    const country = (qs as any)?.assetProfile?.country ?? null;
+    countryCache.set(symbol, country);
+    if (!country) {
+      console.warn(`[US-only] sin país para ${symbol} — se conserva`);
+      return true;
+    }
+    return country === 'United States';
+  } catch (e: any) {
+    console.warn(`[US-only] país no disponible para ${symbol}: ${e?.message} — se conserva`);
+    return true;
+  }
+}
+
+async function filterUSOnly(cands: TradePickCandidate[]): Promise<TradePickCandidate[]> {
+  const keep = await Promise.all(
+    cands.map(async (c) => ((await isUSCompany(c.symbol)) ? c : null))
+  );
+  return keep.filter((c): c is TradePickCandidate => c !== null);
+}
+
 /** Scores the whole universe. Expensive: ~2 Yahoo calls per symbol. */
 async function scoreUniverse(): Promise<ScanData> {
   const universe = await fetchTradePickUniverse().catch(() => [...STOCK_POOL]);
@@ -487,8 +517,11 @@ export async function GET(request: NextRequest) {
     const regime = scanned.regime;
     const spyCloses = scanned.spyCloses || [];
 
-    // Solo candidatos con score de focus list (≥ FOCUS_MIN_SCORE = B+)
-    const candidates = scanned.candidates.filter((c) => c.score >= FOCUS_MIN_SCORE);
+    // Solo candidatos con score de focus list (≥ FOCUS_MIN_SCORE = B+) y
+    // empresas de USA (excluye ADR/dual-listing como CMBT)
+    const candidates = await filterUSOnly(
+      scanned.candidates.filter((c) => c.score >= FOCUS_MIN_SCORE)
+    );
 
     // Exclude symbols already picked in the last day (client sends ?exclude=)
     if (excludeSet.size > 0) {
@@ -523,7 +556,8 @@ export async function GET(request: NextRequest) {
           regime,
           spyCloses,
         );
-        return p && p.score >= FOCUS_MIN_SCORE ? p : null;
+        if (!p || p.score < FOCUS_MIN_SCORE) return null;
+        return (await isUSCompany(sym)) ? p : null;
       } catch {
         return null;
       }
