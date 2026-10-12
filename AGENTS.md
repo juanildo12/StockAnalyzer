@@ -33,3 +33,11 @@ El sistema de Trade Picks ha sido actualizado al estilo momentum + breakout de S
 - **Tests**: `npm test` (vitest) cubre `src/lib/tradePicks/deep.ts`.
 - **Caché**: `SCAN_CACHE_KEY = trade-picks:scan:candidates:v3` (invalida versiones previas), TTL 15 min (intradía fresco). Si faltan contratos, fallback a 10 megacaps líquidas con los mismos gates (los filtros de spread/vol/OI nunca se relajan); se expone `liquidFallbackScored` en la respuesta.
 - **Solo USA**: `filterUSOnly()` consulta `quoteSummary(assetProfile).country` (caché por símbolo) y descarta empresas no estadounidenses — el universo de screeners trae ADR/dual-listing (ej. CMBT, Bélgica, cotiza en NYSE en USD). Si la consulta de país falla, se conserva el símbolo. Aplica a candidatos del scan y al pool de fallback líquido. Los picks y strikes siempre son en USD de NYSE/Nasdaq.
+
+## Trade Picks — win rate del historial (TransactionView + /api/trade-picks/evaluate)
+
+- **Resolución persistente**: cada pick guarda `resolved: {status, price, at}` en localStorage (sobrevive recargas). Una vez resuelto no cambia → win rate estable.
+- **Criterio de toque (gana/pierde)**: se evalúan velas diarias desde `createdAt` — gana si el precio TOCA el target, pierde si toca el stop (aunque luego retroceda). Si el mismo día toca ambos, decide el cierre vs entrada. Si nunca toca ninguno y la opción expiró, liquida por intrínseco vs prima.
+- **`POST /api/trade-picks/evaluate`**: recibe picks sin resolver y devuelve outcomes con datos históricos reales; el cliente los persiste. Se llama al cargar y tras cada scan.
+- **Precios en vivo** (`/api/trade-picks/quotes`) resuelven al instante si el precio actual ya tocó target/stop.
+- **Sin precio ≠ excluido**: antes `getStatus` devolvía `null` (símbolo desaparecía silenciosamente de W/L); ahora es `pending`. El chip muestra `Win Rate X% · wW/lL` con el denominador de cerrados.

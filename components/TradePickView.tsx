@@ -47,6 +47,7 @@ interface TradePick {
   trail50?: number | null;
   contract: ContractData | null;
   createdAt: string;
+  resolved?: { status: 'win' | 'loss'; price: number; at: string };
 }
 
 interface Regime {
@@ -110,7 +111,7 @@ function getGrade(score: number): { label: string; color: string } {
   return { label: 'C', color: '#F97316' };
 }
 
-type PickStatus = 'win' | 'loss' | 'pending' | null;
+type PickStatus = 'win' | 'loss' | 'pending';
 
 function getSettlement(pick: TradePick, price: number | null | undefined): { status: 'win' | 'loss'; pnl: number } | null {
   if (price == null || !isFinite(price) || !pick.contract) return null;
@@ -125,18 +126,25 @@ function getSettlement(pick: TradePick, price: number | null | undefined): { sta
   return { status: pnl > 0 ? 'win' : 'loss', pnl };
 }
 
-function getStatus(pick: TradePick, price: number | null | undefined): PickStatus {
-  if (price == null || !isFinite(price)) return null;
-  const settled = getSettlement(pick, price);
-  if (settled) return settled.status;
-  if (pick.direction === 'CALL') {
-    if (price >= pick.target) return 'win';
-    if (price <= pick.stop) return 'loss';
-  } else {
-    if (price <= pick.target) return 'win';
-    if (price >= pick.stop) return 'loss';
+/**
+ * Resultado por toque con el precio actual: si el precio alcanza el target
+ * gana, si alcanza el stop pierde (aunque luego retroceda). Si ya expiró,
+ * liquida por intrínseco. Devuelve null si aún no hay resultado claro.
+ */
+function touchOutcome(pick: TradePick, price: number | null | undefined): 'win' | 'loss' | null {
+  if (price != null && isFinite(price)) {
+    const isCall = pick.direction === 'CALL';
+    if (isCall ? price >= pick.target : price <= pick.target) return 'win';
+    if (isCall ? price <= pick.stop : price >= pick.stop) return 'loss';
   }
-  return 'pending';
+  const settled = getSettlement(pick, price);
+  return settled ? settled.status : null;
+}
+
+/** Estado final: resuelto (persistido) o resultado por toque; mientras tanto, pendiente. */
+function getStatus(pick: TradePick, price: number | null | undefined): PickStatus {
+  if (pick.resolved) return pick.resolved.status;
+  return touchOutcome(pick, price) ?? 'pending';
 }
 
 const STATUS_META: Record<string, { label: string; bg: string; border: string; color: string }> = {
@@ -188,12 +196,58 @@ export default function TradePickView() {
     } catch {}
   }, []);
 
+  const evaluateHistory = useCallback(async (picks: TradePick[]) => {
+    const unresolved = picks.filter(p => !p.resolved);
+    if (unresolved.length === 0) return;
+    try {
+      const res = await fetch('/api/trade-picks/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          picks: unresolved.map(p => ({
+            id: p.id, symbol: p.symbol, direction: p.direction,
+            entry: p.entry, stop: p.stop, target: p.target, createdAt: p.createdAt,
+            contract: p.contract
+              ? { strike: p.contract.strike, expiration: p.contract.expiration, premium: p.contract.premium }
+              : null,
+          })),
+        }),
+      });
+      const json = await res.json();
+      const results: Record<string, { status: 'win' | 'loss'; price: number; at: string }> = json?.results || {};
+      if (Object.keys(results).length === 0) return;
+      setHistory(prev => {
+        const next = prev.map(p => (p.resolved || !results[p.id]) ? p : { ...p, resolved: results[p.id] });
+        savePicks(next);
+        return next;
+      });
+    } catch { /* sin evaluación → se queda pendiente */ }
+  }, []);
+
   useEffect(() => {
     const picks = loadPicks();
     setHistory(picks);
     if (picks.length > 0) setCurrentPick(picks[0]);
     refreshPrices(picks);
-  }, [refreshPrices]);
+    evaluateHistory(picks);
+  }, [refreshPrices, evaluateHistory]);
+
+  // Resolución inmediata con el precio en vivo (target/stop tocado)
+  useEffect(() => {
+    setHistory(prev => {
+      let changed = false;
+      const next = prev.map(p => {
+        if (p.resolved) return p;
+        const price = prices[p.symbol];
+        const st = touchOutcome(p, price);
+        if (!st) return p;
+        changed = true;
+        return { ...p, resolved: { status: st, price: price as number, at: new Date().toISOString() } };
+      });
+      if (changed) savePicks(next);
+      return changed ? next : prev;
+    });
+  }, [prices]);
 
   const scan = useCallback(async () => {
     setScanning(true);
@@ -238,12 +292,13 @@ export default function TradePickView() {
       setHistory(updated);
       savePicks(updated);
       refreshPrices(updated);
+      evaluateHistory(updated);
     } catch (e: any) {
       setError(e.message || 'Error al escanear');
     } finally {
       setScanning(false);
     }
-  }, [history, refreshPrices]);
+  }, [history, refreshPrices, evaluateHistory]);
 
   const grade = currentPick ? getGrade(currentPick.score) : null;
   const isCall = currentPick?.direction === 'CALL';
@@ -571,8 +626,8 @@ export default function TradePickView() {
                 >
                   Todos
                 </button>
-                <span style={{ ...styles.winRateChip, background: 'linear-gradient(135deg, #2DD4BF18, #34D39918)', border: '1px solid #2DD4BF55', color: '#2DD4BF', fontWeight: 800, cursor: 'default' }}>
-                  Win Rate {winRate != null ? `${winRate.toFixed(0)}%` : '—'}
+                <span style={{ ...styles.winRateChip, background: 'linear-gradient(135deg, #2DD4BF18, #34D39918)', border: '1px solid #2DD4BF55', color: '#2DD4BF', fontWeight: 800, cursor: 'default' }} title={`${wins} ganados / ${losses} perdidos de ${closed} cerrados`}>
+                  Win Rate {winRate != null ? `${winRate.toFixed(0)}%` : '—'}{closed > 0 ? ` · ${wins}W/${losses}L` : ''}
                 </span>
               </div>
 
@@ -604,7 +659,7 @@ export default function TradePickView() {
                 const g = getGrade(pick.score);
                 const dirCol = pick.direction === 'CALL' ? '#34D399' : '#FB7185';
                 const status = getStatus(pick, prices[pick.symbol]);
-                const sm = status ? STATUS_META[status] : null;
+                const sm = STATUS_META[status];
                 const settled = getSettlement(pick, prices[pick.symbol]);
                 const stPnl = getPnl(pick, status, prices[pick.symbol]);
                 const prog = status === 'pending' ? getProgress(pick, prices[pick.symbol]) : null;
@@ -644,6 +699,13 @@ export default function TradePickView() {
                           <span style={styles.lvl}>R/R <b style={{ color: g.color }}>{fmt(pick.riskReward, 1)}</b></span>
                           {status && prices[pick.symbol] != null && (
                             <span style={styles.lvl}>Ahora <b style={{ color: status === 'win' ? '#34D399' : status === 'loss' ? '#FB7185' : C.textPrimary }}>${fmt(prices[pick.symbol]!)}</b></span>
+                          )}
+                          {pick.resolved && (
+                            <span style={styles.lvl}>
+                              Cerrado <b style={{ color: pick.resolved.status === 'win' ? '#34D399' : '#FB7185' }}>
+                                {pick.resolved.status === 'win' ? 'WIN' : 'LOSS'}
+                              </b> a ${fmt(pick.resolved.price)} · {new Date(pick.resolved.at).toLocaleDateString()}
+                            </span>
                           )}
                           {pick.contract && (
                             <span style={styles.lvlContract}>
