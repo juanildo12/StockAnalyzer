@@ -8,7 +8,7 @@
     "postinstall": "cp -r node_modules/@litertjs/core/wasm public/litert-wasm",
     "start": "next start",
     "lint": "echo 'lint disabled'",
-    "test": "vitest run src/lib/tradePicks"
+    "test": "vitest run src/lib src/services"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.83",

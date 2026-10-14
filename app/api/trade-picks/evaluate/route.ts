@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import YahooFinance from 'yahoo-finance2';
+import { getMassiveDailyBars } from '@/src/services/massiveClient';
 
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
+
+// Massive free tier allows ~5 req/min, so only use it as a fallback for a
+// handful of picks per request when Yahoo returns nothing.
+const MASSIVE_EVAL_BUDGET = 5;
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
   return Promise.race([p, new Promise<T | null>((r) => setTimeout(() => r(null), ms))]);
@@ -37,6 +42,7 @@ export async function POST(request: NextRequest) {
   if (picks.length === 0) return NextResponse.json({ results: {} });
 
   const results: Record<string, { status: 'win' | 'loss'; price: number; at: string }> = {};
+  let massiveBudget = MASSIVE_EVAL_BUDGET;
 
   await Promise.all(
     picks.slice(0, 100).map(async (p) => {
@@ -53,10 +59,21 @@ export async function POST(request: NextRequest) {
         );
         const pickDay = new Date(p.createdAt).toISOString().slice(0, 10);
         const barDay = (b: any) => new Date(b.date).toISOString().slice(0, 10);
-        const bars = (hist?.quotes || []).filter(
+        let bars: any[] = (hist?.quotes || []).filter(
           (b: any) =>
             b.high != null && b.low != null && b.close != null && barDay(b) >= pickDay
         );
+
+        // Yahoo sin datos → fallback a las barras de Massive (free tier)
+        if (bars.length === 0 && massiveBudget > 0) {
+          massiveBudget -= 1;
+          const massiveBars = await getMassiveDailyBars(
+            p.symbol,
+            start - 86400000,
+            Date.now()
+          ).catch(() => []);
+          bars = massiveBars.filter((b) => barDay(b) >= pickDay);
+        }
         if (bars.length === 0) return;
 
         const isCall = p.direction === 'CALL';

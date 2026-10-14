@@ -6,11 +6,12 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
-    const [gainers, losers, status, polygonNews, economic] = await Promise.all([
+    const [gainers, losers, status, polygonNews, finnNews, economic] = await Promise.all([
       getMarketMovers('gainers').catch(() => []),
       getMarketMovers('losers').catch(() => []),
       getMarketStatus().catch(() => null),
       getMarketNews(10).catch(() => []),
+      getFinNews('general', 10).catch(() => []),
       getEconomicCalendar().catch(() => []),
     ]);
 
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
       gainers,
       losers,
       marketStatus: status,
-      news: polygonNews,
+      news: polygonNews.length > 0 ? polygonNews : finnNews,
       economicCalendar: economic.slice(0, 10),
       timestamp: new Date().toISOString(),
     });

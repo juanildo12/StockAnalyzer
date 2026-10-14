@@ -41,3 +41,14 @@ El sistema de Trade Picks ha sido actualizado al estilo momentum + breakout de S
 - **`POST /api/trade-picks/evaluate`**: recibe picks sin resolver y devuelve outcomes con datos históricos reales; el cliente los persiste. Se llama al cargar y tras cada scan.
 - **Precios en vivo** (`/api/trade-picks/quotes`) resuelven al instante si el precio actual ya tocó target/stop.
 - **Sin precio ≠ excluido**: antes `getStatus` devolvía `null` (símbolo desaparecía silenciosamente de W/L); ahora es `pending`. El chip muestra `Win Rate X% · wW/lL` con el denominador de cerrados.
+
+## Massive.com (ex-Polygon.io) — integración Fase 0 (tier gratis)
+
+- **Cliente**: `src/services/massiveClient.ts` (transporte + resolución de key + capability probe + endpoints nuevos) y `src/services/polygonClient.ts` (fachada legacy que ahora usa ese transporte, ~20 call sites intactos). `src/lib/massiveThrottle.ts` limita las llamadas SALIENTES (el `src/lib/rateLimit.ts` existente solo limita entrada de usuario).
+- **Env**: `MASSIVE_API_KEY` (preferida) con fallback a `POLYGON_API_KEY`; `MASSIVE_BASE_URL` (default `https://api.massive.com`); `MASSIVE_REQUESTS_PER_MINUTE` (default 5 = free tier; subir en planes de pago para desactivar el throttle).
+- **Qué da el free tier (verificado en vivo)**: `/v2/aggs` (diario y minuto), `/v3/reference/*`, `/v2/reference/news` (con `insights`/sentiment), `/v1/indicators`, `/v1/marketstatus`. **Todos los snapshots** (stocks, options chain, unified, top movers) devuelven **403 NOT_AUTHORIZED**.
+- **Degradación**: `getMassiveCapabilities()` (cache memoria+Redis, TTL 30 min) detecta si la key tiene snapshots; los helpers de snapshot devuelven `null` y los callers caen a Yahoo. `polygonClient` ya no lanza en 403/401 (devuelve `null` → listas `[]`), así `/api/market` y `polygonFinnhubEnrichment` dejan de romperse en silencio.
+- **Cableado gratis activo**: news (con sentiment) prioritaria en `/api/catalysts` (ticker y general, fallback Finnhub) y en `/api/market` (fallback Finnhub); barras diarias Massive (`getMassiveDailyBars`) como fallback en `POST /api/trade-picks/evaluate` con budget de 5/request (por el límite de 5 req/min).
+- **Pendiente al pagar (ya implementado, inactivo)**: `getOptionsChainSnapshot` (greeks/IV/OI/breakeven reales → futura fuente de `bestContract`), `getQuotesBatch` (≤250 símbolos) y `getTopMovers`. Planes: Options Starter $29 (sin bid/ask), Options Advanced $199 (bid/ask real-time), Stocks Starter $29 (15-min delayed), Stocks Advanced $199 (real-time). Benzinga/TMX/ETF Global $99 c/u.
+- **Tests**: `npm test` = `vitest run src/lib src/services` (44 tests). `vitest.config.mts` añade el alias `@` para resolver imports en vitest.
+

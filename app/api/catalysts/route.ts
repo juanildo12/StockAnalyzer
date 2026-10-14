@@ -10,6 +10,7 @@ import {
   getRecommendationTrends,
 } from '@/src/services/finnhubClient';
 import { cacheAside, cacheGet, cacheSet } from '@/src/lib/cache';
+import { getMassiveNews } from '@/src/services/massiveClient';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -82,12 +83,16 @@ async function fetchStockRoadmap(symbol: string): Promise<StockRoadmap | null> {
   const now = new Date();
   const to = addDays(now, 45);
 
-  const [quoteSummary, finnEarnings, news, reco] = await Promise.all([
+  const [quoteSummary, finnEarnings, massiveNews, finnNews, reco] = await Promise.all([
     yf.quoteSummary(sym, { modules: ['calendarEvents', 'price'] }).catch(() => null),
     getEarningsCalendar(fmtDay(now), fmtDay(to)).catch(() => []),
+    getMassiveNews({ ticker: sym, limit: 8 }).catch(() => []),
     getCompanyNews(sym, fmtDay(addDays(now, -7)), fmtDay(now)).catch(() => []),
     getRecommendationTrends(sym).catch(() => []),
   ]);
+
+  // Massive news (con sentiment) primero; Finnhub como respaldo
+  const news = massiveNews.length > 0 ? massiveNews : finnNews;
 
   const calendar = quoteSummary?.calendarEvents as any;
   const price = quoteSummary?.price as any;
@@ -196,12 +201,16 @@ async function fetchMarketCalendar(
   const fromIso = fmtDay(from);
   const toIso = fmtDay(to);
 
-  const [earnings, ipo, economic, generalNews] = await Promise.all([
+  const [earnings, ipo, economic, massiveGeneralNews, finnGeneralNews] = await Promise.all([
     getEarningsCalendarChunked(fromIso, toIso).catch(() => []),
     getIPOCalendar(fromIso, toIso).catch(() => []),
     getEconomicCalendar().catch(() => []),
+    getMassiveNews({ limit: 20 }).catch(() => []),
     getGeneralNews().catch(() => []),
   ]);
+
+  // Massive news primero (con sentiment); Finnhub como respaldo
+  const generalNews = massiveGeneralNews.length > 0 ? massiveGeneralNews : finnGeneralNews;
 
   const today = fmtDay(new Date());
   const daysMap = new Map<string, Catalyst[]>();
