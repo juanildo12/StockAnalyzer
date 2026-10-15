@@ -69,9 +69,34 @@ interface StockRoadmap {
   changePct: number;
   upcoming: Catalyst[];
   news: any[];
+  newsSentiment: NewsSentiment | null;
   analysts: any[] | null;
   macro: Catalyst[];
   generatedAt: number;
+}
+
+interface NewsSentiment {
+  positive: number;
+  negative: number;
+  neutral: number;
+  total: number;
+  net: number; // (positive - negative) / total, -1..1
+}
+
+/** Agrega el sentiment que Massive entrega por artículo (positive/negative/neutral). */
+function aggregateSentiment(news: any[]): NewsSentiment | null {
+  const tagged = news.filter((n) => typeof n?.sentiment === 'string' && n.sentiment.length > 0);
+  if (tagged.length === 0) return null;
+  let positive = 0;
+  let negative = 0;
+  let neutral = 0;
+  for (const n of tagged) {
+    if (n.sentiment === 'positive') positive++;
+    else if (n.sentiment === 'negative') negative++;
+    else neutral++;
+  }
+  const total = tagged.length;
+  return { positive, negative, neutral, total, net: Math.round(((positive - negative) / total) * 100) / 100 };
 }
 
 async function fetchStockRoadmap(symbol: string): Promise<StockRoadmap | null> {
@@ -176,6 +201,7 @@ async function fetchStockRoadmap(symbol: string): Promise<StockRoadmap | null> {
     changePct,
     upcoming: sorted,
     news: (news as any[]).slice(0, 8),
+    newsSentiment: aggregateSentiment(news as any[]),
     analysts: Array.isArray(reco) && reco.length > 0 ? reco.slice(0, 4) : null,
     macro,
     generatedAt: Date.now(),
@@ -288,6 +314,7 @@ async function fetchMarketCalendar(
       source: n.source || 'Market News',
       link: n.url,
       emoji: '📰',
+      meta: { sentiment: n.sentiment ?? null },
     });
   }
 

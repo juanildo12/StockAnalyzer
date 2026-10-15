@@ -7,6 +7,7 @@ import EnrichedDataPanel from './EnrichedDataPanel';
 import MarketOverviewPanel from './MarketOverviewPanel';
 import EarningsCalendarPanel from './EarningsCalendarPanel';
 import ProSignalsPanel from './ProSignalsPanel';
+import SqueezeRadarPanel from './SqueezeRadarPanel';
 import RadarDashboardPanel from './RadarDashboardPanel';
 import MetricChartPanel from './MetricChartPanel';
 import ValuationGauge from './ValuationGauge';
@@ -284,6 +285,9 @@ export default function Dashboard({
             />
             <div style={{ marginTop: S.md }}>
               <ProSignalsPanel symbol={selectedSymbol} onAnalyze={handleAnalyze} />
+            </div>
+            <div style={{ marginTop: S.md }}>
+              <SqueezeRadarPanel symbol={selectedSymbol} />
             </div>
             <div style={{ marginTop: S.md }}>
               <RadarDashboardPanel symbol={selectedSymbol} />

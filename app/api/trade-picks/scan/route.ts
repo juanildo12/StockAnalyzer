@@ -14,13 +14,16 @@ import { calcATR, calcRSI, calcSMA } from '@/src/lib/technical/analysis';
 import {
   SECTOR_ETF,
   breadthAdjust,
+  corpActionAdjustment,
   earningsInWindow,
   ivAdjustment,
   oiLevelsFromChain,
+  peerRelativeStrength,
   realizedVol,
   swingLevels,
   tradeability,
 } from '@/src/lib/tradePicks/deep';
+import { getMassiveRelatedTickers, getMassiveSplits } from '@/src/services/massiveClient';
 
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
 export const dynamic = 'force-dynamic';
@@ -39,6 +42,74 @@ function approxDelta(strike: number, price: number, isCall: boolean): number {
     return 0.4 + (m - 0.9) * 1.5;
   }
   return -0.4 - (0.9 - m) * 1.5;
+}
+
+/** Retorno % sobre `lookback` sesiones (null si no hay histórico suficiente). */
+function pctReturn(closes: number[], lookback = 20): number | null {
+  if (closes.length < lookback + 1) return null;
+  const a = closes[closes.length - 1 - lookback];
+  const b = closes[closes.length - 1];
+  if (!(a > 0) || !(b > 0)) return null;
+  return (b / a - 1) * 100;
+}
+
+interface PickEnrichment {
+  relatedTickers: string[];
+  peerRs: ReturnType<typeof peerRelativeStrength> | null;
+  corpAction: ReturnType<typeof corpActionAdjustment> | null;
+}
+
+/**
+ * Enriquecimiento free-tier SOLO para el pick titular (budget: 2 llamadas
+ * Massive — related-companies + splits — que degradan a vacío si no hay slot).
+ * El resto es Yahoo. Nunca lanza: si algo falla, el pick se devuelve sin extra.
+ */
+async function enrichTopPick(sym: string, dte: number): Promise<PickEnrichment> {
+  const from = new Date(Date.now() - 60 * 86400000);
+  const chart = (s: string) =>
+    withTimeout(yf.chart(s, { period1: from, period2: new Date(), interval: '1d' }), 6000).catch(() => null);
+
+  const [related, splits, stockHist] = await Promise.all([
+    getMassiveRelatedTickers(sym).catch(() => [] as string[]),
+    getMassiveSplits(sym, 3).catch(() => []),
+    chart(sym),
+  ]);
+
+  const closes = (stockHist?.quotes || [])
+    .map((q: any) => q.close)
+    .filter((x: any): x is number => x != null);
+  const stockRet = pctReturn(closes);
+
+  const peers = Array.from(new Set(related.filter((p) => p && p !== sym))).slice(0, 4);
+  const peerHist = await Promise.all(peers.map((p) => chart(p)));
+  const peerReturns = peerHist
+    .map((h) => pctReturn((h?.quotes || []).map((q: any) => q.close).filter((x: any): x is number => x != null)))
+    .filter((r): r is number => r != null);
+
+  const peerRs = stockRet != null && peerReturns.length > 0 ? peerRelativeStrength(stockRet, peerReturns) : null;
+
+  // Riesgo por acciones corporativas: split reciente (Massive) + ex-dividendo (Yahoo)
+  let daysSinceSplit: number | null = null;
+  const lastSplit = splits[0]?.executionDate;
+  if (lastSplit) {
+    const d = (Date.now() - new Date(`${lastSplit}T00:00:00Z`).getTime()) / 86400000;
+    if (d >= 0) daysSinceSplit = Math.round(d);
+  }
+  let daysToExDiv: number | null = null;
+  try {
+    const qs: any = await withTimeout(yf.quoteSummary(sym, { modules: ['calendarEvents'] }), 5000);
+    const ex = qs?.calendarEvents?.exDividendDate;
+    if (ex) {
+      const d = (new Date(ex).getTime() - Date.now()) / 86400000;
+      if (d >= 0) daysToExDiv = Math.round(d);
+    }
+  } catch { /* sin ex-div */ }
+
+  return {
+    relatedTickers: related,
+    peerRs,
+    corpAction: corpActionAdjustment(dte, daysToExDiv, daysSinceSplit),
+  };
 }
 
 function bestContract(contracts: any[], price: number, isCall: boolean): any[] {
@@ -842,8 +913,32 @@ export async function GET(request: NextRequest) {
       contract = null;
     }
 
+    // Enriquecimiento free-tier (Massive) solo del pick titular: fuerza relativa
+    // vs pares + riesgo por acciones corporativas. Advisory: no re-gatea.
+    let enrichment: PickEnrichment | null = null;
+    if (topPick) {
+      try {
+        enrichment = await enrichTopPick(topPick.symbol, contract?.daysToExpiration ?? 38);
+      } catch {
+        enrichment = null;
+      }
+    }
+
     const result = {
-      pick: topPick ? { ...topPick, contract } : null,
+      pick: topPick
+        ? {
+            ...topPick,
+            contract,
+            relatedTickers: enrichment?.relatedTickers ?? [],
+            peerRs: enrichment?.peerRs ?? null,
+            corpAction: enrichment?.corpAction ?? null,
+            reasons: [
+              ...(enrichment?.peerRs?.reason ? [enrichment.peerRs.reason] : []),
+              ...(enrichment?.corpAction?.reasons ?? []),
+              ...topPick.reasons,
+            ],
+          }
+        : null,
       focusList,
       regime,
       minScore: MIN_PICK_SCORE,

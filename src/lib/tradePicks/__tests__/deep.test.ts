@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   breadthAdjust,
   breakevenPrice,
+  corpActionAdjustment,
   earningsInWindow,
   ivAdjustment,
   oiLevelsFromChain,
+  peerRelativeStrength,
   realizedVol,
   swingLevels,
   tradeability,
@@ -165,5 +167,43 @@ describe('breadthAdjust', () => {
     expect(breadthAdjust(40)).toBe(-3);
     expect(breadthAdjust(20)).toBe(-6);
     expect(breadthAdjust(null)).toBe(0);
+  });
+});
+
+describe('peerRelativeStrength', () => {
+  it('lidera a los pares → premio', () => {
+    const r = peerRelativeStrength(12, [2, 4, 6]);
+    expect(r.score).toBe(3);
+    expect(r.rs).toBe(8);
+    expect(r.medianPeerReturn).toBe(4);
+  });
+
+  it('rezagada vs pares → penalización', () => {
+    const r = peerRelativeStrength(-4, [3, 5, 7]);
+    expect(r.score).toBe(-6);
+  });
+
+  it('sin pares → neutral', () => {
+    expect(peerRelativeStrength(5, []).score).toBe(0);
+  });
+});
+
+describe('corpActionAdjustment', () => {
+  it('ex-dividendo dentro del DTE → −1', () => {
+    const r = corpActionAdjustment(38, 10, null);
+    expect(r.score).toBe(-1);
+    expect(r.reasons.length).toBe(1);
+  });
+
+  it('split reciente → −2', () => {
+    expect(corpActionAdjustment(38, null, 5).score).toBe(-2);
+  });
+
+  it('ambos → tope −3', () => {
+    expect(corpActionAdjustment(38, 3, 5).score).toBe(-3);
+  });
+
+  it('sin eventos → 0', () => {
+    expect(corpActionAdjustment(38, 100, 200).score).toBe(0);
   });
 });

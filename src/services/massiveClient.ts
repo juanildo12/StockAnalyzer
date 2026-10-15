@@ -188,7 +188,7 @@ export interface NormalizedNews {
   url: string;
   related: string;
   image: string | null;
-  sentiment?: number;
+  sentiment?: string; // 'positive' | 'negative' | 'neutral'
   sentimentReasoning?: string;
 }
 
@@ -215,6 +215,315 @@ export async function getMassiveNews(opts: { ticker?: string; limit?: number } =
   const data = await fetchMassiveSafe(`/v2/reference/news?${q}`, { maxWaitMs: 8000 });
   if (!data?.results) return [];
   return (data.results as any[]).map(normalizeMassiveNews);
+}
+
+// ─── Technical indicators (free tier: "Included in all Stocks plans") ────────
+
+export type MassiveIndicatorType = 'sma' | 'ema' | 'rsi' | 'macd';
+
+export interface MassiveIndicatorPoint {
+  timestamp: number; // ms
+  value: number;
+  signal?: number; // MACD signal line
+  histogram?: number; // MACD histogram
+}
+
+/** Alias kept for callers that imported the shorter name. */
+export type IndicatorPoint = MassiveIndicatorPoint;
+
+/** Normalizes the `results.values[]` array returned by /v1/indicators/*. */
+export function normalizeIndicatorValues(values: any): MassiveIndicatorPoint[] {
+  if (!Array.isArray(values)) return [];
+  return values
+    .filter((v) => v && typeof v === 'object')
+    .map((v) => {
+      const point: MassiveIndicatorPoint = {
+        timestamp: Number(v.timestamp) || 0,
+        value: Number(v.value) || 0,
+      };
+      if (v.signal != null) point.signal = Number(v.signal);
+      if (v.histogram != null) point.histogram = Number(v.histogram);
+      return point;
+    });
+}
+
+export interface IndicatorQuery {
+  window?: number;
+  timespan?: 'day' | 'minute' | 'hour' | 'week' | 'month' | 'quarter' | 'year';
+  seriesType?: 'open' | 'high' | 'low' | 'close';
+  limit?: number;
+  order?: 'asc' | 'desc';
+  maxWaitMs?: number;
+}
+
+/**
+ * SMA/EMA/RSI/MACD from Massive (end-of-day on the free tier). Returns the
+ * series ordered oldest→newest; empty array when not configured/throttled.
+ */
+export async function getMassiveIndicator(
+  symbol: string,
+  indicator: MassiveIndicatorType,
+  q: IndicatorQuery = {}
+): Promise<MassiveIndicatorPoint[]> {
+  const params = new URLSearchParams();
+  if (q.window != null) params.set('window', String(q.window));
+  params.set('timespan', q.timespan || 'day');
+  params.set('series_type', q.seriesType || 'close');
+  params.set('limit', String(Math.min(Math.max(q.limit ?? 50, 1), 5000)));
+  if (q.order) params.set('order', q.order);
+  const data = await fetchMassiveSafe(
+    `/v1/indicators/${indicator}/${encodeURIComponent(symbol)}?${params.toString()}`,
+    { maxWaitMs: q.maxWaitMs ?? 4000 }
+  );
+  return normalizeIndicatorValues(data?.results?.values);
+}
+
+// ─── Short interest (free tier: "Included in all Stocks plans") ──────────────
+
+export interface NormalizedShortInterest {
+  ticker: string;
+  shortInterest: number;
+  avgDailyVolume: number;
+  daysToCover: number;
+  settlementDate: string;
+}
+
+export function normalizeShortInterest(row: any): NormalizedShortInterest | null {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    ticker: row.ticker || '',
+    shortInterest: Number(row.short_interest) || 0,
+    avgDailyVolume: Number(row.avg_daily_volume) || 0,
+    daysToCover: Number(row.days_to_cover) || 0,
+    settlementDate: row.settlement_date || '',
+  };
+}
+
+/** Latest FINRA short-interest report for a ticker (bi-weekly cadence). */
+export async function getMassiveShortInterest(symbol: string): Promise<NormalizedShortInterest | null> {
+  const data = await fetchMassiveSafe(
+    `/stocks/v1/short-interest?ticker=${encodeURIComponent(symbol)}&limit=6`,
+    { maxWaitMs: 4000 }
+  );
+  const rows: any[] = Array.isArray(data?.results) ? data.results : [];
+  if (rows.length === 0) return null;
+  const latest = [...rows].sort((a, b) =>
+    String(b?.settlement_date ?? '').localeCompare(String(a?.settlement_date ?? ''))
+  )[0];
+  return normalizeShortInterest(latest);
+}
+
+// ─── Free float (free tier: "Included in all Stocks plans") ──────────────────
+
+export interface NormalizedFloat {
+  ticker: string;
+  freeFloat: number;
+  freeFloatPercent: number;
+  effectiveDate: string;
+}
+
+export function normalizeFloat(row: any): NormalizedFloat | null {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    ticker: row.ticker || '',
+    freeFloat: Number(row.free_float) || 0,
+    freeFloatPercent: Number(row.free_float_percent) || 0,
+    effectiveDate: row.effective_date || '',
+  };
+}
+
+export async function getMassiveFloat(symbol: string): Promise<NormalizedFloat | null> {
+  const data = await fetchMassiveSafe(
+    `/stocks/vX/float?ticker=${encodeURIComponent(symbol)}&limit=1`,
+    { maxWaitMs: 4000 }
+  );
+  const row = Array.isArray(data?.results) ? data.results[0] : null;
+  return normalizeFloat(row);
+}
+
+// ─── Related tickers (free tier: "Included in all Stocks plans") ─────────────
+
+/** Peers/competitors identified by Massive from news coverage + returns. */
+export async function getMassiveRelatedTickers(symbol: string): Promise<string[]> {
+  const data = await fetchMassiveSafe(`/v1/related-companies/${encodeURIComponent(symbol)}`, {
+    maxWaitMs: 4000,
+  });
+  if (!Array.isArray(data?.results)) return [];
+  return data.results.map((r: any) => r?.ticker).filter((t: any) => typeof t === 'string' && t.length > 0);
+}
+
+// ─── Corporate actions: dividends & splits (free tier) ───────────────────────
+
+export interface NormalizedDividend {
+  ticker: string;
+  cashAmount: number;
+  currency: string;
+  declarationDate: string;
+  exDividendDate: string;
+  payDate: string;
+  frequency: number;
+  distributionType: string;
+}
+
+export function normalizeDividend(row: any): NormalizedDividend | null {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    ticker: row.ticker || '',
+    cashAmount: Number(row.cash_amount) || 0,
+    currency: row.currency || 'USD',
+    declarationDate: row.declaration_date || '',
+    exDividendDate: row.ex_dividend_date || '',
+    payDate: row.pay_date || '',
+    frequency: Number(row.frequency) || 0,
+    distributionType: row.distribution_type || '',
+  };
+}
+
+export async function getMassiveDividends(symbol: string, limit = 12): Promise<NormalizedDividend[]> {
+  // The endpoint does not honour sort/order reliably, so fetch a wide window
+  // and sort client-side (dividend rows per ticker are few).
+  const data = await fetchMassiveSafe(
+    `/stocks/v1/dividends?ticker=${encodeURIComponent(symbol)}&limit=1000`,
+    { maxWaitMs: 4000 }
+  );
+  const rows: any[] = Array.isArray(data?.results) ? data.results : [];
+  return rows
+    .map(normalizeDividend)
+    .filter((d): d is NormalizedDividend => d !== null)
+    .sort((a, b) => b.exDividendDate.localeCompare(a.exDividendDate))
+    .slice(0, Math.max(limit, 1));
+}
+
+export interface NormalizedSplit {
+  ticker: string;
+  executionDate: string;
+  splitFrom: number;
+  splitTo: number;
+  adjustmentType: string;
+}
+
+export function normalizeSplit(row: any): NormalizedSplit | null {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    ticker: row.ticker || '',
+    executionDate: row.execution_date || '',
+    splitFrom: Number(row.split_from) || 0,
+    splitTo: Number(row.split_to) || 0,
+    adjustmentType: row.adjustment_type || '',
+  };
+}
+
+export async function getMassiveSplits(symbol: string, limit = 10): Promise<NormalizedSplit[]> {
+  const data = await fetchMassiveSafe(
+    `/stocks/v1/splits?ticker=${encodeURIComponent(symbol)}&limit=1000`,
+    { maxWaitMs: 4000 }
+  );
+  const rows: any[] = Array.isArray(data?.results) ? data.results : [];
+  return rows
+    .map(normalizeSplit)
+    .filter((s): s is NormalizedSplit => s !== null)
+    .sort((a, b) => b.executionDate.localeCompare(a.executionDate))
+    .slice(0, Math.max(limit, 1));
+}
+
+// ─── Ticker reference / branding (free tier) ─────────────────────────────────
+
+export interface NormalizedTickerDetails {
+  ticker: string;
+  name: string;
+  marketCap: number;
+  sicDescription: string;
+  description: string;
+  logoUrl: string | null;
+  iconUrl: string | null;
+  homepageUrl: string | null;
+  listDate: string;
+  primaryExchange: string;
+}
+
+export function normalizeTickerDetails(row: any): NormalizedTickerDetails | null {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    ticker: row.ticker || '',
+    name: row.name || '',
+    marketCap: Number(row.market_cap) || 0,
+    sicDescription: row.sic_description || '',
+    description: (row.description || '').slice(0, 600),
+    logoUrl: row.branding?.logo_url || null,
+    iconUrl: row.branding?.icon_url || null,
+    homepageUrl: row.homepage_url || null,
+    listDate: row.list_date || '',
+    primaryExchange: row.primary_exchange || '',
+  };
+}
+
+export async function getMassiveTickerDetails(symbol: string): Promise<NormalizedTickerDetails | null> {
+  const data = await fetchMassiveSafe(`/v3/reference/tickers/${encodeURIComponent(symbol)}`, {
+    maxWaitMs: 4000,
+  });
+  return normalizeTickerDetails(data?.results);
+}
+
+// ─── IPO calendar (free tier) ────────────────────────────────────────────────
+
+export interface NormalizedIPO {
+  ticker: string;
+  issuerName: string;
+  listingDate: string;
+  ipoStatus: string;
+  finalIssuePrice: number | null;
+  lowestOfferPrice: number | null;
+  highestOfferPrice: number | null;
+  sharesOutstanding: number | null;
+  primaryExchange: string;
+}
+
+export function normalizeIPO(row: any): NormalizedIPO | null {
+  if (!row || typeof row !== 'object') return null;
+  return {
+    ticker: row.ticker || '',
+    issuerName: row.issuer_name || '',
+    listingDate: row.listing_date || '',
+    ipoStatus: row.ipo_status || '',
+    finalIssuePrice: row.final_issue_price != null ? Number(row.final_issue_price) : null,
+    lowestOfferPrice: row.lowest_offer_price != null ? Number(row.lowest_offer_price) : null,
+    highestOfferPrice: row.highest_offer_price != null ? Number(row.highest_offer_price) : null,
+    sharesOutstanding: row.shares_outstanding != null ? Number(row.shares_outstanding) : null,
+    primaryExchange: row.primary_exchange || '',
+  };
+}
+
+export async function getMassiveIPOs(opts: { from?: string; to?: string; limit?: number } = {}): Promise<NormalizedIPO[]> {
+  const params = new URLSearchParams();
+  if (opts.from) params.set('listing_date.gte', opts.from);
+  if (opts.to) params.set('listing_date.lte', opts.to);
+  params.set('limit', String(Math.min(Math.max(opts.limit ?? 20, 1), 1000)));
+  const data = await fetchMassiveSafe(`/vX/reference/ipos?${params.toString()}`, { maxWaitMs: 4000 });
+  const rows: any[] = Array.isArray(data?.results) ? data.results : [];
+  return rows.map(normalizeIPO).filter((i): i is NormalizedIPO => i !== null);
+}
+
+// ─── Market status / holidays (free tier) ────────────────────────────────────
+
+export interface NormalizedMarketStatus {
+  market: string; // 'open' | 'closed' | 'extended-hours'
+  serverTime: string | null;
+  exchanges: Record<string, string>;
+}
+
+export async function getMassiveMarketStatus(): Promise<NormalizedMarketStatus | null> {
+  const data = await fetchMassiveSafe('/v1/marketstatus/now', { maxWaitMs: 2500 });
+  if (!data) return null;
+  return {
+    market: data.market || 'closed',
+    serverTime: data.serverTime || null,
+    exchanges: data.exchanges || {},
+  };
+}
+
+export async function getMassiveMarketHolidays(): Promise<any[]> {
+  const data = await fetchMassiveSafe('/v1/marketstatus/upcoming', { maxWaitMs: 2500 });
+  return Array.isArray(data) ? data : [];
 }
 
 // ─── Snapshots (paid plans; return null on free tier) ────────────────────────

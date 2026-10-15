@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     const fmt = (d: Date) => d.toISOString().split('T')[0];
 
     const [shortInterest, ratios, indicators, social, ownership, insider, bars] = await Promise.all([
-      getShortInterest(sym).catch(() => []),
+      getShortInterest(sym).catch(() => null),
       getFinancialRatios(sym).catch(() => null),
       getFinnhubIndicators(sym, 'D', 120).catch(() => null),
       getSocialSentiment(sym).catch(() => null),
@@ -36,10 +36,11 @@ export async function GET(req: NextRequest) {
     ]);
 
     // 1. Short Pressure Rating (0-100)
-    const shortPct = shortInterest?.[0]?.settlementDate ? 0 : 0;
-    const shortInterestVal = shortInterest?.[0]?.shortQuantity || 0;
-    const avgVolume = shortInterest?.[0]?.averageVolume || 1;
-    const shortRatio = shortInterestVal / avgVolume;
+    const shortRatio =
+      shortInterest?.daysToCover ||
+      (shortInterest && shortInterest.avgDailyVolume > 0
+        ? shortInterest.shortInterest / shortInterest.avgDailyVolume
+        : 0);
     const shortPressure = Math.min(100, Math.max(0, shortRatio > 5 ? 90 : shortRatio > 3 ? 70 : shortRatio > 1.5 ? 50 : shortRatio > 0.5 ? 30 : 10));
     signals.push({
       name: 'Short Pressure',

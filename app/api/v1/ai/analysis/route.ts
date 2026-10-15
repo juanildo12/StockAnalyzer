@@ -52,24 +52,24 @@ export async function GET(req: NextRequest) {
 
     try {
       const [ema8Data, ema21Data, macdData] = await Promise.allSettled([
-        getIndicator(sym, "ema", { timestamp: Math.floor(Date.now() / 1000), timespan: "day", limit: 21, adjusted: "true" }),
-        getIndicator(sym, "ema", { timestamp: Math.floor(Date.now() / 1000), timespan: "day", limit: 50, adjusted: "true" }),
-        getIndicator(sym, "macd", { timestamp: Math.floor(Date.now() / 1000), timespan: "day", limit: 30, adjusted: "true" }),
+        getIndicator(sym, "ema", { window: 8, timespan: "day", limit: 5 }),
+        getIndicator(sym, "ema", { window: 21, timespan: "day", limit: 5 }),
+        getIndicator(sym, "macd", { timespan: "day", limit: 5 }),
       ]);
 
-      if (ema8Data.status === "fulfilled" && ema8Data.value?.results) {
-        ema8 = ema8Data.value.results[ema8Data.value.results.length - 1]?.ema ?? null;
+      if (ema8Data.status === "fulfilled" && ema8Data.value.length > 0) {
+        ema8 = ema8Data.value[ema8Data.value.length - 1].value;
       }
-      if (ema21Data.status === "fulfilled" && ema21Data.value?.results) {
-        ema21 = ema21Data.value.results[ema21Data.value.results.length - 1]?.ema ?? null;
+      if (ema21Data.status === "fulfilled" && ema21Data.value.length > 0) {
+        ema21 = ema21Data.value[ema21Data.value.length - 1].value;
       }
-      if (macdData.status === "fulfilled" && macdData.value?.results) {
-        const last = macdData.value.results[macdData.value.results.length - 1];
-        macd = last?.macd ?? null;
-        macdSignal = last?.signal ?? null;
+      if (macdData.status === "fulfilled" && macdData.value.length > 0) {
+        const last = macdData.value[macdData.value.length - 1];
+        macd = last.value;
+        macdSignal = last.signal ?? null;
       }
     } catch {
-      // Polygon indicators are optional — fall back to Yahoo data
+      // Massive/Polygon indicators are optional — fall back to Yahoo data
     }
 
     const closes = data.historical?.map((h: any) => h.close) || [];

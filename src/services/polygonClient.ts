@@ -4,7 +4,23 @@
 // `@/src/services/polygonClient`. Transport, key resolution, throttling and
 // capability probing all live in `./massiveClient`.
 
-import { fetchMassiveSafe, type FetchMassiveOptions } from './massiveClient';
+import {
+  fetchMassiveSafe,
+  getMassiveDividends,
+  getMassiveIndicator,
+  getMassiveMarketHolidays,
+  getMassiveMarketStatus,
+  getMassiveRelatedTickers,
+  getMassiveShortInterest,
+  getMassiveSplits,
+  type FetchMassiveOptions,
+  type IndicatorPoint,
+  type MassiveIndicatorType,
+  type NormalizedDividend,
+  type NormalizedMarketStatus,
+  type NormalizedShortInterest,
+  type NormalizedSplit,
+} from './massiveClient';
 
 async function fetchPolygon(path: string, opts?: FetchMassiveOptions) {
   return fetchMassiveSafe(path, opts);
@@ -59,14 +75,12 @@ export async function getMarketMovers(direction: 'gainers' | 'losers' = 'gainers
 
 // ---------- Market Status ----------
 
-export async function getMarketStatus() {
-  const data = await fetchPolygon('/v1/marketstatus/now');
-  return (data || null) as { market: string; serverTime: string; exchanges: Record<string, string> } | null;
+export async function getMarketStatus(): Promise<NormalizedMarketStatus | null> {
+  return getMassiveMarketStatus();
 }
 
-export async function getMarketHolidays() {
-  const data = await fetchPolygon('/v1/marketstatus/holidays');
-  return (data || []) as any[];
+export async function getMarketHolidays(): Promise<any[]> {
+  return getMassiveMarketHolidays();
 }
 
 // ---------- Ticker Reference ----------
@@ -92,9 +106,8 @@ export async function searchTickers(query: string, limit = 20) {
   return (data?.results || []) as TickerSearchResult[];
 }
 
-export async function getTickerRelated(symbol: string) {
-  const data = await fetchPolygon(`/v3/reference/tickers/${symbol}/related`);
-  return (data?.results || []) as string[];
+export async function getTickerRelated(symbol: string): Promise<string[]> {
+  return getMassiveRelatedTickers(symbol);
 }
 
 export async function getExchanges() {
@@ -110,23 +123,20 @@ export async function getFinancials(symbol: string, limit = 4) {
 }
 
 export async function getFinancialRatios(symbol: string) {
-  const data = await fetchPolygon(`/v3/reference/financials/${symbol}/ratios`);
-  return (data || null) as Record<string, any> | null;
+  const data = await fetchPolygon(`/stocks/financials/v1/ratios?ticker=${symbol}`);
+  return (data?.results?.[0] || null) as Record<string, any> | null;
 }
 
-export async function getShortInterest(symbol: string) {
-  const data = await fetchPolygon(`/v3/reference/short-interest/${symbol}`);
-  return (data?.results || []) as any[];
+export async function getShortInterest(symbol: string): Promise<NormalizedShortInterest | null> {
+  return getMassiveShortInterest(symbol);
 }
 
-export async function getDividends(symbol: string, limit = 12) {
-  const data = await fetchPolygon(`/v3/reference/dividends/${symbol}?limit=${limit}`);
-  return (data?.results || []) as any[];
+export async function getDividends(symbol: string, limit = 12): Promise<NormalizedDividend[]> {
+  return getMassiveDividends(symbol, limit);
 }
 
-export async function getSplits(symbol: string, limit = 10) {
-  const data = await fetchPolygon(`/v3/reference/splits/${symbol}?limit=${limit}`);
-  return (data?.results || []) as any[];
+export async function getSplits(symbol: string, limit = 10): Promise<NormalizedSplit[]> {
+  return getMassiveSplits(symbol, limit);
 }
 
 // ---------- News ----------
@@ -152,10 +162,17 @@ export async function getConditions(ticktype: 'stocks' | 'options' | 'indices' |
 
 // Uses a short wait budget: indicators are optional enrichment on the scoring
 // routes, so on a tight quota it is better to skip than to stall the request.
-export async function getIndicator(symbol: string, indicator: 'sma' | 'ema' | 'rsi' | 'macd', params: Record<string, any> = {}) {
-  const query = Object.entries(params).map(([k, v]) => `${k}=${v}`).join('&');
-  const data = await fetchPolygon(`/v1/indicators/${indicator}/${symbol}${query ? '?' + query : ''}`, {
+export async function getIndicator(
+  symbol: string,
+  indicator: MassiveIndicatorType,
+  params: Record<string, any> = {}
+): Promise<IndicatorPoint[]> {
+  return getMassiveIndicator(symbol, indicator, {
+    window: params.window,
+    timespan: params.timespan ?? 'day',
+    seriesType: params.series_type ?? params.seriesType,
+    limit: params.limit,
+    order: params.order,
     maxWaitMs: 1200,
   });
-  return (data || null) as Record<string, any> | null;
 }

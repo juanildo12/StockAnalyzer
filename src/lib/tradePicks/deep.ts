@@ -189,3 +189,65 @@ export function breadthAdjust(breadth: number | null): number {
   if (breadth >= 35) return -3;
   return -6;
 }
+
+export interface PeerRsResult {
+  score: number; // −6..+3
+  rs: number; // exceso de retorno % vs la mediana de pares
+  medianPeerReturn: number;
+  reason: string;
+}
+
+/**
+ * Fuerza relativa vs pares (Massive `/v1/related-companies`). El exceso de
+ * retorno de la acción sobre la mediana de sus pares, en la misma ventana.
+ * Liderar a los pares confirma el momentum; quedar rezagado lo debilita.
+ */
+export function peerRelativeStrength(stockReturnPct: number, peerReturnsPct: number[]): PeerRsResult {
+  const peers = peerReturnsPct.filter((r) => isFinite(r));
+  if (!isFinite(stockReturnPct) || peers.length === 0) {
+    return { score: 0, rs: 0, medianPeerReturn: 0, reason: '' };
+  }
+  const sorted = [...peers].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  const rs = stockReturnPct - median;
+
+  let score = 0;
+  if (rs >= 5) score = 3;
+  else if (rs >= 2) score = 2;
+  else if (rs <= -5) score = -6;
+  else if (rs <= -2) score = -3;
+
+  const reason = score > 0 ? `Lidera a sus pares (+${rs.toFixed(1)}% de exceso)` : score < 0 ? `Rezagada vs pares (${rs.toFixed(1)}%)` : '';
+  return { score, rs, medianPeerReturn: median, reason };
+}
+
+export interface CorpActionResult {
+  score: number; // −3..0
+  reasons: string[];
+}
+
+/**
+ * Riesgo por acciones corporativas dentro de la ventana del contrato:
+ * ex-dividendo cercano (riesgo de asignación/ajuste) o split reciente
+ * (volatilidad y spreads más amplios). No premia; solo resta.
+ */
+export function corpActionAdjustment(
+  dte: number,
+  daysToExDividend: number | null | undefined,
+  daysSinceSplit: number | null | undefined
+): CorpActionResult {
+  const reasons: string[] = [];
+  let score = 0;
+
+  if (daysToExDividend != null && daysToExDividend >= 0 && daysToExDividend <= dte) {
+    score -= 1;
+    reasons.push(`Ex-dividendo en ${daysToExDividend}d (dentro del vencimiento)`);
+  }
+  if (daysSinceSplit != null && daysSinceSplit >= 0 && daysSinceSplit <= 30) {
+    score -= 2;
+    reasons.push(`Split hace ${daysSinceSplit}d (spreads/volatilidad irregulares)`);
+  }
+
+  return { score: Math.max(score, -3), reasons };
+}
