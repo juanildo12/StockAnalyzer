@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { colors as C, radius as R } from '@/src/utils/webTheme';
 import CandlestickChart from './CandlestickChart';
 
@@ -91,6 +91,8 @@ export default function GammaLevelsPanel({ symbol, onClose }: Props) {
   const [candleCount, setCandleCount] = useState<number | null>(null);
   // Zoom del gráfico GEX: media-ventana de strikes como fracción del spot
   const [gexPct, setGexPct] = useState(0.08);
+  // Panel de ayuda "¿Cómo leer esto?"
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -183,10 +185,27 @@ export default function GammaLevelsPanel({ symbol, onClose }: Props) {
               Mapa de exposición gamma de dealers · {data.symbol} · ${data.spot.toFixed(2)} · {data.dte} DTE{data.expiry ? ` (${data.expiry})` : ''}
             </p>
           </div>
-          {onClose && (
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.textMuted, cursor: 'pointer', fontSize: '18px', padding: '4px' }}>✕</button>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              onClick={() => setHelpOpen((v) => !v)}
+              title="¿Cómo leer estos gráficos?"
+              style={{
+                background: helpOpen ? C.accent + '22' : 'none',
+                border: '1px solid ' + (helpOpen ? C.accent : C.borderLight),
+                color: helpOpen ? C.accent : C.textSecondary,
+                cursor: 'pointer', fontSize: '12px', fontWeight: '600',
+                padding: '5px 10px', borderRadius: R.sm, whiteSpace: 'nowrap',
+              }}
+            >
+              {helpOpen ? '✕ Cerrar ayuda' : '? Ayuda'}
+            </button>
+            {onClose && (
+              <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.textMuted, cursor: 'pointer', fontSize: '18px', padding: '4px' }}>✕</button>
+            )}
+          </div>
         </div>
+
+        {helpOpen && <HelpSection />}
 
         {/* Regime banner */}
         <div style={{
@@ -309,6 +328,91 @@ function Chip({ label, value, hint, color }: { label: string; value: string; hin
       <div style={{ color: C.textMuted, fontSize: '11px', fontWeight: '600', marginBottom: '4px' }}>{label}</div>
       <div style={{ color, fontSize: '18px', fontWeight: '800', lineHeight: 1 }}>{value}</div>
       <div style={{ color: C.textMuted, fontSize: '10px', marginTop: '4px' }}>{hint}</div>
+    </div>
+  );
+}
+
+function HelpRow({ term, color, children }: { term: string; color: string; children: ReactNode }) {
+  return (
+    <div style={{ display: 'flex', gap: '12px', padding: '10px 0', borderTop: '1px solid ' + C.borderLight }}>
+      <div style={{ minWidth: '128px', color, fontSize: '12.5px', fontWeight: '700', lineHeight: '1.5' }}>{term}</div>
+      <div style={{ color: C.textSecondary, fontSize: '12.5px', lineHeight: '1.55', flex: 1 }}>{children}</div>
+    </div>
+  );
+}
+
+function HelpSection() {
+  const eq = { color: C.textPrimary, fontWeight: 600 } as const;
+  return (
+    <div style={{
+      marginTop: '16px', padding: '16px 18px', borderRadius: R.lg,
+      background: C.bgElevated, border: '1px solid ' + C.borderLight,
+    }}>
+      <div style={{ color: C.textPrimary, fontSize: '13.5px', fontWeight: '700', marginBottom: '4px' }}>
+        ¿Cómo leer estos gráficos?
+      </div>
+      <p style={{ margin: '0 0 8px', color: C.textSecondary, fontSize: '12.5px', lineHeight: '1.55' }}>
+        Todo gira en torno al <b style={eq}>GEX</b> (Gamma Exposure): cuánta gamma tienen los <i>dealers</i> por strike de opciones.
+        Para cubrirse, los dealers <b style={eq}>compran cuando el precio baja y venden cuando sube</b> (si su gamma es positiva) o al revés.
+        El GEX se lee como <b style={eq}>$ de cobertura por cada 1% de movimiento</b>. Las <b style={eq}>calls</b> cuentan positivo y las
+        <b style={eq}> puts</b> negativo (convención: dealers largos en calls, cortos en puts).
+      </p>
+
+      {/* Régimen */}
+      <div style={{ color: C.textMuted, fontSize: '11px', fontWeight: '700', letterSpacing: '0.04em', margin: '14px 0 2px' }}>RÉGIMEN</div>
+      <HelpRow term="Gamma positivo" color={C.positive}>
+        El spot está <b style={eq}>por encima</b> del flip. Los dealers amortiguan: compran caídas y venden subidas →
+        mercado más <b style={eq}>pegajoso</b>, rangos y baja volatilidad.
+      </HelpRow>
+      <HelpRow term="Gamma negativo" color={C.negative}>
+        El spot está <b style={eq}>por debajo</b> del flip. Los dealers amplifican: venden caídas y compran subidas →
+        movimientos más <b style={eq}>bruscos</b>, tendencias y squeezes.
+      </HelpRow>
+
+      {/* Niveles */}
+      <div style={{ color: C.textMuted, fontSize: '11px', fontWeight: '700', letterSpacing: '0.04em', margin: '14px 0 2px' }}>NIVELES CLAVE</div>
+      <HelpRow term="Gamma Flip" color={C.warning}>
+        Precio donde el régimen cambia de signo. Por encima → positivo (calma); por debajo → negativo (volatilidad).
+        Es el nivel "bisagra".
+      </HelpRow>
+      <HelpRow term="Wall ↑ (resistencia)" color={C.negative}>
+        Strike con más GEX de <b style={eq}>calls</b>. Al acercarse, los dealers venden y el precio tiende a <b style={eq}>frenar</b>.
+      </HelpRow>
+      <HelpRow term="Wall ↓ (soporte)" color={C.positive}>
+        Strike con más GEX de <b style={eq}>puts</b>. Al acercarse, los dealers compran y el precio tiende a <b style={eq}>rebotar</b>.
+      </HelpRow>
+      <HelpRow term="Max Pain" color={C.info}>
+        Strike donde <b style={eq}>más contratos expiran sin valor</b> (mínimo "dolor" para los compradores). El precio tiende a
+        gravitar ahí cerca del vencimiento. Solo relevante con pocos DTE.
+      </HelpRow>
+      <HelpRow term="GEX neto" color={C.textPrimary}>
+        Suma de todo el mapa. Positivo = devolatilizador global; negativo = volátil. Incluye el <b style={eq}>OI total</b> (contratos abiertos).
+      </HelpRow>
+
+      {/* Cómo leer cada gráfico */}
+      <div style={{ color: C.textMuted, fontSize: '11px', fontWeight: '700', letterSpacing: '0.04em', margin: '14px 0 2px' }}>LOS GRÁFICOS</div>
+      <HelpRow term="Precio + niveles" color={C.accent}>
+        Últimas 60 sesiones con los niveles gamma superpuestos: <b style={eq}>γFLIP</b> (ámbar), <b style={eq}>γWALL↑/↓</b> (violeta).
+        Fíjate dónde está el precio respecto a esos niveles. <b style={eq}>Zoom:</b> rueda del ratón o botones −/+/⟲.
+      </HelpRow>
+      <HelpRow term="GEX por strike" color={C.accent}>
+        Barras por strike: <b style={eq}>derecha (verde +)</b> = gamma neta positiva (imán), <b style={eq}>izquierda (rojo −)</b> = negativa (acelerador).
+        El largo es la magnitud. Cada etiqueta trae el strike y su <b style={eq}>OI</b> (más OI = nivel más relevante; poco OI = ruido).
+      </HelpRow>
+
+      {/* Cómo usarlo */}
+      <div style={{ color: C.textMuted, fontSize: '11px', fontWeight: '700', letterSpacing: '0.04em', margin: '14px 0 2px' }}>CÓMO USARLO (heurística)</div>
+      <ol style={{ margin: '2px 0 0', paddingLeft: '20px', color: C.textSecondary, fontSize: '12.5px', lineHeight: '1.7' }}>
+        <li>Mira el <b style={eq}>régimen</b> y la distancia al flip.</li>
+        <li>Define el <b style={eq}>rango</b>: Wall ↓ = suelo probable, Wall ↑ = techo probable.</li>
+        <li><b style={eq}>Ruptura del flip</b> = cambio de régimen → más probabilidad de movimiento direccional.</li>
+        <li>Cerca del vencimiento, <b style={eq}>Max Pain</b> actúa de imán.</li>
+      </ol>
+
+      <p style={{ margin: '14px 0 0', paddingTop: '10px', borderTop: '1px solid ' + C.borderLight, color: C.textMuted, fontSize: '11px', lineHeight: '1.55' }}>
+        ⚠️ Es una guía de <i>estructura de mercado</i>, no una señal de entrada/salida. Datos de Yahoo + Massive (free tier), asume la
+        convención dealers-largos-en-calls / cortos-en-puts, y analiza <b style={eq}>una expiración a la vez</b> (la del encabezado).
+      </p>
     </div>
   );
 }
