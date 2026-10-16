@@ -253,13 +253,13 @@ export default function CandlestickChart({ data, sma50, support, resistance, gam
 
         {/* Gamma levels (dashed + labeled pills) */}
         {gammaFlip != null && flipY > 0 && (
-          <LevelLine y={flipY} width={W} color={C.warning} text={`γFLIP $${gammaFlip.toFixed(2)}`} side="left" />
+          <LevelLine y={flipY} width={W} color={C.warning} text={`Línea divisora $${gammaFlip.toFixed(2)}`} side="left" />
         )}
         {gammaWallUp != null && wallUpY > 0 && (
-          <LevelLine y={wallUpY} width={W} color="#A78BFA" text={`γWALL↑ $${gammaWallUp.toFixed(2)}`} side="right" />
+          <LevelLine y={wallUpY} width={W} color={C.negative} text={`Upside target $${gammaWallUp.toFixed(2)}`} side="right" />
         )}
         {gammaWallDown != null && wallDownY > 0 && (
-          <LevelLine y={wallDownY} width={W} color="#A78BFA" text={`γWALL↓ $${gammaWallDown.toFixed(2)}`} side="right" />
+          <LevelLine y={wallDownY} width={W} color={C.positive} text={`Downside target $${gammaWallDown.toFixed(2)}`} side="right" />
         )}
 
         {/* Structural support / resistance */}

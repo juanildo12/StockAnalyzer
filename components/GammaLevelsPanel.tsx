@@ -300,11 +300,13 @@ export default function GammaLevelsPanel({ symbol, onClose }: Props) {
           </div>
           {/* Legend */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '8px' }}>
-            <Legend color={C.warning} label="Gamma flip" dashed />
-            <Legend color={C.negative} label="Wall ↑" dashed />
-            <Legend color={C.positive} label="Wall ↓" dashed />
+            <Legend color={C.warning} label="Línea divisora (gamma flip)" dashed />
+            <Legend color={C.negative} label="Upside target (wall ↑)" dashed />
+            <Legend color={C.positive} label="Downside target (wall ↓)" dashed />
             <Legend color={C.info} label="Max pain" dashed />
             <Legend color={C.accent} label="Spot" dashed />
+            <Legend color={C.positive} label="Zona slow grind alcista" />
+            <Legend color={C.negative} label="Zona slow grind bajista" />
           </div>
         </div>
       )}
@@ -530,13 +532,24 @@ function GexChart({ rows, spot, flip, wallUp, wallDown, maxPain, maxAbsGex }: {
     return rowCenterY(exact);
   };
 
+  // Niveles clave con lenguaje llano (además del valor)
   const levels: { y: number | null; color: string; label: string; value: number | null }[] = [
-    { y: yFor(flip), color: C.warning, label: 'γFLIP', value: flip },
-    { y: yFor(wallUp), color: C.negative, label: 'WALL↑', value: wallUp },
-    { y: yFor(wallDown), color: C.positive, label: 'WALL↓', value: wallDown },
-    { y: yFor(maxPain), color: C.info, label: 'PAIN', value: maxPain },
-    { y: yFor(spot), color: C.accent, label: 'SPOT', value: spot },
+    { y: yFor(flip), color: C.warning, label: 'Línea divisora', value: flip },
+    { y: yFor(wallUp), color: C.negative, label: 'Upside target', value: wallUp },
+    { y: yFor(wallDown), color: C.positive, label: 'Downside target', value: wallDown },
+    { y: yFor(maxPain), color: C.info, label: 'Max pain', value: maxPain },
+    { y: yFor(spot), color: C.accent, label: 'Spot', value: spot },
   ].filter((l) => l.y != null && l.value != null);
+
+  // Zonas interpretadas: comportamiento esperado entre la divisora y los targets
+  const yWallUp = yFor(wallUp);
+  const yWallDown = yFor(wallDown);
+  const yFlip = yFor(flip);
+  const zones: { yTop: number; yBot: number; title: string; color: string }[] = [];
+  if (yWallUp != null && yFlip != null && yFlip - yWallUp > 6)
+    zones.push({ yTop: yWallUp, yBot: yFlip, title: 'Slow grind alcista', color: C.positive });
+  if (yWallDown != null && yFlip != null && yWallDown - yFlip > 6)
+    zones.push({ yTop: yFlip, yBot: yWallDown, title: 'Slow grind bajista', color: C.negative });
 
   return (
     <div ref={wrapRef} style={{ width: '100%' }}>
@@ -547,6 +560,11 @@ function GexChart({ rows, spot, flip, wallUp, wallDown, maxPain, maxAbsGex }: {
             <rect key={`bg${i}`} x={plotL - 6} y={padT + i * rowH} width={width - padL - 2} height={rowH} fill={C.bgElevated} opacity="0.5" />
           ) : null
         )}
+
+        {/* zone tints (fondo por comportamiento esperado) */}
+        {zones.map((z, i) => (
+          <rect key={`zone${i}`} x={plotL - 6} y={z.yTop} width={width - padL - 2} height={Math.max(0, z.yBot - z.yTop)} fill={z.color} opacity="0.08" />
+        ))}
 
         {/* vertical grid */}
         {[0.25, 0.5, 0.75].map((f) => (
@@ -601,6 +619,19 @@ function GexChart({ rows, spot, flip, wallUp, wallDown, maxPain, maxAbsGex }: {
                 {fmtGex(r.netGex)}
               </text>
             </g>
+          );
+        })}
+
+        {/* zone labels (encima de las barras, con halo para legibilidad) */}
+        {zones.map((z, i) => {
+          if (z.yBot - z.yTop < 26) return null;
+          const cx = plotL + (plotR - plotL) * 0.5;
+          return (
+            <text key={`zl${i}`} x={cx} y={(z.yTop + z.yBot) / 2 + 4} fontSize="12" fontWeight="800"
+              fill={z.color} textAnchor="middle" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+              stroke={C.bgCard} strokeWidth="4" strokeLinejoin="round" style={{ paintOrder: 'stroke' }}>
+              {z.title}
+            </text>
           );
         })}
 
