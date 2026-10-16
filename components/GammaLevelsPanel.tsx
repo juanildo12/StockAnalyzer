@@ -400,17 +400,17 @@ function GexChart({ rows, spot, flip, wallUp, wallDown, maxPain, maxAbsGex }: {
 }) {
   const [wrapRef, measured] = useElementWidth<HTMLDivElement>();
   const width = Math.max(380, Math.round(measured));
-  const rowH = 34;
-  const padT = 8;
-  const padB = 8;
-  const padL = 64;
-  const padR = 92;
+  const rowH = 36;
+  const padT = 10;
+  const padB = 10;
+  const padL = 76;
+  const padR = 108;
   const height = rows.length * rowH + padT + padB;
   const plotL = padL;
   const plotR = width - padR;
   const centerX = (plotL + plotR) / 2;
   const halfW = (plotR - plotL) / 2;
-  const barH = rowH - 13;
+  const barH = rowH - 14;
 
   const rowCenterY = (i: number) => padT + i * rowH + rowH / 2;
 
@@ -466,12 +466,12 @@ function GexChart({ rows, spot, flip, wallUp, wallDown, maxPain, maxAbsGex }: {
                 <rect x={plotL - 6} y={padT + i * rowH} width={width - padL - 2} height={rowH} fill={C.accent} opacity="0.08" />
               )}
               {/* strike label */}
-              <text x={padL - 12} y={cy - 2} fontSize="13" fill={nearSpot ? C.textPrimary : C.textSecondary}
-                textAnchor="end" fontWeight={nearSpot ? '700' : '600'} fontFamily="monospace">
+              <text x={padL - 14} y={cy - 2} fontSize="14" fill={nearSpot ? C.accent : C.textPrimary}
+                textAnchor="end" fontWeight={nearSpot ? '800' : '700'} fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
                 {r.strike % 1 === 0 ? r.strike : r.strike.toFixed(1)}
               </text>
               {/* OI under strike */}
-              <text x={padL - 12} y={cy + 11} fontSize="10" fill={C.textMuted} textAnchor="end" fontFamily="monospace">
+              <text x={padL - 14} y={cy + 12} fontSize="11" fill={C.textSecondary} textAnchor="end" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" fontWeight="500">
                 OI {fmtOi(r.totalOi)}
               </text>
               {/* net GEX bar */}
@@ -482,17 +482,17 @@ function GexChart({ rows, spot, flip, wallUp, wallDown, maxPain, maxAbsGex }: {
                 height={barH}
                 rx="4"
                 fill={barColor}
-                opacity={nearSpot ? 1 : 0.82}
+                opacity={nearSpot ? 1 : 0.85}
               />
               {/* value at bar end */}
               <text
-                x={isPositive ? centerX + barW + 7 : centerX - barW - 7}
+                x={isPositive ? centerX + barW + 8 : centerX - barW - 8}
                 y={cy + 4}
-                fontSize="11"
-                fill={C.textSecondary}
+                fontSize="12"
+                fill={C.textPrimary}
                 textAnchor={isPositive ? 'start' : 'end'}
-                fontFamily="monospace"
-                fontWeight="600"
+                fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+                fontWeight="700"
               >
                 {fmtGex(r.netGex)}
               </text>
@@ -503,13 +503,13 @@ function GexChart({ rows, spot, flip, wallUp, wallDown, maxPain, maxAbsGex }: {
         {/* horizontal level markers + right-gutter labels */}
         {levels.map((l) => {
           const label = `${l.label} $${l.value!.toFixed(2)}`;
-          const labelW = label.length * 6.4 + 14;
+          const labelW = label.length * 7.2 + 16;
           const lx = width - labelW - 4;
           return (
             <g key={l.label}>
-              <line x1={plotL - 4} y1={l.y!} x2={plotR + 6} y2={l.y!} stroke={l.color} strokeWidth="1.4" strokeDasharray="5,4" opacity="0.7" />
-              <rect x={lx} y={l.y! - 9} width={labelW} height="18" rx="4" fill={C.bgCard} stroke={l.color} strokeWidth="1" opacity="0.95" />
-              <text x={lx + labelW / 2} y={l.y! + 4} fontSize="10.5" fill={l.color} fontWeight="700" textAnchor="middle" fontFamily="monospace" opacity="0.95">
+              <line x1={plotL - 4} y1={l.y!} x2={plotR + 6} y2={l.y!} stroke={l.color} strokeWidth="1.5" strokeDasharray="5,4" opacity="0.85" />
+              <rect x={lx} y={l.y! - 10} width={labelW} height="20" rx="5" fill={C.bgCard} stroke={l.color} strokeWidth="1.2" opacity="0.98" />
+              <text x={lx + labelW / 2} y={l.y! + 4.5} fontSize="11.5" fill={l.color} fontWeight="800" textAnchor="middle" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
                 {label}
               </text>
             </g>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
+import { colors as C, font as F } from '@/src/utils/webTheme';
 
 interface Candle {
   t: number;
@@ -43,10 +43,42 @@ function smoothPath(pts: { x: number; y: number }[]): string {
   return d;
 }
 
+function useElementWidth<T extends HTMLElement>(fallback = 640) {
+  const ref = useRef<T>(null);
+  const [width, setWidth] = useState(fallback);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => setWidth(el.clientWidth || fallback);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [fallback]);
+  return [ref, width] as const;
+}
+
+/** A dashed horizontal level line with a readable label pill (native-px text). */
+function LevelLine({ y, width, color, text, side }: { y: number; width: number; color: string; text: string; side: 'left' | 'right' }) {
+  const padX = 8;
+  const labelW = text.length * 6.6 + 12;
+  const lx = side === 'left' ? padX : width - labelW - padX;
+  return (
+    <g>
+      <line x1={0} y1={y} x2={width} y2={y} stroke={color} strokeWidth={1.4} strokeDasharray="5,4" opacity={0.85} />
+      <rect x={lx} y={y - 9} width={labelW} height={18} rx={4} fill={C.bgCard} stroke={color} strokeWidth={1} opacity={0.96} />
+      <text x={lx + labelW / 2} y={y + 4} fontSize={11} fill={color} fontWeight={700} textAnchor="middle" fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace">
+        {text}
+      </text>
+    </g>
+  );
+}
+
 export default function CandlestickChart({ data, sma50, support, resistance, gammaFlip, gammaWallUp, gammaWallDown, trend, height = 280, animate = true }: Props) {
   const [animIdx, setAnimIdx] = useState(animate ? 1 : data.length);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [wrapRef, measuredW] = useElementWidth<HTMLDivElement>();
 
   useEffect(() => {
     if (!animate || data.length < 2) {
@@ -66,21 +98,23 @@ export default function CandlestickChart({ data, sma50, support, resistance, gam
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [data.length, animate]);
 
+  const W = Math.max(220, Math.round(measuredW));
+  const H = height;
+  const padL = 8, padR = 8, padT = 12, padB = 10;
+  const plotTop = padT;
+  const plotBottom = H - padB;
+  const plotH = plotBottom - plotTop;
+  const plotW = W - padL - padR;
+
   const {
-    candleWidth, viewW, viewH, padL, padR, padT, padB,
-    yMin, yMax, yRange, xScale, yScale,
-    candlesRendered, smaPoints, supY, resY, flipY, wallUpY, wallDownY,
+    candleWidth, yMin, yMax,
+    candlesRendered, smaPoints, supY, resY, flipY, wallUpY, wallDownY, volMax,
   } = useMemo(() => {
     const visibleData = data.slice(0, animIdx);
     if (visibleData.length < 2) {
-      return { candleWidth: 0, viewW: 0, viewH: 0, padL: 0, padR: 0, padT: 0, padB: 0,
-        yMin: 0, yMax: 1, yRange: 1, xScale: 0, yScale: 0, candlesRendered: [],
-        smaPoints: [], supY: 0, resY: 0, flipY: 0, wallUpY: 0, wallDownY: 0 };
+      return { candleWidth: 0, yMin: 0, yMax: 1, candlesRendered: [], smaPoints: [],
+        supY: 0, resY: 0, flipY: 0, wallUpY: 0, wallDownY: 0, volMax: 1 };
     }
-
-    const pL = 8, pR = 8, pT = 8, pB = 8;
-    const w = 100;
-    const h = 100;
 
     const vals = visibleData.flatMap(d => [d.h, d.l]);
     const mn = Math.min(...vals);
@@ -91,18 +125,18 @@ export default function CandlestickChart({ data, sma50, support, resistance, gam
     const yMx = mx + ext;
     const yR = yMx - yMn || 1;
 
-    const totalCandleW = (w - pL - pR) / visibleData.length;
-    const cw = Math.max(0.3, totalCandleW * 0.7);
+    const step = plotW / (visibleData.length - 1);
+    const cw = Math.max(1, (plotW / visibleData.length) * 0.66);
 
     const cRendered = visibleData.map((d, i) => {
-      const cx = pL + (i / (visibleData.length - 1)) * (w - pL - pR);
+      const cx = padL + i * step;
       const isUp = d.c >= d.o;
       const top = Math.max(d.c, d.o);
       const bot = Math.min(d.c, d.o);
-      const bodyH = Math.max(0.3, ((top - bot) / yR) * (h - pT - pB));
-      const bodyY = h - pB - ((top - yMn) / yR) * (h - pT - pB);
-      const wickH = ((d.h - d.l) / yR) * (h - pT - pB);
-      const wickY = h - pB - ((d.h - yMn) / yR) * (h - pT - pB);
+      const bodyH = Math.max(1, ((top - bot) / yR) * plotH);
+      const bodyY = plotBottom - ((top - yMn) / yR) * plotH;
+      const wickH = ((d.h - d.l) / yR) * plotH;
+      const wickY = plotBottom - ((d.h - yMn) / yR) * plotH;
       return { cx, isUp, bodyH, bodyY, wickH, wickY, highY: wickY, lowY: wickY + wickH, o: d.o, h: d.h, l: d.l, c: d.c, v: d.v };
     });
 
@@ -111,32 +145,28 @@ export default function CandlestickChart({ data, sma50, support, resistance, gam
       const smaSlice = sma50.slice(sma50.length - visibleData.length);
       smaPts = smaSlice.map((v, i) => {
         if (v == null || v === 0) return null;
-        const cx = pL + (i / (visibleData.length - 1)) * (w - pL - pR);
-        return { x: cx, y: h - pB - ((v - yMn) / yR) * (h - pT - pB) };
+        const cx = padL + i * step;
+        return { x: cx, y: plotBottom - ((v - yMn) / yR) * plotH };
       }).filter(p => p !== null) as { x: number; y: number }[];
     }
 
-    const sY = support != null
-      ? h - pB - ((support - yMn) / yR) * (h - pT - pB) : 0;
-    const rY = resistance != null
-      ? h - pB - ((resistance - yMn) / yR) * (h - pT - pB) : 0;
-
     const levelY = (v?: number) => (v != null && v > yMn && v < yMx
-      ? h - pB - ((v - yMn) / yR) * (h - pT - pB) : 0);
+      ? plotBottom - ((v - yMn) / yR) * plotH : 0);
+
+    const vMax = Math.max(...visibleData.map(d => d.v), 1);
 
     return {
-      candleWidth: cw, viewW: w, viewH: h, padL: pL, padR: pR, padT: pT, padB: pB,
-      yMin: yMn, yMax: yMx, yRange: yR,
-      xScale: (w - pL - pR) / (visibleData.length - 1),
-      yScale: (h - pT - pB) / yR,
+      candleWidth: cw, yMin: yMn, yMax: yMx,
       candlesRendered: cRendered,
       smaPoints: smaPts,
-      supY: sY, resY: rY,
+      supY: support != null ? levelY(support) : 0,
+      resY: resistance != null ? levelY(resistance) : 0,
       flipY: levelY(gammaFlip),
       wallUpY: levelY(gammaWallUp),
       wallDownY: levelY(gammaWallDown),
+      volMax: vMax,
     };
-  }, [data, animIdx, sma50, support, resistance, gammaFlip, gammaWallUp, gammaWallDown]);
+  }, [data, animIdx, sma50, support, resistance, gammaFlip, gammaWallUp, gammaWallDown, plotW, plotH, plotBottom, padL]);
 
   if (candlesRendered.length < 2) {
     return (
@@ -148,40 +178,33 @@ export default function CandlestickChart({ data, sma50, support, resistance, gam
 
   const hoverCandle = hoverIdx != null ? candlesRendered[hoverIdx] : null;
   const animProgress = data.length > 0 ? Math.round((animIdx / data.length) * 100) : 0;
+  const step = plotW / Math.max(1, candlesRendered.length - 1);
+
+  const tipW = 150, tipH = 104;
+  const tipX = hoverCandle ? Math.min(Math.max(hoverCandle.cx + 10, 2), W - tipW - 2) : 0;
+  const tipY = 6;
 
   return (
-    <div style={{ position: 'relative', width: '100%', height, userSelect: 'none' }}>
-      {/* Animation progress bar */}
+    <div ref={wrapRef} style={{ position: 'relative', width: '100%', height, userSelect: 'none' }}>
       {animate && animIdx < data.length && (
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
-          background: C.border, borderRadius: '1px', overflow: 'hidden', zIndex: 5,
-        }}>
-          <div style={{
-            width: `${animProgress}%`, height: '100%',
-            background: C.gradientPrimary, borderRadius: '1px',
-            transition: 'width 0.1s linear',
-          }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: C.border, borderRadius: '1px', overflow: 'hidden', zIndex: 5 }}>
+          <div style={{ width: `${animProgress}%`, height: '100%', background: C.gradientPrimary, borderRadius: '1px', transition: 'width 0.1s linear' }} />
         </div>
       )}
-
-      {/* Last candle flash when animation completes */}
       {animate && animIdx >= data.length && (
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
-          background: C.positive, borderRadius: '1px', zIndex: 5,
-          animation: 'fadeOut 1.5s ease forwards',
-        }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: C.positive, borderRadius: '1px', zIndex: 5, animation: 'fadeOut 1.5s ease forwards' }} />
       )}
 
       <svg
-        viewBox={`0 0 ${viewW} ${viewH}`}
+        width={W}
+        height={H}
+        viewBox={`0 0 ${W} ${H}`}
         preserveAspectRatio="none"
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: '100%', height: '100%', display: 'block' }}
         onMouseMove={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
-          const x = ((e.clientX - rect.left) / rect.width) * viewW;
-          const idx = Math.round((x - padL) / xScale);
+          const x = ((e.clientX - rect.left) / rect.width) * W;
+          const idx = Math.round((x - padL) / step);
           setHoverIdx(Math.max(0, Math.min(candlesRendered.length - 1, idx)));
         }}
         onMouseLeave={() => setHoverIdx(null)}
@@ -193,132 +216,86 @@ export default function CandlestickChart({ data, sma50, support, resistance, gam
           </linearGradient>
         </defs>
 
-        <rect x="0" y="0" width={viewW} height={viewH} fill="transparent" />
+        <rect x="0" y="0" width={W} height={H} fill="transparent" />
 
         {/* Grid */}
         {[0.25, 0.5, 0.75].map(frac => (
-          <line key={frac} x1="0" y1={viewH * frac} x2={viewW} y2={viewH * frac}
-            stroke={C.border} strokeWidth="0.25" strokeDasharray="1,1.5" />
+          <line key={frac} x1="0" y1={plotTop + plotH * frac} x2={W} y2={plotTop + plotH * frac}
+            stroke={C.border} strokeWidth="1" strokeDasharray="2,4" opacity="0.7" />
         ))}
-
-        {/* SMA50 */}
-        {smaPoints.length > 1 && (
-          <path d={smoothPath(smaPoints)} fill="none" stroke={C.accent} strokeWidth="0.5"
-            strokeDasharray="1.5,1.5" opacity="0.85" />
-        )}
-
-        {/* Support */}
-        {support != null && (
-          <>
-            <line x1="0" y1={supY} x2={viewW} y2={supY}
-              stroke={C.positive} strokeWidth="0.4" strokeDasharray="2,1.5" opacity="0.75" />
-            <text x={viewW - 0.5} y={supY - 0.5} fontSize="2.2" fill={C.positive}
-              textAnchor="end" fontWeight="600" opacity="0.85">S ${support.toFixed(2)}</text>
-          </>
-        )}
-
-        {/* Resistance */}
-        {resistance != null && (
-          <>
-            <line x1="0" y1={resY} x2={viewW} y2={resY}
-              stroke={C.negative} strokeWidth="0.4" strokeDasharray="2,1.5" opacity="0.75" />
-            <text x={viewW - 0.5} y={resY - 0.5} fontSize="2.2" fill={C.negative}
-              textAnchor="end" fontWeight="600" opacity="0.85">R ${resistance.toFixed(2)}</text>
-          </>
-        )}
-
-        {/* Gamma flip */}
-        {gammaFlip != null && flipY > 0 && (
-          <>
-            <line x1="0" y1={flipY} x2={viewW} y2={flipY}
-              stroke={C.warning} strokeWidth="0.4" strokeDasharray="3,1.5" opacity="0.8" />
-            <text x="0.5" y={flipY - 0.5} fontSize="2.2" fill={C.warning}
-              textAnchor="start" fontWeight="700" opacity="0.9">γFLIP ${gammaFlip.toFixed(2)}</text>
-          </>
-        )}
-
-        {/* Gamma wall up (call resistance) */}
-        {gammaWallUp != null && wallUpY > 0 && (
-          <>
-            <line x1="0" y1={wallUpY} x2={viewW} y2={wallUpY}
-              stroke="#A78BFA" strokeWidth="0.35" strokeDasharray="3,2" opacity="0.75" />
-            <text x="0.5" y={wallUpY - 0.5} fontSize="2.2" fill="#A78BFA"
-              textAnchor="start" fontWeight="600" opacity="0.85">γWALL↑ ${gammaWallUp.toFixed(2)}</text>
-          </>
-        )}
-
-        {/* Gamma wall down (put support) */}
-        {gammaWallDown != null && wallDownY > 0 && (
-          <>
-            <line x1="0" y1={wallDownY} x2={viewW} y2={wallDownY}
-              stroke="#A78BFA" strokeWidth="0.35" strokeDasharray="3,2" opacity="0.75" />
-            <text x="0.5" y={wallDownY - 0.5} fontSize="2.2" fill="#A78BFA"
-              textAnchor="start" fontWeight="600" opacity="0.85">γWALL↓ ${gammaWallDown.toFixed(2)}</text>
-          </>
-        )}
 
         {/* Volume bars */}
         {candlesRendered.map((c, i) => {
-          const barH = (c.v / Math.max(...candlesRendered.map(x => x.v))) * 8;
+          const barH = (c.v / volMax) * (plotH * 0.14);
           return (
-            <rect key={`v${i}`} x={c.cx - candleWidth * 0.3} y={viewH - padB - barH}
+            <rect key={`v${i}`} x={c.cx - candleWidth * 0.3} y={plotBottom - barH}
               width={candleWidth * 0.6} height={barH}
-              fill={c.isUp ? `${C.positive35}` : `${C.negative35}`} rx="0.2" />
+              fill={c.isUp ? C.positive35 : C.negative35} rx="1" />
           );
         })}
+
+        {/* SMA50 */}
+        {smaPoints.length > 1 && (
+          <path d={smoothPath(smaPoints)} fill="none" stroke={C.accent} strokeWidth="1.6"
+            strokeDasharray="4,3" opacity="0.9" />
+        )}
 
         {/* Candles */}
         {candlesRendered.map((c, i) => (
           <g key={`c${i}`}>
             <line x1={c.cx} y1={c.highY} x2={c.cx} y2={c.lowY}
-              stroke={c.isUp ? C.positive : C.negative} strokeWidth="0.4" />
+              stroke={c.isUp ? C.positive : C.negative} strokeWidth="1.2" />
             <rect x={c.cx - candleWidth / 2} y={c.bodyY}
               width={candleWidth} height={c.bodyH}
-              fill={c.isUp ? C.positive : C.negative}
-              rx="0.2" />
+              fill={c.isUp ? C.positive : C.negative} rx="1" />
           </g>
         ))}
 
-        {/* Hover crosshair */}
-        {hoverCandle && (
-          <>
-            <line x1={hoverCandle.cx} y1="0" x2={hoverCandle.cx} y2={viewH}
-              stroke={C.textMuted} strokeWidth="0.25" opacity="0.6" />
-            <line x1="0" y1={hoverCandle.highY} x2={viewW} y2={hoverCandle.highY}
-              stroke={C.textMuted} strokeWidth="0.2" opacity="0.5" strokeDasharray="1,1" />
-
-            {/* Hover tooltip */}
-            <rect x={Math.min(hoverCandle.cx + 1, viewW - 18)} y="0.5"
-              width="17" height="12" rx="0.8" fill={`${C.bgCardf0}`}
-              stroke={C.borderLight} strokeWidth="0.3" />
-            <text x={Math.min(hoverCandle.cx + 1.5, viewW - 17)} y="2.3"
-              fontSize="2.2" fill={hoverCandle.isUp ? C.positive : C.negative} fontWeight="700">
-              {hoverCandle.isUp ? '▲' : '▼'} ${hoverCandle.c.toFixed(2)}
-            </text>
-            <text x={Math.min(hoverCandle.cx + 1.5, viewW - 17)} y="4.5"
-              fontSize="1.8" fill={C.textMuted}>
-              A:${hoverCandle.h.toFixed(2)} B:${hoverCandle.l.toFixed(2)}
-            </text>
-            <text x={Math.min(hoverCandle.cx + 1.5, viewW - 17)} y="6.7"
-              fontSize="1.8" fill={C.textMuted}>
-              O:${hoverCandle.o.toFixed(2)} C:${hoverCandle.c.toFixed(2)}
-            </text>
-            <text x={Math.min(hoverCandle.cx + 1.5, viewW - 17)} y="8.9"
-              fontSize="1.8" fill={C.textMuted}>
-              Vol:{(hoverCandle.v / 1000000).toFixed(1)}M
-            </text>
-            <text x={Math.min(hoverCandle.cx + 1.5, viewW - 17)} y="11.1"
-              fontSize="1.8" fill={C.textMuted}>
-              Vela #{hoverIdx! + 1}/{candlesRendered.length}
-            </text>
-          </>
+        {/* Gamma levels (dashed + labeled pills) */}
+        {gammaFlip != null && flipY > 0 && (
+          <LevelLine y={flipY} width={W} color={C.warning} text={`γFLIP $${gammaFlip.toFixed(2)}`} side="left" />
+        )}
+        {gammaWallUp != null && wallUpY > 0 && (
+          <LevelLine y={wallUpY} width={W} color="#A78BFA" text={`γWALL↑ $${gammaWallUp.toFixed(2)}`} side="right" />
+        )}
+        {gammaWallDown != null && wallDownY > 0 && (
+          <LevelLine y={wallDownY} width={W} color="#A78BFA" text={`γWALL↓ $${gammaWallDown.toFixed(2)}`} side="right" />
         )}
 
-        {/* Animation overlay - draw effect */}
-        {animate && animIdx < data.length && (
-          <rect x={padL + (animIdx / data.length) * (viewW - padL - padR)} y="0"
-            width={viewW} height={viewH}
-            fill={`${C.bgCardcc}`} />
+        {/* Structural support / resistance */}
+        {support != null && supY > 0 && (
+          <LevelLine y={supY} width={W} color={C.positive} text={`S $${support.toFixed(2)}`} side="right" />
+        )}
+        {resistance != null && resY > 0 && (
+          <LevelLine y={resY} width={W} color={C.negative} text={`R $${resistance.toFixed(2)}`} side="right" />
+        )}
+
+        {/* Hover crosshair + tooltip */}
+        {hoverCandle && (
+          <>
+            <line x1={hoverCandle.cx} y1="0" x2={hoverCandle.cx} y2={H}
+              stroke={C.textMuted} strokeWidth="1" opacity="0.7" />
+            <line x1="0" y1={hoverCandle.highY} x2={W} y2={hoverCandle.highY}
+              stroke={C.textMuted} strokeWidth="1" opacity="0.5" strokeDasharray="2,2" />
+
+            <rect x={tipX} y={tipY} width={tipW} height={tipH} rx={8}
+              fill={C.bgCard} stroke={C.borderLight} strokeWidth="1" opacity="0.98" />
+            <text x={tipX + 12} y={tipY + 22} fontSize="13" fill={hoverCandle.isUp ? C.positive : C.negative} fontWeight="700">
+              {hoverCandle.isUp ? '▲' : '▼'} ${hoverCandle.c.toFixed(2)}
+            </text>
+            <text x={tipX + 12} y={tipY + 44} fontSize="11.5" fill={C.textSecondary}>
+              Apertura <tspan fill={C.textPrimary} fontWeight="600">${hoverCandle.o.toFixed(2)}</tspan>
+            </text>
+            <text x={tipX + 12} y={tipY + 62} fontSize="11.5" fill={C.textSecondary}>
+              Máx <tspan fill={C.textPrimary} fontWeight="600">${hoverCandle.h.toFixed(2)}</tspan>
+            </text>
+            <text x={tipX + 12} y={tipY + 80} fontSize="11.5" fill={C.textSecondary}>
+              Mín <tspan fill={C.textPrimary} fontWeight="600">${hoverCandle.l.toFixed(2)}</tspan>
+            </text>
+            <text x={tipX + 12} y={tipY + 98} fontSize="11.5" fill={C.textSecondary}>
+              Vol <tspan fill={C.textPrimary} fontWeight="600">{hoverCandle.v >= 1e6 ? (hoverCandle.v / 1e6).toFixed(1) + 'M' : (hoverCandle.v / 1e3).toFixed(0) + 'K'}</tspan>
+            </text>
+          </>
         )}
       </svg>
     </div>
