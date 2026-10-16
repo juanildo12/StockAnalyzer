@@ -226,7 +226,9 @@ export async function middleware(req: NextRequest) {
       pathname.startsWith("/api/watchlist") ||
       pathname === "/api/ai-coach" ||
       pathname.startsWith("/api/prospect-pick") ||
-      pathname.startsWith("/api/trade-picks");
+      pathname.startsWith("/api/trade-picks") ||
+      pathname.startsWith("/api/gamma-levels") ||
+      pathname.startsWith("/api/squeeze");
 
     if (!publicLegacy && !token) {
       return NextResponse.json(

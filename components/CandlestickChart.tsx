@@ -17,6 +17,9 @@ interface Props {
   sma50?: number[];
   support?: number;
   resistance?: number;
+  gammaFlip?: number;
+  gammaWallUp?: number;
+  gammaWallDown?: number;
   trend?: string;
   height?: number;
   animate?: boolean;
@@ -40,7 +43,7 @@ function smoothPath(pts: { x: number; y: number }[]): string {
   return d;
 }
 
-export default function CandlestickChart({ data, sma50, support, resistance, trend, height = 280, animate = true }: Props) {
+export default function CandlestickChart({ data, sma50, support, resistance, gammaFlip, gammaWallUp, gammaWallDown, trend, height = 280, animate = true }: Props) {
   const [animIdx, setAnimIdx] = useState(animate ? 1 : data.length);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -66,13 +69,13 @@ export default function CandlestickChart({ data, sma50, support, resistance, tre
   const {
     candleWidth, viewW, viewH, padL, padR, padT, padB,
     yMin, yMax, yRange, xScale, yScale,
-    candlesRendered, smaPoints, supY, resY,
+    candlesRendered, smaPoints, supY, resY, flipY, wallUpY, wallDownY,
   } = useMemo(() => {
     const visibleData = data.slice(0, animIdx);
     if (visibleData.length < 2) {
       return { candleWidth: 0, viewW: 0, viewH: 0, padL: 0, padR: 0, padT: 0, padB: 0,
         yMin: 0, yMax: 1, yRange: 1, xScale: 0, yScale: 0, candlesRendered: [],
-        smaPoints: [], supY: 0, resY: 0 };
+        smaPoints: [], supY: 0, resY: 0, flipY: 0, wallUpY: 0, wallDownY: 0 };
     }
 
     const pL = 8, pR = 8, pT = 8, pB = 8;
@@ -118,6 +121,9 @@ export default function CandlestickChart({ data, sma50, support, resistance, tre
     const rY = resistance != null
       ? h - pB - ((resistance - yMn) / yR) * (h - pT - pB) : 0;
 
+    const levelY = (v?: number) => (v != null && v > yMn && v < yMx
+      ? h - pB - ((v - yMn) / yR) * (h - pT - pB) : 0);
+
     return {
       candleWidth: cw, viewW: w, viewH: h, padL: pL, padR: pR, padT: pT, padB: pB,
       yMin: yMn, yMax: yMx, yRange: yR,
@@ -126,8 +132,11 @@ export default function CandlestickChart({ data, sma50, support, resistance, tre
       candlesRendered: cRendered,
       smaPoints: smaPts,
       supY: sY, resY: rY,
+      flipY: levelY(gammaFlip),
+      wallUpY: levelY(gammaWallUp),
+      wallDownY: levelY(gammaWallDown),
     };
-  }, [data, animIdx, sma50, support, resistance]);
+  }, [data, animIdx, sma50, support, resistance, gammaFlip, gammaWallUp, gammaWallDown]);
 
   if (candlesRendered.length < 2) {
     return (
@@ -215,6 +224,36 @@ export default function CandlestickChart({ data, sma50, support, resistance, tre
               stroke={C.negative} strokeWidth="0.4" strokeDasharray="2,1.5" opacity="0.75" />
             <text x={viewW - 0.5} y={resY - 0.5} fontSize="2.2" fill={C.negative}
               textAnchor="end" fontWeight="600" opacity="0.85">R ${resistance.toFixed(2)}</text>
+          </>
+        )}
+
+        {/* Gamma flip */}
+        {gammaFlip != null && flipY > 0 && (
+          <>
+            <line x1="0" y1={flipY} x2={viewW} y2={flipY}
+              stroke={C.warning} strokeWidth="0.4" strokeDasharray="3,1.5" opacity="0.8" />
+            <text x="0.5" y={flipY - 0.5} fontSize="2.2" fill={C.warning}
+              textAnchor="start" fontWeight="700" opacity="0.9">γFLIP ${gammaFlip.toFixed(2)}</text>
+          </>
+        )}
+
+        {/* Gamma wall up (call resistance) */}
+        {gammaWallUp != null && wallUpY > 0 && (
+          <>
+            <line x1="0" y1={wallUpY} x2={viewW} y2={wallUpY}
+              stroke="#A78BFA" strokeWidth="0.35" strokeDasharray="3,2" opacity="0.75" />
+            <text x="0.5" y={wallUpY - 0.5} fontSize="2.2" fill="#A78BFA"
+              textAnchor="start" fontWeight="600" opacity="0.85">γWALL↑ ${gammaWallUp.toFixed(2)}</text>
+          </>
+        )}
+
+        {/* Gamma wall down (put support) */}
+        {gammaWallDown != null && wallDownY > 0 && (
+          <>
+            <line x1="0" y1={wallDownY} x2={viewW} y2={wallDownY}
+              stroke="#A78BFA" strokeWidth="0.35" strokeDasharray="3,2" opacity="0.75" />
+            <text x="0.5" y={wallDownY - 0.5} fontSize="2.2" fill="#A78BFA"
+              textAnchor="start" fontWeight="600" opacity="0.85">γWALL↓ ${gammaWallDown.toFixed(2)}</text>
           </>
         )}
 

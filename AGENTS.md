@@ -1,5 +1,18 @@
 # Project Notes
 
+## Gamma Levels (app/api/gamma-levels/route.ts + components/GammaLevelsPanel.tsx)
+
+Feature nuevo de exposición gamma de dealers (GEX):
+- **Math pura**: `src/lib/options/gamma.ts` (+ `bs.ts`) — `bsGamma`, `bsPrice`, `ivFromOptionPrice` (inversión BS), `computeGammaLevels` (GEX por strike, gamma flip = cruce por cero interpolado, gamma walls up/down, max pain, régimen positive/negative/neutral), `contractsFromChain` (normaliza Yahoo). 19 tests en `src/lib/options/gamma.test.ts`.
+- **Gotchas de Yahoo (bugs corregidos, no reintroducir)**:
+  - `yf.options(sym)` trae **solo 1** expiración en `options` (la más cercana); la lista completa está en `expirationDates`. Para otra expiración: `yf.options(sym, { date })`. La ruta arma la lista de `expirationDates`, elige por DTE y refetchea si no es la que ya viene cargada.
+  - Yahoo devuelve **IVs basura** en filas deep-ITM (ej. `1e-5` o >500%) → `computeGammaLevels` filtra `iv < 0.005 || iv > 5` antes de acumular GEX (sino el GEX de esos strikes explota a miles de millones).
+  - `bsGamma` usa la **PDF** de la normal (`normalPDF`), no la CDF — gamma = φ(d1)/(S·σ·√T). Test de referencia: `bsGamma(100,100,1,0.2,r=0) ≈ 0.01985`.
+- **Datos**: OI + IV de la chain de **Yahoo** (`yf.options()`, gratis) → gamma de BS calculada localmente. **Massive free** complementa: `/v3/reference/options/contracts` (universo oficial de strikes, detecta faltantes de Yahoo) + 1-2 `aggs` ATM (`/v2/aggs/ticker/O:.../prev`) → IV inversa como cross-check. Los snapshots `/v3/snapshot/options` (greeks reales) siguen siendo 403 en free tier → se activan solos al pagar (el helper `getOptionsChainSnapshot` ya existe en `massiveClient.ts`). Throttle: `fetchMassiveSafe` con `maxWaitMs` corto, degrada a null, nunca bloquea.
+- **Ruta**: `GET /api/gamma-levels?symbol=X&dte=38` (dte default ~38, elige expiración más cercana). Cache 10 min (`cacheAside`). Devuelve `levels`, `gex[]`, `bars[]` (60 sesiones para el mini chart), `source`, `coverage`.
+- **UI**: `components/GammaLevelsPanel.tsx` (montado en `Dashboard.tsx` bajo SqueezeRadar) — banner de régimen, chips (Wall↑/Wall↓/MaxPain/GEX neto), mini candlestick con overlays gamma, y gráfico divergente de GEX neto por strike. `CandlestickChart.tsx` acepta props opcionales `gammaFlip`/`gammaWallUp`/`gammaWallDown` (líneas punteadas).
+- **Sin cambios en scoring de trade picks** (decidido: solo visual por ahora).
+
 ## Trade Picks (app/api/trade-picks/scan/route.ts)
 
 User preference for contract selection:
