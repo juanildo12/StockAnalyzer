@@ -10,7 +10,16 @@ import {
   getRecommendationTrends,
 } from '@/src/services/finnhubClient';
 import { cacheAside, cacheGet, cacheSet } from '@/src/lib/cache';
-import { getMassiveNews } from '@/src/services/massiveClient';
+import {
+  getMassiveNews,
+  getMassiveIPOs,
+  getMassiveMarketHolidays,
+  getMassiveDividends,
+  getMassiveSplits,
+  type NormalizedIPO,
+  type NormalizedDividend,
+  type NormalizedSplit,
+} from '@/src/services/massiveClient';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -20,7 +29,7 @@ const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] 
 const CACHE_TTL = 1800; // 30 min
 
 interface Catalyst {
-  type: 'earnings' | 'dividend' | 'ipo' | 'economic' | 'analyst' | 'news' | 'split';
+  type: 'earnings' | 'dividend' | 'ipo' | 'economic' | 'analyst' | 'news' | 'split' | 'holiday';
   title: string;
   description?: string;
   date: string;
@@ -31,6 +40,23 @@ interface Catalyst {
   link?: string;
   emoji: string;
   meta?: Record<string, any>;
+}
+
+/** Códigos MIC de Massive → etiqueta legible. */
+const EXCHANGE_LABELS: Record<string, string> = {
+  XNYS: 'NYSE', XNAS: 'NASDAQ', XASE: 'AMEX', ARCA: 'ARCA', BATS: 'BATS',
+};
+function exchangeLabel(code?: string): string {
+  if (!code) return '';
+  return EXCHANGE_LABELS[code] || code;
+}
+
+function fmtCompact(n: number): string {
+  if (!n) return '—';
+  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(0)}K`;
+  return String(n);
 }
 
 const KNOWN_MAJORS = new Set([
@@ -45,6 +71,7 @@ function importanceFor(type: Catalyst['type'], symbol?: string): number {
   if (type === 'ipo') return 60;
   if (type === 'analyst') return 50;
   if (type === 'dividend') return 35;
+  if (type === 'holiday') return 80;
   return 30;
 }
 
@@ -108,12 +135,14 @@ async function fetchStockRoadmap(symbol: string): Promise<StockRoadmap | null> {
   const now = new Date();
   const to = addDays(now, 45);
 
-  const [quoteSummary, finnEarnings, massiveNews, finnNews, reco] = await Promise.all([
+  const [quoteSummary, finnEarnings, massiveNews, finnNews, reco, massiveDividends, massiveSplits] = await Promise.all([
     yf.quoteSummary(sym, { modules: ['calendarEvents', 'price'] }).catch(() => null),
     getEarningsCalendar(fmtDay(now), fmtDay(to)).catch(() => []),
     getMassiveNews({ ticker: sym, limit: 8 }).catch(() => []),
     getCompanyNews(sym, fmtDay(addDays(now, -7)), fmtDay(now)).catch(() => []),
     getRecommendationTrends(sym).catch(() => []),
+    getMassiveDividends(sym, 12).catch(() => [] as NormalizedDividend[]),
+    getMassiveSplits(sym, 5).catch(() => [] as NormalizedSplit[]),
   ]);
 
   // Massive news (con sentiment) primero; Finnhub como respaldo
@@ -190,6 +219,42 @@ async function fetchStockRoadmap(symbol: string): Promise<StockRoadmap | null> {
     }
   }
 
+  // ── Dividendos próximos (Massive) — completa lo que Yahoo no trae ──
+  const divSeen = new Set(upcoming.filter((c) => c.type === 'dividend').map((c) => c.date));
+  for (const d of (massiveDividends as NormalizedDividend[])) {
+    if (!d.exDividendDate || d.exDividendDate < fmtDay(now) || divSeen.has(d.exDividendDate)) continue;
+    divSeen.add(d.exDividendDate);
+    upcoming.push({
+      type: 'dividend',
+      title: `Ex-dividendo $${d.cashAmount.toFixed(2)}`,
+      description: `Las acciones pierden derecho a cobrar el dividendo a partir de esta fecha${d.payDate ? ` · pago ${d.payDate}` : ''}`,
+      date: d.exDividendDate,
+      importance: importanceFor('dividend'),
+      confidence: 90,
+      status: 'Confirmado',
+      source: 'Massive',
+      emoji: '💵',
+      meta: { cashAmount: d.cashAmount, payDate: d.payDate, frequency: d.frequency },
+    });
+  }
+
+  // ── Splits programados (Massive) ──
+  for (const s of (massiveSplits as NormalizedSplit[])) {
+    if (!s.executionDate || s.executionDate < fmtDay(now)) continue;
+    upcoming.push({
+      type: 'split',
+      title: `Split ${s.splitFrom}:${s.splitTo}`,
+      description: `Desdoblamiento de acciones programado${s.adjustmentType ? ` (${s.adjustmentType})` : ''}`,
+      date: s.executionDate,
+      importance: 55,
+      confidence: 85,
+      status: 'Confirmado',
+      source: 'Massive',
+      emoji: '✂️',
+      meta: {},
+    });
+  }
+
   const sorted = upcoming.sort((a, b) => a.date.localeCompare(b.date));
 
   const macro: Catalyst[] = [];
@@ -227,12 +292,14 @@ async function fetchMarketCalendar(
   const fromIso = fmtDay(from);
   const toIso = fmtDay(to);
 
-  const [earnings, ipo, economic, massiveGeneralNews, finnGeneralNews] = await Promise.all([
+  const [earnings, ipo, economic, massiveGeneralNews, finnGeneralNews, massiveIpos, holidays] = await Promise.all([
     getEarningsCalendarChunked(fromIso, toIso).catch(() => []),
     getIPOCalendar(fromIso, toIso).catch(() => []),
     getEconomicCalendar().catch(() => []),
     getMassiveNews({ limit: 20 }).catch(() => []),
     getGeneralNews().catch(() => []),
+    getMassiveIPOs({ from: fromIso, to: toIso, limit: 100 }).catch(() => [] as NormalizedIPO[]),
+    getMassiveMarketHolidays().catch(() => []),
   ]);
 
   // Massive news primero (con sentiment); Finnhub como respaldo
@@ -265,12 +332,38 @@ async function fetchMarketCalendar(
     });
   }
 
-  // IPO
+  // IPO — Massive (free tier, oficial) primero; Finnhub sólo lo que Massive no traiga
+  const ipoSeen = new Set<string>();
+  for (const i of (massiveIpos as NormalizedIPO[])) {
+    if (!i.listingDate || !i.ticker) continue;
+    ipoSeen.add(`${i.ticker}:${i.listingDate}`);
+    const priced =
+      i.finalIssuePrice != null
+        ? `$${i.finalIssuePrice}`
+        : i.lowestOfferPrice != null && i.highestOfferPrice != null
+          ? i.lowestOfferPrice === i.highestOfferPrice
+            ? `$${i.lowestOfferPrice}`
+            : `$${i.lowestOfferPrice}–$${i.highestOfferPrice}`
+          : 'precio por definir';
+    push(i.listingDate, {
+      type: 'ipo',
+      title: `IPO: ${i.issuerName || i.ticker}${i.primaryExchange ? ` (${exchangeLabel(i.primaryExchange)})` : ''}`,
+      description: `${i.ticker} · Precio ${priced}${i.sharesOutstanding ? ` · ${fmtCompact(i.sharesOutstanding)} acciones` : ''}`,
+      date: i.listingDate,
+      importance: importanceFor('ipo'),
+      confidence: i.ipoStatus === 'new' ? 90 : 75,
+      status: i.ipoStatus === 'new' ? 'Confirmado' : 'Esperado',
+      source: 'Massive',
+      emoji: '🚀',
+      meta: { symbol: i.ticker, exchange: exchangeLabel(i.primaryExchange), issuePrice: i.finalIssuePrice },
+    });
+  }
   for (const i of (ipo as any[])) {
     if (!i.date) continue;
+    if (ipoSeen.has(`${i.symbol}:${i.date}`)) continue;
     push(i.date, {
       type: 'ipo',
-      title: `IPO: ${i.name || i.symbol} (${i.exchange || ''})`,
+      title: `IPO: ${i.name || i.symbol}${i.exchange ? ` (${i.exchange})` : ''}`,
       description: `Precio: $${i.price} · ${i.numberOfShares ? `${(i.numberOfShares / 1e6).toFixed(0)}M acciones` : ''}`.trim(),
       date: i.date,
       importance: importanceFor('ipo'),
@@ -279,6 +372,28 @@ async function fetchMarketCalendar(
       source: 'Finnhub',
       emoji: '🚀',
       meta: { symbol: i.symbol },
+    });
+  }
+
+  // Festivos de mercado (Massive) — NYSE/NASDAQ duplican, así que un chip por día
+  const holidayByDate = new Map<string, { name: string; status: string }>();
+  for (const h of (holidays as any[])) {
+    if (!h?.date || !h?.exchange) continue;
+    if (h.exchange !== 'NYSE' && h.exchange !== 'NASDAQ') continue;
+    if (!holidayByDate.has(h.date)) holidayByDate.set(h.date, { name: h.name || 'Festivo', status: h.status || 'closed' });
+  }
+  for (const [date, info] of Array.from(holidayByDate.entries())) {
+    const early = info.status === 'early-close';
+    push(date, {
+      type: 'holiday',
+      title: `${early ? 'Cierre temprano' : 'Mercado cerrado'} · ${info.name}`,
+      description: early ? 'La bolsa cierra temprano ese día (sesión reducida)' : 'Bolsa de valores cerrada; sin sesión',
+      date,
+      importance: importanceFor('holiday'),
+      confidence: 100,
+      status: 'Confirmado',
+      source: 'Massive',
+      emoji: '🏖️',
     });
   }
 

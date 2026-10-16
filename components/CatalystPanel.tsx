@@ -129,6 +129,7 @@ const TYPE_META: Record<string, { label: string; color: string }> = {
   analyst: { label: 'Analistas', color: '#F472B6' },
   news: { label: 'Mercado', color: '#8B90A5' },
   split: { label: 'Split', color: '#A78BFA' },
+  holiday: { label: 'Festivo', color: '#FBBF24' },
 };
 
 function fmtDate(iso: string): string {
