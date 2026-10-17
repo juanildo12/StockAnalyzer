@@ -544,7 +544,7 @@ export async function GET(request: NextRequest) {
     }
 
     const range = resolveRange(start, months, day);
-    const key = `catalysts:cal:${fmtDay(range.from)}:${fmtDay(range.to)}`;
+    const key = `catalysts:cal:v2:${fmtDay(range.from)}:${fmtDay(range.to)}`;
     const calendar = await cacheAside(key, CACHE_TTL, () => fetchMarketCalendar(range));
     return NextResponse.json(calendar);
   } catch (err: any) {
