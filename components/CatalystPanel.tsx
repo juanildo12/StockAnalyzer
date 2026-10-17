@@ -67,7 +67,7 @@ const TABS: { key: TabKey; emoji: string; label: string; color: string; sub: str
     emoji: '📅',
     label: 'Catalizadores',
     color: C.accent,
-    sub: 'Calendario semanal de ganancias, IPOs y eventos de mercado que mueven acciones',
+    sub: 'Próximas 2 semanas: ganancias, IPOs, Fed/macro y eventos de mercado que mueven acciones',
   },
   {
     key: 'calendar',
@@ -246,6 +246,16 @@ function hourOrder(hour?: string): number {
   if (h.startsWith('dmh') || h.startsWith('d')) return 1;
   if (h.startsWith('amc')) return 3;
   return 2;
+}
+
+/** Hora del evento macro en ET (ej. FOMC 14:00). */
+function etTimeLabel(iso?: string): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString('en-US', {
+    timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit',
+  });
 }
 
 /** Toggles de filtro por tipo, con conteo del conjunto visible. */
@@ -487,6 +497,8 @@ function MoverColumn({
 
 const CELL_HEIGHT = 96;
 const CELL_MAX_CHIPS = 2;
+/** Máximo de filas por día en la lista de próximas 2 semanas (el resto, en el calendario). */
+const WEEKLY_DAY_MAX = 12;
 
 function DayCell({
   iso, day, todayIso, isOpen, weekend, holiday, onToggle, onOpenSymbol,
@@ -789,7 +801,7 @@ function MonthCalendar({
                     const im = impChip(c.importance);
                     const tm = TYPE_META[c.type] || { label: c.type, color: C.textMuted };
                     const sym = c.meta?.symbol;
-                    const hl = hourLabel(c.meta?.hour);
+                    const hl = etTimeLabel(c.meta?.time) || hourLabel(c.meta?.hour);
                     return (
                       <div
                         key={i}
@@ -945,9 +957,7 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
   }, []);
 
   // La celda solo trae 6 eventos recortados; el resto se pide al desplegar.
-  const toggleDay = useCallback((iso: string) => {
-    if (openDay === iso) { setOpenDay(null); return; }
-    setOpenDay(iso);
+  const fetchDay = useCallback((iso: string) => {
     setDayEvents(null);
     setDayLoading(true);
     fetch(`/api/catalysts?day=${iso}`)
@@ -955,7 +965,21 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
       .then(d => { setDayEvents(d.days?.[0]?.events || []); })
       .catch(() => setDayEvents([]))
       .finally(() => setDayLoading(false));
-  }, [openDay]);
+  }, []);
+
+  const toggleDay = useCallback((iso: string) => {
+    if (openDay === iso) { setOpenDay(null); return; }
+    setOpenDay(iso);
+    fetchDay(iso);
+  }, [openDay, fetchDay]);
+
+  // "+N más" de la lista: salta al calendario mensual con el día ya desplegado.
+  const openDayInMonth = useCallback((iso: string) => {
+    setTab('calendar');
+    setCalYm(iso.slice(0, 7));
+    setOpenDay(iso);
+    fetchDay(iso);
+  }, [fetchDay]);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -1097,7 +1121,7 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
               cursor: 'pointer', fontSize: 13, fontFamily: F.family,
             }}
           >
-            ← Calendario de la semana
+            ← Calendario
           </button>
 
           {/* Stock header */}
@@ -1279,7 +1303,7 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
               padding: '20px 16px', borderRadius: R.md, border: `1px dashed ${C.border}`,
               background: '#0d1117', color: C.textMuted, fontSize: 12.5, textAlign: 'center',
             }}>
-              Sin eventos programados para los próximos 7 días. Prueba buscar un ticker arriba para ver su hoja de ruta.
+              Sin eventos programados para las próximas 2 semanas. Prueba buscar un ticker arriba para ver su hoja de ruta.
             </div>
           )}
 
@@ -1296,6 +1320,8 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
             const fday = filterDay(d, activeTypes);
             if ((fday.total ?? 0) === 0) return null;
             const evs = fday.events;
+            const shown = evs.slice(0, WEEKLY_DAY_MAX);
+            const more = evs.length - shown.length;
             return (
               <div key={d.iso} style={{
                 padding: '12px 14px', borderRadius: R.lg, marginBottom: 10,
@@ -1314,11 +1340,11 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
                   </span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {evs.map((c, i) => {
+                  {shown.map((c, i) => {
                     const im = impChip(c.importance);
                     const tm = TYPE_META[c.type] || { label: c.type, color: C.textMuted };
                     const metaSymbol = c.meta?.symbol;
-                    const hl = hourLabel(c.meta?.hour);
+                    const hl = etTimeLabel(c.meta?.time) || hourLabel(c.meta?.hour);
                     const clickable = metaSymbol != null;
                     return (
                       <div
@@ -1370,6 +1396,17 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
                     );
                   })}
                 </div>
+                {more > 0 && (
+                  <button
+                    onClick={() => openDayInMonth(d.iso)}
+                    style={{
+                      marginTop: 6, background: 'transparent', border: 'none', cursor: 'pointer',
+                      color: C.accent, fontSize: 12, fontWeight: 700, fontFamily: F.family, padding: '2px 0',
+                    }}
+                  >
+                    +{more} más · ver en el calendario →
+                  </button>
+                )}
               </div>
             );
           })}

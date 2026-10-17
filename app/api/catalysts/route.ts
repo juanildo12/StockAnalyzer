@@ -4,11 +4,11 @@ import {
   getEarningsCalendar,
   getEarningsCalendarChunked,
   getIPOCalendar,
-  getEconomicCalendar,
   getCompanyNews,
   getGeneralNews,
   getRecommendationTrends,
 } from '@/src/services/finnhubClient';
+import { getEconomicEvents, type EconomicEvent } from '@/src/services/tradingViewCalendar';
 import { cacheAside, cacheGet, cacheSet } from '@/src/lib/cache';
 import {
   getMassiveNews,
@@ -295,7 +295,7 @@ async function fetchMarketCalendar(
   const [earnings, ipo, economic, massiveGeneralNews, finnGeneralNews, massiveIpos, holidays] = await Promise.all([
     getEarningsCalendarChunked(fromIso, toIso).catch(() => []),
     getIPOCalendar(fromIso, toIso).catch(() => []),
-    getEconomicCalendar().catch(() => []),
+    getEconomicEvents(fromIso, toIso, { minImportance: 0 }).catch(() => [] as EconomicEvent[]),
     getMassiveNews({ limit: 20 }).catch(() => []),
     getGeneralNews().catch(() => []),
     getMassiveIPOs({ from: fromIso, to: toIso, limit: 100 }).catch(() => [] as NormalizedIPO[]),
@@ -398,19 +398,35 @@ async function fetchMarketCalendar(
     });
   }
 
-  // Economic (si el plan lo permite) — si no, los news cubren el hueco
-  for (const e of (economic as any[])) {
-    if (!e.date) continue;
-    push(e.date, {
+  // Macro / central bank (TradingView) — FOMC, CPI, NFP, GDP, PCE, ISM...
+  for (const e of (economic as EconomicEvent[])) {
+    const iso = new Date(e.date).toISOString().slice(0, 10);
+    const parts = [
+      e.period ? `Período ${e.period}` : '',
+      e.actual != null ? `Actual ${e.actual}` : e.forecast != null ? `Est ${e.forecast}` : '',
+      e.previous != null ? `Prev ${e.previous}` : '',
+    ].filter(Boolean);
+    const im = e.importance >= 1 ? 90 : e.importance >= 0 ? 68 : 45;
+    push(iso, {
       type: 'economic',
-      title: e.event || e.title || 'Evento económico',
-      description: `${e.period || ''}${e.actual != null ? ` · Actual: ${e.actual}` : e.estimate != null ? ` · Est: ${e.estimate}` : ''}`,
-      date: e.date,
-      importance: importanceFor('economic'),
+      title: e.title,
+      description: parts.join(' · '),
+      date: iso,
+      importance: im,
       confidence: 95,
-      status: 'Confirmado',
-      source: 'Finnhub Economic',
+      status: e.actual != null ? 'Completado' : 'Confirmado',
+      source: 'TradingView',
       emoji: '🌐',
+      meta: {
+        symbol: undefined,
+        indicator: e.indicator,
+        forecast: e.forecast,
+        previous: e.previous,
+        actual: e.actual,
+        period: e.period,
+        importance: e.importanceLabel,
+        time: e.date,
+      },
     });
   }
 
@@ -502,7 +518,7 @@ function resolveRange(start: string | null, months: number, day: string | null):
   }
 
   if (!start || !/^\d{4}-\d{2}(-\d{2})?$/.test(start)) {
-    return { from: addDays(now, -1), to: addDays(now, 7), includePast: false };
+    return { from: addDays(now, -1), to: addDays(now, 14), includePast: false };
   }
 
   const span = Math.min(Math.max(Math.round(months) || 1, 1), 3);
