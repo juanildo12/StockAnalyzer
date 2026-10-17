@@ -72,6 +72,13 @@ El sistema de Trade Picks ha sido actualizado al estilo momentum + breakout de S
   - **Dividendos por símbolo**: `getMassiveDividends(sym,12)` en la hoja de ruta (`/api/catalysts?symbol=`) completa a Yahoo (que sólo da 1 ex-div). Dedupe por fecha contra lo que ya puso Yahoo. `source: 'Massive'`.
   - **Splits por símbolo**: `getMassiveSplits(sym,5)`, sólo futuros (`execution_date >= hoy`), tipo `split` (✂️).
   - UI: `components/CatalystPanel.tsx` `TYPE_META` incluye `holiday`. `Catalyst['type']` (route) incluye `'holiday'`.
+- **Calendario de catalizadores — mejoras UI** (`components/CatalystPanel.tsx` + `app/api/catalysts/route.ts`):
+  - **Filtro por tipo** (chips on/off) con contadores, compartido entre la vista semanal y el mes (`TypeFilterBar`, `FILTER_TYPES`, `activeTypes`).
+  - **Contadores por tipo** en el header del mes (`sumTypeCounts`, badge por tipo con su color).
+  - **Tarjeta "próximo catalizador"** (`NextCatalystCard`) con cuenta atrás, arriba de la vista semanal y del mes.
+  - **Festivos/fin de semana** resaltados en la rejilla mensual (`DayCell` recibe `weekend`/`holiday`); el festivo muestra 🏖️ y nombre (viene en `meta.holiday`).
+  - **Detalle del día** ordenado por sesión (pre-mercado → intradía → sin hora → post-mercado; `hourOrder`/`hourLabel` sobre `meta.hour` BMO/AMC), badge de hora, y aviso si el filtro oculta eventos.
+  - **Endpoint**: cada día ahora trae `typeCounts` (conteo exacto por tipo, incluso con la lista recortada) y los chips se eligen con `diversifyTypes()` para garantizar que cada tipo presente aparezca aunque el día tenga cientos de earnings. El festivo añade `meta: { holiday, closed }`.
 - **Pendiente al pagar (ya implementado, inactivo)**: `getOptionsChainSnapshot` (greeks/IV/OI/breakeven reales → futura fuente de `bestContract`), `getQuotesBatch` (≤250 símbolos) y `getTopMovers`. Planes: Options Starter $29 (sin bid/ask), Options Advanced $199 (bid/ask real-time), Stocks Starter $29 (15-min delayed), Stocks Advanced $199 (real-time). Benzinga/TMX/ETF Global $99 c/u.
 - **Tests**: `npm test` = `vitest run src/lib src/services` (87 tests). `vitest.config.mts` añade el alias `@` para resolver imports en vitest.
 

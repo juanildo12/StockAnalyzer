@@ -21,6 +21,7 @@ interface CalendarDay {
   iso: string;
   label: string;
   total?: number;
+  typeCounts?: Record<string, number>;
   events: Catalyst[];
 }
 
@@ -132,6 +133,71 @@ const TYPE_META: Record<string, { label: string; color: string }> = {
   holiday: { label: 'Festivo', color: '#FBBF24' },
 };
 
+/** Orden en el que se muestran los filtros por tipo (desc por relevancia). */
+const FILTER_TYPES: string[] = ['earnings', 'ipo', 'economic', 'holiday', 'dividend', 'split', 'analyst', 'news'];
+
+/** Catálogo de tipos activos por defecto (todos). */
+function allTypes(): Set<string> {
+  return new Set(FILTER_TYPES);
+}
+
+function countByType(events: Catalyst[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const e of events) out[e.type] = (out[e.type] || 0) + 1;
+  return out;
+}
+
+/** Cuenta eventos por tipo usando `typeCounts` (exacto aunque la lista venga recortada). */
+function sumTypeCounts(days: CalendarDay[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const d of days) {
+    if (d.typeCounts) {
+      for (const t of Object.keys(d.typeCounts)) out[t] = (out[t] || 0) + (d.typeCounts[t] || 0);
+    } else {
+      const c = countByType(d.events);
+      for (const t of Object.keys(c)) out[t] = (out[t] || 0) + c[t];
+    }
+  }
+  return out;
+}
+
+/** Aplica el filtro de tipos a un día (recomputa `total` con `typeCounts` si existe). */
+function filterDay(day: CalendarDay, active: Set<string>): CalendarDay {
+  if (active.size === FILTER_TYPES.length) return day;
+  const events = day.events.filter(e => active.has(e.type));
+  const counts = day.typeCounts;
+  const total = counts
+    ? FILTER_TYPES.reduce((s, t) => s + (active.has(t) ? (counts[t] || 0) : 0), 0)
+    : events.length;
+  return { ...day, events, total };
+}
+
+function isWeekend(iso: string): boolean {
+  const dow = new Date(iso + 'T12:00:00').getDay();
+  return dow === 0 || dow === 6;
+}
+
+function isHoliday(day: CalendarDay | undefined): boolean {
+  if (!day) return false;
+  return (day.typeCounts?.holiday ?? 0) > 0;
+}
+
+/** Días desde hoy hasta `iso` (0 = hoy, 1 = mañana; negativo = pasado). */
+function daysUntil(iso: string): number {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const target = new Date(iso + 'T00:00:00');
+  return Math.round((target.getTime() - today.getTime()) / 86400000);
+}
+
+function countdownLabel(iso: string): string {
+  const d = daysUntil(iso);
+  if (d === 0) return 'Hoy';
+  if (d === 1) return 'Mañana';
+  if (d > 1) return `En ${d} días`;
+  if (d === -1) return 'Ayer';
+  return `Hace ${Math.abs(d)} días`;
+}
+
 function fmtDate(iso: string): string {
   const d = new Date(iso + 'T12:00:00');
   return d.toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
@@ -163,6 +229,166 @@ function fmtCompact(v: number): string {
   if (v >= 1e3) return `${(v / 1e3).toFixed(0)}K`;
   return String(v);
 }
+
+/** Badge "antes de abrir" / "después de cerrar" para earnings (meta.hour BMO/AMC). */
+function hourLabel(hour?: string): string | null {
+  const h = (hour || '').toLowerCase();
+  if (h.startsWith('bmo')) return 'Antes de abrir';
+  if (h.startsWith('amc')) return 'Después de cerrar';
+  if (h.startsWith('dmh') || h.startsWith('d')) return 'Durante sesión';
+  return null;
+}
+
+/** Orden cronológico de sesión: pre-mercado → intradía → sin hora → post-mercado. */
+function hourOrder(hour?: string): number {
+  const h = (hour || '').toLowerCase();
+  if (h.startsWith('bmo')) return 0;
+  if (h.startsWith('dmh') || h.startsWith('d')) return 1;
+  if (h.startsWith('amc')) return 3;
+  return 2;
+}
+
+/** Toggles de filtro por tipo, con conteo del conjunto visible. */
+function TypeFilterBar({
+  active, counts, onToggle, onReset,
+}: {
+  active: Set<string>;
+  counts: Record<string, number>;
+  onToggle: (t: string) => void;
+  onReset: () => void;
+}) {
+  const allOn = active.size === FILTER_TYPES.length;
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: 12 }}>
+      <span style={{
+        fontSize: 10.5, fontWeight: 700, letterSpacing: '0.4px',
+        color: C.textMuted, textTransform: 'uppercase', marginRight: 2,
+      }}>
+        Filtrar
+      </span>
+      {FILTER_TYPES.map(t => {
+        const tm = TYPE_META[t] || { label: t, color: C.textMuted };
+        const on = active.has(t);
+        const n = counts[t] || 0;
+        return (
+          <button
+            key={t}
+            onClick={() => onToggle(t)}
+            title={`${on ? 'Ocultar' : 'Mostrar'} ${tm.label}`}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '3px 9px', borderRadius: R.full, cursor: 'pointer',
+              fontSize: 11, fontWeight: 700, fontFamily: F.family,
+              border: `1px solid ${on ? tm.color + '66' : C.border}`,
+              background: on ? tm.color + '1e' : 'transparent',
+              color: on ? tm.color : C.textMuted,
+              opacity: n === 0 && on ? 0.45 : 1,
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span style={{
+              width: 7, height: 7, borderRadius: '50%',
+              background: on ? tm.color : 'transparent',
+              border: `1.5px solid ${on ? tm.color : C.textMuted}`,
+            }} />
+            {tm.label}
+            <span style={{ fontFamily: F.mono, opacity: 0.75 }}>{n}</span>
+          </button>
+        );
+      })}
+      {!allOn && (
+        <button
+          onClick={onReset}
+          style={{
+            padding: '3px 9px', borderRadius: R.full, cursor: 'pointer',
+            fontSize: 11, fontWeight: 700, fontFamily: F.family,
+            border: `1px solid ${C.accentBorder}`, background: C.accent12, color: C.accent,
+          }}
+        >
+          Todos
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Tarjeta con el próximo catalizador relevante y su cuenta atrás. */
+function NextCatalystCard({
+  days, active, onOpenSymbol, onJump,
+}: {
+  days: CalendarDay[] | null;
+  active: Set<string>;
+  onOpenSymbol: (symbol: string) => void;
+  onJump?: (iso: string) => void;
+}) {
+  if (!days || days.length === 0) return null;
+
+  const todayIso = fmtDay(new Date());
+  let next: { day: CalendarDay; c: Catalyst } | null = null;
+  for (const day of days) {
+    if (day.iso < todayIso) continue;
+    const candidates = day.events
+      .filter(e => active.has(e.type) && e.type !== 'news')
+      .sort((a, b) => b.importance - a.importance);
+    if (candidates.length > 0) { next = { day, c: candidates[0] }; break; }
+  }
+  if (!next) return null;
+
+  const { day, c } = next;
+  const tm = TYPE_META[c.type] || { label: c.type, color: C.textMuted };
+  const sym = c.meta?.symbol;
+  const dLeft = daysUntil(day.iso);
+
+  return (
+    <div
+      onClick={() => { if (sym) onOpenSymbol(sym); else onJump?.(day.iso); }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+        padding: '12px 14px', borderRadius: R.lg, marginBottom: 14,
+        cursor: 'pointer', border: `1px solid ${tm.color}44`,
+        background: `linear-gradient(90deg, ${tm.color}14, transparent 60%)`,
+      }}
+    >
+      <div style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        minWidth: 62, padding: '6px 8px', borderRadius: R.md,
+        background: tm.color + '1e', border: `1px solid ${tm.color}44`,
+      }}>
+        <span style={{ fontSize: 16, fontWeight: 800, color: tm.color, lineHeight: 1.1 }}>
+          {dLeft === 0 ? 'HOY' : dLeft === 1 ? 'MAÑ' : `${dLeft}d`}
+        </span>
+      </div>
+
+      <div style={{ flex: 1, minWidth: 180 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{
+            fontSize: 10, fontWeight: 800, letterSpacing: '0.6px', textTransform: 'uppercase',
+            color: C.textMuted,
+          }}>
+            Próximo catalizador
+          </span>
+          <span style={{
+            fontSize: 10.5, fontWeight: 800, padding: '1px 7px', borderRadius: R.full,
+            background: tm.color + '18', color: tm.color, border: `1px solid ${tm.color}40`,
+          }}>
+            {tm.label}
+          </span>
+        </div>
+        <div style={{
+          fontSize: 14, fontWeight: 700, color: C.textPrimary, marginTop: 3,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {c.emoji} {c.title}
+        </div>
+        <div style={{ fontSize: 11.5, color: C.textSecondary, marginTop: 2 }}>
+          {fmtDate(day.iso)} · {countdownLabel(day.iso)}
+          {sym && <span style={{ color: C.accentLight, fontWeight: 700 }}> · {sym} →</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function MoverRow({ mover, onOpen }: { mover: MarketMover; onOpen: (symbol: string) => void }) {
   const up = mover.changePct >= 0;
@@ -263,46 +489,64 @@ const CELL_HEIGHT = 96;
 const CELL_MAX_CHIPS = 2;
 
 function DayCell({
-  iso, day, todayIso, isOpen, onToggle,
+  iso, day, todayIso, isOpen, weekend, holiday, onToggle, onOpenSymbol,
 }: {
   iso: string;
   day: CalendarDay | undefined;
   todayIso: string;
   isOpen: boolean;
+  weekend: boolean;
+  holiday: boolean;
   onToggle: () => void;
+  onOpenSymbol: (symbol: string) => void;
 }) {
   const num = Number(iso.slice(-2));
   const isToday = iso === todayIso;
   const events = day?.events ?? [];
   const total = day?.total ?? events.length;
-  const hidden = Math.max(0, total - events.length);
+  const shown = events.slice(0, CELL_MAX_CHIPS);
+  const hidden = Math.max(0, total - shown.length);
+
+  const holidayName = holiday
+    ? (events.find(e => e.type === 'holiday')?.meta?.holiday as string | undefined)
+    : undefined;
+
+  const bg = isOpen ? C.accent12
+    : isToday ? C.bgCardHover
+    : holiday ? '#FBBF2410'
+    : weekend ? '#0f1319'
+    : C.bgCard;
+  const border = isOpen ? C.accentBorder
+    : isToday ? C.borderHover
+    : holiday ? '#FBBF2440'
+    : C.border;
+  const numColor = isToday ? C.accent : holiday ? '#FBBF24' : weekend ? C.textMuted : C.textSecondary;
+
+  const title = holidayName
+    ? `🏖️ ${holidayName}`
+    : total > 0 ? `${total} catalizador${total === 1 ? '' : 'es'} — clic para ver todos` : undefined;
 
   return (
     <div
       onClick={total > 0 ? onToggle : undefined}
-      title={total > 0 ? `${total} catalizador${total === 1 ? '' : 'es'} — clic para ver todos` : undefined}
+      title={title}
       style={{
         height: CELL_HEIGHT, padding: '4px 5px', boxSizing: 'border-box',
         display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden',
         borderRadius: R.sm, cursor: total > 0 ? 'pointer' : 'default',
-        background: isOpen ? C.accent12 : isToday ? C.bgCardHover : C.bgCard,
-        border: `1px solid ${isOpen ? C.accentBorder : isToday ? C.borderHover : C.border}`,
+        background: bg, border: `1px solid ${border}`,
         transition: 'background 0.15s ease, border-color 0.15s ease',
       }}
-      onMouseEnter={e => {
-        if (total > 0 && !isOpen) e.currentTarget.style.background = C.bgCardHover;
-      }}
-      onMouseLeave={e => {
-        if (total > 0 && !isOpen) e.currentTarget.style.background = isToday ? C.bgCardHover : C.bgCard;
-      }}
+      onMouseEnter={e => { if (total > 0 && !isOpen) e.currentTarget.style.background = C.bgCardHover; }}
+      onMouseLeave={e => { if (total > 0 && !isOpen) e.currentTarget.style.background = bg; }}
     >
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         flexShrink: 0, marginBottom: 1,
         fontSize: 10.5, fontWeight: isToday ? 800 : 600, lineHeight: 1.2,
-        color: isToday ? C.accent : C.textSecondary,
+        color: numColor,
       }}>
-        <span>{num}</span>
+        <span>{num}{holiday && holidayName ? ' 🏖️' : ''}</span>
         {total > 0 && (
           <span style={{
             fontSize: 9, fontWeight: 700, color: C.textMuted,
@@ -314,17 +558,21 @@ function DayCell({
         )}
       </div>
 
-      {events.slice(0, CELL_MAX_CHIPS).map((c, i) => {
+      {shown.map((c, i) => {
         const tm = TYPE_META[c.type] || { label: c.type, color: C.textMuted };
+        const sym = c.meta?.symbol as string | undefined;
         return (
           <div
             key={i}
+            onClick={sym ? (e) => { e.stopPropagation(); onOpenSymbol(sym); } : undefined}
+            title={sym ? `${c.title} — ver ${sym}` : c.title}
             style={{
               fontSize: 9.5, lineHeight: 1.28, padding: '1px 3px',
               borderRadius: 3, overflow: 'hidden', wordBreak: 'break-word',
               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
               background: tm.color + '16', color: tm.color,
               borderLeft: `2px solid ${tm.color}`,
+              cursor: sym ? 'pointer' : 'inherit',
             }}
           >
             {c.emoji} {c.title}
@@ -351,6 +599,9 @@ interface MonthCalendarProps {
   openDay: string | null;
   dayEvents: Catalyst[] | null;
   dayLoading: boolean;
+  activeTypes: Set<string>;
+  onToggleType: (t: string) => void;
+  onResetTypes: () => void;
   onShift: (delta: number) => void;
   onToday: () => void;
   onToggleDay: (iso: string) => void;
@@ -358,12 +609,15 @@ interface MonthCalendarProps {
 }
 
 function MonthCalendar({
-  ym, days, loading, openDay, dayEvents, dayLoading,
-  onShift, onToday, onToggleDay, onOpenSymbol,
+  ym, days, loading, openDay, dayEvents, dayLoading, activeTypes,
+  onToggleType, onResetTypes, onShift, onToday, onToggleDay, onOpenSymbol,
 }: MonthCalendarProps) {
   const todayIso = fmtDay(new Date());
   const byIso = new Map((days || []).map(d => [d.iso, d]));
+  const filteredByIso = new Map((days || []).map(d => [d.iso, filterDay(d, activeTypes)]));
   const cells = monthCells(ym);
+
+  const monthCounts = sumTypeCounts((days || []).filter(d => d.iso.slice(0, 7) === ym));
 
   const navBtn = {
     padding: '5px 11px', borderRadius: R.sm, border: `1px solid ${C.border}`,
@@ -404,6 +658,45 @@ function MonthCalendar({
         </div>
       </div>
 
+      {/* Próximo catalizador del mes */}
+      {!loading && (
+        <NextCatalystCard
+          days={(days || []).filter(d => d.iso >= todayIso)}
+          active={activeTypes}
+          onOpenSymbol={onOpenSymbol}
+          onJump={onToggleDay}
+        />
+      )}
+
+      {/* Contadores por tipo del mes */}
+      {!loading && days && days.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+          {FILTER_TYPES.map(t => {
+            const n = monthCounts[t] || 0;
+            if (n === 0) return null;
+            const tm = TYPE_META[t] || { label: t, color: C.textMuted };
+            return (
+              <span key={t} style={{
+                display: 'flex', alignItems: 'center', gap: 5, padding: '3px 9px',
+                borderRadius: R.full, fontSize: 11, fontWeight: 600,
+                border: `1px solid ${C.border}`, background: C.bgCard, color: C.textSecondary,
+              }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: tm.color }} />
+                {tm.label}
+                <span style={{ fontFamily: F.mono, fontWeight: 700, color: tm.color }}>{n}</span>
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      <TypeFilterBar
+        active={activeTypes}
+        counts={monthCounts}
+        onToggle={(t) => onToggleType(t)}
+        onReset={onResetTypes}
+      />
+
       {/* Weekday headers */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
         {WEEKDAYS.map(w => (
@@ -426,10 +719,13 @@ function MonthCalendar({
             <DayCell
               key={iso}
               iso={iso}
-              day={byIso.get(iso)}
+              day={filteredByIso.get(iso)}
               todayIso={todayIso}
               isOpen={openDay === iso}
+              weekend={isWeekend(iso)}
+              holiday={isHoliday(byIso.get(iso))}
               onToggle={() => onToggleDay(iso)}
+              onOpenSymbol={onOpenSymbol}
             />
           ) : (
             <div key={`e${i}`} style={{ height: CELL_HEIGHT, borderRadius: R.sm }} />
@@ -465,55 +761,84 @@ function MonthCalendar({
             <div style={{ color: C.textMuted, fontSize: 12.5 }}>Sin eventos.</div>
           )}
 
-          {!dayLoading && dayEvents && dayEvents.length > 0 && (
-            <>
-              <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 8 }}>
-                {dayEvents.length} evento{dayEvents.length === 1 ? '' : 's'}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 380, overflowY: 'auto' }}>
-                {dayEvents.map((c, i) => {
-                  const im = impChip(c.importance);
-                  const tm = TYPE_META[c.type] || { label: c.type, color: C.textMuted };
-                  const sym = c.meta?.symbol;
-                  return (
-                    <div
-                      key={i}
-                      onClick={() => sym && onOpenSymbol(sym)}
-                      style={{
-                        display: 'flex', alignItems: 'flex-start', gap: 9,
-                        padding: '7px 9px', borderRadius: R.sm,
-                        border: `1px solid ${C.border}`, background: C.bgCard,
-                        borderLeft: `3px solid ${im.color}`,
-                        cursor: sym ? 'pointer' : 'default',
-                      }}
-                      onMouseEnter={e => { if (sym) e.currentTarget.style.background = C.bgCardHover; }}
-                      onMouseLeave={e => { if (sym) e.currentTarget.style.background = C.bgCard; }}
-                    >
-                      <span style={{ fontSize: 12 }}>{c.emoji}</span>
-                      <span style={{
-                        fontSize: 9.5, fontWeight: 800, padding: '1px 5px', borderRadius: 3,
-                        background: tm.color + '16', color: tm.color, flexShrink: 0, marginTop: 1,
-                      }}>
-                        {tm.label}
-                      </span>
-                      <span style={{
-                        flex: 1, minWidth: 0, fontSize: 12, fontWeight: 500,
-                        color: C.textPrimary, lineHeight: 1.4,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>
-                        {c.title}
-                      </span>
-                      {sym && (
-                        <span style={{ fontSize: 9.5, fontWeight: 800, color: C.accentLight, flexShrink: 0 }}>
-                          {sym} →
+          {!dayLoading && dayEvents && dayEvents.length > 0 && (() => {
+            const visible = dayEvents
+              .filter(e => activeTypes.has(e.type))
+              .slice()
+              .sort((a, b) =>
+                hourOrder(a.meta?.hour) - hourOrder(b.meta?.hour) || b.importance - a.importance
+              );
+            if (visible.length === 0) {
+              return (
+                <div style={{
+                  padding: '14px 12px', borderRadius: R.md, border: `1px dashed ${C.border}`,
+                  color: C.textMuted, fontSize: 12.5,
+                }}>
+                  Los {dayEvents.length} eventos de este día están ocultos por el filtro de tipos.
+                </div>
+              );
+            }
+            return (
+              <>
+                <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 8 }}>
+                  {visible.length} evento{visible.length === 1 ? '' : 's'}
+                  {visible.length < dayEvents.length && ` · ${dayEvents.length - visible.length} ocultos`}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 380, overflowY: 'auto' }}>
+                  {visible.map((c, i) => {
+                    const im = impChip(c.importance);
+                    const tm = TYPE_META[c.type] || { label: c.type, color: C.textMuted };
+                    const sym = c.meta?.symbol;
+                    const hl = hourLabel(c.meta?.hour);
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => sym && onOpenSymbol(sym)}
+                        style={{
+                          display: 'flex', alignItems: 'flex-start', gap: 9,
+                          padding: '7px 9px', borderRadius: R.sm,
+                          border: `1px solid ${C.border}`, background: C.bgCard,
+                          borderLeft: `3px solid ${im.color}`,
+                          cursor: sym ? 'pointer' : 'default',
+                        }}
+                        onMouseEnter={e => { if (sym) e.currentTarget.style.background = C.bgCardHover; }}
+                        onMouseLeave={e => { if (sym) e.currentTarget.style.background = C.bgCard; }}
+                      >
+                        <span style={{ fontSize: 12 }}>{c.emoji}</span>
+                        <span style={{
+                          fontSize: 9.5, fontWeight: 800, padding: '1px 5px', borderRadius: 3,
+                          background: tm.color + '16', color: tm.color, flexShrink: 0, marginTop: 1,
+                        }}>
+                          {tm.label}
                         </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
+                        <span style={{
+                          flex: 1, minWidth: 0, fontSize: 12, fontWeight: 500,
+                          color: C.textPrimary, lineHeight: 1.4,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {c.title}
+                        </span>
+                        {hl && (
+                          <span style={{
+                            fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3,
+                            background: C.bgElevated, color: C.textMuted, flexShrink: 0, marginTop: 1,
+                            whiteSpace: 'nowrap',
+                          }}>
+                            {hl}
+                          </span>
+                        )}
+                        {sym && (
+                          <span style={{ fontSize: 9.5, fontWeight: 800, color: C.accentLight, flexShrink: 0 }}>
+                            {sym} →
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
     </div>
@@ -537,9 +862,20 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
   const [openDay, setOpenDay] = useState<string | null>(null);
   const [dayEvents, setDayEvents] = useState<Catalyst[] | null>(null);
   const [dayLoading, setDayLoading] = useState(false);
+  const [activeTypes, setActiveTypes] = useState<Set<string>>(() => allTypes());
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const moversRequested = useRef(false);
+
+  const toggleType = useCallback((t: string) => {
+    setActiveTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t);
+      else next.add(t);
+      return next;
+    });
+  }, []);
+  const resetTypes = useCallback(() => setActiveTypes(allTypes()), []);
 
   const loadCalendar = useCallback((offset: number) => {
     setLoading(true);
@@ -916,6 +1252,15 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
       {/* Weekly calendar */}
       {tab === 'catalysts' && !loading && !error && !selected && (
         <div>
+          <NextCatalystCard days={days} active={activeTypes} onOpenSymbol={loadSymbol} />
+
+          <TypeFilterBar
+            active={activeTypes}
+            counts={sumTypeCounts(days || [])}
+            onToggle={toggleType}
+            onReset={resetTypes}
+          />
+
           {/* Legend */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', fontSize: 11 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -938,7 +1283,19 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
             </div>
           )}
 
+          {days && days.length > 0 && days.every(d => (filterDay(d, activeTypes).total ?? 0) === 0) && (
+            <div style={{
+              padding: '20px 16px', borderRadius: R.md, border: `1px dashed ${C.border}`,
+              background: '#0d1117', color: C.textMuted, fontSize: 12.5, textAlign: 'center',
+            }}>
+              Ningún evento coincide con el filtro seleccionado.
+            </div>
+          )}
+
           {days && visibleDays.map(d => {
+            const fday = filterDay(d, activeTypes);
+            if ((fday.total ?? 0) === 0) return null;
+            const evs = fday.events;
             return (
               <div key={d.iso} style={{
                 padding: '12px 14px', borderRadius: R.lg, marginBottom: 10,
@@ -953,14 +1310,15 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
                     fontSize: 11, fontWeight: 700, padding: '1px 7px', borderRadius: R.full, color: C.accent,
                     background: C.accent12,
                   }}>
-                    {d.events.length} eventos
+                    {fday.total ?? evs.length} eventos
                   </span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {d.events.map((c, i) => {
+                  {evs.map((c, i) => {
                     const im = impChip(c.importance);
                     const tm = TYPE_META[c.type] || { label: c.type, color: C.textMuted };
                     const metaSymbol = c.meta?.symbol;
+                    const hl = hourLabel(c.meta?.hour);
                     const clickable = metaSymbol != null;
                     return (
                       <div
@@ -986,6 +1344,14 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
                         <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: C.textPrimary, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {c.title}
                         </span>
+                        {hl && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4,
+                            background: C.bgElevated, color: C.textMuted, flexShrink: 0, whiteSpace: 'nowrap',
+                          }}>
+                            {hl}
+                          </span>
+                        )}
                         {metaSymbol && (
                           <span style={{
                             fontSize: 10.5, fontWeight: 800, padding: '1px 7px', borderRadius: 4,
@@ -1019,6 +1385,9 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
           openDay={openDay}
           dayEvents={dayEvents}
           dayLoading={dayLoading}
+          activeTypes={activeTypes}
+          onToggleType={toggleType}
+          onResetTypes={resetTypes}
           onShift={shiftMonth}
           onToday={() => { setCalYm(ymOf(new Date())); setOpenDay(null); setDayEvents(null); }}
           onToggleDay={toggleDay}

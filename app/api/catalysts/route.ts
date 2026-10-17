@@ -394,6 +394,7 @@ async function fetchMarketCalendar(
       status: 'Confirmado',
       source: 'Massive',
       emoji: '🏖️',
+      meta: { holiday: info.name, closed: !early },
     });
   }
 
@@ -443,10 +444,47 @@ async function fetchMarketCalendar(
     .sort()
     .map(iso => {
       const events = daysMap.get(iso)!.sort((a, b) => b.importance - a.importance);
-      return { iso, label: iso === today ? 'Hoy' : dayLabel(iso), total: events.length, events: events.slice(0, cap) };
+      const typeCounts: Record<string, number> = {};
+      for (const e of events) typeCounts[e.type] = (typeCounts[e.type] || 0) + 1;
+      return {
+        iso,
+        label: iso === today ? 'Hoy' : dayLabel(iso),
+        total: events.length,
+        typeCounts,
+        events: diversifyTypes(events, cap),
+      };
     });
 
   return { days, start: fromIso, end: toIso };
+}
+
+/**
+ * Recorta la lista del día a `cap` eventos, pero garantizando que cada tipo
+ * presente aparezca al menos una vez (importancia primero). Así los filtros por
+ * tipo de la UI siguen mostrando algo aunque un día tenga cientos de earnings.
+ */
+function diversifyTypes(events: Catalyst[], cap: number): Catalyst[] {
+  if (!Number.isFinite(cap) || cap >= events.length) return events;
+
+  const byType = new Map<string, Catalyst[]>();
+  for (const e of events) {
+    const list = byType.get(e.type);
+    if (list) list.push(e);
+    else byType.set(e.type, [e]);
+  }
+
+  const picks: Catalyst[] = [];
+  const picked = new Set<Catalyst>();
+  for (const list of Array.from(byType.values())) {
+    if (picks.length >= cap) break;
+    picks.push(list[0]);
+    picked.add(list[0]);
+  }
+  for (const e of events) {
+    if (picks.length >= cap) break;
+    if (!picked.has(e)) picks.push(e);
+  }
+  return picks.sort((a, b) => b.importance - a.importance);
 }
 
 /**
