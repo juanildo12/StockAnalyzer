@@ -6,6 +6,7 @@ import {
   Watch, FlaskConical, Brain, Bot, Gamepad2,
   ChevronDown, ChevronRight, Zap, LineChart, Bell,
   Lock, Crown, Gem, Building2, Sun, Moon, CalendarDays,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { colors as C, radius as R, font as F, spacing as S, transition as T } from '@/src/utils/webTheme';
 import { useTheme } from '@/src/components/ThemeProvider';
@@ -73,6 +74,7 @@ const NAV_GROUPS: NavGroup[] = [
       { view: 'alerts', label: 'Smart Alerts', icon: <Bell size={18} />, badge: 'PRO', minPlan: 'pro' },
       { view: 'algo-alerts', label: 'Algo Alerts', icon: <Bot size={18} />, badge: 'PRO', minPlan: 'pro' },
       { view: 'options', label: 'Opciones', icon: <Target size={18} />, badge: 'ELITE', minPlan: 'elite' },
+      { view: 'options-sim', label: 'Sim. Opciones', icon: <SlidersHorizontal size={18} />, badge: 'ELITE', minPlan: 'elite' },
       { view: 'watchlist', label: 'Watchlist', icon: <Watch size={18} /> },
       { view: 'portfolio', label: 'Portafolio', icon: <Building2 size={18} /> },
       { view: 'backtest', label: 'Backtest', icon: <FlaskConical size={18} />, badge: 'PRO', minPlan: 'pro' },

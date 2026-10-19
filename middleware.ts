@@ -228,6 +228,7 @@ export async function middleware(req: NextRequest) {
       pathname.startsWith("/api/prospect-pick") ||
       pathname.startsWith("/api/trade-picks") ||
       pathname.startsWith("/api/gamma-levels") ||
+      pathname.startsWith("/api/options-sim") ||
       pathname.startsWith("/api/squeeze");
 
     if (!publicLegacy && !token) {
