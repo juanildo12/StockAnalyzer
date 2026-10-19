@@ -73,6 +73,7 @@ export default function OptionsStrategySimulator({ initialSymbol = 'SPY' }: Prop
   const [style, setStyle] = useState<'european' | 'american'>('american');
   const [crushPct, setCrushPct] = useState(0.4);
   const [elapsedDte, setElapsedDte] = useState(0);
+  const [showHelp, setShowHelp] = useState(false);
 
   const fetchData = useCallback(async (sym: string) => {
     setLoading(true);
@@ -203,6 +204,12 @@ export default function OptionsStrategySimulator({ initialSymbol = 'SPY' }: Prop
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <h2 style={{ margin: 0, color: C.textPrimary, fontSize: 18, fontWeight: 700 }}>🎛 Simulador de Estrategias de Opciones</h2>
           <span style={{ color: C.textMuted, fontSize: 12 }}>Payoff · Griegos · What-if · IV Crush</span>
+          <button
+            onClick={() => setShowHelp((v) => !v)}
+            style={{ marginLeft: 'auto', background: showHelp ? C.accent : 'transparent', color: showHelp ? '#04211D' : C.accent, border: '1px solid ' + C.accentBorder, borderRadius: R.full, padding: '5px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+          >
+            {showHelp ? '✕ Cerrar ayuda' : '? Cómo usar'}
+          </button>
         </div>
         <p style={{ margin: '6px 0 0', color: C.textMuted, fontSize: 12 }}>
           Modela posiciones multi-pata y analízalas antes de operar. Solo análisis — esta herramienta no ejecuta órdenes.
@@ -230,6 +237,8 @@ export default function OptionsStrategySimulator({ initialSymbol = 'SPY' }: Prop
           )}
         </div>
       </div>
+
+      {showHelp && <HelpPanel onClose={() => setShowHelp(false)} />}
 
       {loading && <Shell text="Cargando cadena de opciones..." />}
       {!loading && error && <Shell text={error} onRetry={() => fetchData(symbol)} />}
@@ -495,6 +504,90 @@ function Shell({ text, onRetry }: { text: string; onRetry?: () => void }) {
 function SectionTitle({ title }: { title: string }) {
   return <h3 style={{ margin: '0 0 12px', color: C.textPrimary, fontSize: 14, fontWeight: 700 }}>{title}</h3>;
 }
+
+function HelpPanel({ onClose }: { onClose: () => void }) {
+  return (
+    <div style={{ ...card, marginBottom: S.md, border: '1px solid ' + C.accentBorder }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: S.sm }}>
+        <h3 style={{ margin: 0, color: C.textPrimary, fontSize: 15, fontWeight: 700 }}>📖 Guía del simulador</h3>
+        <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: C.textMuted, fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
+      </div>
+
+      <HelpBlock title="¿Qué es?">
+        Un simulador <strong style={{ color: C.textPrimary }}>pre-trade</strong> para estrategias de opciones de varias patas (spreads, condors, straddles…).
+        Calcula el P&L al vencimiento, el P&L actual (mark-to-market), los griegos y escenarios de estrés. <strong style={{ color: C.warning }}>Nunca ejecuta órdenes</strong> ni predice el futuro: es una calculadora de riesgo.
+      </HelpBlock>
+
+      <HelpBlock title="1 · Cargar y construir la estrategia">
+        <HelpRow n="1">Escribe un ticker (ej. <code style={code}>AAPL</code>) y pulsa <strong>Cargar</strong>. El <em>spot</em> es el precio actual del subyacente.</HelpRow>
+        <HelpRow n="2">Pulsa un <strong>preset</strong> (botones de color por sesgo): alcista=verde, bajista=rojo, neutral=ámbar, volátil=azul. Usa strikes y primas reales de la cadena.</HelpRow>
+        <HelpRow n="3">Ajusta el <strong>vencimiento</strong> y el <strong>estilo</strong>: <em>Americana</em> modela ejercicio anticipado (árbol binomial), <em>Europea</em> usa Black-Scholes.</HelpRow>
+        <HelpRow n="4">Edita cada <strong>pata</strong> en la tabla: Lado (Long=pagas prima / Short=cobras prima), Tipo (Call/Put), Strike, Qty (nº de contratos), Prima y IV. Añade o quita patas con los botones.</HelpRow>
+      </HelpBlock>
+
+      <HelpBlock title="2 · Payoff y P&L (gráfica)">
+        El eje X es el <strong style={{ color: C.textPrimary }}>precio del subyacente al vencimiento</strong>; el eje Y, el <strong style={{ color: C.accent }}>P&L en dólares</strong> de toda la posición.
+        <HelpRow n="•"><span style={{ color: C.accent }}>Línea verde sólida</span> = P&L si mantienes hasta el vencimiento.</HelpRow>
+        <HelpRow n="•"><span style={{ color: C.info }}>Línea azul punteada</span> = P&L <em>hoy</em> (mark-to-market), sensible a IV y al tiempo.</HelpRow>
+        <HelpRow n="•"><strong>Pasa el mouse</strong> por la gráfica: crosshair + tooltip con el spot y el P&L (vencimiento y hoy) en ese punto.</HelpRow>
+        <HelpRow n="•">El <strong>slider de días</strong> avanza el tiempo: mira cómo la curva de hoy se acerca a la de vencimiento.</HelpRow>
+        <HelpRow n="•">Líneas de referencia: <span style={{ color: C.warning }}>breakeven</span> (amarillo), <em>spot</em> y <em>strikes</em>.</HelpRow>
+      </HelpBlock>
+
+      <HelpBlock title="3 · Perfil de riesgo">
+        <HelpRow n="•"><strong>Crédito/Débito neto</strong>: si cobras prima (crédito) o la pagas (débito) al abrir.</HelpRow>
+        <HelpRow n="•"><strong>Beneficio / Pérdida máxima</strong>: el mejor y peor caso al vencimiento. "Ilimitado/a" significa que no hay tope (ej. call comprada, put vendida sin cobertura).</HelpRow>
+        <HelpRow n="•"><strong>Breakevens</strong>: precio(s) del subyacente donde el P&L es cero al vencimiento.</HelpRow>
+        <HelpRow n="•"><strong>Margen estimado</strong>: requisito aproximado estilo Reg-T. Es una estimación propia y conservadora — <em>no</em> es el margen que exigirá tu bróker.</HelpRow>
+      </HelpBlock>
+
+      <HelpBlock title="4 · Griegos agregados">
+        Sensibilidad de la posición al moverse el mercado. Escalados a tu tamaño (qty × 100 acciones por contrato).
+        <HelpRow n="Δ Delta"><strong>Delta</strong>: cuánto cambia el P&L si el subyacente sube $1. Ej. Delta 200 → ganas ~$200 por cada $1 de subida.</HelpRow>
+        <HelpRow n="Γ Gamma"><strong>Gamma</strong>: cuánto cambia el Delta si el subyacente sube $1 (curvatura).</HelpRow>
+        <HelpRow n="Θ Theta"><strong>Theta</strong>: cuánto ganas/pierdes por el paso de <em>1 día</em> (compradas suelen perder; vendidas suelen ganar).</HelpRow>
+        <HelpRow n="ν Vega"><strong>Vega</strong>: cuánto cambia el P&L por cada <em>1 punto</em> que sube la volatilidad implícita (1pp de IV).</HelpRow>
+        <HelpRow n="ρ Rho"><strong>Rho</strong>: sensibilidad a los tipos de interés (por 1pp). Suele ser lo menos relevante.</HelpRow>
+      </HelpBlock>
+
+      <HelpBlock title="5 · IV Crush">
+        Simula un <strong>colapso de volatilidad</strong> (típico tras resultados): mueve el slider para reducir la IV con el spot sin cambios.
+        Las posiciones netas <em>long-volatilidad</em> (compras de straddles, W-shapes) pierden; las <em>short-volatilidad</em> (ventas) ganan.
+      </HelpBlock>
+
+      <HelpBlock title="6 · Matriz What-if">
+        Tabla de escenarios: filas = movimiento del <strong>spot</strong> (%), columnas = cambio de <strong>IV</strong> (puntos). Cada celda muestra el P&L mark-to-market a ese escenario, en verde (ganancia) o rojo (pérdida). Incluye el tiempo ya transcurrido.
+      </HelpBlock>
+
+      <div style={{ marginTop: S.sm, padding: '10px 12px', background: C.warningBg, border: '1px solid ' + C.warningBorder, borderRadius: R.sm, color: C.textSecondary, fontSize: 12 }}>
+        ⚠️ <strong style={{ color: C.textPrimary }}>Aviso:</strong> herramientas de análisis educativo. Los precios de la cadena (mid) son referencias, no garantías de ejecución. No es asesoría financiera.
+      </div>
+    </div>
+  );
+}
+
+function HelpBlock({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginTop: S.md }}>
+      <div style={{ color: C.accent, fontSize: 13, fontWeight: 700, marginBottom: 6 }}>{title}</div>
+      <div style={{ color: C.textSecondary, fontSize: 12.5, lineHeight: 1.6 }}>{children}</div>
+    </div>
+  );
+}
+
+function HelpRow({ n, children }: { n?: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+      {n && <span style={{ color: C.accentLight, fontWeight: 700, fontSize: 12, minWidth: 62, flexShrink: 0 }}>{n}</span>}
+      <span style={{ flex: 1 }}>{children}</span>
+    </div>
+  );
+}
+
+const code: React.CSSProperties = {
+  background: C.bgElevated, border: '1px solid ' + C.border, borderRadius: 4, padding: '1px 5px',
+  fontSize: 11.5, fontFamily: 'monospace', color: C.accentLight,
+};
 
 function Row({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
