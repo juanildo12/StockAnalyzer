@@ -24,13 +24,26 @@ User preference for contract selection:
 ## Trade Picks (actualizado — Momentum de Sean @SRxTrades)
 
 El sistema de Trade Picks ha sido actualizado al estilo momentum + breakout de Sean:
-- **Solo CALL (largo)**: únicamente líderes alcistas. No genera PUTs.
+- **Direccional**: el modo por defecto busca **CALL (alcista)**; el toggle de la UI (o `?bias=bear`) activa el modo **PUT (bajista)** — ver sección "Trade Picks — modo bajista (PUT)" más abajo. El régimen/úmbrales de esta sección describen el modo CALL.
 - **Régimen de mercado**: se exige que SPY y/o QQQ estén por encima de sus EMA 8/21/50. Se calcula y devuelve `regime: {level: BULL|MIXED|CHOP, ...}` en el scan (MIXED/CHOP no bloquean el scan, pero se muestra advertencia).
 - **Selección por momentum**: precio sobre EMA 8/21/50, ordenado en el stack, ADR ≥ 2%, cambio del día > 0, fuerza relativa vs SPY (20d) positiva.
 - **Setup de base ajustada**: detecta consolidación (~15 barras) con volumen secándose. Requiere estar a ≤ 3% del trigger (breakout "near") o haber cerrado sobre él con volumen ≥ 1.5x ("confirmed"). Range de base ≤ 12%.
 - **Umbrales de score**: `MIN_PICK_SCORE = 80` para el pick titular (A/A+). `FOCUS_MIN_SCORE = 70` para la `focusList` (top 5 candidatos). Se prefieren mejores scores (A+ ≥90, A ≥80, B+ ≥70).
 - **Contratos**: NO se relajan los requisitos de spread. Siempre tight (spread ≤10% y ≤$0.60) o semi-tight (≤15% y ≤$0.90) únicamente si no hay tight. OI ≥500, Vol ≥100 (se relaja a OI ≥100/Vol ≥20 solo en segundo intento manteniendo spread). Se buscan expiraciones 7-60 DTE, priorizando ~38 DTE. Se devuelve contrato solo si cumple los filtros estrictos.
 - **Gestión**: en la UI se sugiere trimming (25% target, 25% bajo EMA8, 25% bajo EMA21, salida bajo EMA50).
+
+## Trade Picks — modo bajista (PUT)
+
+Trade Picks también escanea setups a la baja para compras de PUT, activado por el **toggle Alcista/Bajista** de la UI o con `?bias=bear` (o `bias=put`) en `GET /api/trade-picks/scan`. El mismo escaneo del universo devuelve `candidates` (CALL) y `shorts` (PUT); el endpoint elige por `bias`.
+
+- **Espejo de los gates largos** en `scoreShort()` (route.ts): precio **bajo** EMA 8/21/50, **día rojo** (cambio < 0), ADR ≥ 2%, y `detectShortSetup()` (momentum.ts) = base de ~15 barras cuyo **soporte** es el gatillo de ruptura abajo (≤3% por encima = "near"; cerró por debajo = "confirmed"). SetupState en la focus list se muestra como `BREAKDOWN` (no `BREAKOUT`).
+- **Niveles**: entrada = soporte si aún no rompió (sell stop) o el precio si ya rompió. Stop = mín(techo de la base, resistencia estructural ≥1 ATR, entry+1.5ATR). Target = proyección del asta a la baja; un soporte real en el camino resta −3 pts y acota el target *realista* del contrato. R:R ≥ 2 (gate, igual que el long).
+- **Atado al régimen** (decisión del usuario): CHOP/mercado débil **favorece** puts (+10 si CHOP, +5 si MIXED, −10 si BULL "contra la tendencia"). VIX alto ayuda (+6 si >30, +4 si >25, −4 si ≤16 "puts caros"). Amplitud (breadth) se **invierte** para shorts (débil = +pts, fuerte = −pts). Debilidad relativa vs SPY (rs ≤ −10/−5) y rezago del sector (rsSec ≤ −5) suman; liderar el sector resta.
+- **Contratos**: `searchContracts()` ya era direction-aware (`exp.puts` cuando `direction==='PUT'`). `wallBlocked` usa **putWall** (soporte por debajo del target, no callWall). El `realisticTarget` usa el **soporte** más cercano por debajo de la entrada (mirror de `pick.resistance`). El delta se aproxima negativo vía `approxdelta(..., isCall=false)`.
+- **Universo**: `fetchTradePickUniverse()` ya no descarta días rojos (antes filtraba `changePercent <= 0`), porque los screeners incluyen `day_losers` y descartarlos dejaba ciego al escáner bajista. Ambos lados se puntúan en el mismo pase (~924 símbolos).
+- **Enriquecimiento**: `peerRs` de Massive **no** se usa para picks PUT (el texto "lidera a sus pares" sería confuso en cortos); sí se aplica `corpAction`.
+- **UI** (`components/TradePickView.tsx`): `bias` state + toggle; el plan de gestión invierte los trims ("al cerrar **sobre** EMA8/21, salida sobre EMA50"); el contrato del focus list se etiqueta `strikeP` (P=PUT); mensajes de error/regime diferenciados por bias. El historial mezcla CALL y PUT (ya soportaba `direction`).
+- **Nota de liquidez**: en días secos el modo bajista suele devolver picks sin contrato (los candidatos bajistas suelen ser mid-caps con chains delgadas y los filtros de spread/vol/OI **nunca se relajan**); se comporta igual que el modo CALL ese día (verificado: con regime CHOP/breadth 33% ambos modos devuelvieron contrato `null`).
 
 ## Trade Picks — análisis profundo (deep.ts + route.ts)
 
@@ -44,8 +57,8 @@ El sistema de Trade Picks ha sido actualizado al estilo momentum + breakout de S
 - **Base amplia**: gate de rango relajado de 12% → **18%** (breakouts de bases grandes como SHOP/TLN ya no se descartan); 12-18% suma 0 pts en calidad de base + razón "Base amplia".
 - **Sector**: finalists pasan por `quoteSummary(assetProfile)` → ETF del sector (XLK/XLF/... en `SECTOR_ETF`); RS vs sector < −5% → −6 pts, ≥ +5% → +3 pts.
 - **Régimen ampliado**: VIX (`^VIX`) — >25 −6, >30 −10, ≤16 +2. Breadth: % del universo sobre MA50 — ≥65% +3, <35% −6. Ambos se exponen en `regime` (`vix`, `breadth`).
-- **Tests**: `npm test` (vitest) cubre `src/lib/tradePicks/deep.ts`.
-- **Caché**: `SCAN_CACHE_KEY = trade-picks:scan:candidates:v3` (invalida versiones previas), TTL 15 min (intradía fresco). Si faltan contratos, fallback a 10 megacaps líquidas con los mismos gates (los filtros de spread/vol/OI nunca se relajan); se expone `liquidFallbackScored` en la respuesta.
+- **Tests**: `npm test` (vitest) cubre `src/lib/tradePicks/deep.ts` y `src/lib/tradePicks/momentum.ts` (101 tests en total con `src/services`).
+- **Caché**: `SCAN_CACHE_KEY = trade-picks:scan:candidates:v4` (invalida versiones previas; v4 añade `shorts`), TTL 15 min (intradía fresco). Si faltan contratos, fallback a 10 megacaps líquidas con los mismos gates (los filtros de spread/vol/OI nunca se relajan); se expone `liquidFallbackScored` en la respuesta. El scan cachea `candidates` (CALL) y `shorts` (PUT) juntos, así que sirve ambos bias sin re-escanear.
 - **Solo USA**: `filterUSOnly()` consulta `quoteSummary(assetProfile).country` (caché por símbolo) y descarta empresas no estadounidenses — el universo de screeners trae ADR/dual-listing (ej. CMBT, Bélgica, cotiza en NYSE en USD). Si la consulta de país falla, se conserva el símbolo. Aplica a candidatos del scan y al pool de fallback líquido. Los picks y strikes siempre son en USD de NYSE/Nasdaq.
 
 ## Trade Picks — win rate del historial (TransactionView + /api/trade-picks/evaluate)

@@ -21,6 +21,8 @@ export interface EmaState {
   priceAboveAll: boolean; // precio sobre 8/21/50 (gate de Sean)
   stacked: boolean; // 8 > 21 > 50
   extFromEma8: number; // % sobre EMA8
+  priceBelowAll: boolean; // precio bajo 8/21/50 (gate bajista)
+  stackedDown: boolean; // 8 < 21 < 50
 }
 
 export function emaState(closes: number[], price?: number): EmaState {
@@ -31,8 +33,10 @@ export function emaState(closes: number[], price?: number): EmaState {
   const ready = ema8 != null && ema21 != null && ema50 != null;
   const priceAboveAll = !!(ready && p > (ema8 as number) && p > (ema21 as number) && p > (ema50 as number));
   const stacked = !!(ready && (ema8 as number) > (ema21 as number) && (ema21 as number) > (ema50 as number));
+  const priceBelowAll = !!(ready && p < (ema8 as number) && p < (ema21 as number) && p < (ema50 as number));
+  const stackedDown = !!(ready && (ema8 as number) < (ema21 as number) && (ema21 as number) < (ema50 as number));
   const extFromEma8 = ema8 && ema8 > 0 ? ((p - ema8) / ema8) * 100 : 0;
-  return { ema8, ema21, ema50, priceAboveAll, stacked, extFromEma8 };
+  return { ema8, ema21, ema50, priceAboveAll, stacked, extFromEma8, priceBelowAll, stackedDown };
 }
 
 /** Average Daily Range en % (rango medio diario de las últimas N barras). */
@@ -171,6 +175,83 @@ export function detectSetup(
     trigger,
     baseLow,
     baseHigh: trigger,
+    poleHeight,
+    distToTriggerPct,
+    rangePct,
+    volChangePct,
+    volDryUp,
+    volRatio,
+  };
+}
+
+/**
+ * Espejo bajista de detectSetup: base de ~15 sesiones cuyo SOPORTE es el
+ * gatillo de ruptura a la baja.
+ * - Si cerró bajo el mínimo de la base en los últimos 5 días → 'confirmed'.
+ * - Si está a ≤3% por encima del mínimo → 'near' (a punto de romper abajo).
+ * - Si está más lejos → null.
+ * En el Setup devuelto: `trigger`/`baseLow` = soporte de la base (entrada),
+ * `baseHigh` = techo de la base (stop), `poleHeight` = caída previa (asta).
+ */
+export function detectShortSetup(
+  closes: number[],
+  highs: number[],
+  lows: number[],
+  volumes: number[]
+): Setup | null {
+  const n = closes.length;
+  if (n < 60 || highs.length < n || lows.length < n || volumes.length < n) return null;
+  const price = closes[n - 1];
+  if (!(price > 0)) return null;
+
+  // ¿Hubo ruptura del mínimo de 15 barras en los últimos 5 días?
+  let baseEnd = n - 1;
+  for (let j = n - 1; j >= Math.max(BASE_BARS + 1, n - 5); j--) {
+    let priorLow = Infinity;
+    for (let i = j - BASE_BARS; i < j; i++) if (lows[i] < priorLow) priorLow = lows[i];
+    if (closes[j] < priorLow) {
+      baseEnd = j;
+      break;
+    }
+  }
+
+  const baseStart = baseEnd - BASE_BARS;
+  if (baseStart < 30) return null;
+
+  let trigger = Infinity; // soporte de la base (nivel de ruptura bajista)
+  let baseHigh = -Infinity; // techo de la base → stop
+  for (let i = baseStart; i < baseEnd; i++) {
+    if (lows[i] < trigger) trigger = lows[i];
+    if (highs[i] > baseHigh) baseHigh = highs[i];
+  }
+  if (!isFinite(trigger) || !isFinite(baseHigh) || trigger <= 0 || baseHigh <= 0) return null;
+
+  const rangePct = ((baseHigh - trigger) / price) * 100;
+  const distToTriggerPct = ((price - trigger) / price) * 100; // >0 aún por encima
+  const state: BreakoutState = price < trigger ? 'confirmed' : 'near';
+  if (state === 'near' && distToTriggerPct > NEAR_MAX_PCT) return null;
+
+  const recentVol = mean(volumes.slice(baseEnd - 10, baseEnd));
+  const prevVol = mean(volumes.slice(baseEnd - 30, baseEnd - 10));
+  const volChangePct = prevVol > 0 ? (recentVol / prevVol - 1) * 100 : 0;
+  const volDryUp = volChangePct <= -10;
+
+  const preBaseVol = mean(volumes.slice(baseStart - 20, baseStart));
+  const breakVol = Math.max(...volumes.slice(baseEnd, n));
+  const volRatio = preBaseVol > 0 ? breakVol / preBaseVol : 1;
+
+  // Impulso previo a la base (asta descendente) — objetivo proyectado
+  let poleHigh = -Infinity;
+  for (let i = Math.max(0, baseStart - 20); i < baseStart; i++) {
+    if (highs[i] > poleHigh) poleHigh = highs[i];
+  }
+  const poleHeight = isFinite(poleHigh) && poleHigh > 0 && poleHigh > trigger ? poleHigh - trigger : 0;
+
+  return {
+    state,
+    trigger,
+    baseLow: trigger,
+    baseHigh,
     poleHeight,
     distToTriggerPct,
     rangePct,

@@ -5,6 +5,7 @@ import { cacheAside } from '@/src/lib/cache';
 import {
   adrPct,
   detectSetup,
+  detectShortSetup,
   emaState,
   evalRegime,
   relativeStrength,
@@ -204,15 +205,17 @@ function bestContract(contracts: any[], price: number, isCall: boolean): any[] {
 }
 
 // ── Sistema de momentum (Sean @SRxTrades) ──────────────────────────────────
-// Long-only: líderes alcistas sobre EMA 8/21/50, día verde, ADR > 2%,
+// Long (CALL): líderes alcistas sobre EMA 8/21/50, día verde, ADR > 2%,
 // base ajustada cerca de su trigger (o recién rota con volumen).
+// Short (PUT): el espejo —debacles bajo EMA 8/21/50, día rojo, base cuyo
+// soporte está a punto de romperse— y se favorece con el mercado débil.
 
 interface TradePickCandidate {
   symbol: string;
   company: string;
   price: number;
   score: number;
-  direction: 'CALL';
+  direction: 'CALL' | 'PUT';
   reasons: string[];
   entry: number;
   stop: number;
@@ -428,6 +431,194 @@ function scoreStock(
   };
 }
 
+/**
+ * Espejo bajista de scoreStock: debacles bajo EMA 8/21/50, día rojo, base cuyo
+ * soporte está a punto de romperse. Genera candidatos PUT. El régimen de
+ * mercado y el VIX se invierten: mercado débil / volatilidad alta favorecen.
+ */
+function scoreShort(
+  quote: any,
+  closes: number[],
+  highs: number[],
+  lows: number[],
+  volumes: number[],
+  regime: MarketRegime,
+  spyCloses: number[],
+): TradePickCandidate | null {
+  const price = quote.regularMarketPrice || 0;
+  if (!(price >= 3) || !isFinite(price)) return null;
+
+  const marketCap = quote.marketCap || 0;
+  if (marketCap > 0 && marketCap < TRADE_PICK_MIN_MARKET_CAP) return null;
+
+  const avgVol = quote.averageDailyVolume3Month || quote.averageDailyVolume10Day || 0;
+  if (avgVol < 500_000) return null;
+  const curVol = quote.regularMarketVolume || volumes[volumes.length - 1] || 0;
+  const volRatio = avgVol > 0 && curVol > 0 ? curVol / avgVol : 1;
+
+  // Gate: día rojo (espejo de Change > 0)
+  const changePct = typeof quote.regularMarketChangePercent === 'number'
+    ? quote.regularMarketChangePercent
+    : closes.length >= 2 && closes[closes.length - 2] > 0
+      ? (closes[closes.length - 1] / closes[closes.length - 2] - 1) * 100
+      : 0;
+  if (changePct >= 0) return null;
+
+  // Gate: ADR > 2%
+  const adr = adrPct(highs, lows, closes);
+  if (adr === null || adr < 2) return null;
+
+  // Gate: precio bajo EMA 8/21/50 (tendencia bajista)
+  const emas = emaState(closes, price);
+  if (!emas.priceBelowAll) return null;
+
+  // Gate: base cuyo soporte está a punto de romperse (o recién roto)
+  const setup = detectShortSetup(closes, highs, lows, volumes);
+  if (!setup || setup.rangePct > 18) return null;
+
+  const rsi = calcRSI(closes);
+  const atr = calcATR(highs, lows, closes) || price * 0.02;
+  const rs = relativeStrength(closes, spyCloses, 20);
+  const rv20 = realizedVol(closes);
+  const vix = typeof regime.vix === 'number' ? regime.vix : null;
+
+  const direction: 'PUT' = 'PUT';
+
+  // Entrada: el soporte si aún no rompió (sell stop), el precio si ya rompió
+  const entry = setup.state === 'confirmed' ? price : setup.trigger;
+
+  const sw = swingLevels(highs, lows, price);
+  const support = sw.supports[0] ?? 0; // soporte más cercano por debajo
+  const resistance = sw.resistances[0] ?? setup.baseHigh; // techo de la base → stop
+
+  // Stop: techo de la base / resistencia estructural (≥1 ATR arriba) / 1.5 ATR
+  const structural = sw.resistances.find((r) => r >= entry + atr);
+  const stop = Math.min(setup.baseHigh, entry + 1.5 * atr, structural ?? Infinity);
+  if (!(stop > entry)) return null;
+
+  // Target: proyección del asta a la baja; un soporte real en el camino acota
+  const floor = sw.supports.find((s) => s < entry * 0.97);
+  const poleTarget = entry - Math.max(setup.poleHeight, atr * 3);
+  const target = poleTarget;
+  const floorInPath = floor !== undefined && floor > poleTarget;
+
+  const risk = stop - entry;
+  const reward = entry - target;
+  const riskReward = risk > 0 ? reward / risk : 0;
+  if (riskReward < 2) return null;
+
+  let score = 0;
+  const reasons: string[] = [];
+
+  // 1. Alineación EMA bajista (0-20)
+  score += 10;
+  if (emas.stackedDown) score += 6;
+  const ext = emas.extFromEma8; // negativo (bajo EMA8)
+  if (ext <= -0.3 && ext >= -6) { score += 4; reasons.push('Bajo EMA 8/21/50 — tendencia bajista activa'); }
+  else if (ext > -0.3) score += 2;
+  else score += 1;
+
+  // 2. Calidad de la base (0-20)
+  if (setup.rangePct <= 8) { score += 12; reasons.push(`Base ajustada: rango ${setup.rangePct.toFixed(1)}% en 15 sesiones`); }
+  else if (setup.rangePct <= 12) { score += 8; reasons.push(`Base de ${setup.rangePct.toFixed(1)}%`); }
+  else { reasons.push(`Base amplia: ${setup.rangePct.toFixed(1)}% — más riesgo en la entrada`); }
+  if (setup.volDryUp) { score += 8; reasons.push(`Volumen ${setup.volChangePct.toFixed(0)}% en la consolidación`); }
+  else if (setup.volChangePct < 0) score += 5;
+  else score += 2;
+
+  // 3. Breakdown / trigger (0-25)
+  if (setup.state === 'confirmed') {
+    const extPast = -setup.distToTriggerPct; // % por debajo del soporte
+    if (extPast > 3) score -= 12;
+    else if (extPast > 2) score -= 6;
+    else if (extPast > 1) score -= 3;
+    if (setup.volRatio >= 1.5) {
+      score += extPast > 2 ? 18 : 23;
+      reasons.push(`Ruptura del soporte $${setup.trigger.toFixed(2)} con volumen ${setup.volRatio.toFixed(1)}x`);
+    } else {
+      score += extPast > 2 ? 12 : 16;
+      reasons.push(`Bajo el soporte $${setup.trigger.toFixed(2)} — falta volumen`);
+    }
+  } else {
+    const d = setup.distToTriggerPct;
+    score += d <= 1 ? 18 : d <= 2 ? 16 : 12;
+    reasons.push(`Soporte $${setup.trigger.toFixed(2)} a ${d.toFixed(1)}% — a punto de romper abajo`);
+  }
+  if (setup.state === 'near') score += 4;
+  else if (setup.state === 'confirmed' && (-setup.distToTriggerPct) <= 1.5) score += 2;
+
+  // 4. Debilidad relativa vs SPY (0-15)
+  if (rs !== null) {
+    if (rs <= -10) { score += 15; reasons.push(`Debilidad relativa ${rs.toFixed(1)}% vs SPY (20d)`); }
+    else if (rs <= -5) { score += 12; reasons.push(`Debilidad relativa ${rs.toFixed(1)}% vs SPY (20d)`); }
+    else if (rs <= 0) score += 8;
+  }
+
+  // 5. Liquidez / ADR (0-10)
+  if (volRatio >= 2) { score += 6; reasons.push(`Vol ${volRatio.toFixed(1)}x vs promedio`); }
+  else if (volRatio >= 1.3) score += 4;
+  else if (volRatio >= 1) score += 2;
+  score += adr >= 3 ? 4 : 2;
+
+  // 6. Régimen: mercado débil favorece puts (espejo del long)
+  if (regime.level === 'CHOP') { score += 10; reasons.push('Mercado débil (SPY/QQQ bajo EMA) — favorece puts'); }
+  else if (regime.level === 'MIXED') score += 5;
+  else { score -= 10; reasons.push('Mercado fuerte (SPY/QQQ sobre EMA) — puts contra la tendencia'); }
+
+  // 6b. VIX: volatilidad alta ayuda a los puts
+  if (vix !== null) {
+    if (vix > 30) { score += 6; reasons.push(`VIX ${vix.toFixed(1)} — volatilidad extrema, favorece puts`); }
+    else if (vix > 25) { score += 4; reasons.push(`VIX ${vix.toFixed(1)} — volatilidad alta`); }
+    else if (vix <= 16) { score -= 4; reasons.push(`VIX ${vix.toFixed(1)} — entorno calmado, puts caros`); }
+  }
+
+  // 7. Risk / reward (0-5)
+  if (riskReward >= 3) { score += 5; reasons.push(`R:R ${riskReward.toFixed(1)}`); }
+  else if (riskReward >= 2) score += 3;
+
+  reasons.push(`Estructura: soporte $${support.toFixed(2)} / resistencia $${resistance.toFixed(2)}`);
+  if (floorInPath && floor !== undefined) {
+    score -= 3;
+    reasons.push(`Soporte real $${floor.toFixed(2)} en el camino — tope realista del target`);
+  }
+
+  // Penalizaciones: muy extendido a la baja, sobrevendido o staircase tardío
+  if (ext < -8) score -= 10;
+  if (ext < -12) score -= 8;
+  if (rsi !== null && rsi < 25) score -= 8;
+  if (closes.length > 61 && (closes[closes.length - 1] / closes[closes.length - 61] - 1) * 100 < -40) score -= 8;
+
+  if (score < 50) return null;
+
+  return {
+    symbol: quote.symbol,
+    company: quote.shortName || quote.longName || quote.symbol,
+    price,
+    score: Math.max(0, Math.min(score, 100)),
+    direction,
+    reasons: reasons.slice(0, 8),
+    entry,
+    stop,
+    target,
+    riskReward,
+    volumeRatio: volRatio,
+    rsi,
+    trend: 'bajista',
+    setupState: setup.state,
+    trigger: setup.trigger,
+    triggerDist: setup.distToTriggerPct,
+    adr,
+    trail8: emas.ema8,
+    trail21: emas.ema21,
+    trail50: emas.ema50,
+    rv20,
+    earningsTs: quote.earningsTimestamp ?? null,
+    sectorEtf: null,
+    support,
+    resistance,
+  };
+}
+
 /** SPY y QQQ sobre EMA 8/21/50 → régimen de mercado, más VIX (riesgo de fondo). */
 async function fetchRegime(): Promise<{ regime: MarketRegime; spyCloses: number[] }> {
   try {
@@ -452,16 +643,17 @@ async function fetchRegime(): Promise<{ regime: MarketRegime; spyCloses: number[
 interface ScanData {
   universe: string[];
   candidates: TradePickCandidate[];
+  shorts: TradePickCandidate[];
   regime: MarketRegime;
   spyCloses: number[];
 }
 
-let memoryCache: { data: any; ts: number } | null = null;
+let memoryCache: { data: any; ts: number; bias: string } | null = null;
 const CACHE_TTL = 15 * 60 * 1000; // 15 min (solo si el cliente no manda ?exclude)
 const MIN_PICK_SCORE = 80; // pick titular: solo A / A+
 const FOCUS_MIN_SCORE = 70; // focus list: B+ o mejor
 const FOCUS_SIZE = 5;
-const SCAN_CACHE_KEY = 'trade-picks:scan:candidates:v3'; // v3: análisis profundo (IV/earnings/OI/sector/breadth)
+const SCAN_CACHE_KEY = 'trade-picks:scan:candidates:v4'; // v4: candidatos CALL + PUT (bias)
 const SCAN_CACHE_TTL = 15 * 60; // 15 min en Redis: picks intradía frescos
 
 // ── Filtro USA-only ─────────────────────────────────────────────────────────
@@ -500,6 +692,7 @@ async function scoreUniverse(): Promise<ScanData> {
   const { regime, spyCloses } = await fetchRegime();
 
   const candidates: TradePickCandidate[] = [];
+  const shorts: TradePickCandidate[] = [];
   const batchSize = 40;
   let above50 = 0;
   let withData = 0;
@@ -536,7 +729,11 @@ async function scoreUniverse(): Promise<ScanData> {
             over50 = sma50 !== null && p > sma50;
           }
 
-          return { cand: scoreStock(quote, closes, highs, lows, volumes, regime, spyCloses), over50 };
+          return {
+            cand: scoreStock(quote, closes, highs, lows, volumes, regime, spyCloses),
+            short: scoreShort(quote, closes, highs, lows, volumes, regime, spyCloses),
+            over50,
+          };
         } catch {
           return null;
         }
@@ -548,24 +745,30 @@ async function scoreUniverse(): Promise<ScanData> {
       withData++;
       if (r.over50) above50++;
       if (r.cand) candidates.push(r.cand);
+      if (r.short) shorts.push(r.short);
     }
   }
 
   // Amplitud del mercado: más del 65% del universo sobre MA50 = monto sanamente
   // direccional; <35% = solo unas pocas name funcionando (riesgo de promedio).
+  // Para los PUTs el ajuste se invierte: debilidad de amplitud favorece al bajista.
   const breadth = withData > 0 ? (above50 / withData) * 100 : null;
   const bAdj = breadthAdjust(breadth);
-  if (bAdj !== 0 && candidates.length > 0) {
+  if (bAdj !== 0) {
     for (const c of candidates) {
       c.score = Math.max(0, Math.min(c.score + bAdj, 100));
-      if (bAdj > 0) c.reasons.push(`Amplitud: ${(breadth as number).toFixed(0)}% del universo sobre MA50`);
-      else c.reasons.push(`Amplitud débil: ${(breadth as number).toFixed(0)}% sobre MA50`);
+      c.reasons.push(bAdj > 0 ? `Amplitud: ${(breadth as number).toFixed(0)}% del universo sobre MA50` : `Amplitud débil: ${(breadth as number).toFixed(0)}% sobre MA50`);
+    }
+    for (const s of shorts) {
+      s.score = Math.max(0, Math.min(s.score - bAdj, 100));
+      s.reasons.push(bAdj < 0 ? `Amplitud débil: ${(breadth as number).toFixed(0)}% sobre MA50 — favorece puts` : `Amplitud: ${(breadth as number).toFixed(0)}% del universo sobre MA50 — contra puts`);
     }
     if (breadth !== null) regime.breadth = Math.round(breadth);
   }
 
   candidates.sort((a, b) => b.score - a.score);
-  return { universe, candidates, regime, spyCloses };
+  shorts.sort((a, b) => b.score - a.score);
+  return { universe, candidates, shorts, regime, spyCloses };
 }
 
 export async function GET(request: NextRequest) {
@@ -574,8 +777,13 @@ export async function GET(request: NextRequest) {
   // El cliente siempre envía ?exclude= → recalcular siempre (evita repetir picks del día)
   const hasExclude = excludeRaw !== null;
 
+  // Direccionalidad: 'bull' (CALL, por defecto) o 'bear' (PUT)
+  const biasRaw = (request.nextUrl.searchParams.get('bias') || '').toLowerCase();
+  const isBear = biasRaw === 'bear' || biasRaw === 'put';
+  const bias = isBear ? 'bear' : 'bull';
+
   // Return cached result if fresh (bypassed when the client requests exclusion-aware scan)
-  if (memoryCache && !hasExclude && Date.now() - memoryCache.ts < CACHE_TTL) {
+  if (memoryCache && !hasExclude && memoryCache.bias === bias && Date.now() - memoryCache.ts < CACHE_TTL) {
     return NextResponse.json(memoryCache.data);
   }
 
@@ -587,11 +795,13 @@ export async function GET(request: NextRequest) {
     const universe = scanned.universe;
     const regime = scanned.regime;
     const spyCloses = scanned.spyCloses || [];
+    // Pool según el sesgo: bulls (CALL) o debacles (PUT)
+    const pool = isBear ? (scanned.shorts || []) : scanned.candidates;
 
     // Solo candidatos con score de focus list (≥ FOCUS_MIN_SCORE = B+) y
     // empresas de USA (excluye ADR/dual-listing como CMBT)
     const candidates = await filterUSOnly(
-      scanned.candidates.filter((c) => c.score >= FOCUS_MIN_SCORE)
+      pool.filter((c) => c.score >= FOCUS_MIN_SCORE)
     );
 
     // Exclude symbols already picked in the last day (client sends ?exclude=)
@@ -618,15 +828,13 @@ export async function GET(request: NextRequest) {
         ]);
         const q = hist?.quotes || [];
         if (!quote || q.length < 60) return null;
-        const p = scoreStock(
-          quote,
-          q.map((h) => h.close).filter((c): c is number => c != null),
-          q.map((h) => h.high).filter((h): h is number => h != null),
-          q.map((h) => h.low).filter((l): l is number => l != null),
-          q.map((h) => h.volume).filter((v): v is number => v != null),
-          regime,
-          spyCloses,
-        );
+        const closes = q.map((h) => h.close).filter((c): c is number => c != null);
+        const highs = q.map((h) => h.high).filter((h): h is number => h != null);
+        const lows = q.map((h) => h.low).filter((l): l is number => l != null);
+        const volumes = q.map((h) => h.volume).filter((v): v is number => v != null);
+        const p = isBear
+          ? scoreShort(quote, closes, highs, lows, volumes, regime, spyCloses)
+          : scoreStock(quote, closes, highs, lows, volumes, regime, spyCloses);
         if (!p || p.score < FOCUS_MIN_SCORE) return null;
         return (await isUSCompany(sym)) ? p : null;
       } catch {
@@ -705,7 +913,16 @@ export async function GET(request: NextRequest) {
         if (bench && closes.length >= 21) {
           const rsSec = relativeStrength(closes, bench, 20);
           if (rsSec !== null) {
-            if (rsSec < -5) {
+            if (isBear) {
+              // Para puts, rezagarse al sector es a favor; liderarlo, en contra
+              if (rsSec <= -5) {
+                copy.score = Math.min(100, copy.score + 3);
+                copy.reasons = [`Rezaga a su sector ${etf} (${rsSec.toFixed(1)}% 20d) — favorece puts`, ...copy.reasons];
+              } else if (rsSec >= 5) {
+                copy.score = Math.max(0, copy.score - 6);
+                copy.reasons = [`Lidera su sector ${etf} (+${rsSec.toFixed(1)}% 20d) — contra puts`, ...copy.reasons];
+              }
+            } else if (rsSec < -5) {
               copy.score = Math.max(0, copy.score - 6);
               copy.reasons = [`Rezaga a su sector ${etf} (${rsSec.toFixed(1)}% 20d)`, ...copy.reasons];
             } else if (rsSec >= 5) {
@@ -756,11 +973,15 @@ export async function GET(request: NextRequest) {
           // Muros de OI de esta cadena: callWall frena el target, putWall respalda el stop
           const walls = oiLevelsFromChain(exp);
           const isCall = pick.direction === 'CALL';
-          // Target realista para el contrato: si hay una resistencia real entre
-          // la entrada y la proyección, el movimiento esperado está acotado.
-          const realisticTarget =
-            pick.resistance > 0 && pick.resistance > pick.entry && pick.resistance < pick.target
+          // Target realista para el contrato: si hay un nivel real entre la
+          // entrada y la proyección, el movimiento esperado está acotado
+          // (resistencia para calls, soporte para puts).
+          const realisticTarget = isCall
+            ? pick.resistance > 0 && pick.resistance > pick.entry && pick.resistance < pick.target
               ? pick.resistance
+              : pick.target
+            : pick.support > 0 && pick.support < pick.entry && pick.support > pick.target
+              ? pick.support
               : pick.target;
 
           for (const c of contractCandidates) {
@@ -793,8 +1014,9 @@ export async function GET(request: NextRequest) {
             const ivAdj = ivAdjustment(iv, pick.rv20);
             const earningsSoon = earningsInWindow(pick.earningsTs, days);
             const earningsAdj = earningsSoon ? -30 : 0;
-            const wallBlocked =
-              walls.callWall !== null && walls.callWall > pick.price && pick.target > walls.callWall;
+            const wallBlocked = isCall
+              ? walls.callWall !== null && walls.callWall > pick.price && pick.target > walls.callWall
+              : walls.putWall !== null && walls.putWall < pick.price && pick.target < walls.putWall;
             const oiAdj = wallBlocked ? -10 : 0;
 
             const optionScore = Math.max(
@@ -933,7 +1155,7 @@ export async function GET(request: NextRequest) {
             peerRs: enrichment?.peerRs ?? null,
             corpAction: enrichment?.corpAction ?? null,
             reasons: [
-              ...(enrichment?.peerRs?.reason ? [enrichment.peerRs.reason] : []),
+              ...(enrichment?.peerRs?.reason && !isBear ? [enrichment.peerRs.reason] : []),
               ...(enrichment?.corpAction?.reasons ?? []),
               ...topPick.reasons,
             ],
@@ -941,6 +1163,7 @@ export async function GET(request: NextRequest) {
         : null,
       focusList,
       regime,
+      bias,
       minScore: MIN_PICK_SCORE,
       scanned: universe.length,
       candidates: candidates.length,
@@ -949,7 +1172,7 @@ export async function GET(request: NextRequest) {
       generatedAt: new Date().toISOString(),
     };
 
-    memoryCache = { data: result, ts: Date.now() };
+    memoryCache = { data: result, ts: Date.now(), bias };
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('[TradePicks/Scan] Error:', error?.message || error);

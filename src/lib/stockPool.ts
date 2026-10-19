@@ -221,7 +221,9 @@ export async function fetchTradePickUniverse(): Promise<string[]> {
     if (row.price < TRADE_PICK_MIN_PRICE) continue;
     if (row.marketCap < TRADE_PICK_MIN_MARKET_CAP) continue;
     if (row.avgVol < TRADE_PICK_MIN_AVG_VOLUME) continue;
-    if (row.changePercent <= 0) continue; // solo día verde (scan de Sean: Change > 0)
+    // Se conservan ambos lados del mercado: scoreStock() exige día verde (CALL)
+    // y scoreShort() exige día rojo (PUT). Los screeners ya traen day_gainers y
+    // day_losers, así que descartar los rojos dejaba ciego al escáner bajista.
     eligible.add(row.symbol);
   }
   // Trending has no screener metadata; let the scan's own gates judge it.

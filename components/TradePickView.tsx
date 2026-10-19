@@ -185,6 +185,7 @@ export default function TradePickView() {
   const [statusFilter, setStatusFilter] = useState<'all' | PickStatus>('all');
   const [regime, setRegime] = useState<Regime | null>(null);
   const [focusList, setFocusList] = useState<TradePick[]>([]);
+  const [bias, setBias] = useState<'bull' | 'bear'>('bull');
 
   const refreshPrices = useCallback(async (picks: TradePick[]) => {
     const syms = Array.from(new Set(picks.map(p => p.symbol)));
@@ -257,7 +258,7 @@ export default function TradePickView() {
       const excludedToday = Array.from(new Set(
         history.filter(p => new Date(p.createdAt).getTime() > cutoff24h).map(p => p.symbol)
       ));
-      const res = await fetch(`/api/trade-picks/scan?exclude=${encodeURIComponent(excludedToday.join(','))}`);
+      const res = await fetch(`/api/trade-picks/scan?bias=${bias}&exclude=${encodeURIComponent(excludedToday.join(','))}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Scan failed');
 
@@ -275,7 +276,9 @@ export default function TradePickView() {
         setError(
           focus.length > 0
             ? 'Ningún setup A/A+ hoy. Revisa la focus list (B+) más abajo.'
-            : 'Sin setups de momentum hoy. Espera a que SPY/QQQ recuperen las EMA 8/21/50.'
+            : bias === 'bear'
+              ? 'Sin setups bajistas hoy. Espera a que SPY/QQQ pierdan las EMA 8/21/50.'
+              : 'Sin setups de momentum hoy. Espera a que SPY/QQQ recuperen las EMA 8/21/50.'
         );
         return;
       }
@@ -298,7 +301,7 @@ export default function TradePickView() {
     } finally {
       setScanning(false);
     }
-  }, [history, refreshPrices, evaluateHistory]);
+  }, [history, refreshPrices, evaluateHistory, bias]);
 
   const grade = currentPick ? getGrade(currentPick.score) : null;
   const isCall = currentPick?.direction === 'CALL';
@@ -338,7 +341,7 @@ export default function TradePickView() {
           <div style={styles.headerIcon}>🎯</div>
           <div>
             <h1 style={styles.title}>Trade Picks</h1>
-            <p style={styles.subtitle}>Tu pick del día para mañana</p>
+            <p style={styles.subtitle}>{bias === 'bear' ? 'Tu put del día para mañana' : 'Tu pick del día para mañana'}</p>
           </div>
         </div>
         <button onClick={scan} disabled={scanning} style={styles.scanBtn}>
@@ -351,6 +354,22 @@ export default function TradePickView() {
               ⚡ {currentPick ? 'Scan Again' : 'Scan for Pick'}
             </span>
           )}
+        </button>
+      </div>
+
+      {/* Toggle Alcista / Bajista */}
+      <div style={styles.biasToggle}>
+        <button
+          onClick={() => setBias('bull')}
+          style={{ ...styles.biasBtn, ...(bias === 'bull' ? styles.biasBtnBull : {}) }}
+        >
+          📈 Alcista (CALL)
+        </button>
+        <button
+          onClick={() => setBias('bear')}
+          style={{ ...styles.biasBtn, ...(bias === 'bear' ? styles.biasBtnBear : {}) }}
+        >
+          📉 Bajista (PUT)
         </button>
       </div>
 
@@ -476,9 +495,11 @@ export default function TradePickView() {
                   ⚠️ Earnings dentro de la ventana del contrato — riesgo de evento
                 </div>
               )}
-              {currentPick.contract.targetBlockedByOi && currentPick.contract.callWall != null && (
+              {currentPick.contract.targetBlockedByOi && (isCall ? currentPick.contract.callWall != null : currentPick.contract.putWall != null) && (
                 <div style={{ ...styles.warnLine, borderColor: '#FBBF2450', color: '#FBBF24' }}>
-                  ⚠️ Muro de OI en ${fmt(currentPick.contract.callWall)} por debajo del target
+                  {isCall
+                    ? `⚠️ Muro de OI call en $${fmt(currentPick.contract.callWall)} — frena el target`
+                    : `⚠️ Muro de OI put en $${fmt(currentPick.contract.putWall)} — frena el target`}
                 </div>
               )}
               {currentPick.contract.targetReachable === false && (
@@ -528,9 +549,9 @@ export default function TradePickView() {
               <div style={styles.planTitle}>Plan de gestión — trims en ¼</div>
               <div style={styles.planRow}>
                 <span>1) 25% en el target <b style={{ color: C.positive }}>${fmt(currentPick.target)}</b></span>
-                <span>2) 25% al cerrar bajo EMA8 <b style={{ color: C.textPrimary }}>${fmt(currentPick.trail8 ?? null)}</b></span>
-                <span>3) 25% bajo EMA21 <b style={{ color: C.textPrimary }}>${fmt(currentPick.trail21 ?? null)}</b></span>
-                <span>4) Salida bajo EMA50 <b style={{ color: C.negative }}>${fmt(currentPick.trail50 ?? null)}</b></span>
+                <span>2) 25% al cerrar {isCall ? 'bajo' : 'sobre'} EMA8 <b style={{ color: C.textPrimary }}>${fmt(currentPick.trail8 ?? null)}</b></span>
+                <span>3) 25% {isCall ? 'bajo' : 'sobre'} EMA21 <b style={{ color: C.textPrimary }}>${fmt(currentPick.trail21 ?? null)}</b></span>
+                <span>4) Salida {isCall ? 'bajo' : 'sobre'} EMA50 <b style={{ color: C.negative }}>${fmt(currentPick.trail50 ?? null)}</b></span>
               </div>
             </div>
           )}
@@ -551,9 +572,9 @@ export default function TradePickView() {
             const fg = getGrade(f.score);
             const active = currentPick?.symbol === f.symbol;
             const setupText = f.setupState === 'confirmed'
-              ? 'BREAKOUT'
+              ? (f.direction === 'PUT' ? 'BREAKDOWN' : 'BREAKOUT')
               : f.triggerDist != null ? `TRG ${f.trigger != null ? f.trigger.toFixed(2) : ''} · ${f.triggerDist >= 0 ? '+' : ''}${f.triggerDist.toFixed(1)}%` : 'SETUP';
-            const setupColor = f.setupState === 'confirmed' ? '#34D399' : '#67E8F9';
+            const setupColor = f.setupState === 'confirmed' ? (f.direction === 'PUT' ? '#FB7185' : '#34D399') : '#67E8F9';
             const fExp = f.contract?.expiration
               ? new Date(f.contract.expiration + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
               : null;
@@ -571,7 +592,7 @@ export default function TradePickView() {
                 </div>
                 <div style={styles.focusRight}>
                   {f.contract ? (
-                    <span style={styles.focusContract}>{f.contract.strike}C {fExp} · ${fmt(f.contract.premium)}</span>
+                    <span style={styles.focusContract}>{f.contract.strike}{f.direction === 'PUT' ? 'P' : 'C'} {fExp} · ${fmt(f.contract.premium)}</span>
                   ) : (
                     <span style={{ fontSize: 11, color: C.textMuted }}>sin contrato líquido</span>
                   )}
@@ -858,6 +879,37 @@ const styles: Record<string, React.CSSProperties> = {
     color: C.textMuted,
     margin: 0,
     marginTop: 2,
+  },
+  biasToggle: {
+    display: 'flex',
+    gap: 6,
+    marginBottom: 16,
+    padding: 4,
+    background: '#0d1117',
+    border: `1px solid ${C.border}`,
+    borderRadius: R.md,
+  },
+  biasBtn: {
+    flex: 1,
+    padding: '9px 12px',
+    borderRadius: R.sm,
+    border: '1px solid transparent',
+    background: 'transparent',
+    color: C.textSecondary,
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+  },
+  biasBtnBull: {
+    background: '#34D39918',
+    border: '1px solid #34D39955',
+    color: '#34D399',
+  },
+  biasBtnBear: {
+    background: '#FB718518',
+    border: '1px solid #FB718555',
+    color: '#FB7185',
   },
   scanBtn: {
     padding: '12px 24px',
