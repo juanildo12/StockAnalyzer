@@ -322,8 +322,11 @@ export default function OptionsStrategySimulator({ initialSymbol = 'SPY' }: Prop
                           onChange={(e) => updateLeg(i, { premium: Number(e.target.value) })} style={numInput} />
                       </td>
                       <td style={td}>
-                        <input type="number" value={l.iv} step="0.01" min={0.01} max={5}
-                          onChange={(e) => updateLeg(i, { iv: Number(e.target.value) })} style={numInput} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <input type="number" value={Math.round(l.iv * 1000) / 10} step="0.5" min={0.1} max={500}
+                            onChange={(e) => updateLeg(i, { iv: Number(e.target.value) / 100 })} style={{ ...numInput, width: 64 }} />
+                          <span style={{ color: C.textMuted, fontSize: 12 }}>%</span>
+                        </div>
                       </td>
                       <td style={{ ...td, color: C.textSecondary }}>{l.dte}</td>
                       <td style={td}>
