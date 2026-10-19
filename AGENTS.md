@@ -1,5 +1,17 @@
 # Project Notes
 
+## Put/Call Ratio (app/api/put-call-ratio/route.ts + components/PutCallRatioPanel.tsx)
+
+Indicador compacto de Put/Call Ratio (gauge semicircular + histórico). Montado en `Dashboard.tsx` como panel del detalle del símbolo (bajo GammaLevelsPanel).
+
+- **Dos ratios INDEPENDIENTES (no confundir)**: `src/lib/options/pcr.ts` — `computeRatio(contracts, basis)` con `basis='volume'` (volumen puts / volumen calls, negociados hoy) u `'openInterest'` (OI puts / OI calls, contratos vivos). `computeBoth()` devuelve ambos. **Nunca se mezclan** (el volumen no es OI).
+- **Casos borde (testeados, 17 tests en `pcr.test.ts`)**: denominador cero → `ratio:null, denominatorZero:true`; sin contratos usables → `empty:true`; filas con volumen/OI no finito o negativo → se excluyen y `incomplete:true`. `ratio:0` es válido (hay puts con cero actividad pero sí calls).
+- **Agregación de universo**: `aggregateContracts()` aplana filas de varios símbolos → el ratio de grupo es **suma de numeradores / suma de denominadores**, NO promedio de ratios. `percentileRank()` (percentil dentro de la propia serie, requiere ≥5 puntos) y `ratioZone()` (low/balanced/high por distancia a 1.0) son **no-direccionales**; el código no afirma umbrales universales de compra/venta.
+- **Ruta**: `GET /api/put-call-ratio?symbol=X` o `?universe=market` (agrega SPY·QQQ·IWM·DIA) o `?universe=index:SPY`. Devuelve `volumeRatio`, `oiRatio`, ambos `RatioComputation` completos, `zone`/`oiZone`, percentiles, `history[]`, `parts[]` (desglose por miembro), `spot`, `source` (Yahoo `yf.options`, cadena de la expiración más cercana), `updatedAt` y `notes[]`. Validación de símbolo `^[A-Z][A-Z0-9.\-]{0,9}$` (400 si inválido), 404 si no hay cadena. Cache 90s, `&force=1`. **En `publicLegacy` del middleware**. Nota: los índices cash `^GSPC`/`^VIX` **no son optionables** en Yahoo → para market/index se usan los ETFs proxy (SPY/QQQ/IWM/DIA); no hay constante central, es literal en la ruta.
+- **Histórico**: sin migración de BD. Se guarda un array JSON diario en Redis (`pcr:history:<kind>:<members>`, TTL 90 días, máx 90 puntos) mediante **read-modify-write** (`cacheGet` → dedupe por fecha de hoy → push → `cacheSet`). Degrada a `[]` sin Redis (`CACHE_DISABLED=1`). La UI muestra la evolución cuando hay ≥2 puntos y el percentil cuando ≥5.
+- **UI** (`components/PutCallRatioPanel.tsx`): toggle Símbolo/Mercado, toggle Volumen/Open Interest (etiqueta siempre visible qué base se usa), gauge **semicircular SVG** (0..2 con neutro 1.0 marcado; sin colores direccionales de compra/venta), totales Puts/Calls, percentil, fuente + fecha/hora, sparkline histórico con línea neutra, desglose por miembro (modo mercado) y banners para denominador cero/datos incompletos. Botón `?` con nota de interpretación contextual. Auto-no-refresco (manual con ↻).
+- **Tests**: `npm test` → **162/162** (17 nuevos de `pcr.ts`).
+
 ## Options Strategy Simulator (app/api/options-sim/route.ts + components/OptionsStrategySimulator.tsx)
 
 Simulador pre-trade de estrategias de opciones (multi-pata). **Solo modela/análisis — nunca ejecuta órdenes.** Precios de la cadena son referencias (`mid`), no garantía de ejecución.
