@@ -540,6 +540,7 @@ function PayoffChart({
   strikes: number[];
 }) {
   const [wrapRef, measured] = useElementWidth<HTMLDivElement>();
+  const [hoverX, setHoverX] = useState<number | null>(null);
   const width = Math.max(420, Math.round(measured)) || 720;
   const height = 300;
   const padL = 60, padR = 16, padT = 16, padB = 28;
@@ -555,19 +556,53 @@ function PayoffChart({
   const yMax = Math.max(...all.map((p) => p.pnl), 0);
   const xScale = (v: number) => padL + ((v - xMin) / (xMax - xMin || 1)) * innerW;
   const yScale = (v: number) => padT + innerH - ((v - yMin) / (yMax - yMin || 1)) * innerH;
+  const invX = (px: number) => xMin + ((px - padL) / innerW) * (xMax - xMin);
 
   const path = (pts: PayoffPoint[]) =>
     pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${xScale(p.spot).toFixed(1)},${yScale(p.pnl).toFixed(1)}`).join(' ');
 
-  // Zero line + fill: build closed area for the expiry curve split by sign is
-  // complex; instead draw the line and a translucent zero baseline region.
+  /** P&L interpolation at a given spot (curves are sorted by spot). */
+  const interp = (pts: PayoffPoint[], s: number): number => {
+    if (pts.length === 0) return 0;
+    if (s <= pts[0].spot) return pts[0].pnl;
+    if (s >= pts[pts.length - 1].spot) return pts[pts.length - 1].pnl;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      if (s >= a.spot && s <= b.spot) {
+        const t = (s - a.spot) / (b.spot - a.spot || 1);
+        return a.pnl + t * (b.pnl - a.pnl);
+      }
+    }
+    return pts[pts.length - 1].pnl;
+  };
+
+  const clampX = (px: number) => Math.max(padL, Math.min(width - padR, px));
+  const onMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const scale = width / rect.width;
+    setHoverX(clampX((e.clientX - rect.left) * scale));
+  };
+  const onLeave = () => setHoverX(null);
+
   const yZero = yScale(0);
   const xTicks = 5;
   const yTicks = 5;
 
+  const hoverSpot = hoverX != null ? invX(hoverX) : null;
+  const hoverExpiry = hoverSpot != null ? interp(expiry, hoverSpot) : 0;
+  const hoverMtm = hoverSpot != null && showMtm ? interp(mtm, hoverSpot) : 0;
+  const tipW = 150, tipH = showMtm ? 66 : 44;
+  let tipX = (hoverX ?? 0) + 12;
+  if (tipX + tipW > width - padR) tipX = (hoverX ?? 0) - tipW - 12;
+
   return (
     <div ref={wrapRef} style={{ width: '100%' }}>
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: 'block' }} role="img" aria-label="Curva de payoff">
+      <svg
+        width={width} height={height} viewBox={`0 0 ${width} ${height}`}
+        style={{ display: 'block', cursor: 'crosshair' }}
+        role="img" aria-label="Curva de payoff"
+        onMouseMove={onMove} onMouseLeave={onLeave}
+      >
         {/* grid */}
         {Array.from({ length: yTicks + 1 }).map((_, i) => {
           const v = yMin + ((yMax - yMin) * i) / yTicks;
@@ -610,6 +645,28 @@ function PayoffChart({
         {/* curves */}
         {showMtm && <path d={path(mtm)} fill="none" stroke={C.info} strokeWidth={2} strokeDasharray="5 4" />}
         <path d={path(expiry)} fill="none" stroke={C.accent} strokeWidth={2.5} />
+
+        {/* hover crosshair + tooltip */}
+        {hoverSpot != null && (
+          <g pointerEvents="none">
+            <line x1={hoverX!} y1={padT} x2={hoverX!} y2={height - padB} stroke={C.accentLight} strokeWidth={1} opacity={0.8} />
+            <circle cx={xScale(hoverSpot)} cy={yScale(hoverExpiry)} r={3.5} fill={C.accent} />
+            {showMtm && <circle cx={xScale(hoverSpot)} cy={yScale(hoverMtm)} r={3.5} fill={C.info} />}
+            <rect x={tipX} y={padT + 4} width={tipW} height={tipH} rx={6}
+              fill={C.bgElevated} stroke={C.borderHover} strokeWidth={1} opacity={0.97} />
+            <text x={tipX + 10} y={padT + 22} fill={C.textPrimary} fontSize={11} fontWeight={700}>
+              Spot {fmtMoney2(hoverSpot)}
+            </text>
+            <text x={tipX + 10} y={padT + 38} fill={C.accent} fontSize={11}>
+              Vencimiento: {fmtUsd(hoverExpiry)}
+            </text>
+            {showMtm && (
+              <text x={tipX + 10} y={padT + 54} fill={C.info} fontSize={11}>
+                Hoy: {fmtUsd(hoverMtm)}
+              </text>
+            )}
+          </g>
+        )}
       </svg>
     </div>
   );
