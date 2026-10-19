@@ -52,6 +52,8 @@ interface GammaResponse {
     ivCheck: { strike: number; type: string; yahooIv: number; massiveIv: number | null; deviationPct: number | null }[] | null;
   };
   coverage: { yahooStrikes: number; massiveStrikes: number; extraStrikes: number[] } | null;
+  marketState?: string;
+  priceBasis?: 'pre' | 'post' | 'regular';
   error?: string;
 }
 
@@ -65,6 +67,19 @@ const REGIME_META = {
   negative: { label: 'Gamma negativo', desc: 'Los dealers amplifican los movimientos', color: (c: typeof C) => c.negative, bg: (c: typeof C) => c.negativeBg },
   neutral: { label: 'Gamma neutral', desc: 'Sin régimen dominante', color: (c: typeof C) => c.textSecondary, bg: (c: typeof C) => c.bgElevated },
 } as const;
+
+/** Chip que indica de dónde sale el precio usado como spot (pre/post/cierre). */
+function PriceBasisBadge({ label, color }: { label: string; color: string }) {
+  return (
+    <span style={{
+      marginLeft: '6px', fontSize: '10px', fontWeight: '700', padding: '1px 6px',
+      borderRadius: R.full, background: color + '22', color, textTransform: 'uppercase',
+      letterSpacing: '0.03em',
+    }}>
+      {label}
+    </span>
+  );
+}
 
 function fmtGex(n: number): string {
   if (!isFinite(n)) return '—';
@@ -182,7 +197,13 @@ export default function GammaLevelsPanel({ symbol, onClose }: Props) {
           <div>
             <h3 style={{ margin: '0 0 4px', color: C.textPrimary, fontSize: '16px', fontWeight: '700' }}>🎯 Gamma Levels</h3>
             <p style={{ margin: 0, color: C.textMuted, fontSize: '12px' }}>
-              Mapa de exposición gamma de dealers · {data.symbol} · ${data.spot.toFixed(2)} · {data.dte} DTE{data.expiry ? ` (${data.expiry})` : ''}
+              Mapa de exposición gamma de dealers · {data.symbol} · ${data.spot.toFixed(2)}
+              {data.priceBasis === 'pre' && <PriceBasisBadge label="pre-market" color={C.warning} />}
+              {data.priceBasis === 'post' && <PriceBasisBadge label="post-market" color={C.warning} />}
+              {data.priceBasis === 'regular' && (data.marketState === 'REGULAR'
+                ? <PriceBasisBadge label="en vivo" color={C.positive} />
+                : <PriceBasisBadge label="último cierre" color={C.textMuted} />)}
+              {' · '}{data.dte} DTE{data.expiry ? ` (${data.expiry})` : ''}
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

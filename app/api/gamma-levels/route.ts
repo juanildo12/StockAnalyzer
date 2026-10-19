@@ -53,6 +53,8 @@ interface GammaLevelsResponse {
     massiveStrikes: number;
     extraStrikes: number[]; // present in Massive, missing in Yahoo
   } | null;
+  marketState?: string;
+  priceBasis?: 'pre' | 'post' | 'regular';
 }
 
 function toDateStr(raw: unknown): string | null {
@@ -61,6 +63,25 @@ function toDateStr(raw: unknown): string | null {
   if (raw instanceof Date) return raw.toISOString().split('T')[0];
   if (typeof raw === 'number') return new Date(raw).toISOString().split('T')[0];
   return null;
+}
+
+/**
+ * Spot según el estado del mercado: así los niveles se recalculan con el
+ * precio pre/post-market aunque el OI/IV de la chain sigan del cierre previo.
+ */
+function liveSpot(quote: any): { price: number; basis: 'pre' | 'post' | 'regular' } {
+  const state = String(quote?.marketState || '');
+  const pre = quote?.preMarketPrice;
+  const post = quote?.postMarketPrice;
+  const reg = quote?.regularMarketPrice;
+  const ok = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v > 0;
+  if (state === 'PRE' && ok(pre)) return { price: pre, basis: 'pre' };
+  if ((state === 'POST' || state === 'POSTPOST' || state === 'CLOSED') && ok(post)) {
+    return { price: post, basis: 'post' };
+  }
+  if (ok(reg)) return { price: reg, basis: 'regular' };
+  if (ok(post)) return { price: post, basis: 'post' };
+  return { price: pre, basis: 'pre' };
 }
 
 function dteOf(dateStr: string): number {
@@ -101,7 +122,8 @@ async function build(sym: string, targetDte: number): Promise<GammaLevelsRespons
     fetchBars(sym),
   ]);
   if (!quote?.regularMarketPrice) throw new Error('No quote data');
-  const spot = quote.regularMarketPrice;
+  const { price: spot, basis: priceBasis } = liveSpot(quote);
+  if (!Number.isFinite(spot) || spot <= 0) throw new Error('No quote data');
   if (!chain?.options?.length) throw new Error('No options chain');
 
   // Yahoo trae solo 1 expiración en `options` (la más cercana); la lista
@@ -216,6 +238,8 @@ async function build(sym: string, targetDte: number): Promise<GammaLevelsRespons
       ivCheck,
     },
     coverage,
+    marketState: quote.marketState,
+    priceBasis,
   };
 }
 
