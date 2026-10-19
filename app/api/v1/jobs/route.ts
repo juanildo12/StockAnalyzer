@@ -3,7 +3,6 @@ import { runAllScreeners, computeBreakoutScores, computeMorningBriefing } from "
 import { warmPopularStocks } from "@/src/lib/jobs/cacheWorker";
 import { checkPriceAlerts, checkBreakoutAlerts } from "@/src/lib/notifications/alertEngine";
 import { evaluatePendingSignals } from "@/src/lib/notifications/signalTracker";
-import { runSmartAlerts } from "@/src/lib/alerts/scheduler";
 import { detectTPHits } from "@/src/lib/shares/tpDetector";
 import { prisma } from "@/src/lib/prisma";
 
@@ -54,10 +53,6 @@ export async function POST(req: NextRequest) {
           result: { price: priceResult, breakout: breakoutResult },
         });
       }
-      case "smart_alerts": {
-        const result = await runSmartAlerts();
-        return NextResponse.json({ success: true, job: "smart_alerts", result });
-      }
       case "tp_hits": {
         const result = await detectTPHits();
         return NextResponse.json({ success: true, job: "tp_hits", result });
@@ -74,7 +69,6 @@ export async function POST(req: NextRequest) {
         const briefingResult = await computeMorningBriefing();
         const priceAlerts = await checkPriceAlerts();
         const breakoutAlerts = await checkBreakoutAlerts();
-        const smartAlerts = await runSmartAlerts();
         const tpHits = await detectTPHits();
         const signalsResult = await evaluatePendingSignals();
 
@@ -87,7 +81,6 @@ export async function POST(req: NextRequest) {
             breakout: breakoutResult,
             briefing: briefingResult,
             alerts: { price: priceAlerts, breakout: breakoutAlerts },
-            smartAlerts,
             tpHits,
             signals: signalsResult,
           },

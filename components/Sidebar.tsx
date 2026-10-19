@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   Rocket, LayoutDashboard, Filter, BarChart3, Target, Crosshair,
   Watch, FlaskConical, Brain, Bot, Gamepad2,
-  ChevronDown, ChevronRight, Zap, LineChart, Bell,
+  ChevronDown, ChevronRight, Zap, LineChart,
   Lock, Crown, Gem, Building2, Sun, Moon, CalendarDays,
   SlidersHorizontal,
 } from 'lucide-react';
@@ -71,7 +71,6 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Trading',
     items: [
       { view: 'trade-picks', label: 'Trade Picks', icon: <Crosshair size={18} />, badge: 'PRO', minPlan: 'pro' },
-      { view: 'alerts', label: 'Smart Alerts', icon: <Bell size={18} />, badge: 'PRO', minPlan: 'pro' },
       { view: 'algo-alerts', label: 'Algo Alerts', icon: <Bot size={18} />, badge: 'PRO', minPlan: 'pro' },
       { view: 'options', label: 'Opciones', icon: <Target size={18} />, badge: 'ELITE', minPlan: 'elite' },
       { view: 'options-sim', label: 'Sim. Opciones', icon: <SlidersHorizontal size={18} />, badge: 'ELITE', minPlan: 'elite' },
@@ -294,7 +293,7 @@ export default function Sidebar({ view, onViewChange, userPlan = 'free', userNam
           }}>Desbloquear Pro — $49/mo</div>
           <div style={{
             fontSize: F.sizeXs, color: C.textMuted, lineHeight: 1.4,
-          }}>AI Analysis + Smart Alerts + Backtest</div>
+          }}>AI Analysis + Backtest</div>
         </div>
       )}
 

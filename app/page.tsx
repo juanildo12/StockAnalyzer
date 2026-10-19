@@ -26,7 +26,6 @@ import ScreenerPage from '@/app/screener/page';
 import TradingTrainer from '@/components/TradingTrainer';
 import StockDetailPanel from '@/components/StockDetailPanel';
 import ValuationGauge from '@/components/ValuationGauge';
-import SmartAlertsPanel from '@/components/SmartAlertsPanel';
 import AlgoAlertsPanel from '@/components/AlgoAlertsPanel';
 import TradePickView from '@/components/TradePickView';
 import CatalystPanel from '@/components/CatalystPanel';
@@ -497,7 +496,7 @@ export default function Home() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [view, setView] = useState<'briefing' | 'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard' | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer' | 'alerts' | 'algo-alerts' | 'trade-picks' | 'classification' | 'catalysts' | 'options-sim'>('analyzer');
+  const [view, setView] = useState<'briefing' | 'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard' | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer' | 'algo-alerts' | 'trade-picks' | 'classification' | 'catalysts' | 'options-sim'>('analyzer');
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -1073,7 +1072,6 @@ export default function Home() {
                 { id: 'dashboard', icon: '📈', label: 'Dashboard', minPlan: 1 },
                 { id: 'screener', icon: '🔎', label: 'Screener', minPlan: 1 },
                 { id: 'catalysts', icon: '⚡', label: 'Catalizadores', minPlan: 1 },
-                { id: 'alerts', icon: '🔔', label: 'Smart Alerts', minPlan: 1 },
                 { id: 'algo-alerts', icon: '🤖', label: 'Algo Alerts', minPlan: 1 },
                 { id: 'trade-picks', icon: '🎯', label: 'Trade Picks', minPlan: 1 },
                 { id: 'options', icon: '🎯', label: 'Opciones', minPlan: 2 },
@@ -1964,12 +1962,6 @@ export default function Home() {
       {view === 'trading-trainer' && (
         <div style={{ animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <TradingTrainer />
-        </div>
-      )}
-
-      {view === 'alerts' && (
-        <div style={{ padding: '24px', maxWidth: 900, margin: '0 auto', width: '100%', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
-          <SmartAlertsPanel />
         </div>
       )}
 

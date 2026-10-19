@@ -34,7 +34,6 @@ const PLAN_ROUTES: Record<string, string[]> = {
     "/api/v1/ai",
     "/api/v1/backtest",
     "/api/v1/signals",
-    "/api/v1/alerts/smart",
   ],
   elite: [
     "/api/v1/options",
@@ -229,6 +228,7 @@ export async function middleware(req: NextRequest) {
       pathname.startsWith("/api/trade-picks") ||
       pathname.startsWith("/api/gamma-levels") ||
       pathname.startsWith("/api/options-sim") ||
+      pathname.startsWith("/api/put-call-ratio") ||
       pathname.startsWith("/api/squeeze");
 
     if (!publicLegacy && !token) {

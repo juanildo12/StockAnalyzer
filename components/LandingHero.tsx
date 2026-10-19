@@ -460,7 +460,6 @@ export default function LandingHero(props: LandingHeroProps) {
                 Ilimitado<br />
                 AI Coach<br />
                 Backtest<br />
-                Smart Alerts<br />
                 Opciones
               </div>
               <a
