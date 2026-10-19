@@ -15,7 +15,7 @@ const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-const CACHE_TTL = 600; // 10 min — gamma intra-día, renovar con cada expiración relevante
+const CACHE_TTL = 90; // intra-día: el spot pre/post se mueve, refrescar seguido
 const MASSIVE_WAIT_MS = 1200; // no bloquear el render esperando slot Massive
 
 interface GammaCheckIv {
@@ -250,9 +250,12 @@ export async function GET(req: NextRequest) {
   }
   const sym = symbol.trim().toUpperCase();
   const targetDte = Math.min(120, Math.max(1, Number(req.nextUrl.searchParams.get('dte')) || 38));
+  const force = req.nextUrl.searchParams.get('force') === '1';
 
   try {
-    const data = await cacheAside(`gamma-levels:${sym}:${targetDte}`, CACHE_TTL, () => build(sym, targetDte));
+    const data = force
+      ? await build(sym, targetDte)
+      : await cacheAside(`gamma-levels:${sym}:${targetDte}`, CACHE_TTL, () => build(sym, targetDte));
     return NextResponse.json(data);
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || 'gamma levels failed' }, { status: 500 });

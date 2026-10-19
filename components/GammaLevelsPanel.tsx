@@ -108,23 +108,37 @@ export default function GammaLevelsPanel({ symbol, onClose }: Props) {
   const [gexPct, setGexPct] = useState(0.08);
   // Panel de ayuda "¿Cómo leer esto?"
   const [helpOpen, setHelpOpen] = useState(false);
+  // Refresco manual en curso (botón "Actualizar")
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (opts?: { silent?: boolean; force?: boolean }) => {
+    if (!opts?.silent) setLoading(true);
+    if (opts?.force) setRefreshing(true);
     setError(null);
     try {
-      const res = await fetch(`/api/gamma-levels?symbol=${encodeURIComponent(symbol)}`);
+      const url = `/api/gamma-levels?symbol=${encodeURIComponent(symbol)}${opts?.force ? '&force=1' : ''}`;
+      const res = await fetch(url, { cache: 'no-store' });
       const json = await res.json();
       if (json && !json.error) setData(json);
       else setError(json?.error || 'Sin datos');
     } catch {
       setError('Error cargando Gamma Levels');
     } finally {
-      setLoading(false);
+      if (!opts?.silent) setLoading(false);
+      setRefreshing(false);
     }
   }, [symbol]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Auto-refresh silencioso cada 60s y al volver a la pestaña: así el spot
+  // pre/post-market y el régimen se mueven sin recargar (el OI es diario).
+  useEffect(() => {
+    const tick = () => { if (document.visibilityState === 'visible') fetchData({ silent: true }); };
+    const id = setInterval(tick, 60_000);
+    document.addEventListener('visibilitychange', tick);
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', tick); };
+  }, [fetchData]);
 
   // Reset de zoom al cambiar de símbolo
   useEffect(() => { setCandleCount(null); setGexPct(0.08); }, [symbol]);
@@ -178,7 +192,7 @@ export default function GammaLevelsPanel({ symbol, onClose }: Props) {
     return (
       <div style={{ background: C.bgCard, borderRadius: R.lg, border: '1px solid ' + C.border, padding: '24px', textAlign: 'center' }}>
         <div style={{ color: C.textMuted, fontSize: '13px' }}>{error || 'Sin datos'}</div>
-        <button onClick={fetchData} style={{ marginTop: '12px', background: C.accent, color: 'white', border: 'none', borderRadius: R.sm, padding: '8px 20px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+        <button onClick={() => fetchData({ force: true })} style={{ marginTop: '12px', background: C.accent, color: 'white', border: 'none', borderRadius: R.sm, padding: '8px 20px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
           Reintentar
         </button>
       </div>
@@ -207,6 +221,21 @@ export default function GammaLevelsPanel({ symbol, onClose }: Props) {
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button
+              onClick={() => fetchData({ force: true })}
+              disabled={refreshing}
+              title="Actualizar ahora (ignora la caché)"
+              style={{
+                background: 'none',
+                border: '1px solid ' + C.borderLight,
+                color: refreshing ? C.textMuted : C.textSecondary,
+                cursor: refreshing ? 'default' : 'pointer', fontSize: '12px', fontWeight: '600',
+                padding: '5px 10px', borderRadius: R.sm, whiteSpace: 'nowrap',
+              }}
+            >
+              <span style={{ display: 'inline-block', animation: refreshing ? 'spin 0.8s linear infinite' : 'none' }}>⟳</span>
+              {' '}{refreshing ? 'Actualizando…' : 'Actualizar'}
+            </button>
             <button
               onClick={() => setHelpOpen((v) => !v)}
               title="¿Cómo leer estos gráficos?"
