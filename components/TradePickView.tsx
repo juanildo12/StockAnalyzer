@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { colors as C, radius as R } from '@/src/utils/webTheme';
+import { computePremiumRiskBenefit, contractsForRisk } from '@/src/lib/options/tradeRisk';
 import GammaLevelsPanel from './GammaLevelsPanel';
 
 interface ContractData {
@@ -176,30 +177,32 @@ function getProgress(pick: TradePick, price: number | null | undefined) {
 }
 
 /**
- * Estima el precio de la opción (prima) cuando la acción cotiza a `stockPrice`.
- * Usa delta lineal desde la entrada + suelo de valor intrínseco. Es una
- * aproximación (ignora gamma/theta/IV), pero es la referencia práctica para
- * poner el stop y el target en prima. Devuelve null si no hay contrato.
+ * Riesgo/beneficio en prima de un pick con contrato, ponderado por la calidad
+ * del trade. Devuelve null si el pick no tiene contrato.
  */
-function premiumAtStock(pick: TradePick, stockPrice: number): number | null {
+function riskBenefitFor(pick: TradePick) {
   if (!pick.contract) return null;
-  const isCall = pick.direction === 'CALL';
-  const strike = pick.contract.strike;
-  const entryStock = pick.entry;
-  if (!isFinite(stockPrice) || !isFinite(entryStock) || !isFinite(strike)) return null;
-  const dEntry = pick.contract.delta != null ? Math.abs(pick.contract.delta) : null;
-  const intrinsicAt = (s: number) => (isCall ? Math.max(0, s - strike) : Math.max(0, strike - s));
-  let est: number;
-  if (dEntry != null) {
-    est = pick.contract.premium + dEntry * (stockPrice - entryStock);
-  } else {
-    // Sin delta: aproximación de delta 0.5 sobre el movimiento.
-    const intrinsicEntry = intrinsicAt(entryStock);
-    const extrinsic = Math.max(0, pick.contract.premium - intrinsicEntry);
-    est = intrinsicAt(stockPrice) > 0 ? intrinsicAt(stockPrice) : extrinsic * 0.5;
-  }
-  // La prima nunca vale menos que su intrínseco.
-  return Math.max(intrinsicAt(stockPrice), est, 0);
+  return computePremiumRiskBenefit(
+    {
+      entry: pick.entry,
+      stop: pick.stop,
+      target: pick.target,
+      strike: pick.contract.strike,
+      premium: pick.contract.premium,
+      iv: pick.contract.impliedVolatility,
+      dte: pick.contract.daysToExpiration,
+      isCall: pick.direction === 'CALL',
+      delta: pick.contract.delta,
+    },
+    {
+      score: pick.score,
+      setupState: pick.setupState,
+      targetReachable: pick.contract.targetReachable,
+      targetBlockedByOi: pick.contract.targetBlockedByOi,
+      earningsSoon: pick.contract.earningsSoon,
+    },
+    { adrPct: pick.adr ?? null }
+  );
 }
 
 export default function TradePickView() {
@@ -337,12 +340,9 @@ export default function TradePickView() {
   const isCall = currentPick?.direction === 'CALL';
   const dirColor = isCall ? '#34D399' : '#FB7185';
 
-  const stopPremium = currentPick?.contract ? premiumAtStock(currentPick, currentPick.stop) : null;
-  const targetPremium = currentPick?.contract ? premiumAtStock(currentPick, currentPick.target) : null;
-  const stopPremiumPct = currentPick?.contract && stopPremium != null
-    ? ((stopPremium - currentPick.contract.premium) / currentPick.contract.premium) * 100 : null;
-  const targetPremiumPct = currentPick?.contract && targetPremium != null
-    ? ((targetPremium - currentPick.contract.premium) / currentPick.contract.premium) * 100 : null;
+  const rb = currentPick ? riskBenefitFor(currentPick) : null;
+  const qColor = rb ? (rb.quality.label === 'alta' ? C.positive : rb.quality.label === 'media' ? C.warning : C.negative) : C.textMuted;
+  const contracts = rb ? contractsForRisk(Math.abs(rb.riskPerContract), RISK_PER_TRADE) : 0;
 
   const results = history.map(p => getStatus(p, prices[p.symbol]));
   const wins = results.filter(s => s === 'win').length;
@@ -580,34 +580,83 @@ export default function TradePickView() {
             </div>
           </div>
 
-          {/* Stop / Target en prima de la opción (lo operable al comprar/vender la opción) */}
-          {currentPick.contract && stopPremium != null && targetPremium != null && (
+          {/* Riesgo / Beneficio en prima, ponderado por la calidad del trade */}
+          {rb && (
             <div style={{ marginBottom: 16, padding: 12, background: '#0d1117', border: `1px solid ${C.border}`, borderRadius: R.md }}>
-              <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 8, fontWeight: 700 }}>
-                En prima de la opción (${fmt(currentPick.contract.premium)} de entrada)
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <span style={{ fontSize: 12, color: C.textPrimary, fontWeight: 800 }}>
+                  Riesgo / Beneficio en prima
+                </span>
+                <span style={{
+                  fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: R.full,
+                  background: qColor + '22', color: qColor, border: `1px solid ${qColor}55`,
+                }}>
+                  Calidad {rb.quality.label} · ×{rb.quality.factor.toFixed(2)}
+                </span>
               </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                <div style={styles.tradeItem}>
+                  <div style={styles.tradeLabel}>Riesgo (stop ${fmt(currentPick.stop)})</div>
+                  <div style={{ ...styles.tradeValue, color: C.negative }}>
+                    ${fmt(rb.stopPremium)}
+                    <span style={{ fontSize: 11, color: C.textMuted }}> → −${fmt(Math.abs(rb.riskPerContract), 0)}</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: C.textMuted }}>{fmt(rb.riskPct, 0)}% de la prima</div>
+                </div>
+                <div style={styles.tradeItem}>
+                  <div style={styles.tradeLabel}>Beneficio (target ${fmt(currentPick.target)})</div>
+                  <div style={{ ...styles.tradeValue, color: C.positive }}>
+                    ${fmt(rb.targetPremium)}
+                    <span style={{ fontSize: 11, color: C.textMuted }}> → +${fmt(rb.rewardPerContract, 0)}</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: C.textMuted }}>{fmt(rb.rewardPct, 0)}% de la prima</div>
+                </div>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div style={styles.tradeItem}>
-                  <div style={styles.tradeLabel}>Stop en prima</div>
-                  <div style={{ ...styles.tradeValue, color: C.negative }}>
-                    ${fmt(stopPremium)}{' '}
-                    <span style={{ fontSize: 11, color: C.textMuted }}>
-                      ({stopPremiumPct != null && stopPremiumPct > 0 ? '+' : ''}{fmt(stopPremiumPct, 0)}%)
-                    </span>
+                  <div style={styles.tradeLabel}>R/R en prima</div>
+                  <div style={{ ...styles.tradeValue, color: rb.rrBase != null && rb.rrBase >= 1 ? C.positive : C.warning }}>
+                    {rb.rrBase != null ? fmt(rb.rrBase, 1) : '—'}
                   </div>
                 </div>
                 <div style={styles.tradeItem}>
-                  <div style={styles.tradeLabel}>Target en prima</div>
-                  <div style={{ ...styles.tradeValue, color: C.positive }}>
-                    ${fmt(targetPremium)}{' '}
-                    <span style={{ fontSize: 11, color: C.textMuted }}>
-                      ({targetPremiumPct != null && targetPremiumPct > 0 ? '+' : ''}{fmt(targetPremiumPct, 0)}%)
-                    </span>
+                  <div style={styles.tradeLabel}>R/R ponderado por calidad</div>
+                  <div style={{ ...styles.tradeValue, color: rb.rrQuality != null && rb.rrQuality >= 1 ? C.positive : C.warning }}>
+                    {rb.rrQuality != null ? fmt(rb.rrQuality, 1) : '—'}
                   </div>
                 </div>
               </div>
+
+              <div style={{ fontSize: 10, color: C.textMuted, marginTop: 8 }}>
+                Prima pagada ${fmt(currentPick.contract?.premium ?? 0)} · Riesgo real por contrato ${fmt(Math.abs(rb.riskPerContract), 0)} · Beneficio esperado ${fmt(rb.rewardExpectedPerContract, 0)}
+                {contracts > 0 && ` · Para arriesgar $${RISK_PER_TRADE}: ${contracts} contrato${contracts > 1 ? 's' : ''}`}
+              </div>
+
+              {rb.breakevenMovePct != null && (
+                <div style={{ fontSize: 10, color: C.textMuted, marginTop: 4 }}>
+                  Breakeven al vencimiento ${fmt(rb.breakeven)} → la acción necesita {fmt(Math.abs(rb.breakevenMovePct), 1)}% de movimiento
+                  {rb.expectedMovePct != null && ` · movimiento esperado en ${currentPick.contract?.daysToExpiration ?? 0} días ≈ ${fmt(rb.expectedMovePct, 1)}% (ADR×√DTE)`}
+                  {rb.breakevenWithinExpectedMove === false && ' · ⚠️ fuera del rango habitual'}
+                </div>
+              )}
+
+              {rb.notes.length > 0 && (
+                <ul style={{ margin: '8px 0 0', paddingLeft: 16, color: C.warning, fontSize: 10, lineHeight: 1.6 }}>
+                  {rb.notes.map((n, i) => <li key={i}>{n}</li>)}
+                </ul>
+              )}
+
+              <details style={{ marginTop: 8 }}>
+                <summary style={{ fontSize: 10, color: C.textMuted, cursor: 'pointer' }}>Cómo se calcula la calidad</summary>
+                <ul style={{ margin: '4px 0 0', paddingLeft: 16, color: C.textMuted, fontSize: 10, lineHeight: 1.6 }}>
+                  {rb.quality.reasons.map((r, i) => <li key={i}>{r}</li>)}
+                </ul>
+              </details>
+
               <div style={{ fontSize: 10, color: C.textMuted, marginTop: 8, lineHeight: 1.5 }}>
-                Estimado con delta lineal desde el precio de entrada + suelo de intrínseco. Es una referencia — el precio real de la opción también depende de gamma, theta e IV.
+                Escenarios de la opción con Black-Scholes (IV y DTE reales) escalados a la prima que pagaste, con suelo de valor intrínseco. El R/R ponderado aplica el factor de calidad (score/100) al beneficio: el score es una métrica de ranking, no una probabilidad calibrada — úsalo como el R/R que estás dispuesto a suscribir, no como un valor esperado estadístico.
               </div>
             </div>
           )}
@@ -772,6 +821,7 @@ export default function TradePickView() {
                 const sm = STATUS_META[status];
                 const settled = getSettlement(pick, prices[pick.symbol]);
                 const stPnl = getPnl(pick, status, prices[pick.symbol]);
+                const hrb = riskBenefitFor(pick);
                 const prog = status === 'pending' ? getProgress(pick, prices[pick.symbol]) : null;
                 const exp = pick.contract?.expiration
                   ? new Date(pick.contract.expiration + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -898,15 +948,21 @@ export default function TradePickView() {
                                 <div style={styles.hxValue}>{pick.contract.delta != null ? fmt(pick.contract.delta) : 'N/A'}</div>
                               </div>
                               <div style={styles.hxContractItem}>
-                                <div style={styles.hxLabel}>Stop (prima)</div>
+                                <div style={styles.hxLabel}>Riesgo (prima)</div>
                                 <div style={{ ...styles.hxValue, color: C.negative }}>
-                                  {premiumAtStock(pick, pick.stop) != null ? `$${fmt(premiumAtStock(pick, pick.stop)!)}` : 'N/A'}
+                                  {hrb ? `$${fmt(hrb.stopPremium)} → −$${fmt(Math.abs(hrb.riskPerContract), 0)}` : 'N/A'}
                                 </div>
                               </div>
                               <div style={styles.hxContractItem}>
-                                <div style={styles.hxLabel}>Target (prima)</div>
+                                <div style={styles.hxLabel}>Beneficio (prima)</div>
                                 <div style={{ ...styles.hxValue, color: C.positive }}>
-                                  {premiumAtStock(pick, pick.target) != null ? `$${fmt(premiumAtStock(pick, pick.target)!)}` : 'N/A'}
+                                  {hrb ? `$${fmt(hrb.targetPremium)} → +$${fmt(hrb.rewardPerContract, 0)}` : 'N/A'}
+                                </div>
+                              </div>
+                              <div style={styles.hxContractItem}>
+                                <div style={styles.hxLabel}>R/R en prima</div>
+                                <div style={{ ...styles.hxValue, color: hrb && hrb.rrQuality != null && hrb.rrQuality >= 1 ? C.positive : C.warning }}>
+                                  {hrb ? (hrb.rrQuality != null ? `${fmt(hrb.rrQuality, 1)} (cal.)` : '—') : 'N/A'}
                                 </div>
                               </div>
                               <div style={styles.hxContractItem}>
