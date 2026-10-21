@@ -306,6 +306,114 @@ function DetailDrawer({ row, onClose }: { row: ScreenerRow; onClose: () => void 
   );
 }
 
+// ── Help panel ───────────────────────────────────────────────────────────────
+
+function HelpPanel({ onClose }: { onClose: () => void }) {
+  return (
+    <div style={{ background: C.bgCard, border: `1px solid ${C.accentBorder}`, borderRadius: R.md, padding: S.lg, marginBottom: S.md }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: S.sm }}>
+        <h3 style={{ margin: 0, color: C.textPrimary, fontSize: F.sizeLg, fontWeight: 700 }}>📖 Guía del Gamma Screener</h3>
+        <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: C.textMuted, fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>×</button>
+      </div>
+
+      <HelpBlock title="¿Qué es?">
+        Un screener cuantitativo que rankea acciones y ETFs de <strong style={{ color: C.textPrimary }}>NYSE / NASDAQ / AMEX</strong> según el
+        <strong style={{ color: C.textPrimary }}> posicionamiento del mercado de opciones</strong> (exposición gamma estimada de los dealers),
+        el <em>skew</em> de volatilidad, el <em>momentum</em> y la <em>liquidez</em>. Su objetivo es señalarte <strong style={{ color: C.textPrimary }}>qué candidatos
+        merecen análisis</strong> y cuáles excluir — no predice el futuro ni genera órdenes.
+      </HelpBlock>
+
+      <HelpBlock title="1 · Leer la tabla">
+        <HelpRow n="SYMBOL">Ticker, liquidez de opciones (high/medium/low) y si es ETF.</HelpRow>
+        <HelpRow n="SPOT">Precio actual del subyacente y cambio del día. La etiqueta indica si es precio en vivo, pre-market o post-market.</HelpRow>
+        <HelpRow n="EDGE"><strong>Edge Score</strong>: calidad del candidato de 0 a 100 (ver punto 4). Mide <em>calidad</em>, no probabilidad de ganar.</HelpRow>
+        <HelpRow n="GAMMA">Régimen de gamma (ver punto 3).</HelpRow>
+        <HelpRow n="SKEW">Sesgo de volatilidad: CALL-SIDE / PUT-SIDE / NEUTRAL (ver punto 3).</HelpRow>
+        <HelpRow n="MOMENTUM">Clasificación técnica en 5 niveles (bullish → bearish).</HelpRow>
+        <HelpRow n="OPT VOL / OI">Volumen de opciones y open interest agregados del símbolo.</HelpRow>
+        <HelpRow n="NET GEX">Exposición gamma neta estimada ($ por 1% de movimiento).</HelpRow>
+        <HelpRow n="WALLS / FLIP">Call Wall, Put Wall y Gamma Flip con su distancia ↔ al spot (ver punto 5).</HelpRow>
+      </HelpBlock>
+
+      <HelpBlock title="2 · Botones, filtros y orden">
+        Usa los <strong>presets</strong> (Highest Edge, Positive/Negative Gamma, Bullish/Bearish Momentum, Near Flip/Walls, High Liquidity) para
+        saltar directo a una idea. Refina con los filtros: <em>slider de Edge</em>, <em>régimen</em>, <em>skew</em>, <em>momentum</em>, <em>exchange</em> y el tamaño de escaneo.
+        Pulsa cualquier <strong>cabecera de columna</strong> para ordenar (▲/▼). Haz clic en una <strong>fila</strong> para abrir el detalle del símbolo sin perder filtros ni orden.
+      </HelpBlock>
+
+      <HelpBlock title="3 · GEX, Gamma Regime y Skew">
+        <HelpRow n="GEX">
+          <strong>Gamma Exposure</strong> estima cuánto gamma mueve el mercado por cada 1% del subyacente. Convención:
+          <code style={code}>gamma·OI·100·spot²·0.01</code>. Se asume dealer <em>long calls / short puts</em> (configurable).
+        </HelpRow>
+        <HelpRow n="Gamma">
+          <span style={{ color: C.positive }}>POS GAMMA</span> (dealers amortiguan el movimiento, mercado más "pegajoso"),
+          <span style={{ color: C.negative }}> NEG GAMMA</span> (amplifican, movimientos más violentos),
+          <span style={{ color: C.warning }}> TRANSITION</span> (cerca del flip) o <em>UNKNOWN</em> sin datos.
+        </HelpRow>
+        <HelpRow n="Skew">
+          <span style={{ color: C.positive }}>CALL-SIDE</span> = la volatilidad de los calls está más cara (25Δ risk reversal positivo).
+          <span style={{ color: C.negative }}> PUT-SIDE</span> = los puts cotizan con prima (protección). <span style={{ color: C.textSecondary }}>NEUTRAL</span> = equilibrado.
+        </HelpRow>
+        <div style={{ marginTop: 4, color: C.textMuted, fontSize: F.sizeXs }}>
+          ⚠️ El open interest <strong>no</strong> revela la posición real del dealer → todo GEX es una <strong>estimación</strong> bajo un supuesto documentado.
+        </div>
+      </HelpBlock>
+
+      <HelpBlock title="4 · Edge Score (0-100)">
+        Combina, con pesos configurables: <strong>gamma</strong> (25%), <strong>momentum</strong> (20%), <strong>skew</strong> (20%),
+        <strong> proximidad</strong> a niveles (15%) y <strong>liquidez/OI</strong> (20%). Se aplica una <strong>penalización por calidad de datos</strong>: si faltan datos,
+        el score baja o se marca <em>N/A</em> (nunca se infla un símbolo sin datos).
+        <div style={{ marginTop: 4 }}>Recuerda: mide la <strong>calidad del candidato</strong>, no la probabilidad de beneficio.</div>
+      </HelpBlock>
+
+      <HelpBlock title="5 · Call Wall, Put Wall y Gamma Flip">
+        <HelpRow n="Call Wall">Strike con la mayor concentración de gamma de calls (posible zona de resistencia/atracción). Con <em>scope</em> elegible: nearest / weekly / monthly / all.</HelpRow>
+        <HelpRow n="Put Wall">Strike con la mayor concentración de gamma de puts (posible zona de soporte).</HelpRow>
+        <HelpRow n="Gamma Flip">Precio del subyacente donde el <strong>GEX neto cambia de signo</strong> (grid de spot + cruce por cero interpolado). Si no hay cruce válido → <em>N/A</em>, nunca se inventa un nivel.</HelpRow>
+        <HelpRow n="DIST"><code style={code}>(nivel − spot)/spot × 100</code>. Positivo = nivel por encima del spot; negativo = por debajo.</HelpRow>
+        <div style={{ marginTop: 4, color: C.textMuted, fontSize: F.sizeXs }}>
+          Los niveles provienen del OI real del día anterior; no son soportes/resistencias garantizados.
+        </div>
+      </HelpBlock>
+
+      <HelpBlock title="6 · Detalle del símbolo (clic en la fila)">
+        Abre el panel lateral con: spot y cambio, régimen de gamma, walls y flip con distancias en $ y %, <strong>breakdown del Edge Score</strong>,
+        <strong> GEX neto por strike</strong> (gráfico), estadísticas (P/C volumen, ATM IV, risk reversal 25Δ, retorno 20d, volumen relativo) y
+        <strong> calidad de datos + avisos</strong>. Marca el spot actual sobre el perfil de gamma.
+      </HelpBlock>
+
+      <div style={{ marginTop: S.sm, padding: '10px 12px', background: C.warningBg, border: `1px solid ${C.warningBorder}`, borderRadius: R.sm, color: C.textSecondary, fontSize: F.sizeSm }}>
+        ⚠️ <strong style={{ color: C.textPrimary }}>Aviso:</strong> herramienta de análisis educativo. El GEX es una estimación, no una posición
+        observada. El universo escaneado es un subconjunto líquido priorizado (no un barrido completo en vivo). No es asesoría financiera.
+      </div>
+    </div>
+  );
+}
+
+function HelpBlock({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginTop: S.md }}>
+      <div style={{ color: C.accent, fontSize: F.sizeMd, fontWeight: 700, marginBottom: 6 }}>{title}</div>
+      <div style={{ color: C.textSecondary, fontSize: F.sizeSm, lineHeight: 1.6 }}>{children}</div>
+    </div>
+  );
+}
+
+function HelpRow({ n, children }: { n?: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', gap: S.sm, marginTop: 4 }}>
+      {n && <span style={{ color: C.accentLight, fontWeight: 700, fontSize: F.sizeSm, minWidth: 70, flexShrink: 0 }}>{n}</span>}
+      <span style={{ flex: 1 }}>{children}</span>
+    </div>
+  );
+}
+
+const code: React.CSSProperties = {
+  background: C.bgElevated, border: `1px solid ${C.border}`, borderRadius: 4, padding: '1px 5px',
+  fontSize: F.sizeXs, fontFamily: 'monospace', color: C.accentLight,
+};
+
 // ── Main view ────────────────────────────────────────────────────────────────
 
 export default function GammaScreenerView() {
@@ -322,6 +430,7 @@ export default function GammaScreenerView() {
   const [momFilter, setMomFilter] = useState('all');
   const [exchangeFilter, setExchangeFilter] = useState('');
   const [selected, setSelected] = useState<ScreenerRow | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   const load = useCallback(async (refresh = false) => {
     setLoading(true);
@@ -418,12 +527,18 @@ export default function GammaScreenerView() {
         </div>
         <div style={{ display: 'flex', gap: S.sm, alignItems: 'center' }}>
           {data && <span style={{ fontSize: F.sizeXs, color: C.textMuted }}>{rows.length} resultados · escaneados {data.universe.scanned} de {data.universe.requested} · {fmtTime(data.asOf)}</span>}
+          <button onClick={() => setShowHelp((v) => !v)}
+            style={{ background: showHelp ? C.accent : 'transparent', color: showHelp ? '#06231f' : C.accent, border: `1px solid ${C.accentBorder}`, borderRadius: R.full, padding: '5px 14px', fontSize: F.sizeSm, fontWeight: 700, cursor: 'pointer' }}>
+            {showHelp ? '✕ Cerrar ayuda' : '? Cómo usar'}
+          </button>
           <button onClick={() => load(true)} disabled={loading}
             style={{ background: C.accent, color: '#06231f', border: 'none', borderRadius: R.sm, padding: '6px 14px', fontWeight: 700, cursor: loading ? 'wait' : 'pointer', fontSize: F.sizeSm }}>
             {loading ? '…' : '↻ Actualizar'}
           </button>
         </div>
       </div>
+
+      {showHelp && <HelpPanel onClose={() => setShowHelp(false)} />}
 
       {/* Disclaimer bar */}
       <div style={{ fontSize: F.sizeXs, color: C.textMuted, background: C.bgInput, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: '6px 10px', marginBottom: S.md }}>
