@@ -1088,17 +1088,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Focus list: top 5 candidatos (con contrato si se encontró uno líquido)
-    const contractBySymbol = new Map<string, any>();
-    for (const c of combos) contractBySymbol.set(c.stock.symbol, c.contract);
-    const focusList = tryCandidates.slice(0, FOCUS_SIZE).map((c) => ({
-      ...c,
-      contract: contractBySymbol.get(c.symbol) ?? null,
-    }));
+    // Focus list: SOLO candidatos con contrato líquido (los combos), ordenados
+    // por score de acción. Un setup sin contrato líquido no es ejecutable → fuera.
+    const combosSorted = [...combos].sort((a, b) => b.stock.score - a.stock.score);
+    const seenFocus = new Set<string>();
+    const focusList: any[] = [];
+    for (const c of combosSorted) {
+      if (seenFocus.has(c.stock.symbol)) continue;
+      seenFocus.add(c.stock.symbol);
+      focusList.push({ ...c.stock, contract: c.contract });
+      if (focusList.length >= FOCUS_SIZE) break;
+    }
 
     // Pick titular: mejor combo con score de acción A/A+ (≥ MIN_PICK_SCORE).
-    // Si ninguna A/A+ consiguió contrato, se devuelve la mejor A/A+ sin contrato
-    // (nunca se adjunta un contrato de spread ancho / ilíquido).
+    // SOLO se devuelve si tiene contrato líquido; si ninguna A/A+ consiguió
+    // contrato líquido, no hay pick (nunca se adjunta uno ilíquido ni se
+    // devuelve una acción sin contrato).
     let topPick: TradePickCandidate | null = null;
     let contract: any = null;
     const bestCombo =
@@ -1106,10 +1111,8 @@ export async function GET(request: NextRequest) {
     if (bestCombo) {
       topPick = bestCombo.stock;
       contract = bestCombo.contract;
-    } else {
-      const withoutContract = focusList.find((f) => f.score >= MIN_PICK_SCORE);
-      if (withoutContract) topPick = withoutContract;
     }
+    if (topPick && !contract) topPick = null;
 
     // Seguridad final: nunca devolver una acción con score bajo
     if (topPick && topPick.score < MIN_PICK_SCORE) {

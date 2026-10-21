@@ -276,7 +276,7 @@ export default function TradePickView() {
         const liquidFocus = focus.filter((f) => f.contract);
         setError(
           liquidFocus.length > 0
-            ? 'Ningún setup A/A+ hoy. Revisa la focus list (B+) más abajo.'
+            ? 'Ningún setup A/A+ con contrato líquido hoy. Revisa la focus list (B+) más abajo.'
             : bias === 'bear'
               ? 'Sin contratos líquidos hoy (OI≥500, Vol≥100, spread≤10%). Espera a que SPY/QQQ pierdan las EMA 8/21/50.'
               : 'Sin contratos líquidos hoy (OI≥500, Vol≥100, spread≤10%). Espera a que SPY/QQQ recuperen las EMA 8/21/50.'
