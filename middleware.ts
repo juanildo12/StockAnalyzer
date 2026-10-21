@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
@@ -51,53 +52,30 @@ function getRequiredPlan(pathname: string): string | null {
   return null;
 }
 
-// ─── Simple JWT decode (no library needed) ───────────────────────────────────
-function decodeJwtPayload(token: string): Record<string, any> | null {
-  try {
-    const base64 = token.split(".")[1];
-    const padded = base64.replace(/-/g, "+").replace(/_/g, "/");
-    const json = decodeURIComponent(
-      atob(padded)
-        .split("")
-        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-        .join("")
-    );
-    return JSON.parse(json);
-  } catch {
-    return null;
+/**
+ * Lee el token de sesión.
+ *
+ * OJO: NextAuth v4 cifra el token de sesión (JWE de 5 partes), así que el
+ * decode manual de un JWS NO funciona — devolvía siempre null y el
+ * middleware trataba a todo el mundo como anónimo (401 en rutas no públicas
+ * aunque el usuario estuviera logueado, y el gating por plan nunca se
+ * aplicaba). Se usa `getToken` de next-auth/jwt, que descifra el JWE con
+ * NEXTAUTH_SECRET y resuelve la cookie (incluida la fragmentada y el prefijo
+ * __Secure- de producción).
+ */
+async function getTokenFromRequest(req: NextRequest): Promise<Record<string, any> | null> {
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) return null;
+  // Se prueban las dos variantes del nombre de cookie (http / https).
+  for (const secureCookie of [true, false]) {
+    try {
+      const token = await getToken({ req, secret, secureCookie });
+      if (token) return token as Record<string, any>;
+    } catch {
+      // sin token legible → se sigue como anónimo
+    }
   }
-}
-
-function getSessionCookieValue(req: NextRequest): string | null {
-  const names = [
-    "next-auth.session-token",
-    "__Secure-next-auth.session-token",
-    "_next_auth_session",
-  ];
-  for (const name of names) {
-    const value = req.cookies.get(name)?.value;
-    if (value) return value;
-  }
-  // Cookies fragmentadas (chunked) por superar el límite de tamaño:
-  // next-auth.session-token.0, .1, ...
-  let combined = "";
-  for (let i = 0; i < 10; i++) {
-    const chunk =
-      req.cookies.get(`next-auth.session-token.${i}`)?.value ||
-      req.cookies.get(`__Secure-next-auth.session-token.${i}`)?.value;
-    if (!chunk) break;
-    combined += chunk;
-  }
-  return combined || null;
-}
-
-function getTokenFromRequest(req: NextRequest): Record<string, any> | null {
-  const sessionToken = getSessionCookieValue(req);
-  if (!sessionToken) return null;
-  const payload = decodeJwtPayload(sessionToken);
-  if (!payload) return null;
-  if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
-  return payload;
+  return null;
 }
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
@@ -109,7 +87,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const token = getTokenFromRequest(req);
+  const token = await getTokenFromRequest(req);
   const userPlan = (token as any)?.plan || "free";
   const userLevel = PLAN_HIERARCHY[userPlan] ?? 0;
 
@@ -229,6 +207,14 @@ export async function middleware(req: NextRequest) {
       pathname.startsWith("/api/gamma-levels") ||
       pathname.startsWith("/api/gamma-screener") ||
       pathname.startsWith("/api/options-sim") ||
+      pathname.startsWith("/api/options-chain") ||
+      pathname.startsWith("/api/options-screener") ||
+      // /api/options: el análisis de un ticker es público (mismo coste que
+      // /api/options-chain). El screener (`?screen=screener`, 50 símbolos ×
+      // 3 fuentes) sigue requiriendo sesión.
+      (pathname === "/api/options" &&
+        !!req.nextUrl.searchParams.get("symbol") &&
+        !req.nextUrl.searchParams.get("screen")) ||
       pathname.startsWith("/api/put-call-ratio") ||
       pathname.startsWith("/api/squeeze");
 

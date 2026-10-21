@@ -2563,6 +2563,7 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
   const [data, setData] = useState<any>(null);
   const [screenerData, setScreenerData] = useState<any>(null);
   const [screenerLoading, setScreenerLoading] = useState(false);
+  const [screenerError, setScreenerError] = useState('');
   const [activeTab, setActiveTab] = useState<'analyze' | 'screener'>('analyze');
   const [selectedSymbolFromScreener, setSelectedSymbolFromScreener] = useState<string | null>(null);
   const [sortField, setSortField] = useState<string>('suitabilityScore');
@@ -2803,9 +2804,15 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
   const loadScreener = async () => {
     setScreenerLoading(true);
     try {
+      setScreenerError('');
       const res = await fetch('/api/options?screen=screener');
       const json = await res.json();
-      
+      if (!res.ok) {
+        throw new Error(json?.error === 'Authentication required'
+          ? 'Inicia sesión para usar el screener de estrategias.'
+          : (json?.error || 'Error cargando el screener'));
+      }
+
       const currentSymbols = new Set(json.all?.map((s: any) => s.symbol) || []);
       const savedSymbols = typeof window !== 'undefined' 
         ? new Set(JSON.parse(localStorage.getItem('optionsScreenerSymbols') || '[]'))
@@ -2837,8 +2844,9 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
         localStorage.setItem('optionsScreenerSymbols', JSON.stringify([...currentSymbols]));
       }
       setScreenerData(json);
-    } catch (e) {
+    } catch (e: any) {
       console.error('Screener error:', e);
+      setScreenerError(e?.message || 'Error cargando el screener');
     } finally {
       setScreenerLoading(false);
     }
@@ -3701,6 +3709,10 @@ function OptionsView({ initialSymbol, onSymbolChange, currentSymbol, onAnalyzeIn
           {screenerLoading ? (
             <div style={{ textAlign: 'center', padding: '60px 20px' }}>
               <ThinkingOrbLoader state="searching" size={64} label="Analizando acciones..." />
+            </div>
+          ) : screenerError ? (
+            <div style={{ padding: '16px', borderRadius: R.md, background: C.negativeBg, color: C.negative, textAlign: 'center', marginBottom: '16px' }}>
+              {screenerError}
             </div>
           ) : screenerData ? (
             <div>
