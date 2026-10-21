@@ -124,18 +124,11 @@ function bestContract(contracts: any[], price: number, isCall: boolean): any[] {
     if (mid <= 0) return false;
     return (ask - bid) / mid <= 0.10 && ask - bid <= 0.60;
   };
-  const semiTight = (c: any) => {
-    const bid = c.bid || 0;
-    const ask = c.ask || 0;
-    if (bid <= 0 || ask <= 0) return false;
-    const mid = (bid + ask) / 2;
-    if (mid <= 0) return false;
-    return (ask - bid) / mid <= 0.15 && ask - bid <= 0.90;
-  };
 
-  // Prefer contracts with TIGHT SPREAD + HIGH volume + HIGH open interest
+  // Only LIQUID contracts: tight spread + high volume + high open interest.
+  // No relaxed fallback — if nothing qualifies, there is no contract.
   const effDelta = (c: any) => c.delta || c.greeks?.delta || approxDelta(c.strike, price, isCall);
-  let pool = contracts.filter((c: any) =>
+  const pool = contracts.filter((c: any) =>
     (c.openInterest || 0) >= 500 &&
     (c.volume || 0) >= 100 &&
     (c.bid || 0) > 0 &&
@@ -143,17 +136,6 @@ function bestContract(contracts: any[], price: number, isCall: boolean): any[] {
     Math.abs(effDelta(c)) < 0.80 && // skip deep ITM
     tight(c)
   );
-  if (pool.length === 0) {
-    // Relax liquidity a bit, but NEVER relax the spread requirement
-    pool = contracts.filter((c: any) =>
-      (c.openInterest || 0) >= 100 &&
-      (c.volume || 0) >= 20 &&
-      (c.bid || 0) > 0 &&
-      (c.ask || 0) > 0 &&
-      Math.abs(effDelta(c)) < 0.80 &&
-      semiTight(c)
-    );
-  }
   if (pool.length === 0) return []; // NEVER fall back to wide-spread / illiquid contracts
 
   const scored = pool.map((c: any) => {
