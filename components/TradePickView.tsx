@@ -273,12 +273,13 @@ export default function TradePickView() {
 
       if (!data.pick) {
         setCurrentPick(null);
+        const liquidFocus = focus.filter((f) => f.contract);
         setError(
-          focus.length > 0
+          liquidFocus.length > 0
             ? 'Ningún setup A/A+ hoy. Revisa la focus list (B+) más abajo.'
             : bias === 'bear'
-              ? 'Sin setups bajistas hoy. Espera a que SPY/QQQ pierdan las EMA 8/21/50.'
-              : 'Sin setups de momentum hoy. Espera a que SPY/QQQ recuperen las EMA 8/21/50.'
+              ? 'Sin contratos líquidos hoy (OI≥500, Vol≥100, spread≤10%). Espera a que SPY/QQQ pierdan las EMA 8/21/50.'
+              : 'Sin contratos líquidos hoy (OI≥500, Vol≥100, spread≤10%). Espera a que SPY/QQQ recuperen las EMA 8/21/50.'
         );
         return;
       }
@@ -564,11 +565,11 @@ export default function TradePickView() {
         </div>
       )}
 
-      {/* Focus list — top 5 setups del escaneo */}
-      {focusList.length > 0 && (
+      {/* Focus list — top 5 setups del escaneo (solo con contrato líquido) */}
+      {focusList.filter((f) => f.contract).length > 0 && (
         <div style={styles.focusSection}>
           <div style={styles.focusTitle}>FOCUS LIST — mejores setups del scan</div>
-          {focusList.map((f) => {
+          {focusList.filter((f) => f.contract).map((f) => {
             const fg = getGrade(f.score);
             const active = currentPick?.symbol === f.symbol;
             const setupText = f.setupState === 'confirmed'
@@ -591,11 +592,7 @@ export default function TradePickView() {
                   <span style={{ ...styles.focusChip, color: setupColor, borderColor: setupColor + '50', background: setupColor + '12' }}>{setupText}</span>
                 </div>
                 <div style={styles.focusRight}>
-                  {f.contract ? (
-                    <span style={styles.focusContract}>{f.contract.strike}{f.direction === 'PUT' ? 'P' : 'C'} {fExp} · ${fmt(f.contract.premium)}</span>
-                  ) : (
-                    <span style={{ fontSize: 11, color: C.textMuted }}>sin contrato líquido</span>
-                  )}
+                  <span style={styles.focusContract}>{f.contract!.strike}{f.direction === 'PUT' ? 'P' : 'C'} {fExp} · ${fmt(f.contract!.premium)}</span>
                   <span style={{ fontSize: 13, fontWeight: 800, color: fg.color }}>{f.score}</span>
                 </div>
               </div>
