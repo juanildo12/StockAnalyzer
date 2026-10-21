@@ -152,6 +152,127 @@ const PLAYBOOK_COLOR: Record<PlaybookRole, (c: typeof C) => string> = {
   chop_area: (c) => c.textSecondary,
 };
 
+// ── Entrada sugerida (derivada SOLO de niveles reales + momentum/régimen) ────
+// No inventa precios: el gatillo es el gamma flip, el target la pared opuesta y
+// la invalidación el lado opuesto del flip. El sesgo solo se emite cuando el
+// momentum y el régimen gamma están ALINEADOS (si no, "esperar").
+
+type EntryBias = 'long' | 'short' | 'wait';
+
+interface EntryIdea {
+  bias: EntryBias;
+  heading: string;
+  color: (c: typeof C) => string;
+  trigger: number | null;
+  triggerText: string;
+  target: number | null;
+  stop: number | null;
+  rationale: string[];
+  aligned: boolean;
+}
+
+function buildEntryIdea(row: ScreenerRow): EntryIdea {
+  const momBull = row.momentum === 'bullish' || row.momentum === 'lean_bullish';
+  const momBear = row.momentum === 'bearish' || row.momentum === 'lean_bearish';
+  const flip = row.gammaFlip;
+  const spotAboveFlip = flip != null ? row.spot >= flip : null;
+  const regimeDir: 'up' | 'down' | 'flat' = row.gammaRegime === 'positive' ? 'up' : row.gammaRegime === 'negative' ? 'down' : 'flat';
+
+  const rationale: string[] = [];
+  rationale.push(`Régimen ${GAMMA_META[row.gammaRegime].label}${flip != null ? ` · spot ${spotAboveFlip ? 'por encima' : 'por debajo'} del flip $${flip.toFixed(2)}` : ' · sin flip válido'}`);
+  rationale.push(`Momentum ${MOM_META[row.momentum].label}${row.momentumRet20d != null ? ` · 20d ${fmtPct(row.momentumRet20d * 100, 1)}` : ''}`);
+
+  // Alineación: el momentum debe coincidir con el régimen (spot vs flip).
+  const longAligned = momBull && regimeDir === 'up';
+  const shortAligned = momBear && regimeDir === 'down';
+
+  if (longAligned && flip != null) {
+    return {
+      bias: 'long',
+      heading: 'Al alza (long calls)',
+      color: (c) => c.positive,
+      trigger: flip,
+      triggerText: `Ruptura confirmada sobre el flip $${flip.toFixed(2)}`,
+      target: row.callWall,
+      stop: row.putWall ?? flip,
+      rationale: [...rationale, 'Momentum alcista con gamma positivo → sesgo al alza, apoyado por el colchón de dealers.'],
+      aligned: true,
+    };
+  }
+  if (shortAligned && flip != null) {
+    return {
+      bias: 'short',
+      heading: 'A la baja (long puts)',
+      color: (c) => c.negative,
+      trigger: flip,
+      triggerText: `Ruptura confirmada bajo el flip $${flip.toFixed(2)}`,
+      target: row.putWall,
+      stop: row.callWall ?? flip,
+      rationale: [...rationale, 'Momentum bajista con gamma negativo → sesgo a la baja, movimientos amplificados.'],
+      aligned: true,
+    };
+  }
+
+  // Sin alineación: hay momentum pero el régimen lo contradice, o todo neutral.
+  let reason: string;
+  if (momBear && regimeDir === 'up') reason = 'Momentum bajista pero gamma positivo: los dealers amortiguan caídas → un put aquí es contra-flujo. Espera a que pierda el flip.';
+  else if (momBull && regimeDir === 'down') reason = 'Momentum alcista pero gamma negativo: el régimen amplifica y puede revertir → un call aquí es contra-flujo. Espera a que reconquiste el flip.';
+  else if (momBull) reason = 'Momentum alcista pero régimen sin sesgo claro (transición/neutral).';
+  else if (momBear) reason = 'Momentum bajista pero régimen sin sesgo claro (transición/neutral).';
+  else reason = 'Momentum neutral: sin sesgo direccional definido.';
+
+  return {
+    bias: 'wait',
+    heading: 'Esperar confirmación',
+    color: (c) => c.warning,
+    trigger: flip,
+    triggerText: flip != null ? `Gatillo: cruzar el flip $${flip.toFixed(2)} en la dirección del momentum` : 'Sin flip válido para fijar gatillo',
+    target: null,
+    stop: null,
+    rationale: [...rationale, reason],
+    aligned: false,
+  };
+}
+
+function EntrySuggestionCard({ row }: { row: ScreenerRow }) {
+  const idea = buildEntryIdea(row);
+  const col = idea.color(C);
+  const fmt$ = (v: number | null) => (v != null ? `$${v.toFixed(2)}` : '—');
+  return (
+    <div style={{ marginBottom: S.md, border: `1px solid ${col}55`, borderRadius: R.md, overflow: 'hidden', background: col + '0E' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: S.sm, padding: '10px 12px', borderBottom: `1px solid ${col}33` }}>
+        <span style={{ fontSize: F.sizeSm, fontWeight: 800, color: col }}>
+          {idea.bias === 'long' ? '🟢' : idea.bias === 'short' ? '🔴' : '⏸'} Entrada sugerida: {idea.heading}
+        </span>
+        {!idea.aligned && <span style={{ marginLeft: 'auto', fontSize: F.sizeXs, color: C.textMuted }}>momentum ↔ régimen desalineados</span>}
+      </div>
+      <div style={{ padding: '10px 12px' }}>
+        <div style={{ fontSize: F.sizeSm, color: C.textSecondary, marginBottom: S.xs }}>{idea.triggerText}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: S.sm, marginTop: S.xs }}>
+          <div style={{ background: C.bgInput, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: S.sm }}>
+            <div style={{ fontSize: F.sizeXs, color: C.textMuted }}>Gatillo (flip)</div>
+            <div style={{ fontSize: F.sizeMd, fontWeight: 700, color: C.textPrimary }}>{fmt$(idea.trigger)}</div>
+          </div>
+          <div style={{ background: C.bgInput, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: S.sm }}>
+            <div style={{ fontSize: F.sizeXs, color: C.textMuted }}>{idea.bias === 'short' ? 'Target (put wall)' : 'Target (call wall)'}</div>
+            <div style={{ fontSize: F.sizeMd, fontWeight: 700, color: idea.target != null ? col : C.textMuted }}>{fmt$(idea.target)}</div>
+          </div>
+          <div style={{ background: C.bgInput, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: S.sm }}>
+            <div style={{ fontSize: F.sizeXs, color: C.textMuted }}>Invalidación</div>
+            <div style={{ fontSize: F.sizeMd, fontWeight: 700, color: C.textPrimary }}>{fmt$(idea.stop)}</div>
+          </div>
+        </div>
+        <ul style={{ margin: `${S.sm}px 0 0`, paddingLeft: 18, color: C.textSecondary, fontSize: F.sizeXs, lineHeight: 1.6 }}>
+          {idea.rationale.map((r, i) => <li key={i}>{r}</li>)}
+        </ul>
+        <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginTop: S.xs }}>
+          Derivado de los niveles gamma reales (flip/walls) y del momentum/régimen. No es una señal de ejecución ni garantía.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Presets ──────────────────────────────────────────────────────────────────
 
 interface Preset {
@@ -269,6 +390,9 @@ function DetailDrawer({ row, onClose }: { row: ScreenerRow; onClose: () => void 
           <span style={{ color: m.color(C), fontSize: F.sizeXs, fontWeight: 600 }}>{m.label}</span>
           <span style={{ color: edgeColor(row.edge), fontSize: F.sizeXs, fontWeight: 700 }}>EDGE {row.edge ?? '—'}</span>
         </div>
+
+        {/* Entrada sugerida (niveles reales + momentum/régimen) */}
+        <EntrySuggestionCard row={row} />
 
         {/* Edge breakdown */}
         {row.edgeBreakdown && (
