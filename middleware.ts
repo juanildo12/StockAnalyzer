@@ -227,6 +227,7 @@ export async function middleware(req: NextRequest) {
       pathname.startsWith("/api/prospect-pick") ||
       pathname.startsWith("/api/trade-picks") ||
       pathname.startsWith("/api/gamma-levels") ||
+      pathname.startsWith("/api/gamma-screener") ||
       pathname.startsWith("/api/options-sim") ||
       pathname.startsWith("/api/put-call-ratio") ||
       pathname.startsWith("/api/squeeze");

@@ -27,6 +27,7 @@ import TradingTrainer from '@/components/TradingTrainer';
 import StockDetailPanel from '@/components/StockDetailPanel';
 import ValuationGauge from '@/components/ValuationGauge';
 import AlgoAlertsPanel from '@/components/AlgoAlertsPanel';
+import GammaScreenerView from '@/components/GammaScreenerView';
 import TradePickView from '@/components/TradePickView';
 import CatalystPanel from '@/components/CatalystPanel';
 import OptionsStrategySimulator from '@/components/OptionsStrategySimulator';
@@ -496,7 +497,7 @@ export default function Home() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [view, setView] = useState<'briefing' | 'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard' | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer' | 'algo-alerts' | 'trade-picks' | 'classification' | 'catalysts' | 'options-sim'>('analyzer');
+  const [view, setView] = useState<'briefing' | 'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard' | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer' | 'algo-alerts' | 'trade-picks' | 'classification' | 'catalysts' | 'options-sim' | 'gamma-screener'>('analyzer');
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -1076,6 +1077,7 @@ export default function Home() {
                 { id: 'trade-picks', icon: '🎯', label: 'Trade Picks', minPlan: 1 },
                 { id: 'options', icon: '🎯', label: 'Opciones', minPlan: 2 },
                 { id: 'options-sim', icon: '🎛️', label: 'Sim. Opciones', minPlan: 2 },
+                { id: 'gamma-screener', icon: '⚛️', label: 'Gamma Screener', minPlan: 2 },
                 { id: 'watchlist', icon: '👁️', label: 'Watchlist', minPlan: 0 },
                 { id: 'backtest', icon: '🧪', label: 'Backtest', minPlan: 1 },
                 { id: 'ai-coach', icon: '🤖', label: 'AI Coach', minPlan: 1 },
@@ -1986,6 +1988,12 @@ export default function Home() {
       {view === 'options-sim' && (
         <div style={{ padding: '24px', maxWidth: 1080, margin: '0 auto', width: '100%', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <OptionsStrategySimulator initialSymbol={symbol || 'SPY'} />
+        </div>
+      )}
+
+      {view === 'gamma-screener' && (
+        <div style={{ width: '100%', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+          <GammaScreenerView />
         </div>
       )}
 
