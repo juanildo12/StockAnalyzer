@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { colors as C, radius as R, spacing as S, font as F } from '@/src/utils/webTheme';
+import { PROFILES, type TraderProfile } from '@/src/lib/navigation/profiles';
+import type { ExpiryScope } from '@/src/lib/options/gammaScreener';
+
+type GammaScope = ExpiryScope;
 
 // ── Types mirrored from the API ──────────────────────────────────────────────
 
@@ -681,7 +685,7 @@ const code: React.CSSProperties = {
 
 // ── Main view ────────────────────────────────────────────────────────────────
 
-export default function GammaScreenerView() {
+export default function GammaScreenerView({ profile = 'swing' }: { profile?: TraderProfile }) {
   const [data, setData] = useState<ScreenerResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -696,6 +700,12 @@ export default function GammaScreenerView() {
   const [exchangeFilter, setExchangeFilter] = useState('');
   const [selected, setSelected] = useState<ScreenerRow | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  // El scope por defecto viene del perfil (nearest/weekly/monthly/all).
+  const [scope, setScope] = useState<GammaScope>(PROFILES[profile].defaults.gammaScope);
+
+  useEffect(() => {
+    setScope(PROFILES[profile].defaults.gammaScope);
+  }, [profile]);
 
   const load = useCallback(async (refresh = false) => {
     setLoading(true);
@@ -703,6 +713,7 @@ export default function GammaScreenerView() {
     try {
       const params = new URLSearchParams();
       params.set('limit', String(limit));
+      params.set('scope', scope);
       if (refresh) params.set('refresh', '1');
       const res = await fetch(`/api/gamma-screener?${params.toString()}`);
       const json = await res.json();
@@ -713,7 +724,7 @@ export default function GammaScreenerView() {
     } finally {
       setLoading(false);
     }
-  }, [limit]);
+  }, [limit, scope]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -855,6 +866,18 @@ export default function GammaScreenerView() {
             <option value={20}>20</option><option value={40}>40</option><option value={60}>60</option><option value={120}>120</option>
           </select>
         </label>
+        <label style={{ color: C.textSecondary, display: 'flex', alignItems: 'center', gap: 6 }}>
+          Vencimientos
+          <select value={scope} onChange={(e) => setScope(e.target.value as GammaScope)} style={{ background: C.bgInput, color: C.textPrimary, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: '4px 8px' }}>
+            <option value="nearest">Más cercano</option>
+            <option value="weekly">Semanales (≤45d)</option>
+            <option value="monthly">Mensuales</option>
+            <option value="all">Todos</option>
+          </select>
+        </label>
+        <span style={{ color: C.textMuted }}>
+          {PROFILES[profile].icon} Perfil {PROFILES[profile].label} · {scope}
+        </span>
       </div>
 
       {error && <div style={{ color: C.negative, fontSize: F.sizeSm, marginBottom: S.sm }}>{error}</div>}

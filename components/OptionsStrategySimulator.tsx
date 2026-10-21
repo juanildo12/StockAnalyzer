@@ -16,6 +16,7 @@ import {
 } from '@/src/lib/options/strategy';
 import { scenarioMatrix, ivCrush, DEFAULT_IV_SHIFTS } from '@/src/lib/options/whatif';
 import { PRESETS, buildPresetLegs, getPreset, type PresetContext } from '@/src/lib/options/presets';
+import { PROFILES, type TraderProfile } from '@/src/lib/navigation/profiles';
 
 interface SimContract {
   strike: number;
@@ -54,6 +55,7 @@ interface SimResponse {
 
 interface Props {
   initialSymbol?: string;
+  profile?: TraderProfile;
 }
 
 const fmtUsd = (v: number) =>
@@ -61,7 +63,7 @@ const fmtUsd = (v: number) =>
 const fmtMoney2 = (v: number) => (v < 0 ? '-' : '') + '$' + Math.abs(v).toFixed(2);
 const fmtPct = (v: number) => `${(v * 100).toFixed(1)}%`;
 
-export default function OptionsStrategySimulator({ initialSymbol = 'SPY' }: Props) {
+export default function OptionsStrategySimulator({ initialSymbol = 'SPY', profile = 'swing' }: Props) {
   const [symbol, setSymbol] = useState(initialSymbol.toUpperCase());
   const [input, setInput] = useState(initialSymbol.toUpperCase());
   const [data, setData] = useState<SimResponse | null>(null);
@@ -83,7 +85,16 @@ export default function OptionsStrategySimulator({ initialSymbol = 'SPY' }: Prop
       const json = await res.json();
       if (json && !json.error) {
         setData(json);
-        setExpiryIdx(0);
+        // La expiración por defecto es la más cercana al DTE óptimo del perfil.
+        const sweet = PROFILES[profile].defaults.dteSweet;
+        const list: SimExpiration[] = json.expirations || [];
+        let best = 0;
+        let bestDist = Infinity;
+        for (let i = 0; i < list.length; i++) {
+          const dist = Math.abs(list[i].dte - sweet);
+          if (dist < bestDist) { bestDist = dist; best = i; }
+        }
+        setExpiryIdx(best);
       } else {
         setError(json?.error || 'Sin datos');
         setData(null);
@@ -94,7 +105,7 @@ export default function OptionsStrategySimulator({ initialSymbol = 'SPY' }: Prop
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [profile]);
 
   useEffect(() => { fetchData(symbol); }, [symbol, fetchData]);
 

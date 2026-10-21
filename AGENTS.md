@@ -1,5 +1,18 @@
 # Project Notes
 
+## Perfiles de trading (src/lib/navigation/profiles.ts + components/ProfileSelector.tsx + components/SectionSubnav.tsx + components/Sidebar.tsx)
+
+La plataforma se organiza alrededor del **perfil del usuario**: Day Trade, Swing, Posición y Largo plazo. Al entrar por primera vez se muestra una pantalla de bienvenida con 4 tarjetas; el perfil se guarda en **localStorage + cookie** (`trader-profile`) — **sin migración de BD** (`user_settings` no tiene campo de perfil; sincronizarlo a la cuenta es trabajo futuro).
+
+- **Motor puro** `src/lib/navigation/profiles.ts` (15 tests en `profiles.test.ts`): `PROFILES` (4 perfiles con label/icono/tagline/bullets), `PROFILE_NAV` (páginas por **sección** y perfil), `SECTION_ORDER`/`SECTION_LABELS` (core, trading, analysis, tools), `PLAN_RANK`, `isTraderProfile`, `getProfile`, `profileViews`, `viewInProfile`, `profileHasView`, `defaultViewForProfile(id, plan)`, `horizonLabel`. **Sin JSX** (los iconos viven en `Sidebar.tsx` como `VIEW_ICONS`).
+- **Decisiones de producto**: el perfil **no filtra el sidebar entero**: cada sección muestra el submenú de páginas de ese perfil. Además hay un **submenú horizontal por sección** en el área de contenido (`SectionSubnav.tsx`, pestañas para saltar entre las páginas de la sección actual).
+- **Defaults por perfil** (`ProfileDefaults`): `dteMin/dteMax/dteSweet` (Day 0-7/3, Swing 14-40/38, Posición 45-120/60, Largo plazo 60-180/90), `gammaScope` (nearest/weekly/monthly/all), `horizon`, `momentumLookback`.
+- **Reglas de coherencia (testeadas)**: el **Gamma Screener NO aparece en Day Trade** (el OI es del cierre previo → intradía es ruido); **Trade Picks solo en Day/Swing** (no hay edges de meses); **Value Investing solo en Posición/Largo plazo**; `watchlist`/`portfolio` en todos.
+- **Defaults propagados**: `GET /api/trade-picks/scan?profile=<id>` adjusts la ventana de DTE de los contratos (`dteScore`/`expScore` centrados en `dteSweet`; **la memoria cache incluye el perfil**, si no devolvía el pick de otro perfil). `GammaScreenerView` inicia el `scope` según el perfil (con selector manual) y `OptionsStrategySimulator` elige la expiración más cercana a `dteSweet`.
+- **UI**: `ProfileSelector.tsx` (bienvenida + switcher compacto del sidebar), `SectionSubnav.tsx` (pestañas horizontales por sección). El sidebar (`Sidebar.tsx`) construye los grupos desde `PROFILE_NAV` conservando el gating por plan (`minPlan` → badge PRO/ELITE + redirección a `/settings/billing`).
+- **Landing**: `defaultViewForProfile(id, plan)` → Trade Picks (day/swing), Value Investing (position/longterm); si el plan no da acceso, cae a `analyzer` (Inicio). Al cambiar de perfil, si la vista actual no existe en el perfil nuevo, salta a la de arranque.
+- **Tests**: `npm test` → **253/253** (15 nuevos de `profiles.ts`).
+
 ## Gamma Screener (app/api/gamma-screener/route.ts + src/lib/options/gammaScreener.ts + components/GammaScreenerView.tsx)
 
 Screener cuantitativo que rankea NYSE/NASDAQ/AMEX por **posicionamiento de opciones** (GEX estimado), **skew**, **momentum** y **liquidez**. Vista propia `gamma-screener` (ELITE, icono `Activity`), montada en `app/page.tsx` (render propio) + nav en `Sidebar.tsx` (grupo Trading) + `mobileItems`.

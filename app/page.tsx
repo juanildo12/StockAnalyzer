@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useSession, signIn, signOut } from 'next-auth/react';
 import Sidebar from '@/components/Sidebar';
+import SectionSubnav from '@/components/SectionSubnav';
 import { 
   savePortfolioToFirestore, 
   getPortfolioFromFirestore, 
@@ -34,6 +35,16 @@ import OptionsStrategySimulator from '@/components/OptionsStrategySimulator';
 import LandingHero from '@/components/LandingHero';
 import OnboardingModal from '@/components/OnboardingModal';
 import ThinkingOrbLoader, { InlineOrbLoader } from '@/src/components/ThinkingOrbLoader';
+import { ProfileWelcome, readStoredProfile, storeProfile } from '@/components/ProfileSelector';
+import {
+  PROFILES,
+  PROFILE_IDS,
+  PROFILE_NAV,
+  SECTION_ORDER,
+  defaultViewForProfile,
+  profileHasView,
+  type TraderProfile,
+} from '@/src/lib/navigation/profiles';
 import { colors as C, radius as R, font as F, spacing as S, shadow, transition as T } from '@/src/utils/webTheme';
 
 
@@ -489,6 +500,13 @@ function RenderInformeLegacy({ data, formatNumber, getActionColor }: {
   );
 }
 
+type AppView =
+  | 'briefing' | 'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report'
+  | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard'
+  | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer'
+  | 'algo-alerts' | 'trade-picks' | 'classification' | 'catalysts'
+  | 'options-sim' | 'gamma-screener';
+
 export default function Home() {
   const [symbol, setSymbol] = useState('');
   const [suggestions, setSuggestions] = useState<{symbol: string; name: string}[]>([]);
@@ -497,7 +515,9 @@ export default function Home() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [view, setView] = useState<'briefing' | 'analyzer' | 'portfolio' | 'watchlist' | 'informe' | 'risk-report' | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard' | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer' | 'algo-alerts' | 'trade-picks' | 'classification' | 'catalysts' | 'options-sim' | 'gamma-screener'>('analyzer');
+  const [view, setView] = useState<AppView>('analyzer');
+  const [profile, setProfile] = useState<TraderProfile | null>(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -531,6 +551,29 @@ export default function Home() {
   const { data: session, status } = useSession();
 
   useEffect(() => { setHasMounted(true); }, []);
+
+  // Perfil de trading: se guarda en localStorage + cookie (sin migraciones).
+  const profileInitRef = useRef(false);
+  useEffect(() => {
+    if (profileInitRef.current) return;
+    profileInitRef.current = true;
+    const stored = readStoredProfile();
+    setProfile(stored);
+    setProfileLoaded(true);
+    if (stored) {
+      const plan = (session?.user as any)?.plan || 'free';
+      const next = defaultViewForProfile(stored, plan);
+      setView((prev) => (profileHasView(stored, prev) ? prev : next as AppView));
+    }
+  }, [session]);
+
+  const applyProfile = (p: TraderProfile) => {
+    storeProfile(p);
+    setProfile(p);
+    const plan = (session?.user as any)?.plan || 'free';
+    const next = defaultViewForProfile(p, plan);
+    setView((prev) => (profileHasView(p, prev) ? prev : next as AppView));
+  };
 
   useEffect(() => {
     let active = true;
@@ -1013,9 +1056,25 @@ export default function Home() {
     ? (portfolioSummary.profitLoss / portfolioSummary.totalInvested) * 100 
     : 0;
 
+  if (!profileLoaded) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg }}>
+        <InlineOrbLoader size={64} />
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div style={{ minHeight: '100vh', background: C.bg, color: C.textSecondary, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+        <ProfileWelcome onSelect={applyProfile} />
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', width: '100%', maxWidth: '100%', background: C.bg, color: C.textSecondary, fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      {!isMobile && <Sidebar view={view} onViewChange={setView} userPlan={(session?.user as any)?.plan || 'free'} userName={session?.user?.name || session?.user?.email?.split('@')[0] || 'User'} />}
+      {!isMobile && <Sidebar view={view} onViewChange={(v) => setView(v as AppView)} userPlan={(session?.user as any)?.plan || 'free'} userName={session?.user?.name || session?.user?.email?.split('@')[0] || 'User'} profile={profile} onProfileChange={applyProfile} />}
       <div style={{ flex: 1, minWidth: 0, width: '100%', maxWidth: '100%', marginLeft: isMobile ? 0 : 220, display: 'flex', flexDirection: 'column' }}>
       <header style={{ display: 'flex', alignItems: 'center', padding: '12px 24px', borderBottom: `1px solid ${C.border}`, background: C.bg, position: isMobile ? 'sticky' : undefined, top: 0, zIndex: isMobile ? 100 : undefined }}>
         {isMobile && (
@@ -1050,6 +1109,13 @@ export default function Home() {
         </div>
       </header>
 
+      {!isMobile && (
+        <SectionSubnav profile={profile} view={view} onViewChange={(v) => setView(v as AppView)} />
+      )}
+      {isMobile && (
+        <SectionSubnav compact profile={profile} view={view} onViewChange={(v) => setView(v as AppView)} />
+      )}
+
 
         {isMobile && menuOpen && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: `C.bgb3`, zIndex: 10000 }} onClick={() => setMenuOpen(false)} />
@@ -1063,28 +1129,44 @@ export default function Home() {
               </div>
               <button onClick={() => setMenuOpen(false)} aria-label="Cerrar menú" style={{ padding: '4px 8px', border: 'none', background: 'transparent', color: C.textMuted, cursor: 'pointer', fontSize: F.sizeHero }}>✕</button>
             </div>
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '18px', flexWrap: 'wrap' }}>
+              {PROFILE_IDS.map((pid) => {
+                const p = PROFILES[pid];
+                const active = pid === profile;
+                return (
+                  <button key={pid} onClick={() => applyProfile(pid)} style={{
+                    flex: '1 1 46%', padding: '9px 10px', borderRadius: R.md,
+                    border: `1px solid ${active ? C.accentBorder : C.border}`,
+                    background: active ? C.accent + '1A' : 'transparent',
+                    color: active ? C.accentLight : C.textSecondary, cursor: 'pointer',
+                    fontSize: 12, fontWeight: active ? 700 : 500, textAlign: 'left',
+                  }}>
+                    {p.icon} {p.shortLabel}
+                  </button>
+                );
+              })}
+            </div>
             {(() => {
               const mobileUserPlan = (session?.user as any)?.plan || 'free';
               const planLevel: Record<string, number> = { free: 0, pro: 1, elite: 2, enterprise: 3 };
               const userLevel = planLevel[mobileUserPlan] ?? 0;
+              const MOBILE_ICONS: Record<string, string> = {
+                analyzer: '🏠', briefing: '📰', dashboard: '📈', screener: '🔎', catalysts: '⚡',
+                'trade-picks': '🎯', 'algo-alerts': '🤖', options: '🎯', 'options-sim': '🎛️',
+                'gamma-screener': '⚛️', watchlist: '👁️', portfolio: '📁', backtest: '🧪',
+                'ai-coach': '🤖', 'inversor-inteligente': '💰', classification: '🧪',
+                'trading-trainer': '🎮',
+              };
               const mobileItems = [
-                { id: 'analyzer', icon: '🏠', label: 'Inicio', minPlan: 0 },
-                { id: 'briefing', icon: '📰', label: 'Briefing', minPlan: 1 },
-                { id: 'dashboard', icon: '📈', label: 'Dashboard', minPlan: 1 },
-                { id: 'screener', icon: '🔎', label: 'Screener', minPlan: 1 },
-                { id: 'catalysts', icon: '⚡', label: 'Catalizadores', minPlan: 1 },
-                { id: 'algo-alerts', icon: '🤖', label: 'Algo Alerts', minPlan: 1 },
-                { id: 'trade-picks', icon: '🎯', label: 'Trade Picks', minPlan: 1 },
-                { id: 'options', icon: '🎯', label: 'Opciones', minPlan: 2 },
-                { id: 'options-sim', icon: '🎛️', label: 'Sim. Opciones', minPlan: 2 },
-                { id: 'gamma-screener', icon: '⚛️', label: 'Gamma Screener', minPlan: 2 },
-                { id: 'watchlist', icon: '👁️', label: 'Watchlist', minPlan: 0 },
-                { id: 'backtest', icon: '🧪', label: 'Backtest', minPlan: 1 },
-                { id: 'ai-coach', icon: '🤖', label: 'AI Coach', minPlan: 1 },
-                { id: 'inversor-inteligente', icon: '💰', label: 'Value Investing', minPlan: 2 },
-                { id: 'classification', icon: '🧪', label: 'Clasificación', minPlan: 1 },
-                { id: 'trading-trainer', icon: '🎮', label: 'Trainer', minPlan: 0 },
-                { id: 'portfolio', icon: '📁', label: 'Portafolio', minPlan: 0 },
+                { id: 'analyzer' as AppView, icon: '🏠', label: 'Inicio', minPlan: 0 },
+                ...SECTION_ORDER.flatMap((section) =>
+                  (PROFILE_NAV[profile].find((s) => s.section === section)?.items ?? []).map((i) => ({
+                    id: i.view as AppView,
+                    icon: MOBILE_ICONS[i.view] ?? '•',
+                    label: i.label,
+                    minPlan: i.minPlan === 'pro' ? 1 : i.minPlan === 'elite' ? 2 : i.minPlan === 'enterprise' ? 3 : 0,
+                  })),
+                ),
               ];
               return mobileItems.map(({ id, icon, label, minPlan }) => {
                 const locked = userLevel < minPlan;
@@ -1975,7 +2057,7 @@ export default function Home() {
 
       {view === 'trade-picks' && (
         <div style={{ padding: '24px', maxWidth: 620, margin: '0 auto', width: '100%', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
-          <TradePickView />
+          <TradePickView profile={profile} />
         </div>
       )}
 
@@ -1987,13 +2069,13 @@ export default function Home() {
 
       {view === 'options-sim' && (
         <div style={{ padding: '24px', maxWidth: 1080, margin: '0 auto', width: '100%', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
-          <OptionsStrategySimulator initialSymbol={symbol || 'SPY'} />
+          <OptionsStrategySimulator initialSymbol={symbol || 'SPY'} profile={profile} />
         </div>
       )}
 
       {view === 'gamma-screener' && (
         <div style={{ width: '100%', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
-          <GammaScreenerView />
+          <GammaScreenerView profile={profile} />
         </div>
       )}
 

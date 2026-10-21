@@ -10,12 +10,21 @@ import {
 } from 'lucide-react';
 import { colors as C, radius as R, font as F, spacing as S, transition as T } from '@/src/utils/webTheme';
 import { useTheme } from '@/src/components/ThemeProvider';
+import { ProfileSwitcher } from './ProfileSelector';
+import {
+  PROFILE_NAV,
+  SECTION_LABELS,
+  SECTION_ORDER,
+  type TraderProfile,
+} from '@/src/lib/navigation/profiles';
 
 interface SidebarProps {
   view: string;
   onViewChange: (v: string) => void;
   userPlan?: string;
   userName?: string;
+  profile?: TraderProfile;
+  onProfileChange?: (p: TraderProfile) => void;
 }
 
 interface NavItem {
@@ -48,61 +57,69 @@ const PLAN_ICONS: Record<string, React.ReactNode> = {
   enterprise: <Building2 size={10} />,
 };
 
-const NAV_GROUPS: NavGroup[] = [
-  {
+/** Icono de cada vista (los perfiles viven en un módulo puro, sin JSX). */
+const VIEW_ICONS: Record<string, React.ReactNode> = {
+  analyzer: <Rocket size={18} />,
+  briefing: <Rocket size={18} />,
+  dashboard: <LayoutDashboard size={18} />,
+  screener: <Filter size={18} />,
+  catalysts: <CalendarDays size={18} />,
+  'trade-picks': <Crosshair size={18} />,
+  'algo-alerts': <Bot size={18} />,
+  options: <Target size={18} />,
+  'options-sim': <SlidersHorizontal size={18} />,
+  'gamma-screener': <Activity size={18} />,
+  watchlist: <Watch size={18} />,
+  portfolio: <Building2 size={18} />,
+  backtest: <FlaskConical size={18} />,
+  'ai-coach': <Bot size={18} />,
+  'inversor-inteligente': <Brain size={18} />,
+  classification: <FlaskConical size={18} />,
+  'trading-trainer': <Gamepad2 size={18} />,
+};
+
+/**
+ * Construye los grupos del menú para un perfil: cada sección muestra el
+ * submenú de páginas que corresponden a su horizonte de trading.
+ */
+function navGroupsForProfile(profile: TraderProfile): NavGroup[] {
+  const groups: NavGroup[] = [];
+  groups.push({
     id: 'home',
     label: '',
-    items: [
-      { view: 'analyzer', label: 'Inicio', icon: <Rocket size={18} /> },
-    ],
-  },
-  {
-    id: 'core',
-    label: '',
-    items: [
-      { view: 'briefing', label: 'Briefing', icon: <Rocket size={18} />, badge: 'PRO', minPlan: 'pro' },
-      { view: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={18} />, badge: 'PRO', minPlan: 'pro' },
-      { view: 'screener', label: 'Screener', icon: <Filter size={18} />, badge: 'PRO', minPlan: 'pro' },
-      { view: 'catalysts', label: 'Catalizadores', icon: <CalendarDays size={18} />, badge: 'PRO', minPlan: 'pro' },
-    ],
-  },
-  {
-    id: 'trading',
-    label: 'Trading',
-    items: [
-      { view: 'trade-picks', label: 'Trade Picks', icon: <Crosshair size={18} />, badge: 'PRO', minPlan: 'pro' },
-      { view: 'algo-alerts', label: 'Algo Alerts', icon: <Bot size={18} />, badge: 'PRO', minPlan: 'pro' },
-      { view: 'options', label: 'Opciones', icon: <Target size={18} />, badge: 'ELITE', minPlan: 'elite' },
-      { view: 'options-sim', label: 'Sim. Opciones', icon: <SlidersHorizontal size={18} />, badge: 'ELITE', minPlan: 'elite' },
-      { view: 'gamma-screener', label: 'Gamma Screener', icon: <Activity size={18} />, badge: 'ELITE', minPlan: 'elite' },
-      { view: 'watchlist', label: 'Watchlist', icon: <Watch size={18} /> },
-      { view: 'portfolio', label: 'Portafolio', icon: <Building2 size={18} /> },
-      { view: 'backtest', label: 'Backtest', icon: <FlaskConical size={18} />, badge: 'PRO', minPlan: 'pro' },
-    ],
-  },
-  {
-    id: 'analysis',
-    label: 'Análisis',
-    items: [
-      { view: 'ai-coach', label: 'AI Coach', icon: <Bot size={18} />, badge: 'PRO', minPlan: 'pro' },
-      { view: 'inversor-inteligente', label: 'Value Investing', icon: <Brain size={18} />, badge: 'ELITE', minPlan: 'elite' },
-      { view: 'classification', label: 'Clasificación', icon: <FlaskConical size={18} />, badge: 'PRO', minPlan: 'pro' },
-    ],
-  },
-  {
-    id: 'tools',
-    label: 'Más',
-    items: [
-      { view: 'trading-trainer', label: 'Trainer', icon: <Gamepad2 size={18} /> },
-    ],
-  },
-];
+    items: [{ view: 'analyzer', label: 'Inicio', icon: VIEW_ICONS.analyzer }],
+  });
+  for (const section of SECTION_ORDER) {
+    const sec = PROFILE_NAV[profile].find((s) => s.section === section);
+    if (!sec || sec.items.length === 0) continue;
+    groups.push({
+      id: section,
+      label: SECTION_LABELS[section],
+      items: sec.items.map((i) => ({
+        view: i.view,
+        label: i.label,
+        icon: VIEW_ICONS[i.view] ?? <Filter size={18} />,
+        badge: i.badge,
+        minPlan: i.minPlan,
+      })),
+    });
+  }
+  return groups;
+}
 
-export default function Sidebar({ view, onViewChange, userPlan = 'free', userName }: SidebarProps) {
+export default function Sidebar({
+  view,
+  onViewChange,
+  userPlan = 'free',
+  userName,
+  profile = 'swing',
+  onProfileChange,
+}: SidebarProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const { theme, toggle: toggleTheme } = useTheme();
   const toggle = (id: string) => setCollapsed(prev => ({ ...prev, [id]: !prev[id] }));
   const userLevel = PLAN_HIERARCHY[userPlan] ?? 0;
+  const NAV_GROUPS = navGroupsForProfile(profile);
 
   const planLabel = userPlan.charAt(0).toUpperCase() + userPlan.slice(1);
 
@@ -154,6 +171,10 @@ export default function Sidebar({ view, onViewChange, userPlan = 'free', userNam
         overflowY: 'auto',
         padding: `${S.sm} ${S.sm}`,
       }}>
+        {onProfileChange && (
+          <ProfileSwitcher profile={profile} onChange={onProfileChange} />
+        )}
+
         {NAV_GROUPS.map(group => (
           <div key={group.id} style={{ marginBottom: group.label ? S.md : S.lg }}>
             {group.label && (

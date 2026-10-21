@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { colors as C, radius as R } from '@/src/utils/webTheme';
 import { computePremiumRiskBenefit, contractsForRisk } from '@/src/lib/options/tradeRisk';
+import { PROFILES, type TraderProfile } from '@/src/lib/navigation/profiles';
 import GammaLevelsPanel from './GammaLevelsPanel';
 
 interface ContractData {
@@ -205,7 +206,7 @@ function riskBenefitFor(pick: TradePick) {
   );
 }
 
-export default function TradePickView() {
+export default function TradePickView({ profile = 'swing' }: { profile?: TraderProfile }) {
   const [scanning, setScanning] = useState(false);
   const [currentPick, setCurrentPick] = useState<TradePick | null>(null);
   const [history, setHistory] = useState<TradePick[]>([]);
@@ -290,7 +291,7 @@ export default function TradePickView() {
       const excludedToday = Array.from(new Set(
         history.filter(p => new Date(p.createdAt).getTime() > cutoff24h).map(p => p.symbol)
       ));
-      const res = await fetch(`/api/trade-picks/scan?bias=${bias}&exclude=${encodeURIComponent(excludedToday.join(','))}`);
+      const res = await fetch(`/api/trade-picks/scan?bias=${bias}&profile=${profile}&exclude=${encodeURIComponent(excludedToday.join(','))}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Scan failed');
 
@@ -334,7 +335,7 @@ export default function TradePickView() {
     } finally {
       setScanning(false);
     }
-  }, [history, refreshPrices, evaluateHistory, bias]);
+  }, [history, refreshPrices, evaluateHistory, bias, profile]);
 
   const grade = currentPick ? getGrade(currentPick.score) : null;
   const isCall = currentPick?.direction === 'CALL';
@@ -408,6 +409,15 @@ export default function TradePickView() {
         >
           📉 Bajista (PUT)
         </button>
+      </div>
+
+      {/* Ventana de expiraciones según el perfil de trading */}
+      <div style={{ ...styles.excludeHint, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span>{PROFILES[profile].icon} Perfil <b>{PROFILES[profile].label}</b></span>
+        <span style={{ opacity: 0.75 }}>
+          · expiraciones {PROFILES[profile].defaults.dteMin}–{PROFILES[profile].defaults.dteMax} DTE
+          (óptimo ~{PROFILES[profile].defaults.dteSweet})
+        </span>
       </div>
 
       {/* Exclusión de repetidos del día */}

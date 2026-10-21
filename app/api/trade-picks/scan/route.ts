@@ -25,6 +25,7 @@ import {
   tradeability,
 } from '@/src/lib/tradePicks/deep';
 import { getMassiveRelatedTickers, getMassiveSplits } from '@/src/services/massiveClient';
+import { PROFILES, isTraderProfile } from '@/src/lib/navigation/profiles';
 
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
 export const dynamic = 'force-dynamic';
@@ -630,7 +631,7 @@ interface ScanData {
   spyCloses: number[];
 }
 
-let memoryCache: { data: any; ts: number; bias: string } | null = null;
+let memoryCache: { data: any; ts: number; bias: string; profile: string } | null = null;
 const CACHE_TTL = 15 * 60 * 1000; // 15 min (solo si el cliente no manda ?exclude)
 const MIN_PICK_SCORE = 80; // pick titular: solo A / A+
 const FOCUS_MIN_SCORE = 70; // focus list: B+ o mejor
@@ -764,8 +765,16 @@ export async function GET(request: NextRequest) {
   const isBear = biasRaw === 'bear' || biasRaw === 'put';
   const bias = isBear ? 'bear' : 'bull';
 
+  // Perfil de trading: ajusta la ventana de DTE de los contratos a buscar.
+  // Sin perfil → comportamiento histórico (7-60 DTE, óptimo ~38).
+  const profileRaw = (request.nextUrl.searchParams.get('profile') || '').toLowerCase();
+  const profile = isTraderProfile(profileRaw) ? profileRaw : null;
+  const dteMin = profile ? PROFILES[profile].defaults.dteMin : 7;
+  const dteMax = profile ? PROFILES[profile].defaults.dteMax : 60;
+  const dteSweet = profile ? PROFILES[profile].defaults.dteSweet : 38;
+
   // Return cached result if fresh (bypassed when the client requests exclusion-aware scan)
-  if (memoryCache && !hasExclude && memoryCache.bias === bias && Date.now() - memoryCache.ts < CACHE_TTL) {
+  if (memoryCache && !hasExclude && memoryCache.bias === bias && memoryCache.profile === (profile || '') && Date.now() - memoryCache.ts < CACHE_TTL) {
     return NextResponse.json(memoryCache.data);
   }
 
@@ -933,9 +942,9 @@ export async function GET(request: NextRequest) {
           .map((d: any) => new Date(d))
           .filter((d: Date) => {
             const days = daysUntil(d.getTime());
-            return days >= 7 && days <= 60;
+            return days >= dteMin && days <= dteMax;
           })
-          .sort((a: Date, b: Date) => Math.abs(daysUntil(a.getTime()) - 38) - Math.abs(daysUntil(b.getTime()) - 38))
+          .sort((a: Date, b: Date) => Math.abs(daysUntil(a.getTime()) - dteSweet) - Math.abs(daysUntil(b.getTime()) - dteSweet))
           .slice(0, 2);
 
         let bestForPick: BestCombo | null = null;
@@ -947,7 +956,7 @@ export async function GET(request: NextRequest) {
             ? exp.expirationDate.getTime()
             : new Date(exp.expirationDate).getTime();
           const days = daysUntil(expTime);
-          if (days < 3) continue;
+          if (days < Math.max(1, dteMin)) continue;
           const dateStr = expDate.toISOString().split('T')[0];
           const contracts = pick.direction === 'CALL' ? (exp.calls || []) : (exp.puts || []);
           const contractCandidates = bestContract(contracts, pick.price, pick.direction === 'CALL');
@@ -981,8 +990,10 @@ export async function GET(request: NextRequest) {
 
             // Componentes del lado de la opción (0-100)
             const contractScore = c._score || 0; // spread + liquidez + delta + OTM (sin duplicar)
-            const dteScore = days >= 30 && days <= 45 ? 30 : days >= 14 && days <= 60 ? 20 : days >= 7 ? 8 : 2;
-            const expScore = dteScore + (30 - Math.abs(days - 38)) * 0.3; // ~0-39
+            const dteScore = days >= dteMin && days <= dteMax
+              ? Math.max(0, Math.round(30 - Math.abs(days - dteSweet) * 0.8))
+              : 2;
+            const expScore = dteScore + (30 - Math.abs(days - dteSweet)) * 0.3; // ~0-39
             const trade = tradeability({
               price: pick.price,
               target: realisticTarget,
@@ -1157,7 +1168,7 @@ export async function GET(request: NextRequest) {
       generatedAt: new Date().toISOString(),
     };
 
-    memoryCache = { data: result, ts: Date.now(), bias };
+    memoryCache = { data: result, ts: Date.now(), bias, profile: profile || '' };
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('[TradePicks/Scan] Error:', error?.message || error);
