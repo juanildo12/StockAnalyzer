@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { colors as C, radius as R } from '@/src/utils/webTheme';
+import GammaLevelsPanel from './GammaLevelsPanel';
 
 interface ContractData {
   strike: number;
@@ -186,6 +187,7 @@ export default function TradePickView() {
   const [regime, setRegime] = useState<Regime | null>(null);
   const [focusList, setFocusList] = useState<TradePick[]>([]);
   const [bias, setBias] = useState<'bull' | 'bear'>('bull');
+  const [gammaSymbol, setGammaSymbol] = useState<string | null>(null);
 
   const refreshPrices = useCallback(async (picks: TradePick[]) => {
     const syms = Array.from(new Set(picks.map(p => p.symbol)));
@@ -420,6 +422,19 @@ export default function TradePickView() {
             </div>
           </div>
 
+          {/* Niveles gamma del símbolo del pick */}
+          <button
+            onClick={() => setGammaSymbol(currentPick.symbol)}
+            style={{
+              width: '100%', marginBottom: '14px', padding: '10px 14px',
+              background: '#8B5CF618', border: '1px solid #8B5CF655', color: '#A78BFA',
+              borderRadius: R.md, cursor: 'pointer', fontSize: '13px', fontWeight: 700,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            }}
+          >
+            🎯 Ver niveles gamma de {currentPick.symbol}
+          </button>
+
           {/* Price */}
           <div style={styles.priceSection}>
             <div style={styles.priceLabel}>Current Price</div>
@@ -593,6 +608,17 @@ export default function TradePickView() {
                 </div>
                 <div style={styles.focusRight}>
                   <span style={styles.focusContract}>{f.contract!.strike}{f.direction === 'PUT' ? 'P' : 'C'} {fExp} · ${fmt(f.contract!.premium)}</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setGammaSymbol(f.symbol); }}
+                    title={`Ver niveles gamma de ${f.symbol}`}
+                    style={{
+                      background: '#8B5CF618', border: '1px solid #8B5CF655', color: '#A78BFA',
+                      borderRadius: R.sm, cursor: 'pointer', fontSize: '11px', fontWeight: 700,
+                      padding: '3px 7px', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    🎯 γ
+                  </button>
                   <span style={{ fontSize: 13, fontWeight: 800, color: fg.color }}>{f.score}</span>
                 </div>
               </div>
@@ -835,6 +861,18 @@ export default function TradePickView() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Modal de niveles gamma del símbolo */}
+      {gammaSymbol && (
+        <div
+          onClick={() => setGammaSymbol(null)}
+          style={{ position: 'fixed', inset: 0, background: '#000000C0', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '24px 12px' }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 720 }}>
+            <GammaLevelsPanel symbol={gammaSymbol} onClose={() => setGammaSymbol(null)} />
+          </div>
         </div>
       )}
     </div>
