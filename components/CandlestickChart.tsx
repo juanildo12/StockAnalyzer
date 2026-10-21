@@ -12,6 +12,12 @@ interface Candle {
   v: number;
 }
 
+interface LevelOverlay {
+  value: number;
+  label: string;
+  color: string;
+}
+
 interface Props {
   data: Candle[];
   sma50?: number[];
@@ -20,6 +26,7 @@ interface Props {
   gammaFlip?: number;
   gammaWallUp?: number;
   gammaWallDown?: number;
+  levels?: LevelOverlay[];
   trend?: string;
   height?: number;
   animate?: boolean;
@@ -74,7 +81,7 @@ function LevelLine({ y, width, color, text, side }: { y: number; width: number; 
   );
 }
 
-export default function CandlestickChart({ data, sma50, support, resistance, gammaFlip, gammaWallUp, gammaWallDown, trend, height = 280, animate = true }: Props) {
+export default function CandlestickChart({ data, sma50, support, resistance, gammaFlip, gammaWallUp, gammaWallDown, levels, trend, height = 280, animate = true }: Props) {
   const [animIdx, setAnimIdx] = useState(animate ? 1 : data.length);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -108,12 +115,12 @@ export default function CandlestickChart({ data, sma50, support, resistance, gam
 
   const {
     candleWidth, yMin, yMax,
-    candlesRendered, smaPoints, supY, resY, flipY, wallUpY, wallDownY, volMax,
+    candlesRendered, smaPoints, supY, resY, flipY, wallUpY, wallDownY, levelYs, volMax,
   } = useMemo(() => {
     const visibleData = data.slice(0, animIdx);
     if (visibleData.length < 2) {
       return { candleWidth: 0, yMin: 0, yMax: 1, candlesRendered: [], smaPoints: [],
-        supY: 0, resY: 0, flipY: 0, wallUpY: 0, wallDownY: 0, volMax: 1 };
+        supY: 0, resY: 0, flipY: 0, wallUpY: 0, wallDownY: 0, levelYs: [], volMax: 1 };
     }
 
     const vals = visibleData.flatMap(d => [d.h, d.l]);
@@ -164,9 +171,10 @@ export default function CandlestickChart({ data, sma50, support, resistance, gam
       flipY: levelY(gammaFlip),
       wallUpY: levelY(gammaWallUp),
       wallDownY: levelY(gammaWallDown),
+      levelYs: (levels ?? []).map((l) => ({ ...l, y: levelY(l.value) })),
       volMax: vMax,
     };
-  }, [data, animIdx, sma50, support, resistance, gammaFlip, gammaWallUp, gammaWallDown, plotW, plotH, plotBottom, padL]);
+  }, [data, animIdx, sma50, support, resistance, gammaFlip, gammaWallUp, gammaWallDown, levels, plotW, plotH, plotBottom, padL]);
 
   if (candlesRendered.length < 2) {
     return (
@@ -252,14 +260,22 @@ export default function CandlestickChart({ data, sma50, support, resistance, gam
         ))}
 
         {/* Gamma levels (dashed + labeled pills) */}
-        {gammaFlip != null && flipY > 0 && (
-          <LevelLine y={flipY} width={W} color={C.warning} text={`Línea divisora $${gammaFlip.toFixed(2)}`} side="left" />
-        )}
-        {gammaWallUp != null && wallUpY > 0 && (
-          <LevelLine y={wallUpY} width={W} color={C.negative} text={`Upside target $${gammaWallUp.toFixed(2)}`} side="right" />
-        )}
-        {gammaWallDown != null && wallDownY > 0 && (
-          <LevelLine y={wallDownY} width={W} color={C.positive} text={`Downside target $${gammaWallDown.toFixed(2)}`} side="right" />
+        {levelYs.length > 0 ? (
+          levelYs.map((l, i) => l.y > 0 ? (
+            <LevelLine key={`lvl${i}`} y={l.y} width={W} color={l.color} text={l.label} side={i % 2 === 0 ? 'right' : 'left'} />
+          ) : null)
+        ) : (
+          <>
+            {gammaFlip != null && flipY > 0 && (
+              <LevelLine y={flipY} width={W} color={C.warning} text={`Línea divisora $${gammaFlip.toFixed(2)}`} side="left" />
+            )}
+            {gammaWallUp != null && wallUpY > 0 && (
+              <LevelLine y={wallUpY} width={W} color={C.negative} text={`Upside target $${gammaWallUp.toFixed(2)}`} side="right" />
+            )}
+            {gammaWallDown != null && wallDownY > 0 && (
+              <LevelLine y={wallDownY} width={W} color={C.positive} text={`Downside target $${gammaWallDown.toFixed(2)}`} side="right" />
+            )}
+          </>
         )}
 
         {/* Structural support / resistance */}

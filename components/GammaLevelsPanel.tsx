@@ -226,6 +226,12 @@ export default function GammaLevelsPanel({ symbol, onClose }: Props) {
   const meta = REGIME_META[lv.regime];
   const maxAbsGex = Math.max(...rows.map((r) => Math.abs(r.netGex)), 1);
 
+  // Overlays del gráfico de precio a partir del playbook (líneas etiquetadas por dirección).
+  const chartLevels = (data.playbook ?? [])
+    .filter((p) => p.role !== 'chop_area' && p.level != null)
+    .map((p) => ({ value: p.level as number, label: `${p.label} $${(p.level as number).toFixed(2)}`, color: PLAYBOOK_COLOR[p.role](C) }));
+  const chartLevelsWithSpot = [...chartLevels, { value: data.spot, label: `Spot $${data.spot.toFixed(2)}`, color: C.accent }];
+
   return (
     <div style={{ background: C.bgCard, borderRadius: R.lg, border: '1px solid ' + C.border, overflow: 'hidden' }}>
       {/* Header */}
@@ -363,9 +369,7 @@ export default function GammaLevelsPanel({ symbol, onClose }: Props) {
           <div ref={candleWrapRef} style={{ touchAction: 'pan-y' }}>
             <CandlestickChart
               data={visibleBars}
-              gammaFlip={lv.gammaFlip ?? undefined}
-              gammaWallUp={lv.gammaWallUp ?? undefined}
-              gammaWallDown={lv.gammaWallDown ?? undefined}
+              levels={chartLevelsWithSpot}
               height={220}
               animate={false}
             />
