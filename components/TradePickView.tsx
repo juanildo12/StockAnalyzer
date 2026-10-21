@@ -175,6 +175,33 @@ function getProgress(pick: TradePick, price: number | null | undefined) {
   return { pct, unreal };
 }
 
+/**
+ * Estima el precio de la opción (prima) cuando la acción cotiza a `stockPrice`.
+ * Usa delta lineal desde la entrada + suelo de valor intrínseco. Es una
+ * aproximación (ignora gamma/theta/IV), pero es la referencia práctica para
+ * poner el stop y el target en prima. Devuelve null si no hay contrato.
+ */
+function premiumAtStock(pick: TradePick, stockPrice: number): number | null {
+  if (!pick.contract) return null;
+  const isCall = pick.direction === 'CALL';
+  const strike = pick.contract.strike;
+  const entryStock = pick.entry;
+  if (!isFinite(stockPrice) || !isFinite(entryStock) || !isFinite(strike)) return null;
+  const dEntry = pick.contract.delta != null ? Math.abs(pick.contract.delta) : null;
+  const intrinsicAt = (s: number) => (isCall ? Math.max(0, s - strike) : Math.max(0, strike - s));
+  let est: number;
+  if (dEntry != null) {
+    est = pick.contract.premium + dEntry * (stockPrice - entryStock);
+  } else {
+    // Sin delta: aproximación de delta 0.5 sobre el movimiento.
+    const intrinsicEntry = intrinsicAt(entryStock);
+    const extrinsic = Math.max(0, pick.contract.premium - intrinsicEntry);
+    est = intrinsicAt(stockPrice) > 0 ? intrinsicAt(stockPrice) : extrinsic * 0.5;
+  }
+  // La prima nunca vale menos que su intrínseco.
+  return Math.max(intrinsicAt(stockPrice), est, 0);
+}
+
 export default function TradePickView() {
   const [scanning, setScanning] = useState(false);
   const [currentPick, setCurrentPick] = useState<TradePick | null>(null);
@@ -309,6 +336,13 @@ export default function TradePickView() {
   const grade = currentPick ? getGrade(currentPick.score) : null;
   const isCall = currentPick?.direction === 'CALL';
   const dirColor = isCall ? '#34D399' : '#FB7185';
+
+  const stopPremium = currentPick?.contract ? premiumAtStock(currentPick, currentPick.stop) : null;
+  const targetPremium = currentPick?.contract ? premiumAtStock(currentPick, currentPick.target) : null;
+  const stopPremiumPct = currentPick?.contract && stopPremium != null
+    ? ((stopPremium - currentPick.contract.premium) / currentPick.contract.premium) * 100 : null;
+  const targetPremiumPct = currentPick?.contract && targetPremium != null
+    ? ((targetPremium - currentPick.contract.premium) / currentPick.contract.premium) * 100 : null;
 
   const results = history.map(p => getStatus(p, prices[p.symbol]));
   const wins = results.filter(s => s === 'win').length;
@@ -545,6 +579,38 @@ export default function TradePickView() {
               <div style={{ ...styles.tradeValue, color: grade?.color }}>{fmt(currentPick.riskReward, 1)}</div>
             </div>
           </div>
+
+          {/* Stop / Target en prima de la opción (lo operable al comprar/vender la opción) */}
+          {currentPick.contract && stopPremium != null && targetPremium != null && (
+            <div style={{ marginBottom: 16, padding: 12, background: '#0d1117', border: `1px solid ${C.border}`, borderRadius: R.md }}>
+              <div style={{ fontSize: 12, color: C.textMuted, marginBottom: 8, fontWeight: 700 }}>
+                En prima de la opción (${fmt(currentPick.contract.premium)} de entrada)
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={styles.tradeItem}>
+                  <div style={styles.tradeLabel}>Stop en prima</div>
+                  <div style={{ ...styles.tradeValue, color: C.negative }}>
+                    ${fmt(stopPremium)}{' '}
+                    <span style={{ fontSize: 11, color: C.textMuted }}>
+                      ({stopPremiumPct != null && stopPremiumPct > 0 ? '+' : ''}{fmt(stopPremiumPct, 0)}%)
+                    </span>
+                  </div>
+                </div>
+                <div style={styles.tradeItem}>
+                  <div style={styles.tradeLabel}>Target en prima</div>
+                  <div style={{ ...styles.tradeValue, color: C.positive }}>
+                    ${fmt(targetPremium)}{' '}
+                    <span style={{ fontSize: 11, color: C.textMuted }}>
+                      ({targetPremiumPct != null && targetPremiumPct > 0 ? '+' : ''}{fmt(targetPremiumPct, 0)}%)
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div style={{ fontSize: 10, color: C.textMuted, marginTop: 8, lineHeight: 1.5 }}>
+                Estimado con delta lineal desde el precio de entrada + suelo de intrínseco. Es una referencia — el precio real de la opción también depende de gamma, theta e IV.
+              </div>
+            </div>
+          )}
 
           {/* Reasons */}
           {currentPick.reasons.length > 0 && (
@@ -830,6 +896,18 @@ export default function TradePickView() {
                               <div style={styles.hxContractItem}>
                                 <div style={styles.hxLabel}>Delta</div>
                                 <div style={styles.hxValue}>{pick.contract.delta != null ? fmt(pick.contract.delta) : 'N/A'}</div>
+                              </div>
+                              <div style={styles.hxContractItem}>
+                                <div style={styles.hxLabel}>Stop (prima)</div>
+                                <div style={{ ...styles.hxValue, color: C.negative }}>
+                                  {premiumAtStock(pick, pick.stop) != null ? `$${fmt(premiumAtStock(pick, pick.stop)!)}` : 'N/A'}
+                                </div>
+                              </div>
+                              <div style={styles.hxContractItem}>
+                                <div style={styles.hxLabel}>Target (prima)</div>
+                                <div style={{ ...styles.hxValue, color: C.positive }}>
+                                  {premiumAtStock(pick, pick.target) != null ? `$${fmt(premiumAtStock(pick, pick.target)!)}` : 'N/A'}
+                                </div>
                               </div>
                               <div style={styles.hxContractItem}>
                                 <div style={styles.hxLabel}>Open Interest</div>
