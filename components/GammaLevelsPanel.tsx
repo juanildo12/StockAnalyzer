@@ -402,17 +402,16 @@ export default function GammaLevelsPanel({ symbol, onClose }: Props) {
               wallDown={lv.gammaWallDown}
               maxPain={lv.maxPain}
               maxAbsGex={maxAbsGex}
+              playbook={data.playbook}
             />
           </div>
           {/* Legend */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '8px' }}>
-            <Legend color={C.warning} label="Línea divisora (gamma flip)" dashed />
-            <Legend color={C.negative} label="Upside target (wall ↑)" dashed />
-            <Legend color={C.positive} label="Downside target (wall ↓)" dashed />
-            <Legend color={C.info} label="Max pain" dashed />
+            {(data.playbook ?? []).filter((p) => p.role !== 'chop_area' && p.level != null).map((p, i) => (
+              <Legend key={`pl${i}`} color={PLAYBOOK_COLOR[p.role](C)} label={`${p.label} $${(p.level as number).toFixed(2)}`} dashed />
+            ))}
+            <Legend color={C.textSecondary} label="Chop area" />
             <Legend color={C.accent} label="Spot" dashed />
-            <Legend color={C.positive} label="Zona slow grind alcista" />
-            <Legend color={C.negative} label="Zona slow grind bajista" />
           </div>
         </div>
       )}
@@ -601,7 +600,7 @@ function useWheelZoom<T extends HTMLElement>(onZoom: (dir: 'in' | 'out') => void
   return ref;
 }
 
-function GexChart({ rows, spot, flip, wallUp, wallDown, maxPain, maxAbsGex }: {
+function GexChart({ rows, spot, flip, wallUp, wallDown, maxPain, maxAbsGex, playbook }: {
   rows: GexRow[];
   spot: number;
   flip: number | null;
@@ -609,6 +608,7 @@ function GexChart({ rows, spot, flip, wallUp, wallDown, maxPain, maxAbsGex }: {
   wallDown: number | null;
   maxPain: number | null;
   maxAbsGex: number;
+  playbook?: PlaybookLevel[];
 }) {
   const [wrapRef, measured] = useElementWidth<HTMLDivElement>();
   const width = Math.max(380, Math.round(measured));
@@ -647,15 +647,34 @@ function GexChart({ rows, spot, flip, wallUp, wallDown, maxPain, maxAbsGex }: {
     { y: yFor(spot), color: C.accent, label: 'Spot', value: spot },
   ].filter((l) => l.y != null && l.value != null);
 
+  // Si hay playbook, las líneas usan las etiquetas direccionales reales (target/resistance/trigger).
+  const usePlaybook = !!playbook && playbook.some((p) => p.role !== 'chop_area' && p.level != null);
+  const playbookLevels = usePlaybook
+    ? [
+        ...playbook!.filter((p) => p.role !== 'chop_area' && p.level != null).map((p) => ({
+          y: yFor(p.level as number), color: PLAYBOOK_COLOR[p.role](C), label: p.label, value: p.level as number,
+        })),
+        { y: yFor(spot), color: C.accent, label: 'Spot', value: spot },
+      ].filter((l) => l.y != null && l.value != null)
+    : [];
+  const renderLevels = usePlaybook ? playbookLevels : levels;
+
+  // Chop area: rango real (flip ↔ pared más cercana) sombreado en el fondo.
+  const chop = playbook?.find((p) => p.role === 'chop_area' && p.levelLow != null && p.levelHigh != null);
+  const chopY1 = chop ? yFor(chop.levelLow!) : null;
+  const chopY2 = chop ? yFor(chop.levelHigh!) : null;
+
   // Zonas interpretadas: comportamiento esperado entre la divisora y los targets
   const yWallUp = yFor(wallUp);
   const yWallDown = yFor(wallDown);
   const yFlip = yFor(flip);
   const zones: { yTop: number; yBot: number; title: string; color: string }[] = [];
-  if (yWallUp != null && yFlip != null && yFlip - yWallUp > 6)
-    zones.push({ yTop: yWallUp, yBot: yFlip, title: 'Slow grind alcista', color: C.positive });
-  if (yWallDown != null && yFlip != null && yWallDown - yFlip > 6)
-    zones.push({ yTop: yFlip, yBot: yWallDown, title: 'Slow grind bajista', color: C.negative });
+  if (!usePlaybook) {
+    if (yWallUp != null && yFlip != null && yFlip - yWallUp > 6)
+      zones.push({ yTop: yWallUp, yBot: yFlip, title: 'Slow grind alcista', color: C.positive });
+    if (yWallDown != null && yFlip != null && yWallDown - yFlip > 6)
+      zones.push({ yTop: yFlip, yBot: yWallDown, title: 'Slow grind bajista', color: C.negative });
+  }
 
   return (
     <div ref={wrapRef} style={{ width: '100%' }}>
@@ -671,6 +690,16 @@ function GexChart({ rows, spot, flip, wallUp, wallDown, maxPain, maxAbsGex }: {
         {zones.map((z, i) => (
           <rect key={`zone${i}`} x={plotL - 6} y={z.yTop} width={width - padL - 2} height={Math.max(0, z.yBot - z.yTop)} fill={z.color} opacity="0.08" />
         ))}
+
+        {/* chop area tint (rango real flip ↔ pared más cercana) */}
+        {chopY1 != null && chopY2 != null && (
+          <>
+            <rect x={plotL - 6} y={Math.min(chopY1, chopY2)} width={width - padL - 2} height={Math.max(0, Math.abs(chopY2 - chopY1))}
+              fill={C.textSecondary} opacity="0.10" />
+            <text x={plotL + 6} y={Math.min(chopY1, chopY2) + 13} fontSize="10.5" fontWeight="800" fill={C.textSecondary}
+              fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" opacity="0.9">CHOP AREA</text>
+          </>
+        )}
 
         {/* vertical grid */}
         {[0.25, 0.5, 0.75].map((f) => (
@@ -742,7 +771,7 @@ function GexChart({ rows, spot, flip, wallUp, wallDown, maxPain, maxAbsGex }: {
         })}
 
         {/* horizontal level markers + right-gutter labels */}
-        {levels.map((l) => {
+        {renderLevels.map((l) => {
           const label = `${l.label} $${l.value!.toFixed(2)}`;
           const labelW = label.length * 7.2 + 16;
           const lx = width - labelW - 4;
