@@ -645,6 +645,13 @@ export interface PlaybookLevel {
   source: 'callWall' | 'putWall' | 'gammaFlip' | 'flip+wall';
 }
 
+/** Minimal gamma-level input `buildPlaybook` needs (works for both screeners and gamma-levels). */
+export interface PlaybookGammaInput {
+  callWall: number | null;
+  putWall: number | null;
+  gammaFlip: number | null;
+}
+
 /**
  * Derive directional "playbook" labels from the SAME real gamma levels, with the
  * label orientation depending on where each level sits relative to spot:
@@ -654,7 +661,7 @@ export interface PlaybookLevel {
  *   • Chop area = the real range between the flip and the nearest wall to spot.
  * Labels are cosmetic; every `level` is a real calculated value (nothing invented).
  */
-export function buildPlaybook(gamma: GammaLevelsMultiResult, spot: number): PlaybookLevel[] {
+export function buildPlaybook(gamma: PlaybookGammaInput, spot: number): PlaybookLevel[] {
   if (!Number.isFinite(spot) || spot <= 0) return [];
   const out: PlaybookLevel[] = [];
 

@@ -9,6 +9,7 @@ import {
   ivFromOptionPrice,
   type GammaLevelsResult,
 } from '@/src/lib/options/gamma';
+import { buildPlaybook, type PlaybookLevel } from '@/src/lib/options/gammaScreener';
 
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
 
@@ -42,6 +43,7 @@ interface GammaLevelsResponse {
   expiry: string | null;
   dte: number;
   levels: GammaLevelsResult;
+  playbook: PlaybookLevel[];
   bars: GammaBar[];
   source: {
     chain: 'yahoo' | 'massive';
@@ -158,6 +160,10 @@ async function build(sym: string, targetDte: number): Promise<GammaLevelsRespons
 
   const contracts = contractsFromChain(raw.calls || [], raw.puts || []);
   const levels = computeGammaLevels({ contracts, spot, dte, expiry: expiryDate });
+  const playbook: PlaybookLevel[] = buildPlaybook(
+    { callWall: levels.gammaWallUp, putWall: levels.gammaWallDown, gammaFlip: levels.gammaFlip },
+    spot,
+  );
 
   // ── Massive free-tier complement (best-effort, never blocking) ──────────────
   let massiveContracts = false;
@@ -231,6 +237,7 @@ async function build(sym: string, targetDte: number): Promise<GammaLevelsRespons
     expiry: expiryDate,
     dte: dte,
     levels,
+    playbook,
     bars,
     source: {
       chain: massiveContracts ? 'massive' : 'yahoo',

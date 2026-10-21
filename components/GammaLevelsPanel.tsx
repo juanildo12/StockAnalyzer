@@ -38,6 +38,18 @@ interface GammaBar {
   v: number;
 }
 
+type PlaybookRole = 'upside_target' | 'upside_resistance' | 'downside_target' | 'downside_support' | 'bearish_trigger' | 'bullish_trigger' | 'chop_area';
+
+interface PlaybookLevel {
+  label: string;
+  role: PlaybookRole;
+  level: number | null;
+  levelLow?: number;
+  levelHigh?: number;
+  dir: 'up' | 'down' | 'neutral';
+  source: 'callWall' | 'putWall' | 'gammaFlip' | 'flip+wall';
+}
+
 interface GammaResponse {
   symbol: string;
   spot: number;
@@ -45,6 +57,7 @@ interface GammaResponse {
   expiry: string | null;
   dte: number;
   levels: GammaLevels;
+  playbook?: PlaybookLevel[];
   bars?: GammaBar[];
   source: {
     chain: 'yahoo' | 'massive';
@@ -67,6 +80,16 @@ const REGIME_META = {
   negative: { label: 'Gamma negativo', desc: 'Los dealers amplifican los movimientos', color: (c: typeof C) => c.negative, bg: (c: typeof C) => c.negativeBg },
   neutral: { label: 'Gamma neutral', desc: 'Sin régimen dominante', color: (c: typeof C) => c.textSecondary, bg: (c: typeof C) => c.bgElevated },
 } as const;
+
+const PLAYBOOK_COLOR: Record<PlaybookRole, (c: typeof C) => string> = {
+  upside_target: (c) => c.positive,
+  upside_resistance: (c) => c.warning,
+  downside_target: (c) => c.negative,
+  downside_support: (c) => c.info,
+  bearish_trigger: (c) => c.negative,
+  bullish_trigger: (c) => c.positive,
+  chop_area: (c) => c.textSecondary,
+};
 
 /** Chip que indica de dónde sale el precio usado como spot (pre/post/cierre). */
 function PriceBasisBadge({ label, color }: { label: string; color: string }) {
@@ -291,6 +314,35 @@ export default function GammaLevelsPanel({ symbol, onClose }: Props) {
         <Chip label="Max Pain" value={lv.maxPain != null ? `$${lv.maxPain.toFixed(2)}` : '—'} color={C.info} hint="Dolor mínimo al venc." />
         <Chip label="GEX neto" value={fmtGex(lv.totalNetGex)} color={lv.totalNetGex >= 0 ? C.positive : C.negative} hint={`OI total ${fmtOi(lv.totalOi)}`} />
       </div>
+
+      {/* Playbook legend */}
+      {data.playbook && data.playbook.length > 0 && (
+        <div style={{ padding: '0 20px 16px' }}>
+          <div style={{ color: C.textSecondary, fontSize: '12px', fontWeight: '600', marginBottom: '8px' }}>Playbook de niveles</div>
+          <div style={{ border: '1px solid ' + C.borderLight, borderRadius: R.md, overflow: 'hidden' }}>
+            {data.playbook.map((p, i) => {
+              const col = PLAYBOOK_COLOR[p.role](C);
+              const price = p.role === 'chop_area'
+                ? `${p.levelLow!.toFixed(2)} – ${p.levelHigh!.toFixed(2)}`
+                : `$${p.level!.toFixed(2)}`;
+              const dist = p.role === 'chop_area' || p.level == null ? null : ((p.level - data.spot) / data.spot) * 100;
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 12px', borderBottom: i < data.playbook!.length - 1 ? '1px solid ' + C.borderLight : 'none', background: C.bgElevated }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 2, background: col, flexShrink: 0, opacity: p.role === 'chop_area' ? 0.4 : 1, border: p.role === 'chop_area' ? `1px solid ${col}` : 'none' }} />
+                  <span style={{ flex: 1, fontSize: '12.5px', color: col, fontWeight: 700 }}>{p.label}</span>
+                  <span style={{ fontSize: '12.5px', color: C.textPrimary, fontWeight: 700, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>{price}</span>
+                  <span style={{ width: '58px', textAlign: 'right', fontSize: '11px', color: dist == null ? C.textMuted : dist >= 0 ? C.positive : C.negative }}>
+                    {dist == null ? '—' : `${dist >= 0 ? '+' : ''}${dist.toFixed(1)}%`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ color: C.textMuted, fontSize: '11px', marginTop: '6px' }}>
+            Etiquetas direccionales según la posición del nivel respecto al spot. Precios de los niveles gamma reales; no son garantías.
+          </div>
+        </div>
+      )}
 
       {/* Mini candlestick chart with gamma overlays */}
       {data.bars && data.bars.length > 2 && (
