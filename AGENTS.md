@@ -1,5 +1,13 @@
 # Project Notes
 
+## Autenticación y middleware (middleware.ts)
+
+- **El token de sesión de NextAuth v4 es un JWE de 5 partes** (`EncryptJWT`, `alg: dir`, `enc: A256GCM`, salt `""`), **no un JWS de 3 partes**. Decodificarlo a mano como JWS (`token.split(".")[1]`) **siempre devuelve null** → el middleware trataba a todo el mundo como anónimo: 401 en rutas no públicas aunque hubiera sesión, y el **gating por plan nunca se ejecutaba** (nadie pasaba el check de PRO/ELITE y `/api/v1/*` no se gatingaba).
+- **Usar `getToken` de `next-auth/jwt`** (`getToken({ req, secret, secureCookie })`): descifra el JWE con `NEXTAUTH_SECRET` y resuelve la cookie correcta (`next-auth.session-token` o `__Secure-…` en producción) y las fragmentadas. Probar ambas variantes de `secureCookie` (http/https).
+- El middleware expone `X-User-Plan` en cada respuesta → sirve para verificar si la sesión se detectó (`free` si no).
+- **Allowlist `publicLegacy`** (rutas sin sesión): market, options-chain, options-sim, gamma-levels, gamma-screener, put-call-ratio, squeeze, catalysts… `/api/options` es público **solo con `?symbol=`** (mismo coste que options-chain); el screener `?screen=screener` (50 símbolos × 3 fuentes) **exige sesión**.
+- Para probar la sesión en local: `encode({ token: { sub, email, plan }, secret })` de `next-auth/jwt` con el secret de `.env.local` (**sin las comillas** del valor) y la cookie `next-auth.session-token`.
+
 ## Perfiles de trading (src/lib/navigation/profiles.ts + components/ProfileSelector.tsx + components/SectionSubnav.tsx + components/Sidebar.tsx)
 
 La plataforma se organiza alrededor del **perfil del usuario**: Day Trade, Swing, Posición y Largo plazo. Al entrar por primera vez se muestra una pantalla de bienvenida con 4 tarjetas; el perfil se guarda en **localStorage + cookie** (`trader-profile`) — **sin migración de BD** (`user_settings` no tiene campo de perfil; sincronizarlo a la cuenta es trabajo futuro).
