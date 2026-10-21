@@ -15,6 +15,7 @@ import {
   classifyMomentum,
   computeEdgeScore,
   assessDataQuality,
+  buildPlaybook,
   DEFAULT_POSITIONING,
   DEFAULT_EDGE_WEIGHTS,
   type ScreenerContract,
@@ -29,6 +30,7 @@ import {
   type GammaRegime,
   type SkewRegime,
   type MomentumClass,
+  type PlaybookLevel,
 } from './gammaScreener';
 
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
@@ -60,6 +62,7 @@ export interface ScreenerRow {
   distCallWallPct: number | null;
   distPutWallPct: number | null;
   distFlipPct: number | null;
+  playbook: PlaybookLevel[];
 
   netGex: number;
   netGexNorm: number | null;
@@ -277,6 +280,7 @@ export async function buildScreenerRow(symbol: string, opts: BuildRowOptions = {
     distCallWallPct: gamma.distCallWallPct,
     distPutWallPct: gamma.distPutWallPct,
     distFlipPct: gamma.distFlipPct,
+    playbook: buildPlaybook(gamma, spot),
 
     netGex: gamma.totalNetGex,
     netGexNorm: gamma.netGexNorm,

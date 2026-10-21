@@ -616,3 +616,99 @@ export function distancePct(level: number | null, spot: number): number | null {
   if (level == null || !Number.isFinite(level) || !Number.isFinite(spot) || spot <= 0) return null;
   return ((level - spot) / spot) * 100;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Playbook levels (directional labels derived from the gamma levels)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type PlaybookRole =
+  | 'upside_target'
+  | 'upside_resistance'
+  | 'downside_target'
+  | 'downside_support'
+  | 'bearish_trigger'
+  | 'bullish_trigger'
+  | 'chop_area';
+
+export interface PlaybookLevel {
+  /** Playbook label, e.g. "Upside target" / "Bearish trigger" / "Chop area". */
+  label: string;
+  role: PlaybookRole;
+  /** Primary price (single level) — null for ranges. */
+  level: number | null;
+  /** For ranges (chop area): low/high bounds. */
+  levelLow?: number;
+  levelHigh?: number;
+  /** Directional bias of the label relative to spot, for coloring. */
+  dir: 'up' | 'down' | 'neutral';
+  /** Which real metric produced it — exposed for transparency. */
+  source: 'callWall' | 'putWall' | 'gammaFlip' | 'flip+wall';
+}
+
+/**
+ * Derive directional "playbook" labels from the SAME real gamma levels, with the
+ * label orientation depending on where each level sits relative to spot:
+ *   • Call Wall above spot → "Upside target"; below spot → "Upside resistance".
+ *   • Put Wall below spot  → "Downside target"; above spot → "Downside support".
+ *   • Gamma Flip: spot above flip → "Bearish trigger"; spot below → "Bullish trigger".
+ *   • Chop area = the real range between the flip and the nearest wall to spot.
+ * Labels are cosmetic; every `level` is a real calculated value (nothing invented).
+ */
+export function buildPlaybook(gamma: GammaLevelsMultiResult, spot: number): PlaybookLevel[] {
+  if (!Number.isFinite(spot) || spot <= 0) return [];
+  const out: PlaybookLevel[] = [];
+
+  if (gamma.callWall != null) {
+    const above = gamma.callWall >= spot;
+    out.push({
+      label: above ? 'Upside target' : 'Upside resistance',
+      role: above ? 'upside_target' : 'upside_resistance',
+      level: gamma.callWall,
+      dir: 'up',
+      source: 'callWall',
+    });
+  }
+
+  if (gamma.putWall != null) {
+    const below = gamma.putWall <= spot;
+    out.push({
+      label: below ? 'Downside target' : 'Downside support',
+      role: below ? 'downside_target' : 'downside_support',
+      level: gamma.putWall,
+      dir: 'down',
+      source: 'putWall',
+    });
+  }
+
+  if (gamma.gammaFlip != null) {
+    const spotAboveFlip = spot >= gamma.gammaFlip;
+    out.push({
+      label: spotAboveFlip ? 'Bearish trigger' : 'Bullish trigger',
+      role: spotAboveFlip ? 'bearish_trigger' : 'bullish_trigger',
+      level: gamma.gammaFlip,
+      dir: spotAboveFlip ? 'down' : 'up',
+      source: 'gammaFlip',
+    });
+
+    // Chop area: real range between the flip and the nearest wall to spot.
+    const candidates = [gamma.callWall, gamma.putWall].filter((v): v is number => v != null && v !== gamma.gammaFlip);
+    if (candidates.length > 0) {
+      const nearestWall = candidates.reduce((b, v) => (Math.abs(v - spot) < Math.abs(b - spot) ? v : b));
+      const low = Math.min(gamma.gammaFlip, nearestWall);
+      const high = Math.max(gamma.gammaFlip, nearestWall);
+      if (high - low > 0) {
+        out.push({
+          label: 'Chop area',
+          role: 'chop_area',
+          level: null,
+          levelLow: low,
+          levelHigh: high,
+          dir: 'neutral',
+          source: 'flip+wall',
+        });
+      }
+    }
+  }
+
+  return out;
+}

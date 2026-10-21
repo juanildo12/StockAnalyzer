@@ -9,6 +9,20 @@ type GammaRegime = 'positive' | 'negative' | 'neutral' | 'unknown';
 type SkewRegime = 'bullish' | 'neutral' | 'bearish' | 'unknown';
 type MomentumClass = 'bullish' | 'lean_bullish' | 'neutral' | 'lean_bearish' | 'bearish';
 
+type PlaybookRole =
+  | 'upside_target' | 'upside_resistance' | 'downside_target' | 'downside_support'
+  | 'bearish_trigger' | 'bullish_trigger' | 'chop_area';
+
+interface PlaybookLevel {
+  label: string;
+  role: PlaybookRole;
+  level: number | null;
+  levelLow?: number;
+  levelHigh?: number;
+  dir: 'up' | 'down' | 'neutral';
+  source: 'callWall' | 'putWall' | 'gammaFlip' | 'flip+wall';
+}
+
 interface ScreenerRow {
   symbol: string;
   name: string | null;
@@ -34,6 +48,7 @@ interface ScreenerRow {
   distCallWallPct: number | null;
   distPutWallPct: number | null;
   distFlipPct: number | null;
+  playbook: PlaybookLevel[];
   netGex: number;
   netGexNorm: number | null;
   optVolume: number;
@@ -127,6 +142,16 @@ function edgeColor(edge: number | null): string {
   return C.negative;
 }
 
+const PLAYBOOK_COLOR: Record<PlaybookRole, (c: typeof C) => string> = {
+  upside_target: (c) => c.positive,
+  upside_resistance: (c) => c.warning,
+  downside_target: (c) => c.negative,
+  downside_support: (c) => c.info,
+  bearish_trigger: (c) => c.negative,
+  bullish_trigger: (c) => c.positive,
+  chop_area: (c) => c.textSecondary,
+};
+
 // ── Presets ──────────────────────────────────────────────────────────────────
 
 interface Preset {
@@ -183,8 +208,25 @@ function GexByStrikeChart({ row }: { row: ScreenerRow }) {
           />
         );
       })}
+      {/* playbook levels */}
+      {row.playbook.map((p, i) => {
+        if (p.role === 'chop_area' && p.levelLow != null && p.levelHigh != null) {
+          const x1 = x(p.levelLow), x2 = x(p.levelHigh);
+          return (
+            <rect key={`chop${i}`} x={Math.min(x1, x2)} y={pad.t} width={Math.abs(x2 - x1)} height={H - pad.t - pad.b}
+              fill={C.textSecondary} opacity={0.10} />
+          );
+        }
+        if (p.level == null) return null;
+        const lx = x(p.level);
+        if (lx < pad.l || lx > W - pad.r) return null;
+        const col = PLAYBOOK_COLOR[p.role](C);
+        return (
+          <line key={`pb${i}`} x1={lx} y1={pad.t} x2={lx} y2={H - pad.b} stroke={col} strokeWidth={1.2} strokeDasharray="5 3" opacity={0.9} />
+        );
+      })}
       {/* spot marker */}
-      <line x1={spotX} y1={pad.t} x2={spotX} y2={H - pad.b} stroke={C.accentLight} strokeWidth={1} strokeDasharray="3 3" />
+      <line x1={spotX} y1={pad.t} x2={spotX} y2={H - pad.b} stroke={C.accentLight} strokeWidth={1.5} strokeDasharray="3 3" />
       <text x={spotX} y={pad.t + 9} fill={C.accentLight} fontSize={9} textAnchor="middle">spot {row.spot.toFixed(1)}</text>
       <text x={pad.l - 4} y={zeroY + 3} fill={C.textMuted} fontSize={9} textAnchor="end">0</text>
       <text x={x(minK)} y={H - 6} fill={C.textMuted} fontSize={9} textAnchor="middle">{minK}</text>
@@ -261,9 +303,36 @@ function DetailDrawer({ row, onClose }: { row: ScreenerRow; onClose: () => void 
 
         {/* GEX by strike */}
         <div style={{ fontSize: F.sizeSm, fontWeight: 700, color: C.textPrimary, marginBottom: S.xs }}>GEX neto por strike {row.gammaFlip != null ? `· flip ≈ ${row.gammaFlip.toFixed(2)}` : '· flip N/A'}</div>
-        <div style={{ background: C.bgInput, border: `1px solid ${C.border}`, borderRadius: R.sm, marginBottom: S.md }}>
+        <div style={{ background: C.bgInput, border: `1px solid ${C.border}`, borderRadius: R.sm, marginBottom: S.sm }}>
           <GexByStrikeChart row={row} />
         </div>
+
+        {/* Playbook legend */}
+        {row.playbook.length > 0 && (
+          <div style={{ marginBottom: S.md }}>
+            <div style={{ fontSize: F.sizeSm, fontWeight: 700, color: C.textPrimary, marginBottom: S.xs }}>Playbook de niveles</div>
+            <div style={{ border: `1px solid ${C.border}`, borderRadius: R.sm, overflow: 'hidden' }}>
+              {row.playbook.map((p, i) => {
+                const col = PLAYBOOK_COLOR[p.role](C);
+                const price = p.role === 'chop_area'
+                  ? `${p.levelLow!.toFixed(1)} – ${p.levelHigh!.toFixed(1)}`
+                  : `$${p.level!.toFixed(2)}`;
+                const dist = p.role === 'chop_area' || p.level == null ? null : ((p.level - row.spot) / row.spot) * 100;
+                return (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: S.sm, padding: '6px 10px', borderBottom: i < row.playbook.length - 1 ? `1px solid ${C.border}` : 'none', background: C.bgInput }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 2, background: col, flexShrink: 0, border: p.role === 'chop_area' ? `1px solid ${col}` : 'none', opacity: p.role === 'chop_area' ? 0.4 : 1 }} />
+                    <span style={{ flex: 1, fontSize: F.sizeSm, color: col, fontWeight: 600 }}>{p.label}</span>
+                    <span style={{ fontSize: F.sizeSm, color: C.textPrimary, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{price}</span>
+                    <span style={{ width: 58, textAlign: 'right', fontSize: F.sizeXs, color: dist == null ? C.textMuted : dist >= 0 ? C.positive : C.negative }}>{dist == null ? '—' : fmtPct(dist, 1)}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginTop: S.xs }}>
+              Etiquetas direccionales según la posición del nivel respecto al spot. Los precios provienen de los niveles gamma reales; no son garantías.
+            </div>
+          </div>
+        )}
 
         {/* Vol / OI stats */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: S.sm, marginBottom: S.md }}>

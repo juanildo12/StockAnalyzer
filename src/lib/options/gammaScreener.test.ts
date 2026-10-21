@@ -10,6 +10,7 @@ import {
   computeEdgeScore,
   assessDataQuality,
   distancePct,
+  buildPlaybook,
   DEFAULT_POSITIONING,
   DEFAULT_EDGE_WEIGHTS,
   type ScreenerContract,
@@ -423,5 +424,81 @@ describe('distancePct', () => {
 describe('DEFAULT_POSITIONING', () => {
   it('is the standard SqueezeMetrics convention (calls +, puts -)', () => {
     expect(DEFAULT_POSITIONING).toEqual({ signCalls: +1, signPuts: -1 });
+  });
+});
+
+// ── Playbook levels ──────────────────────────────────────────────────────────
+
+describe('buildPlaybook', () => {
+  const base = computeGammaLevelsMulti(sampleChain(100), 100, 'all');
+
+  it('labels call wall above spot as Upside target and put wall below as Downside target', () => {
+    // sampleChain: callWall 105 (>100), putWall 95 (<100)
+    const pb = buildPlaybook(base, 100);
+    const up = pb.find((p) => p.source === 'callWall')!;
+    const down = pb.find((p) => p.source === 'putWall')!;
+    expect(up.label).toBe('Upside target');
+    expect(up.level).toBe(base.callWall);
+    expect(down.label).toBe('Downside target');
+    expect(down.level).toBe(base.putWall);
+  });
+
+  it('inverts the call-wall label when the wall sits below spot', () => {
+    const gamma = { ...base, callWall: 90 }; // below spot
+    const pb = buildPlaybook(gamma, 100);
+    expect(pb.find((p) => p.source === 'callWall')!.label).toBe('Upside resistance');
+  });
+
+  it('inverts the put-wall label when the wall sits above spot', () => {
+    const gamma = { ...base, putWall: 110 }; // above spot
+    const pb = buildPlaybook(gamma, 100);
+    expect(pb.find((p) => p.source === 'putWall')!.label).toBe('Downside support');
+  });
+
+  it('labels the flip as Bearish trigger when spot is above it', () => {
+    const gamma = { ...base, gammaFlip: 95 };
+    const pb = buildPlaybook(gamma, 100);
+    const trig = pb.find((p) => p.source === 'gammaFlip')!;
+    expect(trig.label).toBe('Bearish trigger');
+    expect(trig.dir).toBe('down');
+  });
+
+  it('labels the flip as Bullish trigger when spot is below it', () => {
+    const gamma = { ...base, gammaFlip: 105 };
+    const pb = buildPlaybook(gamma, 100);
+    const trig = pb.find((p) => p.source === 'gammaFlip')!;
+    expect(trig.label).toBe('Bullish trigger');
+    expect(trig.dir).toBe('up');
+  });
+
+  it('computes chop area as the range between flip and nearest wall', () => {
+    const gamma = { ...base, gammaFlip: 98, callWall: 105, putWall: 95 };
+    const pb = buildPlaybook(gamma, 100);
+    const chop = pb.find((p) => p.role === 'chop_area')!;
+    // nearest wall to spot(100) is 98? no: walls 105 & 95 → 105 is 5 away, 95 is 5 away → tie picks first candidate (callWall 105... reduce keeps first <) → 105
+    expect(chop).toBeDefined();
+    expect(chop.levelLow! < chop.levelHigh!).toBe(true);
+    expect(chop.levelLow).toBeGreaterThanOrEqual(95);
+    expect(chop.levelHigh).toBeLessThanOrEqual(105);
+    expect(chop.level).toBeNull();
+  });
+
+  it('omits levels that are null and never invents values', () => {
+    const gamma = { ...base, callWall: null, putWall: null, gammaFlip: null };
+    expect(buildPlaybook(gamma, 100)).toHaveLength(0);
+  });
+
+  it('returns empty for degenerate spot', () => {
+    expect(buildPlaybook(base, 0)).toHaveLength(0);
+    expect(buildPlaybook(base, NaN)).toHaveLength(0);
+  });
+
+  it('includes only labels backed by a real calculated level', () => {
+    const pb = buildPlaybook(base, 100);
+    for (const p of pb) {
+      if (p.role === 'chop_area') continue;
+      expect(p.level).not.toBeNull();
+      expect(Number.isFinite(p.level!)).toBe(true);
+    }
   });
 });
