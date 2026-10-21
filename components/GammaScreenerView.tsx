@@ -159,6 +159,66 @@ const PLAYBOOK_COLOR: Record<PlaybookRole, (c: typeof C) => string> = {
 
 type EntryBias = 'long' | 'short' | 'wait';
 
+type Horizon = 'day' | 'swing' | 'no';
+
+interface HorizonRec {
+  horizon: Horizon;
+  label: string;
+  color: (c: typeof C) => string;
+  why: string;
+}
+
+// El mapa de gamma es estructural (el OI se publica tras el cierre previo y los
+// niveles son zonas, no señales intradía). Cerca del flip el régimen es ambiguo.
+// Por eso: lejos del flip + alineado + líquido → SWING; distancia media → DAY;
+// pegado al flip / ilíquido / datos malos → NO OPERABLE.
+function recommendHorizon(row: ScreenerRow, aligned: boolean): HorizonRec {
+  const dFlip = row.distFlipPct != null ? Math.abs(row.distFlipPct) : null;
+  const liq = row.liquidity;
+  const dq = row.dataQuality;
+
+  if (row.gammaFlip == null) {
+    return {
+      horizon: 'no', label: 'NO OPERABLE', color: (c) => c.textMuted,
+      why: 'Sin gamma flip válido: no hay referencia para fijar gatillo/invalidación.',
+    };
+  }
+  if (liq === 'low' || liq === 'unknown') {
+    return {
+      horizon: 'no', label: 'NO OPERABLE', color: (c) => c.textMuted,
+      why: `Liquidez ${liq === 'low' ? 'baja' : 'desconocida'}: GEX poco fiable y ejecución costosa.`,
+    };
+  }
+  if (dq.stale || dq.completeness < 0.6) {
+    return {
+      horizon: 'no', label: 'NO OPERABLE', color: (c) => c.textMuted,
+      why: `Datos ${dq.stale ? 'desactualizados' : 'incompletos'} (${Math.round(dq.completeness * 100)}%): el mapa no está fiable.`,
+    };
+  }
+  if (dFlip != null && dFlip < 1) {
+    return {
+      horizon: 'no', label: 'NO OPERABLE', color: (c) => c.warning,
+      why: `Spot pegado al flip (${dFlip.toFixed(2)}%): el régimen cambia de signo a cada tick — aquí el mapa es ruido.`,
+    };
+  }
+  if (!aligned) {
+    return {
+      horizon: 'no', label: 'NO OPERABLE', color: (c) => c.warning,
+      why: 'Momentum y régimen desalineados: sin sesgo claro, no es entrada.',
+    };
+  }
+  if (dFlip != null && dFlip >= 3) {
+    return {
+      horizon: 'swing', label: 'SWING (días)', color: (c) => c.positive,
+      why: `Alineado y a ${dFlip.toFixed(1)}% del flip: los niveles gamma operan bien con días de antelación (el OI es del cierre previo).`,
+    };
+  }
+  return {
+    horizon: 'day', label: 'DAY TRADE (intradía)', color: (c) => c.accentLight,
+    why: `Alineado pero a ${dFlip != null ? dFlip.toFixed(1) : '?'}% del flip: operable intradía con gestión ajustada; el nivel no es zona firme.`,
+  };
+}
+
 interface EntryIdea {
   bias: EntryBias;
   heading: string;
@@ -169,6 +229,7 @@ interface EntryIdea {
   stop: number | null;
   rationale: string[];
   aligned: boolean;
+  horizon: HorizonRec;
 }
 
 function buildEntryIdea(row: ScreenerRow): EntryIdea {
@@ -197,6 +258,7 @@ function buildEntryIdea(row: ScreenerRow): EntryIdea {
       stop: row.putWall ?? flip,
       rationale: [...rationale, 'Momentum alcista con gamma positivo → sesgo al alza, apoyado por el colchón de dealers.'],
       aligned: true,
+      horizon: recommendHorizon(row, true),
     };
   }
   if (shortAligned && flip != null) {
@@ -210,6 +272,7 @@ function buildEntryIdea(row: ScreenerRow): EntryIdea {
       stop: row.callWall ?? flip,
       rationale: [...rationale, 'Momentum bajista con gamma negativo → sesgo a la baja, movimientos amplificados.'],
       aligned: true,
+      horizon: recommendHorizon(row, true),
     };
   }
 
@@ -231,20 +294,25 @@ function buildEntryIdea(row: ScreenerRow): EntryIdea {
     stop: null,
     rationale: [...rationale, reason],
     aligned: false,
+    horizon: recommendHorizon(row, false),
   };
 }
 
 function EntrySuggestionCard({ row }: { row: ScreenerRow }) {
   const idea = buildEntryIdea(row);
   const col = idea.color(C);
+  const hz = idea.horizon;
+  const hzCol = hz.color(C);
   const fmt$ = (v: number | null) => (v != null ? `$${v.toFixed(2)}` : '—');
   return (
     <div style={{ marginBottom: S.md, border: `1px solid ${col}55`, borderRadius: R.md, overflow: 'hidden', background: col + '0E' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: S.sm, padding: '10px 12px', borderBottom: `1px solid ${col}33` }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: S.sm, padding: '10px 12px', borderBottom: `1px solid ${col}33`, flexWrap: 'wrap' }}>
         <span style={{ fontSize: F.sizeSm, fontWeight: 800, color: col }}>
-          {idea.bias === 'long' ? '🟢' : idea.bias === 'short' ? '🔴' : '⏸'} Entrada sugerida: {idea.heading}
+          {idea.bias === 'long' ? '🟢' : idea.bias === 'short' ? '🔴' : '⏸'} Sesgo: {idea.heading}
         </span>
-        {!idea.aligned && <span style={{ marginLeft: 'auto', fontSize: F.sizeXs, color: C.textMuted }}>momentum ↔ régimen desalineados</span>}
+        <span style={{ marginLeft: 'auto', fontSize: F.sizeXs, fontWeight: 800, padding: '2px 8px', borderRadius: R.full, background: hzCol + '22', color: hzCol, border: `1px solid ${hzCol}55` }}>
+          {hz.label}
+        </span>
       </div>
       <div style={{ padding: '10px 12px' }}>
         <div style={{ fontSize: F.sizeSm, color: C.textSecondary, marginBottom: S.xs }}>{idea.triggerText}</div>
@@ -261,6 +329,10 @@ function EntrySuggestionCard({ row }: { row: ScreenerRow }) {
             <div style={{ fontSize: F.sizeXs, color: C.textMuted }}>Invalidación</div>
             <div style={{ fontSize: F.sizeMd, fontWeight: 700, color: C.textPrimary }}>{fmt$(idea.stop)}</div>
           </div>
+        </div>
+        <div style={{ marginTop: S.sm, padding: '8px 10px', borderRadius: R.sm, background: hzCol + '12', border: `1px solid ${hzCol}33` }}>
+          <div style={{ fontSize: F.sizeXs, fontWeight: 700, color: hzCol }}>Horizonte: {hz.label}</div>
+          <div style={{ fontSize: F.sizeXs, color: C.textSecondary, marginTop: 2, lineHeight: 1.5 }}>{hz.why}</div>
         </div>
         <ul style={{ margin: `${S.sm}px 0 0`, paddingLeft: 18, color: C.textSecondary, fontSize: F.sizeXs, lineHeight: 1.6 }}>
           {idea.rationale.map((r, i) => <li key={i}>{r}</li>)}
