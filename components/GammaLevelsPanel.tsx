@@ -58,6 +58,17 @@ interface GammaResponse {
   dte: number;
   levels: GammaLevels;
   playbook?: PlaybookLevel[];
+  momentum?: {
+    classification: 'bullish' | 'lean_bullish' | 'neutral' | 'lean_bearish' | 'bearish';
+    ema8: number | null;
+    ema21: number | null;
+    ema50: number | null;
+    ret5d: number | null;
+    ret20d: number | null;
+    relVolume: number | null;
+    aboveAll: boolean;
+    belowAll: boolean;
+  } | null;
   bars?: GammaBar[];
   source: {
     chain: 'yahoo' | 'massive';
@@ -232,6 +243,28 @@ export default function GammaLevelsPanel({ symbol, onClose }: Props) {
     .map((p) => ({ value: p.level as number, label: `${p.label} $${(p.level as number).toFixed(2)}`, color: PLAYBOOK_COLOR[p.role](C) }));
   const chartLevelsWithSpot = [...chartLevels, { value: data.spot, label: `Spot $${data.spot.toFixed(2)}`, color: C.accent }];
 
+  // Aviso momentum vs régimen: una tesis direccional solo se alinea cuando el
+  // momentum y el régimen gamma apuntan al mismo lado. Si no, es contra-flujo.
+  const momClass = data.momentum?.classification ?? null;
+  const momBearish = momClass === 'bearish' || momClass === 'lean_bearish';
+  const momBullish = momClass === 'bullish' || momClass === 'lean_bullish';
+  const flip = lv.gammaFlip;
+  const spotAboveFlip = flip != null && data.spot >= flip;
+  let mismatch: { title: string; body: string; color: string } | null = null;
+  if (lv.regime === 'positive' && momBearish) {
+    mismatch = {
+      title: 'Momentum bajista con gamma positivo — espera confirmación',
+      body: `El momentum es bajista pero el régimen es de amortiguación (positive gamma): los dealers compran caídas, así que un retroceso bajista suele agotarse dentro del rango. Un PUT aquí es contra-flujo salvo que el precio confirme perdiendo el flip${flip != null ? ` ($${flip.toFixed(2)})` : ''}${spotAboveFlip ? ' — el precio sigue por encima' : ''}.`,
+      color: C.warning,
+    };
+  } else if (lv.regime === 'negative' && momBullish) {
+    mismatch = {
+      title: 'Momentum alcista con gamma negativo — cuidado',
+      body: `El momentum es alcista pero el régimen es de amplificación (negative gamma): los dealers venden caídas y compran subidas, los movimientos son más bruscos y pueden revertirse. Un CALL aquí es contra-flujo salvo confirmación reconquistando el flip${flip != null ? ` ($${flip.toFixed(2)})` : ''}.`,
+      color: C.warning,
+    };
+  }
+
   return (
     <div style={{ background: C.bgCard, borderRadius: R.lg, border: '1px solid ' + C.border, overflow: 'hidden' }}>
       {/* Header */}
@@ -311,6 +344,37 @@ export default function GammaLevelsPanel({ symbol, onClose }: Props) {
             </div>
           )}
         </div>
+
+        {/* Aviso momentum vs régimen */}
+        {mismatch && (
+          <div style={{
+            marginTop: '10px', padding: '12px 14px', borderRadius: R.md,
+            background: mismatch.color + '14', border: `1px solid ${mismatch.color}55`,
+          }}>
+            <div style={{ color: mismatch.color, fontSize: '13px', fontWeight: '700' }}>⚠️ {mismatch.title}</div>
+            <div style={{ color: C.textSecondary, fontSize: '12px', marginTop: '4px', lineHeight: 1.5 }}>{mismatch.body}</div>
+          </div>
+        )}
+
+        {/* Momentum chip */}
+        {data.momentum && (
+          <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ color: C.textMuted, fontSize: '11px', fontWeight: '600' }}>MOMENTUM:</span>
+            <span style={{
+              fontSize: '12px', fontWeight: '700', padding: '2px 8px', borderRadius: R.full,
+              background: (momBullish ? C.positive : momBearish ? C.negative : C.textSecondary) + '22',
+              color: momBullish ? C.positive : momBearish ? C.negative : C.textSecondary,
+            }}>
+              {momClass}
+            </span>
+            {data.momentum.ret5d != null && (
+              <span style={{ color: C.textMuted, fontSize: '11px' }}>5d {data.momentum.ret5d >= 0 ? '+' : ''}{(data.momentum.ret5d * 100).toFixed(1)}%</span>
+            )}
+            {data.momentum.ret20d != null && (
+              <span style={{ color: C.textMuted, fontSize: '11px' }}>20d {data.momentum.ret20d >= 0 ? '+' : ''}{(data.momentum.ret20d * 100).toFixed(1)}%</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Stat chips */}
