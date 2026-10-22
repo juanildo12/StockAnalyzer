@@ -21,6 +21,7 @@ Motor de backtesting **reescrito** (oct 2026): antes devolvía una curva plana s
 - El middleware expone `X-User-Plan` en cada respuesta → sirve para verificar si la sesión se detectó (`free` si no).
 - **Allowlist `publicLegacy`** (rutas sin sesión): market, options-chain, options-sim, gamma-levels, gamma-screener, put-call-ratio, squeeze, catalysts… `/api/options` es público **solo con `?symbol=`** (mismo coste que options-chain); el screener `?screen=screener` (50 símbolos × 3 fuentes) **exige sesión**.
 - Para probar la sesión en local: `encode({ token: { sub, email, plan }, secret })` de `next-auth/jwt` con el secret de `.env.local` (**sin las comillas** del valor) y la cookie `next-auth.session-token`.
+- **Producción**: el valor real de `NEXTAUTH_SECRET` en Vercel es la cadena `NEXTAUTH_SECRET=EYr4…VRA=` **con un salto de línea final** (se creó con el prefijo incluido). Al tirar las vars con `npx vercel env pull`, el valor sale entrecomillado y con `\n` escapado: hay que convertir `\n` a un salto de línea real antes de firmar el token. Con ese secret el middleware detecta el plan (`X-User-Plan: elite`) y el backtest en prod responde 200; con el secret "limpio" (sin prefijo ni salto) la sesión no se reconoce y todo vuelve a 401. Cookie en prod: `__Secure-next-auth.session-token`.
 
 ## Perfiles de trading (src/lib/navigation/profiles.ts + components/ProfileSelector.tsx + components/SectionSubnav.tsx + components/Sidebar.tsx)
 
