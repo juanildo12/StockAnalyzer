@@ -1,276 +1,376 @@
-import { StockFeatures, Portfolio, Position, Order, PortfolioSnapshot, TradeRecord, BacktestConfig, BacktestResult } from './types';
-import { calcMetrics } from './metrics';
-import { getBars } from '../polygonClient';
-import { getNews, getBasicFinancials, getStockIndicators } from '../finnhubClient';
-import { FILTER_AGENT_PROMPT, DECISION_AGENT_PROMPT } from './prompts';
+// Motor de backtest: determinista, sin look-ahead y testeable.
+//
+// - La señal se calcula con los datos hasta el CIERRE del día D.
+// - La orden se ejecuta a la APERTURA del día D+1 (nunca en el mismo día que
+//   genera la señal: sin look-ahead).
+// - Los costes (comisión + slippage) se descuentan en cada operación.
+// - El benchmark se compra y mantiene desde el primer día del periodo.
 
-function fmtDate(d: Date): string {
+import {
+  cagr,
+  dailyReturns,
+  annualizedVolatility,
+  maxDrawdown,
+  sharpe,
+  sortino,
+} from './indicators';
+import { evaluateStrategy, type Signal } from './strategy';
+import type {
+  BacktestConfig,
+  BacktestResult,
+  Bar,
+  NavPoint,
+  SymbolStats,
+  TradeRecord,
+} from './types';
+
+export interface EngineInput {
+  config: BacktestConfig;
+  /** Barras por símbolo (histórico completo, ascendente, incluye pre-periodo). */
+  barsBySymbol: Record<string, Bar[]>;
+  /** Barras del benchmark (mismo formato). */
+  benchmarkBars: Bar[];
+  /** Señales precalculadas por fecha de señal: { 'YYYY-MM-DD': { SYM: Signal } }. */
+  signalMap: Record<string, Record<string, Signal>>;
+  /** Fuente de datos (para transparencia en la UI). */
+  dataSource?: string;
+  notes?: string[];
+}
+
+const MS_PER_DAY = 86400000;
+
+function toDateStr(d: Date): string {
   return d.toISOString().split('T')[0];
 }
 
-export async function buildFeatures(symbol: string, date: Date): Promise<StockFeatures | null> {
-  const from = new Date(date);
-  from.setDate(from.getDate() - 250);
-  const bars = await getBars(symbol, fmtDate(from), fmtDate(date)).catch(() => [] as any);
-  if (bars.length === 0) return null;
-
-  const last = bars[bars.length - 1];
-  const prev = bars.length > 1 ? bars[bars.length - 2] : last;
-  const closes = bars.map((b: any) => b.c);
-
-  const rsi = calcRSI(closes, 14);
-  const sma50 = calcSMA(closes, Math.min(50, closes.length));
-  const sma200 = calcSMA(closes, Math.min(200, closes.length));
-
-  const newsFrom = new Date(date);
-  newsFrom.setDate(newsFrom.getDate() - 2);
-  const newsItems = await getNews(symbol, fmtDate(newsFrom), fmtDate(date)).catch(() => []);
-
-  const fin = await getBasicFinancials(symbol).catch(() => null);
-  const metrics = fin?.metric || {};
-
-  const high52w = Math.max(...closes.slice(-252));
-  const low52w = Math.min(...closes.slice(-252));
-
-  return {
-    symbol,
-    date: fmtDate(date),
-    open: last.o,
-    high: last.h,
-    low: last.l,
-    close: last.c,
-    volume: last.v,
-    marketCap: (metrics as any)['marketCapitalization'] || undefined,
-    peRatio: (metrics as any)['peRatio'] || undefined,
-    dividendYield: (metrics as any)['dividendYieldIndicated'] || undefined,
-    week52High: high52w,
-    week52Low: low52w,
-    news: newsItems.slice(0, 5).map((n: any) => ({ headline: n.headline || '', summary: n.summary || '' })),
-    rsi,
-    sma50: sma50 ?? undefined,
-    sma200: sma200 ?? undefined,
-  };
+function parseDate(s: string): Date {
+  return new Date(`${s}T00:00:00.000Z`);
 }
 
-function calcRSI(closes: number[], period: number): number {
-  if (closes.length < period + 1) return 50;
-  const gains: number[] = [];
-  const losses: number[] = [];
-  for (let i = 1; i <= period; i++) {
-    const diff = closes[closes.length - i] - closes[closes.length - i - 1];
-    gains.push(diff > 0 ? diff : 0);
-    losses.push(diff < 0 ? -diff : 0);
+/** Índice fecha → barra para acceso O(1). */
+function indexBars(bars: Bar[]): Map<string, Bar> {
+  const map = new Map<string, Bar>();
+  for (const b of bars) map.set(b.date, b);
+  return map;
+}
+
+/** Último precio conocido hasta `date` (forward fill). */
+function priceAsOf(index: Map<string, Bar>, dates: string[], date: string): number | null {
+  for (let i = dates.length - 1; i >= 0; i--) {
+    const bar = index.get(dates[i]);
+    if (bar && bar.date <= date) return bar.close;
   }
-  const avgGain = gains.reduce((a, b) => a + b, 0) / period;
-  const avgLoss = losses.reduce((a, b) => a + b, 0) / period;
-  if (avgLoss === 0) return 100;
-  const rs = avgGain / avgLoss;
-  return 100 - 100 / (1 + rs);
+  return null;
 }
 
-function calcSMA(closes: number[], period: number): number | null {
-  if (closes.length < period) return null;
-  const slice = closes.slice(-period);
-  return slice.reduce((a, b) => a + b, 0) / period;
+function openAsOf(index: Map<string, Bar>, dates: string[], date: string): number | null {
+  for (let i = dates.length - 1; i >= 0; i--) {
+    const bar = index.get(dates[i]);
+    if (bar && bar.date <= date) return bar.open;
+  }
+  return null;
 }
 
-export function formatFeaturesForPrompt(features: StockFeatures[], portfolio: Portfolio): string {
-  return features.map(f => {
-    const pos = portfolio.positions[f.symbol];
-    const currentValue = pos ? pos.shares * f.open : 0;
-    const posStr = pos
-      ? `[POSICIÓN] ${pos.shares} accs @ $${f.open} = $${currentValue.toFixed(0)}`
-      : '[POSICIÓN] No tienes esta acción';
-    return `
-${f.symbol} — $${f.open} | Día: ${f.date}
-${posStr}
-[TÉCNICOS] RSI:${f.rsi?.toFixed(0) || 'N/A'} SMA50:$${f.sma50?.toFixed(2) || 'N/A'} SMA200:$${f.sma200?.toFixed(2) || 'N/A'}
-[VALORACIÓN] MktCap:${f.marketCap ? '$' + (f.marketCap / 1e9).toFixed(1) + 'B' : 'N/A'} P/E:${f.peRatio?.toFixed(1) || 'N/A'} Div:${f.dividendYield != null ? (f.dividendYield * 100).toFixed(2) + '%' : 'N/A'}
-[RANGO] 52W: $${f.week52Low?.toFixed(2) || '?'} - $${f.week52High?.toFixed(2) || '?'}
-[NOTICIAS] ${f.news.map(n => n.headline).join(' | ') || 'Sin noticias'}
-`;
-  }).join('---\n');
+/** Fechas de trading comunes (presencia en el benchmark) dentro del periodo. */
+export function tradingCalendar(
+  benchmarkBars: Bar[],
+  startDate: string,
+  endDate: string,
+): string[] {
+  return benchmarkBars
+    .map((b) => b.date)
+    .filter((d) => d >= startDate && d <= endDate);
 }
 
-export function formatPortfolioOverview(portfolio: Portfolio, totalValue: number): string {
-  const lines = Object.entries(portfolio.positions).map(([sym, p]) => {
-    const val = p.shares * (p.avgPrice || 0);
-    const pct = totalValue > 0 ? (val / totalValue) * 100 : 0;
-    return `${sym}: ${p.shares} accs @ $${p.avgPrice.toFixed(2)} = $${val.toFixed(0)} (${pct.toFixed(1)}%)`;
-  });
-  return `Efectivo: $${portfolio.cash.toFixed(0)}
-Total Activos: $${totalValue.toFixed(0)}
-Posiciones:
-${lines.join('\n') || 'Vacío'}`;
+/**
+ * Calcula el mapa de señales para las estrategias deterministas.
+ * Una entrada por cada fecha del calendario.
+ */
+export function buildSignalMap(
+  config: BacktestConfig,
+  barsBySymbol: Record<string, Bar[]>,
+  dates: string[],
+): Record<string, Record<string, Signal>> {
+  const map: Record<string, Record<string, Signal>> = {};
+  const symbols = config.symbols;
+
+  for (const date of dates) {
+    const perSymbol: Record<string, Signal> = {};
+    for (const sym of symbols) {
+      const bars = barsBySymbol[sym] || [];
+      const upto = bars.filter((b) => b.date <= date);
+      if (upto.length === 0) {
+        perSymbol[sym] = { target: 0, score: 0, reason: 'Sin datos' };
+        continue;
+      }
+      perSymbol[sym] = evaluateStrategy(config.strategy, { symbol: sym, bars: upto });
+    }
+    map[date] = perSymbol;
+  }
+  return map;
 }
 
-export async function runBacktest(config: BacktestConfig): Promise<BacktestResult> {
-  const start = new Date(config.startDate);
-  const end = new Date(config.endDate);
-  const portfolio: Portfolio = { cash: config.initialCash, positions: {} };
-  const nav: { date: string; value: number }[] = [];
+interface PositionState {
+  shares: number;
+  avgPrice: number;
+  costBasis: number; // coste total pagado (incluye costes)
+  realized: number; // P&L realizado acumulado del símbolo
+}
+
+export function runEngine(input: EngineInput): BacktestResult {
+  const { config, barsBySymbol, benchmarkBars, signalMap } = input;
+  const symbols = config.symbols;
+  const notes: string[] = [...(input.notes || [])];
+
+  const bmIndex = indexBars(benchmarkBars);
+  const dates = tradingCalendar(benchmarkBars, config.startDate, config.endDate);
+
+  if (dates.length < 2) {
+    throw new Error('No hay suficientes sesiones en el periodo indicado.');
+  }
+
+  const symbolIndexes: Record<string, Map<string, Bar>> = {};
+  const symbolDates: Record<string, string[]> = {};
+  for (const sym of symbols) {
+    const bars = barsBySymbol[sym] || [];
+    symbolIndexes[sym] = indexBars(bars);
+    symbolDates[sym] = bars.map((b) => b.date);
+  }
+
+  const costRate = (config.commissionBps + config.slippageBps) / 10000;
+
+  let cash = config.initialCash;
+  const positions: Record<string, PositionState> = {};
   const trades: TradeRecord[] = [];
-  const benchmark: { date: string; value: number }[] = [];
+  const nav: NavPoint[] = [];
 
-  let currentDate = new Date(start);
-  const dayCount = Math.ceil((end.getTime() - start.getTime()) / (86400000));
+  let totalCosts = 0;
+  let tradedValue = 0;
+  let exposureAcc = 0;
 
-  const lastPrices: Record<string, number> = {};
+  // Órdenes pendientes generadas por la señal del cierre de D → se ejecutan a
+  // la apertura de D+1.
+  interface PendingOrder {
+    symbol: string;
+    side: 'buy' | 'sell';
+    value: number; // valor objetivo de la posición (para buys) o valor a vender
+    reason: string;
+    signalDate: string; // cierre que generó la orden
+    full?: boolean; // cierre total de la posición (no venta parcial)
+  }
+  let pending: PendingOrder[] = [];
 
-  for (let d = 0; d <= dayCount; d++) {
-    const dateStr = fmtDate(currentDate);
-    const features: StockFeatures[] = [];
+  for (let i = 0; i < dates.length; i++) {
+    const date = dates[i];
+    const isLast = i === dates.length - 1;
 
-    for (const sym of config.symbols) {
-      const f = await buildFeatures(sym, currentDate);
-      if (f) {
-        features.push(f);
-        lastPrices[sym] = f.open;
-      }
-    }
+    // 1) Ejecutar las órdenes pendientes a la APERTURA de hoy (se generaron
+    //    con el cierre de ayer, así que siempre caen dentro del periodo).
+    if (pending.length > 0) {
+      for (const order of pending) {
+        const open = openAsOf(symbolIndexes[order.symbol], symbolDates[order.symbol], date);
+        if (open === null || open <= 0) continue;
 
-    const totalEquity = portfolio.cash + Object.entries(portfolio.positions).reduce((sum, [sym, p]) => {
-      return sum + (p.shares * (lastPrices[sym] || p.avgPrice));
-    }, 0);
+        const pos = positions[order.symbol];
 
-    nav.push({ date: dateStr, value: totalEquity });
-
-    const bmFeature = features[0];
-    if (bmFeature) {
-      benchmark.push({ date: dateStr, value: bmFeature.open });
-    }
-
-    if (features.length === 0 || d < 5) {
-      currentDate.setDate(currentDate.getDate() + 1);
-      continue;
-    }
-
-    const overview = formatPortfolioOverview(portfolio, totalEquity);
-    const featureData = formatFeaturesForPrompt(features, portfolio);
-
-    const filterMsg = `[FECHA] ${dateStr}\n\n[PORTAFOLIO]\n${overview}\n\n[DATOS ACCIONES]\n${featureData}\n\nSelecciona las acciones que necesitan análisis fundamental detallado.`;
-
-    const filterRes = await callLLM(FILTER_AGENT_PROMPT, filterMsg);
-    let stocksNeedFund: string[] = [];
-    try {
-      const parsed = JSON.parse(filterRes);
-      stocksNeedFund = parsed.stocks_need_fundamental || [];
-    } catch { stocksNeedFund = []; }
-
-    const enrichedFeatures = features.map(f => ({
-      ...f,
-      hasFundamental: stocksNeedFund.includes(f.symbol),
-    }));
-
-    const enrichedStr = enrichedFeatures.map(f => {
-      const str = formatFeaturesForPrompt([f], portfolio);
-      return f.hasFundamental ? str + '\n[INCLUYE DATOS FUNDAMENTALES COMPLETOS]\n' : str + '\n[solo datos técnicos]\n';
-    }).join('---\n');
-
-    const decisionMsg = `[FECHA] ${dateStr}\n\n[PORTAFOLIO]\n${overview}\n\n[DATOS DEL MERCADO]\n${enrichedStr}\n\nGenera las decisiones de trading para hoy.`;
-
-    const decisionRes = await callLLM(DECISION_AGENT_PROMPT, decisionMsg);
-
-    interface Decision {
-      action: string;
-      target_cash_amount: number | null;
-      reasons: string[];
-      confidence: number;
-    }
-    interface DecisionsJSON {
-      decisions: Record<string, Decision>;
-      portfolio_reasoning?: string;
-    }
-
-    let decisions: DecisionsJSON = { decisions: {} };
-    try {
-      decisions = JSON.parse(decisionRes);
-    } catch {}
-
-    for (const sym of config.symbols) {
-      const dec = decisions.decisions?.[sym];
-      if (!dec) continue;
-      const feat = features.find(f => f.symbol === sym);
-      if (!feat) continue;
-      const price = feat.open;
-      const pos = portfolio.positions[sym];
-      const currentVal = pos ? pos.shares * price : 0;
-
-      if (dec.action === 'increase' && dec.target_cash_amount) {
-        const target = Math.min(dec.target_cash_amount, totalEquity * 0.15);
-        const addVal = Math.min(target - currentVal, portfolio.cash * 0.95);
-        if (addVal > 10) {
-          const shares = Math.floor(addVal / price);
-          const cost = shares * price;
-          portfolio.cash -= cost;
-          if (pos) {
-            pos.totalCost += cost;
-            pos.shares += shares;
-            pos.avgPrice = pos.totalCost / pos.shares;
-          } else {
-            portfolio.positions[sym] = { shares, avgPrice: price, totalCost: cost };
-          }
-          trades.push({ date: dateStr, symbol: sym, side: 'buy', shares, price, value: cost });
-        }
-      } else if (dec.action === 'decrease' || dec.action === 'close') {
-        if (!pos || pos.shares <= 0) continue;
-        const sellPct = dec.action === 'close' ? 1 : 0.5;
-        const shares = Math.floor(pos.shares * sellPct);
-        if (shares > 0) {
-          const val = shares * price;
-          portfolio.cash += val;
+        if (order.side === 'sell') {
+          if (!pos || pos.shares <= 0) continue;
+          const shares = order.full
+            ? pos.shares
+            : Math.min(pos.shares, Math.floor(order.value / open));
+          if (shares <= 0) continue;
+          const gross = shares * open;
+          const cost = gross * costRate;
+          const pnl = gross - cost - (pos.costBasis * shares) / pos.shares;
+          cash += gross - cost;
           pos.shares -= shares;
-          pos.totalCost = pos.shares > 0 ? pos.totalCost * (pos.shares / (pos.shares + shares)) : 0;
-          if (pos.shares <= 0) delete portfolio.positions[sym];
-          trades.push({ date: dateStr, symbol: sym, side: 'sell', shares, price, value: val });
+          pos.costBasis = (pos.costBasis * (pos.shares)) / (pos.shares + shares);
+          pos.realized += pnl;
+          totalCosts += cost;
+          tradedValue += gross;
+          trades.push({
+            date,
+            signalDate: order.signalDate,
+            symbol: order.symbol,
+            side: 'sell',
+            shares,
+            price: open,
+            value: gross,
+            cost,
+            reason: order.reason,
+            pnl,
+          });
+          if (pos.shares <= 0) delete positions[order.symbol];
+        } else {
+          const budget = Math.min(order.value, cash);
+          if (budget <= 0) continue;
+          const shares = Math.floor(budget / (open * (1 + costRate)));
+          if (shares <= 0) continue;
+          const gross = shares * open;
+          const cost = gross * costRate;
+          if (gross + cost > cash) continue;
+          cash -= gross + cost;
+          if (!pos) {
+            positions[order.symbol] = {
+              shares,
+              avgPrice: open,
+              costBasis: gross + cost,
+              realized: 0,
+            };
+          } else {
+            pos.shares += shares;
+            pos.costBasis += gross + cost;
+            pos.avgPrice = pos.costBasis / pos.shares;
+          }
+          totalCosts += cost;
+          tradedValue += gross;
+          trades.push({
+            date,
+            signalDate: order.signalDate,
+            symbol: order.symbol,
+            side: 'buy',
+            shares,
+            price: open,
+            value: gross,
+            cost,
+            reason: order.reason,
+          });
         }
       }
+      pending = [];
     }
 
-    currentDate.setDate(currentDate.getDate() + 1);
+    // 2) Valorar la cartera al CIERRE de hoy.
+    let positionsValue = 0;
+    for (const sym of Object.keys(positions)) {
+      const price = priceAsOf(symbolIndexes[sym], symbolDates[sym], date) ?? positions[sym].avgPrice;
+      positionsValue += positions[sym].shares * price;
+    }
+    const equity = cash + positionsValue;
+    const invested = equity > 0 ? positionsValue / equity : 0;
+    exposureAcc += invested;
+
+    // 3) Benchmark: buy & hold desde el primer día del periodo.
+    const bmFirst = bmIndex.get(dates[0]);
+    const bmNow = bmIndex.get(date);
+    const benchmarkValue = bmFirst && bmNow && bmFirst.close > 0
+      ? config.initialCash * (bmNow.close / bmFirst.close)
+      : config.initialCash;
+
+    nav.push({ date, value: equity, benchmark: benchmarkValue, cash, invested });
+
+    // 4) Generar órdenes con la señal del CIERRE de hoy (se ejecutan mañana).
+    if (!isLast) {
+      const signals = signalMap[date];
+      if (signals) {
+        const slotWeight = 1 / Math.max(1, symbols.length);
+        const next: PendingOrder[] = [];
+
+        for (const sym of symbols) {
+          const signal = signals[sym];
+          if (!signal) continue;
+          const pos = positions[sym];
+          const price = priceAsOf(symbolIndexes[sym], symbolDates[sym], date);
+          const currentValue = pos && price !== null ? pos.shares * price : 0;
+          const targetValue = signal.target === 1 ? equity * slotWeight : 0;
+
+          if (signal.target === 1) {
+            if (targetValue - currentValue > equity * 0.02) {
+              next.push({
+                symbol: sym,
+                side: 'buy',
+                value: targetValue - currentValue,
+                reason: signal.reason,
+                signalDate: date,
+              });
+            } else if (currentValue > targetValue * 1.1 && currentValue > equity * 0.02) {
+              next.push({
+                symbol: sym,
+                side: 'sell',
+                value: currentValue - targetValue,
+                reason: signal.reason,
+                signalDate: date,
+              });
+            }
+          } else if (pos && pos.shares > 0) {
+            next.push({
+              symbol: sym,
+              side: 'sell',
+              value: currentValue,
+              reason: signal.reason,
+              signalDate: date,
+              full: true,
+            });
+          }
+        }
+        pending = next;
+      }
+    }
   }
 
-  const metrics = calcMetrics(nav);
-  const benchmarkReturn = benchmark.length > 1
-    ? (benchmark[benchmark.length - 1].value - benchmark[0].value) / benchmark[0].value
-    : 0;
+  // ── Métricas ──────────────────────────────────────────────────────────────
+  const equitySeries = nav.map((n) => n.value);
+  const bmSeries = nav.map((n) => n.benchmark);
+  const returns = dailyReturns(equitySeries);
+  const finalEquity = equitySeries[equitySeries.length - 1];
+  const finalReturn = config.initialCash > 0 ? (finalEquity - config.initialCash) / config.initialCash : 0;
+  const years = Math.max(
+    (parseDate(dates[dates.length - 1]).getTime() - parseDate(dates[0]).getTime()) / (365.25 * MS_PER_DAY),
+    1 / 365.25,
+  );
+
+  const sells = trades.filter((t) => t.side === 'sell' && typeof t.pnl === 'number');
+  const wins = sells.filter((t) => (t.pnl as number) > 0);
+  const losses = sells.filter((t) => (t.pnl as number) <= 0);
+  const grossProfit = wins.reduce((acc, t) => acc + (t.pnl as number), 0);
+  const grossLoss = Math.abs(losses.reduce((acc, t) => acc + (t.pnl as number), 0));
+  const avgEquity = equitySeries.reduce((a, b) => a + b, 0) / equitySeries.length;
+
+  const symbolStats: SymbolStats[] = symbols.map((sym) => {
+    const symTrades = trades.filter((t) => t.symbol === sym);
+    const symSells = symTrades.filter((t) => t.side === 'sell' && typeof t.pnl === 'number');
+    const realized = symTrades.reduce((acc, t) => acc + (t.pnl || 0), 0);
+    const first = priceAsOf(symbolIndexes[sym], symbolDates[sym], dates[0]);
+    const last = priceAsOf(symbolIndexes[sym], symbolDates[sym], dates[dates.length - 1]);
+    const returnPct = first && last && first > 0 ? last / first - 1 : 0;
+    // Contribución aproximada:PnL realizado + variación del valor de la posición no cerrada.
+    return {
+      symbol: sym,
+      trades: symTrades.length,
+      wins: symSells.filter((t) => (t.pnl as number) > 0).length,
+      losses: symSells.filter((t) => (t.pnl as number) <= 0).length,
+      realizedPnl: realized,
+      returnPct,
+      contribution: avgEquity > 0 ? realized / avgEquity : 0,
+    };
+  });
+
+  const benchmarkReturn = config.initialCash > 0 ? (bmSeries[bmSeries.length - 1] - config.initialCash) / config.initialCash : 0;
 
   return {
     config,
-    ...metrics,
+    finalReturn,
+    maxDrawdown: maxDrawdown(equitySeries),
+    sortino: sortino(returns),
+    sharpe: sharpe(returns),
+    cagr: cagr(config.initialCash, finalEquity, years),
+    volatility: annualizedVolatility(returns),
+    winRate: sells.length > 0 ? wins.length / sells.length : 0,
+    // Infinity no es serializable en JSON: se limita a 99 y se anota.
+    profitFactor: grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? 99 : 0,
+    exposure: nav.length > 0 ? exposureAcc / nav.length : 0,
+    turnover: avgEquity > 0 ? tradedValue / avgEquity / years : 0,
     totalTrades: trades.length,
+    totalCosts,
+    finalEquity,
+    benchmarkReturn,
+    benchmarkMaxDrawdown: maxDrawdown(bmSeries),
+    alpha: finalReturn - benchmarkReturn,
     nav,
     trades,
-    benchmarkReturn,
+    symbolStats,
+    tradingDays: dates.length,
+    dataSource: input.dataSource || 'desconocida',
+    notes,
   };
-}
-
-async function callLLM(systemPrompt: string, userMsg: string): Promise<string> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) return '{}';
-
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://stock-analyzer-new.vercel.app',
-    },
-    body: JSON.stringify({
-      model: 'nvidia/nemotron-3-ultra-550b-a55b:free',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userMsg },
-      ],
-      max_tokens: 4096,
-    }),
-  });
-
-  if (!res.ok) {
-    const txt = await res.text().catch(() => '');
-    throw new Error(`LLM ${res.status}: ${txt}`);
-  }
-
-  const json = await res.json();
-  return json?.choices?.[0]?.message?.content || '{}';
 }

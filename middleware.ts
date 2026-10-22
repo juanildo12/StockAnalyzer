@@ -35,6 +35,8 @@ const PLAN_ROUTES: Record<string, string[]> = {
     "/api/v1/ai",
     "/api/v1/backtest",
     "/api/v1/signals",
+    // Backtest engine (ruta legacy): requiere PRO.
+    "/api/backtest",
   ],
   elite: [
     "/api/v1/options",

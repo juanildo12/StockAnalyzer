@@ -1,5 +1,19 @@
 # Project Notes
 
+## Backtest engine (src/services/backtest/ + app/api/backtest + components/BacktestPanel.tsx)
+
+Motor de backtesting **reescrito** (oct 2026): antes devolvía una curva plana sin datos. Causes: (1) las barras históricas venían de Massive (plan gratis: "Your plan doesn't include this data timeframe" + 5 req/min) → `buildFeatures` devolvía `null` cada día; (2) el bucle iba **día a día** re-descargando 250 barras + noticias + fundamentales por símbolo (miles de llamadas) y hacía 2 llamadas al LLM por día; (3) **look-ahead**: la señal se calculaba con el cierre del día D y se compraba a la apertura del MISMO día D.
+
+- **Arquitectura**: `data.ts` (barras) → `strategy.ts` (señales puras) / `ai.ts` (LLM) → `engine.ts` (motor determinista) → `runner.ts` (orquestador async). `indicators.ts` = SMA/EMA/RSI(14)/ATR/métricas puras. `metrics.ts` y `prompts.ts` antiguos **eliminados**.
+- **Datos**: histórico diario completo vía **Yahoo** (`yf.chart`, `loadBars` con caché 15 min). Massive queda como fallback (insuficiente para histórico). Precalentamiento de 420 días naturales para que la SMA200 esté lista el primer día.
+- **Sin look-ahead**: la señal se calcula con el cierre de D y la orden se ejecuta a la **apertura de D+1** (verificado en `engine.test.ts`). El NAV se valora al cierre de cada sesión.
+- **Estrategias** (`STRATEGIES`): `trend` (SMA50>SMA200 y cierre>SMA200), `momentum` (12-1 + filtro RSI), `mean-reversion` (RSI<35 bajo EMA21), `buy-and-hold`, `ai`.
+- **Costes**: `commissionBps` + `slippageBps` (5 por defecto) descontados en cada operación; slots = 1/nº símbolos.
+- **IA** (`ai.ts`): rebalanceo cada 10 sesiones, **máx 16 llamadas**, **en paralelo** (concurrencia 5) — en serie un año tardaba >300 s y moría en el timeout de Vercel. Modelo por defecto `minimax/minimax-m3.1-flash:free` (~3-4 s, JSON fiable; `nemotron-3-ultra:free` tarda ~9 s y añade reasoning tokens). `parsePositions` tolera preámbulos, markdown y JSON truncado (repara + regex de reserva). Sin `OPENROUTER_API_KEY` → degrada a `trend` con nota.
+- **Métricas**: retorno final, CAGR, max drawdown, Sortino/Sharpe (downside deviation **solo de retornos negativos**), volatilidad, win rate, profit factor, exposición, turnover, alpha vs benchmark. El benchmark es **SPY buy & hold** (configurable) con la curva real, no una recta.
+- **Ruta** `POST /api/backtest`: sesión obligatoria + **plan PRO** (`PLAN_RANK`), `maxDuration 300`, máx 8 símbolos y 5 años, validación de símbolos (`^[A-Z][A-Z0-9.\-]{0,9}$`) y fechas. El middleware también lista `/api/backtest` en `PLAN_ROUTES.pro`.
+- **Tests**: `src/services/backtest/engine.test.ts` (23) + `ai.test.ts` (8) — ejecución al día siguiente, costes, NAV, benchmark, reparto de slots, cierre completo, parseo tolerante.
+
 ## Autenticación y middleware (middleware.ts)
 
 - **El token de sesión de NextAuth v4 es un JWE de 5 partes** (`EncryptJWT`, `alg: dir`, `enc: A256GCM`, salt `""`), **no un JWS de 3 partes**. Decodificarlo a mano como JWS (`token.split(".")[1]`) **siempre devuelve null** → el middleware trataba a todo el mundo como anónimo: 401 en rutas no públicas aunque hubiera sesión, y el **gating por plan nunca se ejecutaba** (nadie pasaba el check de PRO/ELITE y `/api/v1/*` no se gatingaba).
