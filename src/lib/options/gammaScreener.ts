@@ -33,6 +33,10 @@ export interface ScreenerContract {
   delta?: number | null; // optional; computed locally when absent
   expiry: string; // ISO date (YYYY-MM-DD) — required for multi-expiration aggregation
   dte: number; // days to expiry
+  /** Quote fields (Yahoo). Used ONLY for the liquid-contract suggestion. */
+  bid?: number | null;
+  ask?: number | null;
+  last?: number | null;
 }
 
 export interface DealerPositioning {
@@ -135,6 +139,31 @@ export function isUsableIv(iv: number | null | undefined): iv is number {
 // ─────────────────────────────────────────────────────────────────────────────
 // GEX / gamma levels (multi-expiration)
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Choose which expirations to fetch: keep the true nearest expiry, then the ones
+ * closest to a 14/30/45d ladder (so the GEX map and the contract suggestion get
+ * a usable term structure without extra provider calls).
+ */
+export function selectChainExpirations<T extends { date: string; dte: number }>(all: T[], maxCount: number): T[] {
+  if (all.length <= maxCount) return all;
+  const chosen: T[] = [all[0]];
+  const targets = [30, 45, 14, 60, 21];
+  for (const t of targets) {
+    if (chosen.length >= maxCount) break;
+    let best: T | null = null;
+    for (const e of all) {
+      if (chosen.some((c) => c.date === e.date)) continue;
+      if (best == null || Math.abs(e.dte - t) < Math.abs(best.dte - t)) best = e;
+    }
+    if (best) chosen.push(best);
+  }
+  for (const e of all) {
+    if (chosen.length >= maxCount) break;
+    if (!chosen.some((c) => c.date === e.date)) chosen.push(e);
+  }
+  return chosen.sort((a, b) => a.dte - b.dte);
+}
 
 /** Eligible expirations for the requested scope, given per-contract DTE. */
 export function selectExpirations(
@@ -718,4 +747,323 @@ export function buildPlaybook(gamma: PlaybookGammaInput, spot: number): Playbook
   }
 
   return out;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Liquid contract suggestion (click on the SKEW column)
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// Goal: given the real chain, suggest ONE listed contract a user could actually
+// trade, with strict liquidity gates (tight spread, real OI/volume, sane DTE and
+// delta). The directional bias comes from the 25Δ risk reversal (skew) first,
+// then momentum; gamma regime only downgrades confidence, it never invents a
+// direction. Nothing is fabricated: without a contract that passes every gate
+// the result is `pick: null` plus a human-readable reason.
+
+export type ContractBias = 'call' | 'put';
+export type BiasSource = 'skew' | 'momentum' | 'trend';
+export type PickConfidence = 'high' | 'medium' | 'low';
+
+export interface ContractPick {
+  type: ContractBias;
+  strike: number;
+  expiry: string;
+  dte: number;
+  bid: number | null;
+  ask: number | null;
+  mid: number | null;
+  /** (ask - bid) / mid * 100. */
+  spreadPct: number | null;
+  volume: number;
+  oi: number;
+  iv: number;
+  delta: number | null;
+  breakeven: number | null;
+  /** 0..100 contract-quality score (liquidity, spread, delta, DTE, wall room). */
+  score: number;
+  /** Gamma level the trade targets (call wall for calls, put wall for puts). */
+  target: number | null;
+  /** Invalidation reference (gamma flip on the wrong side), when available. */
+  stopLevel: number | null;
+  targetMovePct: number | null;
+  /** Return at expiry at the target (intrinsic − premium), % of premium. */
+  estReturnPct: number | null;
+  /** True when intrinsic at the target at least covers the premium paid. */
+  viable: boolean;
+  why: string[];
+  warnings: string[];
+}
+
+export interface ContractPickResult {
+  bias: ContractBias;
+  biasSource: BiasSource;
+  biasWhy: string;
+  confidence: PickConfidence;
+  pick: ContractPick | null;
+  alternates: ContractPick[];
+  reason?: string;
+}
+
+export interface ContractBiasInput {
+  skewRegime: SkewRegime;
+  riskReversal25?: number | null;
+  momentum: MomentumClass;
+  ret20d?: number | null;
+  gammaRegime?: GammaRegime;
+  /** Where the spot sits relative to the gamma flip (regime confirmation). */
+  spotAboveFlip?: boolean | null;
+}
+
+/**
+ * Direction for the contract suggestion.
+ *
+ * IMPORTANT: in equities the 25Δ risk reversal is structurally negative (puts
+ * carry a volatility premium), so "put skew" alone is NOT a bearish signal. We
+ * only let skew vote when |RR| ≥ 3 vol points; otherwise momentum defines the
+ * bias, with the gamma flip confirming. Confidence reflects how many signals
+ * agree. Nothing is invented: with no signal the bias is a documented weak
+ * default (20d trend sign, else long call) and confidence is "low".
+ */
+export function chooseContractBias(input: ContractBiasInput): {
+  bias: ContractBias;
+  source: BiasSource;
+  why: string;
+  confidence: PickConfidence;
+} {
+  const momBull = input.momentum === 'bullish' || input.momentum === 'lean_bullish';
+  const momBear = input.momentum === 'bearish' || input.momentum === 'lean_bearish';
+  const rr = input.riskReversal25;
+  const reasons: string[] = [];
+
+  let score = 0;
+  const pts = { skew: 0, momentum: 0, trend: 0 };
+
+  // Skew vote only outside the structural equity put-skew band.
+  if (rr != null && Number.isFinite(rr) && Math.abs(rr) >= 0.03) {
+    pts.skew = rr > 0 ? 2 : -2;
+    score += pts.skew;
+    reasons.push(
+      rr > 0
+        ? `Skew alcista real (RR 25Δ ${(rr * 100).toFixed(1)} pp): las calls cotizan claramente más caras.`
+        : `Skew bajista real (RR 25Δ ${(rr * 100).toFixed(1)} pp): las puts cotizan claramente más caras.`
+    );
+  } else if (rr != null && Number.isFinite(rr) && input.skewRegime !== 'neutral' && input.skewRegime !== 'unknown') {
+    reasons.push(`Skew ${input.skewRegime === 'bullish' ? 'alcista' : 'bajista'} dentro del rango estructural normal (${(rr * 100).toFixed(1)} pp): no se usa como señal direccional.`);
+  }
+
+  if (momBull) { pts.momentum = 2; score += 2; reasons.push('Momentum alcista (precio sobre EMA8/21/50).'); }
+  else if (momBear) { pts.momentum = -2; score += -2; reasons.push('Momentum bajista (precio bajo EMA8/21/50).'); }
+
+  // Gamma regime confirms only when momentum already picked a side.
+  if (input.gammaRegime && input.spotAboveFlip != null && score !== 0) {
+    const bullishRegime = input.gammaRegime === 'positive' && input.spotAboveFlip;
+    const bearishRegime = input.gammaRegime === 'negative' && !input.spotAboveFlip;
+    if ((score > 0 && bullishRegime) || (score < 0 && bearishRegime)) {
+      score += score > 0 ? 1 : -1;
+      reasons.push('Régimen gamma alineado con el sesgo (spot y flip).');
+    }
+  }
+
+  if (score === 0 && input.ret20d != null && Number.isFinite(input.ret20d)) {
+    pts.trend = input.ret20d > 0 ? 1 : -1;
+    score += pts.trend;
+    const contradictory = pts.skew !== 0 && pts.momentum !== 0 && Math.sign(pts.skew) !== Math.sign(pts.momentum);
+    reasons.push(
+      contradictory
+        ? `Skew y momentum se contradicen; retorno 20d ${input.ret20d >= 0 ? '+' : ''}${input.ret20d.toFixed(1)}% como desempate débil.`
+        : `Sin sesgo claro; retorno 20d ${input.ret20d >= 0 ? '+' : ''}${input.ret20d.toFixed(1)}% como desempate débil.`
+    );
+  }
+
+  const bias: ContractBias = score >= 0 ? 'call' : 'put';
+  const abs = Math.abs(score);
+  const sign = score >= 0 ? 1 : -1;
+  // Source = the signal that actually supports the chosen side (largest aligned
+  // contribution). Signals that voted the other way never claim the bias.
+  const aligned = { skew: pts.skew * sign, momentum: pts.momentum * sign, trend: pts.trend * sign };
+  let source: BiasSource = 'trend';
+  if (aligned.skew > 0 && aligned.skew >= aligned.momentum) source = 'skew';
+  else if (aligned.momentum > 0) source = 'momentum';
+  else if (aligned.trend > 0) source = 'trend';
+  const confidence: PickConfidence = abs >= 3 ? 'high' : abs >= 2 ? 'medium' : 'low';
+
+  if (reasons.length === 0) reasons.push('Sin señales de skew/momentum/régimen: sesgo por defecto, confianza baja.');
+
+  return { bias, source, why: reasons.join(' '), confidence };
+}
+
+export interface ContractPickOptions {
+  minOi?: number;
+  minVolume?: number;
+  minDte?: number;
+  maxDte?: number;
+  /** Hard cap; anything wider is rejected (never relaxed). */
+  maxSpreadPct?: number;
+  /** Ideal days to expiry for the quality score. */
+  targetDte?: number;
+  atmIv?: number | null;
+}
+
+const DEFAULT_PICK_OPTIONS: Required<Omit<ContractPickOptions, 'atmIv'>> = {
+  minOi: 500,
+  minVolume: 50,
+  minDte: 7,
+  maxDte: 90,
+  maxSpreadPct: 15,
+  targetDte: 32,
+};
+
+function clamp01(v: number): number {
+  return Math.max(0, Math.min(1, v));
+}
+
+function quoteOf(c: ScreenerContract): { bid: number | null; ask: number | null; mid: number | null; spreadPct: number | null } {
+  const bid = typeof c.bid === 'number' && Number.isFinite(c.bid) && c.bid > 0 ? c.bid : null;
+  const ask = typeof c.ask === 'number' && Number.isFinite(c.ask) && c.ask > 0 ? c.ask : null;
+  if (bid == null || ask == null || ask <= bid) return { bid, ask, mid: null, spreadPct: null };
+  const mid = (bid + ask) / 2;
+  return { bid, ask, mid, spreadPct: mid > 0 ? ((ask - bid) / mid) * 100 : null };
+}
+
+/**
+ * Pick the best liquid contract for a directional bias.
+ * Gates are strict and NEVER relaxed (tight spread + real OI/volume). When no
+ * contract qualifies the pick is null with the reason, never a placeholder.
+ */
+export function pickLiquidContract(
+  contracts: ScreenerContract[],
+  spot: number,
+  bias: ContractBias,
+  levels: PlaybookGammaInput = { callWall: null, putWall: null, gammaFlip: null },
+  opts: ContractPickOptions = {}
+): { pick: ContractPick | null; alternates: ContractPick[]; reason?: string } {
+  if (!Number.isFinite(spot) || spot <= 0) {
+    return { pick: null, alternates: [], reason: 'Spot no válido.' };
+  }
+  const o = {
+    ...DEFAULT_PICK_OPTIONS,
+    ...Object.fromEntries(Object.entries(opts).filter(([, v]) => v != null)),
+  } as Required<Omit<ContractPickOptions, 'atmIv'>> & { atmIv?: number | null };
+
+  const isCall = bias === 'call';
+  const wall = isCall ? levels.callWall : levels.putWall;
+  const target = wall != null && (isCall ? wall > spot : wall < spot) ? wall : null;
+  const flip = levels.gammaFlip;
+  const stopLevel = flip != null && (isCall ? flip < spot : flip > spot) ? flip : null;
+
+  const candidates: Array<{ pick: ContractPick; raw: number }> = [];
+
+  for (const c of contracts) {
+    if (c.type !== bias) continue;
+    if (!Number.isFinite(c.strike) || c.strike <= 0) continue;
+    if (!Number.isFinite(c.oi) || c.oi < o.minOi) continue;
+    if (!Number.isFinite(c.volume) || c.volume < o.minVolume) continue;
+    if (!isUsableIv(c.iv)) continue;
+    if (c.dte < o.minDte || c.dte > o.maxDte) continue;
+    if (isCall ? c.strike > spot * 1.25 || c.strike < spot * 0.85 : c.strike < spot * 0.75 || c.strike > spot * 1.15) continue;
+
+    const q = quoteOf(c);
+    // No verifiable quote → cannot confirm execution quality → reject.
+    if (q.mid == null || q.spreadPct == null || q.mid < 0.05) continue;
+    if (q.spreadPct > o.maxSpreadPct) continue;
+
+    const T = Math.max(c.dte, 0.5) / 365;
+    const delta = c.delta != null && Number.isFinite(c.delta) ? c.delta : bsDelta(spot, c.strike, T, c.iv, isCall);
+    if (delta == null || !Number.isFinite(delta)) continue;
+    const absDelta = Math.abs(delta);
+    if (absDelta < 0.30 || absDelta > 0.70) continue;
+
+    const liq = 0.5 * clamp01(Math.log10(c.oi + 1) / 4) + 0.5 * clamp01(Math.log10(c.volume + 1) / 3.5);
+    const spreadScore = 1 - clamp01(q.spreadPct / 12);
+    const deltaScore = 1 - clamp01(Math.abs(absDelta - 0.5) / 0.2);
+    const dteScore = 1 - clamp01(Math.abs(c.dte - o.targetDte) / 28);
+    const wallScore = target == null ? 0.6 : (isCall ? c.strike < target : c.strike > target) ? 1 : 0.4;
+    const atm = opts.atmIv != null && Number.isFinite(opts.atmIv) && opts.atmIv > 0 ? opts.atmIv : null;
+    const ivScore = atm != null ? 1 - clamp01((c.iv / atm - 1) / 0.5) : 0.7;
+
+    const breakeven = isCall ? c.strike + q.mid : c.strike - q.mid;
+    const targetMovePct = target != null ? ((target - spot) / spot) * 100 : null;
+    // Exact P&L at expiry at the target (intrinsic minus premium), in % of premium.
+    const estReturnPct = target != null
+      ? (((isCall ? target - c.strike : c.strike - target) - q.mid) / q.mid) * 100
+      : null;
+    const roomInPremiums = estReturnPct != null ? 1 + estReturnPct / 100 : null;
+    const targetPaysOff = roomInPremiums != null && roomInPremiums >= 1;
+    const payoffScore = estReturnPct != null ? clamp01((estReturnPct + 100) / 200) : 0.5;
+
+    let score = Math.round(
+      100 * (
+        0.26 * liq + 0.20 * spreadScore + 0.18 * deltaScore +
+        0.12 * dteScore + 0.08 * wallScore + 0.04 * ivScore + 0.12 * payoffScore
+      )
+    );
+    const raw = score;
+    // Liquid but unprofitable at the technical target → never present it as a
+    // high-quality entry. The score is capped and `viable` flags it for the UI.
+    if (!targetPaysOff) score = Math.min(score, 55);
+
+    const warnings: string[] = [];
+    if (c.dte < 14) warnings.push('Vencimiento próximo: theta alto, el tiempo juega en contra.');
+    if (q.spreadPct > 10) warnings.push(`Spread algo ancho (${q.spreadPct.toFixed(1)}% del mid).`);
+    if (atm != null && c.iv > atm * 1.4) warnings.push(`IV ${(c.iv * 100).toFixed(0)}% vs ATM ${(atm * 100).toFixed(0)}%: pagas prima elevada.`);
+    if (target == null) warnings.push(isCall ? 'Sin call wall por encima del spot: no hay objetivo técnico claro.' : 'Sin put wall por debajo del spot: no hay objetivo técnico claro.');
+    if (levels.gammaFlip == null) warnings.push('Sin gamma flip válido para fijar la invalidación.');
+    if (roomInPremiums != null && !targetPaysOff) {
+      warnings.push(`El objetivo $${target!.toFixed(2)} no cubre la prima: a vencimiento el breakeven está en $${breakeven.toFixed(2)}. Necesitas un movimiento mayor o vender antes.`);
+    }
+
+    const why: string[] = [];
+    why.push(`Spread ${q.spreadPct.toFixed(1)}% · OI ${Math.round(c.oi).toLocaleString('en-US')} · Vol ${Math.round(c.volume).toLocaleString('en-US')}.`);
+    why.push(`Δ ${absDelta.toFixed(2)} · ${c.dte} DTE · IV ${(c.iv * 100).toFixed(0)}%.`);
+    if (target != null) {
+      why.push(`${isCall ? 'Call' : 'Put'} wall $${target.toFixed(2)} como objetivo (${targetMovePct!.toFixed(1)}% desde el spot).`);
+      if (roomInPremiums != null) {
+        why.push(targetPaysOff
+          ? `Al objetivo, el intrínseco cubre ${roomInPremiums.toFixed(1)}× la prima pagada.`
+          : `Al objetivo, el intrínseco solo cubre ${(roomInPremiums! * 100).toFixed(0)}% de la prima: el trade depende de vender con IV/tiempo a favor.`);
+      }
+    }
+
+    candidates.push({
+      raw,
+      pick: {
+      type: bias,
+      strike: c.strike,
+      expiry: c.expiry,
+      dte: c.dte,
+      bid: q.bid,
+      ask: q.ask,
+      mid: q.mid,
+      spreadPct: q.spreadPct,
+      volume: c.volume,
+      oi: c.oi,
+      iv: c.iv,
+      delta: absDelta,
+      breakeven,
+      score,
+      target,
+      stopLevel,
+      targetMovePct,
+      estReturnPct,
+      viable: targetPaysOff,
+      why,
+      warnings,
+      },
+    });
+  }
+
+  candidates.sort((a, b) =>
+    (Number(b.pick.viable) - Number(a.pick.viable)) ||
+    (b.raw - a.raw) ||
+    (Math.abs(a.pick.dte - o.targetDte) - Math.abs(b.pick.dte - o.targetDte))
+  );
+  if (candidates.length === 0) {
+    return {
+      pick: null,
+      alternates: [],
+      reason: `Ningún contrato ${isCall ? 'call' : 'put'} pasa los filtros de liquidez (spread ≤${o.maxSpreadPct}%, OI ≥${o.minOi}, volumen ≥${o.minVolume}, ${o.minDte}-${o.maxDte} DTE).`,
+    };
+  }
+  return { pick: candidates[0].pick, alternates: candidates.slice(1, 3).map((c) => c.pick) };
 }

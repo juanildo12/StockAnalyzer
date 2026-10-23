@@ -11,6 +11,9 @@ import {
   assessDataQuality,
   distancePct,
   buildPlaybook,
+  selectChainExpirations,
+  chooseContractBias,
+  pickLiquidContract,
   DEFAULT_POSITIONING,
   DEFAULT_EDGE_WEIGHTS,
   type ScreenerContract,
@@ -32,6 +35,9 @@ function mkContract(p: Partial<ScreenerContract> & { strike: number; type: 'call
     delta: p.delta ?? null,
     expiry: p.expiry ?? EXP,
     dte: p.dte ?? 30,
+    bid: p.bid ?? null,
+    ask: p.ask ?? null,
+    last: p.last ?? null,
   };
 }
 
@@ -500,5 +506,187 @@ describe('buildPlaybook', () => {
       expect(p.level).not.toBeNull();
       expect(Number.isFinite(p.level!)).toBe(true);
     }
+  });
+});
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Liquid contract suggestion
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Contract with an explicit two-sided quote (required for the picker). */
+function qContract(p: Partial<ScreenerContract> & { strike: number; type: 'call' | 'put' }): ScreenerContract {
+  const mid = p.last ?? 4;
+  return mkContract({
+    ...p,
+    bid: p.bid ?? mid - 0.05,
+    ask: p.ask ?? mid + 0.05,
+    oi: p.oi ?? 5000,
+    volume: p.volume ?? 800,
+    dte: p.dte ?? 30,
+    iv: p.iv ?? 0.3,
+  });
+}
+
+describe('selectChainExpirations', () => {
+  const all = [
+    { date: '2026-10-23', dte: 1 },
+    { date: '2026-10-30', dte: 8 },
+    { date: '2026-11-06', dte: 15 },
+    { date: '2026-11-20', dte: 29 },
+    { date: '2026-12-18', dte: 57 },
+  ];
+
+  it('conserva la expiración más cercana y añade la escalera 14/30/45', () => {
+    const out = selectChainExpirations(all, 4).map((e) => e.dte);
+    expect(out).toContain(1);
+    expect(out).toContain(15);
+    expect(out).toContain(29);
+    expect(out).toContain(57);
+    expect(out).toEqual([...out].sort((a, b) => a - b));
+  });
+
+  it('devuelve todo si hay menos que el máximo', () => {
+    expect(selectChainExpirations(all.slice(0, 2), 4)).toHaveLength(2);
+  });
+});
+
+describe('chooseContractBias', () => {
+  it('usa el skew solo cuando supera el rango estructural y sube confianza con momentum', () => {
+    const bull = chooseContractBias({ skewRegime: 'bullish', riskReversal25: 0.05, momentum: 'bullish' });
+    expect(bull.bias).toBe('call');
+    expect(bull.source).toBe('skew');
+    expect(bull.confidence).toBe('high');
+
+    const bear = chooseContractBias({ skewRegime: 'bearish', riskReversal25: -0.05, momentum: 'neutral' });
+    expect(bear.bias).toBe('put');
+    expect(bear.source).toBe('skew');
+    expect(bear.confidence).toBe('medium');
+  });
+
+  it('ignora el put-skew estructural (1-2 pp) y manda el momentum', () => {
+    const out = chooseContractBias({ skewRegime: 'bearish', riskReversal25: -0.012, momentum: 'bullish' });
+    expect(out.bias).toBe('call');
+    expect(out.source).toBe('momentum');
+    expect(out.why).toMatch(/estructural/i);
+  });
+
+  it('cae al momentum cuando el skew es neutral', () => {
+    const out = chooseContractBias({ skewRegime: 'neutral', momentum: 'lean_bearish' });
+    expect(out.bias).toBe('put');
+    expect(out.source).toBe('momentum');
+  });
+
+  it('confirma con el régimen gamma y sube la confianza', () => {
+    const out = chooseContractBias({
+      skewRegime: 'neutral', momentum: 'bullish', gammaRegime: 'positive', spotAboveFlip: true,
+    });
+    expect(out.bias).toBe('call');
+    expect(out.confidence).toBe('high');
+  });
+
+  it('sin señales usa el retorno 20d como sesgo débil', () => {
+    const out = chooseContractBias({ skewRegime: 'unknown', momentum: 'neutral', ret20d: -3 });
+    expect(out.bias).toBe('put');
+    expect(out.source).toBe('trend');
+    expect(out.confidence).toBe('low');
+  });
+});
+
+describe('pickLiquidContract', () => {
+  const spot = 100;
+  const levels = { callWall: 110, putWall: 90, gammaFlip: 98 };
+
+  it('elige el call líquido con mejor score (spread/OI/DTE)', () => {
+    const chain = [
+      qContract({ strike: 100, type: 'call', bid: 4.9, ask: 5.1, oi: 8000, volume: 1500, dte: 30 }),
+      qContract({ strike: 103, type: 'call', bid: 3.4, ask: 3.6, oi: 20000, volume: 3000, dte: 30 }),
+      qContract({ strike: 108, type: 'call', bid: 1.8, ask: 2.2, oi: 4000, volume: 600, dte: 30 }),
+    ];
+    const { pick } = pickLiquidContract(chain, spot, 'call', levels);
+    expect(pick).not.toBeNull();
+    expect(pick!.type).toBe('call');
+    expect(pick!.target).toBe(110);
+    expect(pick!.stopLevel).toBe(98);
+    expect(pick!.spreadPct).toBeLessThan(10);
+    expect(pick!.breakeven).toBeGreaterThan(pick!.strike);
+    expect(pick!.estReturnPct).toBeGreaterThan(0);
+  });
+
+  it('rechaza spreads anchos (nunca se relaja el filtro)', () => {
+    const chain = [qContract({ strike: 100, type: 'call', bid: 3, ask: 4.2, oi: 9000, volume: 1200 })];
+    const out = pickLiquidContract(chain, spot, 'call', levels);
+    expect(out.pick).toBeNull();
+    expect(out.reason).toMatch(/liquidez/i);
+  });
+
+  it('rechaza OI/volumen bajos', () => {
+    const chain = [qContract({ strike: 100, type: 'call', oi: 100, volume: 10 })];
+    expect(pickLiquidContract(chain, spot, 'call', levels).pick).toBeNull();
+  });
+
+  it('rechaza contratos sin quote verificable', () => {
+    const noQuote = mkContract({ strike: 100, type: 'call', oi: 9000, volume: 1000 });
+    expect(pickLiquidContract([noQuote], spot, 'call', levels).pick).toBeNull();
+  });
+
+  it('rechaza lotería OTM con |Δ| < 0.25', () => {
+    const chain = [qContract({ strike: 120, type: 'call', iv: 0.6, dte: 30, bid: 0.2, ask: 0.22 })];
+    expect(pickLiquidContract(chain, spot, 'call', levels).pick).toBeNull();
+  });
+
+  it('para puts usa el put wall como objetivo y no acepta muro por encima', () => {
+    const puts = [qContract({ strike: 97, type: 'put', bid: 2.5, ask: 2.7 })];
+    const ok = pickLiquidContract(puts, spot, 'put', levels);
+    expect(ok.pick!.target).toBe(90);
+    expect(ok.pick!.breakeven).toBeLessThan(97);
+
+    const noTarget = pickLiquidContract(puts, spot, 'put', { callWall: 110, putWall: 105, gammaFlip: 102 });
+    expect(noTarget.pick!.target).toBeNull();
+    expect(noTarget.pick!.warnings.join(' ')).toMatch(/put wall/i);
+  });
+
+  it('avisa y penaliza si el objetivo no cubre la prima (breakeven > target)', () => {
+    // Call 100, mid 12 → breakeven 112; call wall 110 → no cubre la prima.
+    const chain = [qContract({ strike: 100, type: 'call', bid: 11.9, ask: 12.1 })];
+    const out = pickLiquidContract(chain, spot, 'call', { callWall: 110, putWall: 90, gammaFlip: 98 });
+    expect(out.pick).not.toBeNull();
+    expect(out.pick!.warnings.join(' ')).toMatch(/no cubre la prima/i);
+    expect(out.pick!.viable).toBe(false);
+    expect(out.pick!.score).toBeLessThanOrEqual(55);
+    // El mismo contrato con un muro alcanzable puntúa mejor y es viable.
+    const reachable = pickLiquidContract(chain, spot, 'call', { callWall: 125, putWall: 90, gammaFlip: 98 });
+    expect(reachable.pick!.score).toBeGreaterThan(out.pick!.score);
+    expect(reachable.pick!.viable).toBe(true);
+    expect(reachable.pick!.warnings.join(' ')).not.toMatch(/no cubre la prima/i);
+  });
+
+  it('prefiere un contrato viable aunque puntúe menos que uno no viable', () => {
+    const chain = [
+      qContract({ strike: 100, type: 'call', bid: 11.9, ask: 12.1 }), // no cubre target 110
+      qContract({ strike: 108, type: 'call', bid: 3.0, ask: 3.3 }),   // cubre target 120? no...
+      qContract({ strike: 97, type: 'call', bid: 4.95, ask: 5.05, last: 5 }), // intrínseco en 110 = 13 > 5 → viable
+    ];
+    const out = pickLiquidContract(chain, spot, 'call', { callWall: 110, putWall: 90, gammaFlip: 98 });
+    expect(out.pick).not.toBeNull();
+    expect(out.pick!.viable).toBe(true);
+    expect(out.pick!.strike).toBe(97);
+  });
+
+  it('devuelve null con razón si el spot es inválido', () => {
+    const out = pickLiquidContract([], 0, 'call', levels);
+    expect(out.pick).toBeNull();
+    expect(out.reason).toMatch(/spot/i);
+  });
+
+  it('devuelve alternativas ordenadas por score', () => {
+    const chain = [
+      qContract({ strike: 100, type: 'call', oi: 9000, volume: 2000 }),
+      qContract({ strike: 102, type: 'call', oi: 7000, volume: 1500 }),
+      qContract({ strike: 104, type: 'call', oi: 3000, volume: 400 }),
+    ];
+    const out = pickLiquidContract(chain, spot, 'call', levels);
+    expect(out.alternates.length).toBeGreaterThan(0);
+    expect(out.pick!.score).toBeGreaterThanOrEqual(out.alternates[0].score);
   });
 });

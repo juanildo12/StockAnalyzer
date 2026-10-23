@@ -27,6 +27,40 @@ interface PlaybookLevel {
   source: 'callWall' | 'putWall' | 'gammaFlip' | 'flip+wall';
 }
 
+interface ContractPick {
+  type: 'call' | 'put';
+  strike: number;
+  expiry: string;
+  dte: number;
+  bid: number | null;
+  ask: number | null;
+  mid: number | null;
+  spreadPct: number | null;
+  volume: number;
+  oi: number;
+  iv: number;
+  delta: number | null;
+  breakeven: number | null;
+  score: number;
+  target: number | null;
+  stopLevel: number | null;
+  targetMovePct: number | null;
+  estReturnPct: number | null;
+  viable: boolean;
+  why: string[];
+  warnings: string[];
+}
+
+interface ContractPickResult {
+  bias: 'call' | 'put';
+  biasSource: 'skew' | 'momentum' | 'trend';
+  biasWhy: string;
+  confidence: 'high' | 'medium' | 'low';
+  pick: ContractPick | null;
+  alternates: ContractPick[];
+  reason?: string;
+}
+
 interface ScreenerRow {
   symbol: string;
   name: string | null;
@@ -53,6 +87,7 @@ interface ScreenerRow {
   distPutWallPct: number | null;
   distFlipPct: number | null;
   playbook: PlaybookLevel[];
+  contractPick?: ContractPickResult | null;
   netGex: number;
   netGexNorm: number | null;
   optVolume: number;
@@ -434,6 +469,119 @@ function GexByStrikeChart({ row }: { row: ScreenerRow }) {
   );
 }
 
+
+// ── Contrato líquido sugerido (click en SKEW) ────────────────────────────────
+
+function contractLabel(symbol: string, p: ContractPick): string {
+  return `${symbol} $${p.strike.toFixed(2)} ${p.type === 'call' ? 'CALL' : 'PUT'} · ${p.expiry}`;
+}
+
+function PickStats({ p }: { p: ContractPick }) {
+  const bid = p.bid != null ? `$${p.bid.toFixed(2)}` : '—';
+  const ask = p.ask != null ? `$${p.ask.toFixed(2)}` : '—';
+  const mid = p.mid != null ? `$${p.mid.toFixed(2)}` : '—';
+  const items: [string, string][] = [
+    ['Bid / Ask', `${bid} / ${ask}`],
+    ['Mid', mid],
+    ['Spread', p.spreadPct != null ? p.spreadPct.toFixed(1) + '%' : '—'],
+    ['Open Interest', p.oi.toLocaleString('en-US')],
+    ['Volumen', p.volume.toLocaleString('en-US')],
+    ['IV', (p.iv * 100).toFixed(0) + '%'],
+    ['Delta', p.delta != null ? p.delta.toFixed(2) : '—'],
+    ['Breakeven', p.breakeven != null ? '$' + p.breakeven.toFixed(2) : '—'],
+    ['Objetivo', p.target != null ? '$' + p.target.toFixed(2) : '—'],
+    ['Invalidación', p.stopLevel != null ? '$' + p.stopLevel.toFixed(2) : '—'],
+  ];
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: S.sm, marginTop: S.sm }}>
+      {items.map(([k, v]) => (
+        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: S.sm, fontSize: F.sizeXs, borderBottom: `1px solid ${C.border}`, padding: '2px 0' }}>
+          <span style={{ color: C.textSecondary }}>{k}</span>
+          <span style={{ color: C.textPrimary, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{v}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ContractPickCard({ row }: { row: ScreenerRow }) {
+  const cp = row.contractPick;
+  if (!cp) return null;
+  const isCall = cp.bias === 'call';
+  const col = isCall ? C.positive : C.negative;
+  const confCol = cp.confidence === 'high' ? C.positive : cp.confidence === 'medium' ? C.warning : C.textMuted;
+  const confLabel = cp.confidence === 'high' ? 'confianza alta' : cp.confidence === 'medium' ? 'confianza media' : 'confianza baja';
+  const p = cp.pick;
+  return (
+    <div style={{ marginBottom: S.md, border: `1px solid ${col}55`, borderRadius: R.md, overflow: 'hidden', background: col + '0E' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: S.sm, padding: '10px 12px', borderBottom: `1px solid ${col}33`, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: F.sizeSm, fontWeight: 800, color: col }}>
+          {isCall ? '📈' : '📉'} Contrato líquido sugerido
+        </span>
+        <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: R.full, background: col + '22', color: col, border: `1px solid ${col}55` }}>
+          {isCall ? 'CALL' : 'PUT'}
+        </span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: confCol }}>{confLabel}</span>
+        {p && !p.viable && (
+          <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: R.full, background: C.warning + '22', color: C.warning, border: `1px solid ${C.warning}55` }}>
+            Sin ventaja al objetivo
+          </span>
+        )}
+        {p && (
+          <span style={{ marginLeft: 'auto', fontSize: F.sizeXs, fontWeight: 800, color: col }}>
+            Calidad {p.score}/100
+          </span>
+        )}
+      </div>
+      <div style={{ padding: '10px 12px' }}>
+        <div style={{ fontSize: F.sizeXs, color: C.textSecondary, marginBottom: S.xs }}>{cp.biasWhy}</div>
+
+        {p ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: S.sm, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: F.sizeMd, fontWeight: 800, color: C.textPrimary }}>{contractLabel(row.symbol, p)}</span>
+              <span style={{ fontSize: F.sizeXs, color: C.textMuted }}>{p.dte} DTE</span>
+            </div>
+            <PickStats p={p} />
+            <ul style={{ margin: `${S.sm}px 0 0`, paddingLeft: 18, color: C.textSecondary, fontSize: F.sizeXs, lineHeight: 1.6 }}>
+              {p.why.map((w, i) => <li key={i}>{w}</li>)}
+              {p.estReturnPct != null && (
+                <li>A vencimiento, en el objetivo: {p.estReturnPct >= 0 ? '+' : ''}{p.estReturnPct.toFixed(0)}% sobre la prima (intrínseco − prima).</li>
+              )}
+            </ul>
+            {p.warnings.length > 0 && (
+              <ul style={{ margin: `${S.sm}px 0 0`, paddingLeft: 18, color: C.warning, fontSize: F.sizeXs, lineHeight: 1.6 }}>
+                {p.warnings.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
+            )}
+          </>
+        ) : (
+          <div style={{ fontSize: F.sizeSm, color: C.warning, lineHeight: 1.6 }}>
+            {cp.reason || 'No hay un contrato que cumpla los filtros de liquidez.'}
+          </div>
+        )}
+
+        {cp.alternates.length > 0 && (
+          <div style={{ marginTop: S.sm }}>
+            <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginBottom: 2 }}>Alternativas líquidas</div>
+            {cp.alternates.map((a) => (
+              <div key={a.expiry + a.strike} style={{ display: 'flex', justifyContent: 'space-between', fontSize: F.sizeXs, color: C.textSecondary, padding: '2px 0' }}>
+                <span>{contractLabel(row.symbol, a)} · {a.dte}d</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>mid {a.mid != null ? '$' + a.mid.toFixed(2) : '—'} · {a.score}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ fontSize: F.sizeXs, color: C.textMuted, marginTop: S.xs, lineHeight: 1.5 }}>
+          Referencia de la cadena de Yahoo (puede ir con retraso). Verifica bid/ask y volumen en tu bróker antes de entrar.
+          Filtros estrictos: spread ≤15%, OI ≥500, volumen ≥50 y |Δ| 0.30–0.70. No es una recomendación de inversión.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Detail drawer ────────────────────────────────────────────────────────────
 
 function DetailDrawer({ row, onClose }: { row: ScreenerRow; onClose: () => void }) {
@@ -466,6 +614,9 @@ function DetailDrawer({ row, onClose }: { row: ScreenerRow; onClose: () => void 
           <span style={{ color: m.color(C), fontSize: F.sizeXs, fontWeight: 600 }}>{m.label}</span>
           <span style={{ color: edgeColor(row.edge), fontSize: F.sizeXs, fontWeight: 700 }}>EDGE {row.edge ?? '—'}</span>
         </div>
+
+        {/* Contrato líquido sugerido para el sesgo de skew */}
+        <ContractPickCard row={row} />
 
         {/* Entrada sugerida (niveles reales + momentum/régimen) */}
         <EntrySuggestionCard row={row} />
@@ -932,7 +1083,12 @@ export default function GammaScreenerView({ profile = 'swing' }: { profile?: Tra
                   <td style={cell}>
                     <span style={{ background: g.bg(C), color: g.color(C), padding: '2px 6px', borderRadius: R.sm, fontSize: 10, fontWeight: 600 }}>{g.label}</span>
                   </td>
-                  <td style={{ ...cell, color: sk.color(C), fontSize: F.sizeXs, fontWeight: 600 }}>{sk.label}</td>
+                  <td style={{ ...cell }} title="Click para ver el contrato líquido sugerido para este sesgo">
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ color: sk.color(C), fontSize: F.sizeXs, fontWeight: 600 }}>{sk.label}</span>
+                      <span style={{ fontSize: 9, color: C.textMuted, whiteSpace: 'nowrap' }}>contrato ▸</span>
+                    </span>
+                  </td>
                   <td style={{ ...cell, color: mo.color(C), fontSize: F.sizeXs, fontWeight: 600 }}>{mo.label}</td>
                   <td style={{ ...cell, textAlign: 'right', color: C.textSecondary }}>{fmtVol(r.optVolume)}</td>
                   <td style={{ ...cell, textAlign: 'right', color: C.textSecondary }}>{fmtVol(r.totalOi)}</td>

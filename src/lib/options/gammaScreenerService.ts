@@ -14,6 +14,9 @@ import {
   computeSkew,
   classifyMomentum,
   computeEdgeScore,
+  chooseContractBias,
+  pickLiquidContract,
+  selectChainExpirations,
   assessDataQuality,
   buildPlaybook,
   DEFAULT_POSITIONING,
@@ -31,6 +34,7 @@ import {
   type SkewRegime,
   type MomentumClass,
   type PlaybookLevel,
+  type ContractPickResult,
 } from './gammaScreener';
 
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
@@ -63,6 +67,9 @@ export interface ScreenerRow {
   distPutWallPct: number | null;
   distFlipPct: number | null;
   playbook: PlaybookLevel[];
+
+  /** Suggested listed contract for the SKEW direction (strict liquidity gates). */
+  contractPick: ContractPickResult;
 
   netGex: number;
   netGexNorm: number | null;
@@ -135,11 +142,16 @@ export async function fetchChainContracts(
   for (const d of chain.expirationDates || []) { const s = toDateStr(d); if (s) dateStrs.add(s); }
   for (const exp of chain.options || []) { const s = toDateStr(exp?.expirationDate); if (s) dateStrs.add(s); }
 
-  const expirations = Array.from(dateStrs)
+  const allExpirations = Array.from(dateStrs)
     .map((date) => ({ date, dte: dteOf(date) }))
     .filter((e) => e.dte >= 1)
-    .sort((a, b) => a.dte - b.dte)
-    .slice(0, maxExpiries);
+    .sort((a, b) => a.dte - b.dte);
+
+  // Keep the true nearest expiry (GEX "nearest" scope + cheap theta reference)
+  // and then the expiries closest to a 14/30/45d ladder, so both the GEX map and
+  // the liquid-contract suggestion get a usable term structure with the same
+  // number of Yahoo calls.
+  const expirations = selectChainExpirations(allExpirations, maxExpiries);
 
   const contracts: ScreenerContract[] = [];
   const included: string[] = [];
@@ -166,6 +178,9 @@ export async function fetchChainContracts(
         delta: num(c?.delta),
         expiry,
         dte,
+        bid: num(c?.bid),
+        ask: num(c?.ask),
+        last: num(c?.lastPrice),
       });
     };
     for (const c of raw.calls || []) push(c, 'call');
@@ -243,6 +258,31 @@ export async function buildScreenerRow(symbol: string, opts: BuildRowOptions = {
     expectedContracts: strikes * 2,
   });
 
+  const biasInfo = chooseContractBias({
+    skewRegime: skew.regime,
+    riskReversal25: skew.riskReversal25,
+    momentum: momentum.classification,
+    ret20d: momentum.ret20d,
+    gammaRegime: gamma.regime,
+    spotAboveFlip: gamma.gammaFlip != null ? spot >= gamma.gammaFlip : null,
+  });
+  const pickResult = pickLiquidContract(
+    contracts,
+    spot,
+    biasInfo.bias,
+    { callWall: gamma.callWall, putWall: gamma.putWall, gammaFlip: gamma.gammaFlip },
+    { atmIv: skew.atmIv }
+  );
+  const contractPick: ContractPickResult = {
+    bias: biasInfo.bias,
+    biasSource: biasInfo.source,
+    biasWhy: biasInfo.why,
+    confidence: biasInfo.confidence,
+    pick: pickResult.pick,
+    alternates: pickResult.alternates,
+    reason: pickResult.reason,
+  };
+
   const edge = computeEdgeScore(
     { gamma, skew, momentum, spot, totalOptionVolume: optVolume, totalOi, dataCompleteness: dataQuality.completeness },
     weights
@@ -281,6 +321,7 @@ export async function buildScreenerRow(symbol: string, opts: BuildRowOptions = {
     distPutWallPct: gamma.distPutWallPct,
     distFlipPct: gamma.distFlipPct,
     playbook: buildPlaybook(gamma, spot),
+    contractPick,
 
     netGex: gamma.totalNetGex,
     netGexNorm: gamma.netGexNorm,

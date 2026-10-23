@@ -49,6 +49,19 @@ Screener cuantitativo que rankea NYSE/NASDAQ/AMEX por **posicionamiento de opcio
 - **Tests**: `npm test` → **199/199** (37 nuevos). Build OK con `/api/gamma-screener`.
 - **Limitación conocida**: no hay snapshots reales de greeks ni de OI histórico en el plan free (Massive snapshots 403, Yahoo sin greeks) → greeks calculados con BSM local; OI trend histórico = UNKNOWN (no se fabrica). Escalado a universo completo requeriría provider de pago (ORATS/ThetaData/Tradier) o job en background.
 
+### Contrato líquido sugerido (click en SKEW)
+
+Al hacer click en la celda **SKEW** de una fila se abre el drawer y, antes del *entry idea*, aparece la tarjeta **"Contrato líquido sugerido"** con un contrato real de la cadena (nunca inventado). Motor puro en `src/lib/options/gammaScreener.ts`; la ruta `/api/gamma-screener` devuelve `contractPick` en cada fila (la respuesta no cambia de forma, solo añade el campo).
+
+- **`chooseContractBias`**: el 25Δ risk reversal de una acción es **estructuralmente negativo** (las puts llevan prima de volatilidad), así que el skew **solo vota si |RR| ≥ 3 pp**; con 1-2 pp se marca como "rango estructural" y no se usa. Si el skew no vota, manda el momentum (EMA8/21/50) y el gamma flip confirma (spot del lado correcto). Empate → signo del `ret20d` (confianza baja). `source` = la señal **alineada** con el sesgo final (una señal que votó al lado contrario nunca se acredita). `confidence`: high ≥3 puntos, medium 2, low ≤1. `why` explica cada voto y las contradicciones.
+- **`pickLiquidContract`** (gates **estrictos, nunca se relajan**): quote verificable (`ask > bid`), `spread ≤ 15%` (penaliza >10%), `OI ≥ 500`, `volumen ≥ 50`, `7 ≤ DTE ≤ 90` (ideal 32), `|Δ| 0.30–0.70` (ideal 0.5), IV usable, strike en bandas (call 0.85–1.25×spot, put 0.75–1.15×spot), `mid ≥ $0.05`. Delta del proveedor o BSM local.
+- **Score 0–100** = 0.26·liquidez + 0.20·spread + 0.18·delta + 0.12·DTE + 0.08·wall room + 0.12·payoff + 0.04·IV vs ATM.
+- **`viable`**: `estReturnPct` es el P&L **exacto a vencimiento en el objetivo** (intrínseco − prima) y `viable` indica si cubre la prima. Si no cubre → score **capado a 55**, chip ámbar "Sin ventaja al objetivo" y warning (el trade solo tendría sentido con un movimiento mayor o vendiendo antes). Los picks se ordenan **viable primero, luego score bruto, luego cercanía al DTE ideal** (el score mostrado va capado; el bruto solo ordena).
+- **Objetivo/invalidación**: objetivo = call wall (calls) o put wall (puts) **solo si está del lado correcto del spot**; invalidación = gamma flip en el lado contrario. Sin muro o sin flip → `null` + warning (no se fabrica).
+- **`selectChainExpirations`** (movido al módulo puro): conserva la expiración más cercana y añade las más próximas a la escalera 30/45/14/60/21, **máx 4** (mismo coste Yahoo). Mejora el GEX multi-expiración y da DTE usable al picker.
+- **UI** (`components/GammaScreenerView.tsx`): tipos espejo `ContractPick`/`ContractPickResult`, `ContractPickCard` (badge CALL/PUT, confianza, calidad, contrato + DTE, bid/ask/mid/spread/OI/vol/IV/Δ/breakeven/objetivo/invalidación, `why`, warnings, retorno al objetivo, alternativas y disclaimer de retraso del dato) y celda SKEW con hint `contrato ▸`. El drawer conserva filtros/orden.
+- **Tests**: `src/lib/options/gammaScreener.test.ts` → 62 (24 nuevos: escalera de expiraciones, sesgo con/sin skew estructural, confirmación gamma, gates, pay-off al objetivo, orden viable-primero, alternativas). `npm test` → **301/301**.
+
 ## Put/Call Ratio (app/api/put-call-ratio/route.ts + components/PutCallRatioPanel.tsx)
 
 Indicador compacto de Put/Call Ratio (gauge semicircular + histórico). Montado en `Dashboard.tsx` como panel del detalle del símbolo (bajo GammaLevelsPanel).
