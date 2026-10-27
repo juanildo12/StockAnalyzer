@@ -216,41 +216,44 @@ function ProbBar({ pUp, pDown }: { pUp: number | null; pDown: number | null }) {
   );
 }
 
+function edgeLabel(edge: number | null) {
+  if (edge == null) return '—';
+  if (edge >= 2) return `Mejor que lo normal (+${edge.toFixed(1)} pp)`;
+  if (edge >= 0.5) return `Un poco mejor que lo normal (+${edge.toFixed(1)} pp)`;
+  if (edge > -0.5) return `Igual que lo normal (${edge >= 0 ? '+' : ''}${edge.toFixed(1)} pp)`;
+  if (edge > -2) return `Un poco peor que lo normal (${edge.toFixed(1)} pp)`;
+  return `Peor que lo normal (${edge.toFixed(1)} pp)`;
+}
+
 function ProbCard({ p }: { p: HorizonForecast }) {
   const label = HORIZON_LABEL[p.horizon] ?? `${p.horizon} sesiones`;
   const edge = p.edgePp;
+  const better = edge != null && edge >= 0.5;
+  const worse = edge != null && edge < -0.5;
   return (
-    <div style={{ flex: '1 1 220px', minWidth: 200, padding: S.md, border: `1px solid ${C.border}`, borderRadius: R.md, background: C.bgElevated ?? 'transparent' }}>
+    <div style={{ flex: '1 1 240px', minWidth: 230, padding: S.md, border: `1px solid ${better ? '#22c55e55' : worse ? '#ef444455' : C.border}`, borderRadius: R.md, background: C.bgElevated ?? 'transparent' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: S.sm }}>
-        <span style={{ fontSize: F.sizeSm, fontWeight: 700, color: C.textPrimary }}>{label}</span>
-        <span style={{ fontSize: F.sizeXs, color: C.textMuted }}>{p.horizon} sesiones</span>
+        <span style={{ fontSize: F.sizeBase, fontWeight: 800, color: C.textPrimary }}>En {p.horizon} días</span>
+        <span style={{ fontSize: F.sizeXs, color: C.textMuted }}>basado en {p.samples} días similares</span>
       </div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
-        <span style={{ fontSize: 30, fontWeight: 800, color: '#22c55e' }}>{fmt(p.pUp, 0)}</span>
-        <span style={{ fontSize: F.sizeXs, color: C.textSecondary }}>al alza</span>
-        <span style={{ marginLeft: 'auto', fontSize: F.sizeSm, fontWeight: 700, color: '#ef4444' }}>{fmt(p.pDown, 0)}</span>
-        <span style={{ fontSize: F.sizeXs, color: C.textSecondary }}>a la baja</span>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 6 }}>
+        <span style={{ fontSize: 38, fontWeight: 900, color: '#22c55e', letterSpacing: '-0.02em' }}>{fmt(p.pUp, 0)}</span>
+        <span style={{ fontSize: F.sizeSm, color: C.textSecondary }}>de cada 100 veces sube</span>
       </div>
       <ProbBar pUp={p.pUp} pDown={p.pDown} />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: S.xs, marginTop: S.sm, fontSize: F.sizeXs, color: C.textSecondary }}>
-        <span>Muestra</span>
-        <span style={{ textAlign: 'right', color: C.textPrimary, fontWeight: 600 }}>{p.samples} días</span>
-        <span>IC 95%</span>
-        <span style={{ textAlign: 'right', color: C.textPrimary, fontWeight: 600 }}>
-          {p.ci95 ? `${p.ci95[0].toFixed(0)}–${p.ci95[1].toFixed(0)}%` : '—'}
-        </span>
-        <span>Retorno medio</span>
-        <span style={{ textAlign: 'right', color: C.textPrimary, fontWeight: 600 }}>{fmt(p.avgReturnPct, 1)}</span>
-        <span>Retorno mediano</span>
-        <span style={{ textAlign: 'right', color: C.textPrimary, fontWeight: 600 }}>{fmt(p.medianReturnPct, 1)}</span>
-        <span>Base incondicional</span>
-        <span style={{ textAlign: 'right', color: C.textPrimary, fontWeight: 600 }}>{fmt(p.baselinePUp, 0)}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: F.sizeXs, color: C.textMuted }}>
+        <span>Sube {fmt(p.pUp, 0)}%</span>
+        <span>Baja {fmt(p.pDown, 0)}%</span>
       </div>
       {edge != null && (
-        <div style={{ marginTop: S.xs, fontSize: F.sizeXs, color: edge >= 0 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
-          {edge >= 0 ? '▲' : '▼'} {Math.abs(edge).toFixed(1)} pp vs base incondicional
+        <div style={{ marginTop: S.sm, padding: '6px 10px', borderRadius: R.sm, background: better ? '#22c55e14' : worse ? '#ef444414' : C.border + '66', fontSize: F.sizeXs, fontWeight: 700, color: better ? '#22c55e' : worse ? '#ef4444' : C.textSecondary }}>
+          {edgeLabel(edge)}
         </div>
       )}
+      <div style={{ marginTop: S.sm, fontSize: F.sizeXs, color: C.textMuted }}>
+        Normalmente sube {fmt(p.baselinePUp, 0)}% en {p.horizon} días · Rango aprox. {p.ci95 ? `${p.ci95[0].toFixed(0)}–${p.ci95[1].toFixed(0)}%` : '—'}
+        {p.samples < 30 ? ' · Poca muestra' : ''}
+      </div>
     </div>
   );
 }
