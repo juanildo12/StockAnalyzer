@@ -29,6 +29,7 @@ model users {
   settings      user_settings?
   notifications notifications[]
   smartAlerts   smart_alerts[]
+  tradeJournal  trade_journal[]
 
   @@map("users")
 }
@@ -347,4 +348,53 @@ model notifications {
 
   @@index([userId, createdAt(sort: Desc)])
   @@map("notifications")
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Trade Journal
+// ═══════════════════════════════════════════════════════════════════════════
+
+model trade_journal {
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+  user   users  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  source String @default("trade-picks") // trade-picks | manual
+  symbol String
+  direction String // CALL | PUT
+  status String @default("OPEN") // OPEN | CLOSED
+  outcome String? // WIN | LOSS | BE | EXPIRED
+
+  entryDate  DateTime @default(now()) @map("entry_date")
+  entryPrice Decimal? @map("entry_price") @db.Decimal(10, 4)
+  qty Int @default(1)
+
+  contractStrike  Decimal? @map("contract_strike") @db.Decimal(10, 2)
+  contractExpiry  DateTime? @map("contract_expiry")
+  contractType    String? @map("contract_type") // CALL | PUT
+  premium         Decimal? @db.Decimal(10, 4)
+
+  target Decimal? @db.Decimal(10, 2)
+  stop   Decimal? @db.Decimal(10, 2)
+  riskReward Decimal? @map("risk_reward") @db.Decimal(6, 2)
+
+  exitDate  DateTime? @map("exit_date")
+  exitPrice Decimal? @map("exit_price") @db.Decimal(10, 4)
+
+  pnlUsd Decimal? @map("pnl_usd") @db.Decimal(12, 2)
+  pnlR   Decimal? @map("pnl_r") @db.Decimal(6, 2)
+  fees   Decimal? @db.Decimal(10, 2) @default(0)
+
+  notes String? @db.Text
+  tags  Json?
+
+  pickSnapshot Json? @map("pick_snapshot")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId, status])
+  @@index([userId, entryDate])
+  @@index([userId, symbol])
+  @@map("trade_journal")
 }
