@@ -74,6 +74,7 @@ export const PROFILE_NAV: Record<TraderProfile, ProfileNavSection[]> = {
       section: 'trading',
       items: [
         { view: 'trade-picks', label: 'Trade Picks', badge: 'PRO', minPlan: 'pro' },
+        { view: 'trade-journal', label: 'Diario de Trades' },
         { view: 'algo-alerts', label: 'Algo Alerts', badge: 'PRO', minPlan: 'pro' },
         { view: 'options', label: 'Opciones', badge: 'ELITE', minPlan: 'elite' },
         { view: 'options-sim', label: 'Sim. Opciones', badge: 'ELITE', minPlan: 'elite' },
@@ -110,6 +111,7 @@ export const PROFILE_NAV: Record<TraderProfile, ProfileNavSection[]> = {
       section: 'trading',
       items: [
         { view: 'trade-picks', label: 'Trade Picks', badge: 'PRO', minPlan: 'pro' },
+        { view: 'trade-journal', label: 'Diario de Trades' },
         { view: 'gamma-screener', label: 'Gamma Screener', badge: 'ELITE', minPlan: 'elite' },
         { view: 'options', label: 'Opciones', badge: 'ELITE', minPlan: 'elite' },
         { view: 'options-sim', label: 'Sim. Opciones', badge: 'ELITE', minPlan: 'elite' },
@@ -145,6 +147,7 @@ export const PROFILE_NAV: Record<TraderProfile, ProfileNavSection[]> = {
     {
       section: 'trading',
       items: [
+        { view: 'trade-journal', label: 'Diario de Trades' },
         { view: 'gamma-screener', label: 'Gamma Screener', badge: 'ELITE', minPlan: 'elite' },
         { view: 'options', label: 'Opciones', badge: 'ELITE', minPlan: 'elite' },
         { view: 'backtest', label: 'Backtest', badge: 'PRO', minPlan: 'pro' },
@@ -179,6 +182,7 @@ export const PROFILE_NAV: Record<TraderProfile, ProfileNavSection[]> = {
     {
       section: 'trading',
       items: [
+        { view: 'trade-journal', label: 'Diario de Trades' },
         { view: 'options', label: 'Opciones', badge: 'ELITE', minPlan: 'elite' },
         { view: 'backtest', label: 'Backtest', badge: 'PRO', minPlan: 'pro' },
       ],
