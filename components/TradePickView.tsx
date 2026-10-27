@@ -776,6 +776,17 @@ export default function TradePickView({ profile = 'swing' }: { profile?: TraderP
                 <div style={styles.focusRight}>
                   <span style={styles.focusContract}>{f.contract!.strike}{f.direction === 'PUT' ? 'P' : 'C'} {fExp} · ${fmt(f.contract!.premium)}</span>
                   <button
+                    onClick={(e) => { e.stopPropagation(); addToJournal(f); }}
+                    title="Añadir al Diario de Trades"
+                    style={{
+                      background: C.accent + '14', border: `1px solid ${C.accent}55`, color: C.accent,
+                      borderRadius: R.sm, cursor: 'pointer', fontSize: '11px', fontWeight: 700,
+                      padding: '3px 7px', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    + Diario
+                  </button>
+                  <button
                     onClick={(e) => { e.stopPropagation(); setGammaSymbol(f.symbol); }}
                     title={`Ver niveles gamma de ${f.symbol}`}
                     style={{
