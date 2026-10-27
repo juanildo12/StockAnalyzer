@@ -219,6 +219,7 @@ export async function middleware(req: NextRequest) {
         !req.nextUrl.searchParams.get("screen")) ||
       pathname.startsWith("/api/put-call-ratio") ||
       pathname.startsWith("/api/market-pulse") ||
+      pathname.startsWith("/api/trade-journal") ||
       pathname.startsWith("/api/squeeze");
 
     if (!publicLegacy && !token) {
