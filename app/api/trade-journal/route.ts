@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/src/lib/prisma';
+import { getToken } from 'next-auth/jwt';
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id || (session?.user as any)?.sub;
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    const userId = (token as any)?.id || (token as any)?.sub || (token as any)?.userId;
     if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
@@ -44,8 +43,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id || (session?.user as any)?.sub;
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    const userId = (token as any)?.id || (token as any)?.sub || (token as any)?.userId;
     if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
     const body = await req.json();

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { prisma } from '@/src/lib/prisma';
+import { getToken } from 'next-auth/jwt';
 
 function calcPnL(trade: any) {
   if (trade.status !== 'CLOSED') return trade;
@@ -29,8 +28,8 @@ function calcPnL(trade: any) {
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id || (session?.user as any)?.sub;
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    const userId = (token as any)?.id || (token as any)?.sub || (token as any)?.userId;
     if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
     const existing = await prisma.trade_journal.findFirst({ where: { id: params.id, userId } });
@@ -64,8 +63,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const session = await getServerSession(authOptions);
-    const userId = (session?.user as any)?.id || (session?.user as any)?.sub;
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    const userId = (token as any)?.id || (token as any)?.sub || (token as any)?.userId;
     if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
     const existing = await prisma.trade_journal.findFirst({ where: { id: params.id, userId } });
