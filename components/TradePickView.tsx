@@ -105,6 +105,48 @@ function formatDate(iso: string): string {
   return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()} at ${h % 12 || 12}:${m} ${ampm}`;
 }
 
+
+async function addToJournal(pick: TradePick) {
+  try {
+    const body: any = {
+      source: 'trade-picks',
+      symbol: pick.symbol,
+      direction: pick.direction,
+      status: 'OPEN',
+      entryDate: new Date().toISOString(),
+      entryPrice: pick.contract?.premium ?? null,
+      qty: 1,
+      contractStrike: pick.contract?.strike ?? null,
+      contractExpiry: pick.contract?.expiration ?? null,
+      contractType: pick.direction,
+      premium: pick.contract?.premium ?? null,
+      target: pick.target,
+      stop: pick.stop,
+      riskReward: pick.riskReward,
+      pickSnapshot: {
+        score: pick.score,
+        setupState: pick.setupState,
+        entry: pick.entry,
+        contract: pick.contract,
+      },
+      notes: Array.isArray((pick as any).reasons) ? (pick as any).reasons.join(' · ') : ((pick as any).reason || ''),
+    };
+    const res = await fetch('/api/trade-journal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      alert('Añadido al Diario de Trades');
+    } else {
+      const j = await res.json().catch(() => ({}));
+      alert(j.error === 'unauthorized' ? 'Inicia sesión para añadir al diario' : 'Error al añadir al diario');
+    }
+  } catch {
+    alert('Error al añadir al diario');
+  }
+}
+
 function getGrade(score: number): { label: string; color: string } {
   if (score >= 90) return { label: 'A+', color: '#2DD4BF' };
   if (score >= 80) return { label: 'A', color: '#34D399' };
@@ -882,6 +924,13 @@ export default function TradePickView({ profile = 'swing' }: { profile?: TraderP
                               {pick.contract.strike} {exp || ''} @ ${fmt(pick.contract.premium)}
                             </span>
                           )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); addToJournal(pick); }}
+                            title="Añadir este trade al Diario de Trades"
+                            style={{ marginLeft: 'auto', padding: '3px 8px', borderRadius: 6, border: `1px solid ${C.accent}55`, background: C.accent + '14', color: C.accent, fontSize: 10, fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            + Añadir al diario
+                          </button>
                         </div>
                         {prog && (
                           <div style={{ marginTop: 8, width: '100%' }}>
