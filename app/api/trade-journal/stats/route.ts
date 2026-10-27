@@ -4,7 +4,10 @@ import { getToken } from 'next-auth/jwt';
 
 export async function GET(req: NextRequest) {
   try {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    const secret = process.env.NEXTAUTH_SECRET;
+    if (!secret) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    let token = await getToken({ req, secret, secureCookie: true });
+    if (!token) token = await getToken({ req, secret, secureCookie: false });
     const userId = (token as any)?.id || (token as any)?.sub || (token as any)?.userId;
     if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
