@@ -74,6 +74,20 @@ Indicador compacto de Put/Call Ratio (gauge semicircular + histórico). Montado 
 - **UI** (`components/PutCallRatioPanel.tsx`): toggle Símbolo/Mercado, toggle Volumen/Open Interest (etiqueta siempre visible qué base se usa), gauge **semicircular SVG** (0..2 con neutro 1.0 marcado; sin colores direccionales de compra/venta), totales Puts/Calls, percentil, fuente + fecha/hora, sparkline histórico con línea neutra, desglose por miembro (modo mercado) y banners para denominador cero/datos incompletos. Botón `?` con nota de interpretación contextual. Auto-no-refresco (manual con ↻).
 - **Tests**: `npm test` → **162/162** (17 nuevos de `pcr.ts`).
 
+## Market Pulse — Fear & Greed + probabilidad histórica (app/api/market-pulse/route.ts + src/lib/market/pulse.ts + components/MarketPulseView.tsx)
+
+Índice tipo **Fear & Greed** (0 = miedo extremo, 100 = codicia extrema) que además calcula la **frecuencia histórica condicional** de que el S&P suba o baje en 5/10/21 sesiones según el nivel actual del índice. Vista propia `market-pulse` en la sección core de **todos los perfiles y sin gating** (es contexto de mercado, no una herramienta de pago); API pública en `publicLegacy` del middleware.
+
+- **Motor puro** `src/lib/market/pulse.ts` (13 tests en `pulse.test.ts`): `buildMarketPulse` recibe series diarias `{date, close}` por símbolo y devuelve score, zona, componentes, serie histórica, probabilidades y tabla por buckets.
+- **Datos**: Yahoo `yf.chart` diario de 12 años para `SPY, QQQ, IWM, RSP, TLT, HYG, IEF, GLD, ^VIX, ^VIX3M` (10 llamadas, cacheadas 10 min en Redis con `force=1`). Alineación al calendario de SPY con forward-fill máximo de 7 días naturales.
+- **Sin look-ahead**: cada componente se normaliza con un **percentil trailing** de 504 sesiones (mínimo 126 muestras) calculado punto a punto; el índice solo se emite tras 252 sesiones de warm-up. El corte `asOf` no cambia los valores anteriores (testeado).
+- **Componentes (pesos)**: momentum 20% (SPY 20d + SPY vs SMA125), amplitud 20% (RSP/SPY 20d, IWM/SPY 20d, % de SPY/QQQ/IWM/RSP sobre SMA50), volatilidad 20% (VIX invertido + VIX3M/VIX), refugio seguro 15% (TLT/SPY invertido), crédito 15% (HYG/IEF), cobertura 10% (GLD/SPY invertido). Score = media ponderada de los percentiles disponibles; con menos de 3 componentes no hay índice y con símbolos ausentes se renormaliza (`meta.dataQuality`, `warnings`).
+- **Probabilidades**: retorno forward de SPY por día histórico con score, agrupado en buckets fijos 0-20/20-40/40-60/60-80/80-100. Devuelve `pUp`/`pDown`, **IC 95% de Wilson**, media/mediana/p10/p90, `baselinePUp` incondicional y `edgePp` (diferencia con la base). Muestras pequeñas se señalan en la UI. Son frecuencias, no un modelo entrenado.
+- **UI** (`components/MarketPulseView.tsx`): gauge semicircular SVG por zonas, deltas 5d/1m, tarjetas de probabilidad por horizonte con barra alza/baja, sparkline de 2 años, tabla de componentes (valor bruto, percentil, peso), tabla histórica por bucket con el rango actual resaltado, notas de transparencia y disclaimer. Sin Tailwind (tokens de `webTheme`).
+- **Ruta**: `GET /api/market-pulse` (pública, `maxDuration 60`, cache 600s, `?force=1`), 502 si Yahoo no da historia suficiente de SPY.
+- **Tests**: `npm test` → **315/315** (13 nuevos del motor + 1 de perfiles).
+- **Limitaciones**: proxies de precio (no breadth real de constituyentes ni posicionamiento de opciones); en el sample 2015-2026 el patrón histórico no es monotónico (el bucket 80-100 dio más días al alza que el 0-20), y la UI lo muestra sin maquillar. Lecturas extremas son contexto contrarian, no una señal de entrada.
+
 ## Options Strategy Simulator (app/api/options-sim/route.ts + components/OptionsStrategySimulator.tsx)
 
 Simulador pre-trade de estrategias de opciones (multi-pata). **Solo modela/análisis — nunca ejecuta órdenes.** Precios de la cadena son referencias (`mid`), no garantía de ejecución.

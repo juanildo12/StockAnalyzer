@@ -29,6 +29,7 @@ import StockDetailPanel from '@/components/StockDetailPanel';
 import ValuationGauge from '@/components/ValuationGauge';
 import AlgoAlertsPanel from '@/components/AlgoAlertsPanel';
 import GammaScreenerView from '@/components/GammaScreenerView';
+import MarketPulseView from '@/components/MarketPulseView';
 import TradePickView from '@/components/TradePickView';
 import CatalystPanel from '@/components/CatalystPanel';
 import OptionsStrategySimulator from '@/components/OptionsStrategySimulator';
@@ -505,7 +506,7 @@ type AppView =
   | 'options' | 'trade-validator' | 'tradestation' | 'screener' | 'dashboard'
   | 'ai-coach' | 'backtest' | 'inversor-inteligente' | 'trading-trainer'
   | 'algo-alerts' | 'trade-picks' | 'classification' | 'catalysts'
-  | 'options-sim' | 'gamma-screener';
+  | 'options-sim' | 'gamma-screener' | 'market-pulse';
 
 export default function Home() {
   const [symbol, setSymbol] = useState('');
@@ -1153,7 +1154,7 @@ export default function Home() {
               const MOBILE_ICONS: Record<string, string> = {
                 analyzer: '🏠', briefing: '📰', dashboard: '📈', screener: '🔎', catalysts: '⚡',
                 'trade-picks': '🎯', 'algo-alerts': '🤖', options: '🎯', 'options-sim': '🎛️',
-                'gamma-screener': '⚛️', watchlist: '👁️', portfolio: '📁', backtest: '🧪',
+                'gamma-screener': '⚛️', 'market-pulse': '🧭', watchlist: '👁️', portfolio: '📁', backtest: '🧪',
                 'ai-coach': '🤖', 'inversor-inteligente': '💰', classification: '🧪',
                 'trading-trainer': '🎮',
               };
@@ -2076,6 +2077,12 @@ export default function Home() {
       {view === 'gamma-screener' && (
         <div style={{ width: '100%', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <GammaScreenerView profile={profile} />
+        </div>
+      )}
+
+      {view === 'market-pulse' && (
+        <div style={{ width: '100%', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+          <MarketPulseView />
         </div>
       )}
 

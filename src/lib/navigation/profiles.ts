@@ -65,6 +65,7 @@ export const PROFILE_NAV: Record<TraderProfile, ProfileNavSection[]> = {
       section: 'core',
       items: [
         { view: 'briefing', label: 'Briefing', badge: 'PRO', minPlan: 'pro' },
+        { view: 'market-pulse', label: 'Market Pulse' },
         { view: 'screener', label: 'Screener', badge: 'PRO', minPlan: 'pro' },
         { view: 'catalysts', label: 'Catalizadores', badge: 'PRO', minPlan: 'pro' },
       ],
@@ -99,6 +100,7 @@ export const PROFILE_NAV: Record<TraderProfile, ProfileNavSection[]> = {
       section: 'core',
       items: [
         { view: 'briefing', label: 'Briefing', badge: 'PRO', minPlan: 'pro' },
+        { view: 'market-pulse', label: 'Market Pulse' },
         { view: 'dashboard', label: 'Dashboard', badge: 'PRO', minPlan: 'pro' },
         { view: 'screener', label: 'Screener', badge: 'PRO', minPlan: 'pro' },
         { view: 'catalysts', label: 'Catalizadores', badge: 'PRO', minPlan: 'pro' },
@@ -134,6 +136,7 @@ export const PROFILE_NAV: Record<TraderProfile, ProfileNavSection[]> = {
       section: 'core',
       items: [
         { view: 'briefing', label: 'Briefing', badge: 'PRO', minPlan: 'pro' },
+        { view: 'market-pulse', label: 'Market Pulse' },
         { view: 'dashboard', label: 'Dashboard', badge: 'PRO', minPlan: 'pro' },
         { view: 'screener', label: 'Screener', badge: 'PRO', minPlan: 'pro' },
         { view: 'catalysts', label: 'Catalizadores', badge: 'PRO', minPlan: 'pro' },
@@ -168,6 +171,7 @@ export const PROFILE_NAV: Record<TraderProfile, ProfileNavSection[]> = {
     {
       section: 'core',
       items: [
+        { view: 'market-pulse', label: 'Market Pulse' },
         { view: 'dashboard', label: 'Dashboard', badge: 'PRO', minPlan: 'pro' },
         { view: 'catalysts', label: 'Catalizadores', badge: 'PRO', minPlan: 'pro' },
       ],

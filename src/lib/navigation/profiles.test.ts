@@ -46,6 +46,14 @@ describe('perfiles — estructura', () => {
       expect(viewInProfile(id, 'portfolio')).toBe(true);
     }
   });
+
+  it('Market Pulse está en todos los perfiles y es gratis (contexto de mercado)', () => {
+    for (const id of PROFILE_IDS) {
+      expect(viewInProfile(id, 'market-pulse')).toBe(true);
+      const item = PROFILE_NAV[id].flatMap((s) => s.items).find((i) => i.view === 'market-pulse');
+      expect(item?.minPlan).toBeUndefined();
+    }
+  });
 });
 
 describe('perfiles — coherencia del horizonte', () => {

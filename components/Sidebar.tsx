@@ -6,7 +6,7 @@ import {
   Watch, FlaskConical, Brain, Bot, Gamepad2,
   ChevronDown, ChevronRight, Zap, LineChart,
   Lock, Crown, Gem, Building2, Sun, Moon, CalendarDays,
-  SlidersHorizontal, Activity,
+  SlidersHorizontal, Activity, Gauge,
 } from 'lucide-react';
 import { colors as C, radius as R, font as F, spacing as S, transition as T } from '@/src/utils/webTheme';
 import { useTheme } from '@/src/components/ThemeProvider';
@@ -69,6 +69,7 @@ const VIEW_ICONS: Record<string, React.ReactNode> = {
   options: <Target size={18} />,
   'options-sim': <SlidersHorizontal size={18} />,
   'gamma-screener': <Activity size={18} />,
+  'market-pulse': <Gauge size={18} />,
   watchlist: <Watch size={18} />,
   portfolio: <Building2 size={18} />,
   backtest: <FlaskConical size={18} />,
