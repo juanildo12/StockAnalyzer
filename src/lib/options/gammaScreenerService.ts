@@ -327,14 +327,14 @@ export async function buildScreenerRow(symbol: string, opts: BuildRowOptions = {
     contractPick,
     deltaExposure: computeDeltaExposure({
       spot,
-      calls: contracts.filter((c: any) => c.type === 'call').map((c: any) => ({ strike: c.strike, openInterest: c.openInterest, delta: c.delta, iv: c.iv, dte: c.dte })),
-      puts: contracts.filter((c: any) => c.type === 'put').map((c: any) => ({ strike: c.strike, openInterest: c.openInterest, delta: c.delta, iv: c.iv, dte: c.dte })),
+      calls: contracts.filter((c: any) => c.type === 'call'),
+      puts: contracts.filter((c: any) => c.type === 'put'),
     }),
-    deltaBias: (computeDeltaExposure({
+    deltaBias: computeDeltaExposure({
       spot,
-      calls: contracts.filter((c: any) => c.type === 'call').map((c: any) => ({ strike: c.strike, openInterest: c.openInterest, delta: c.delta, iv: c.iv, dte: c.dte })),
-      puts: contracts.filter((c: any) => c.type === 'put').map((c: any) => ({ strike: c.strike, openInterest: c.openInterest, delta: c.delta, iv: c.iv, dte: c.dte })),
-    }) as any).bias,
+      calls: contracts.filter((c: any) => c.type === 'call'),
+      puts: contracts.filter((c: any) => c.type === 'put'),
+    }).bias,
 
     netGex: gamma.totalNetGex,
     netGexNorm: gamma.netGexNorm,
