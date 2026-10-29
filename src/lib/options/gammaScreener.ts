@@ -1101,9 +1101,12 @@ export function computeDeltaExposure(params: {
   const normIv = (iv: any) => {
     let v = Number(iv);
     if (!isFinite(v) || v <= 0) return 0.25;
-    if (v > 1) v = v / 100;
+    if (v > 10) v = v / 10000;
+    else if (v > 5) v = v / 1000;
+    else if (v > 2) v = v / 100;
+    else if (v > 1) v = v / 100;
     if (v < 0.01) v = 0.25;
-    if (v > 2) v = Math.min(v, 1.2);
+    if (v > 3) v = Math.min(v, 1.5);
     return v;
   };
 
