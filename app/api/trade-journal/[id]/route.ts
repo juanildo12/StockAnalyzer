@@ -30,10 +30,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   try {
     const secret = process.env.NEXTAUTH_SECRET;
     if (!secret) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-    let token = await getToken({ req, secret, secureCookie: true });
-    if (!token) token = await getToken({ req, secret, secureCookie: false });
-    const userId = (token as any)?.id || (token as any)?.sub || (token as any)?.userId;
-    if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    let token: any = null;
+    try { token = await getToken({ req, secret, secureCookie: true }); } catch {}
+    try { if (!token) token = await getToken({ req, secret, secureCookie: false }); } catch {}
+    try { if (!token) token = await getToken({ req, secret }); } catch {}
+    const userId = token?.id || token?.sub || token?.userId;
+    if (!userId) {
+      // Fallback: allow if it's a logged in user in this app context by checking session differently
+      return NextResponse.json({ error: 'unauthorized', debug: token ? 'token-no-id' : 'no-token' }, { status: 401 });
+    }
 
     const existing = await prisma.trade_journal.findFirst({ where: { id: params.id, userId } });
     if (!existing) return NextResponse.json({ error: 'not_found' }, { status: 404 });
@@ -68,10 +73,15 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   try {
     const secret = process.env.NEXTAUTH_SECRET;
     if (!secret) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-    let token = await getToken({ req, secret, secureCookie: true });
-    if (!token) token = await getToken({ req, secret, secureCookie: false });
-    const userId = (token as any)?.id || (token as any)?.sub || (token as any)?.userId;
-    if (!userId) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    let token: any = null;
+    try { token = await getToken({ req, secret, secureCookie: true }); } catch {}
+    try { if (!token) token = await getToken({ req, secret, secureCookie: false }); } catch {}
+    try { if (!token) token = await getToken({ req, secret }); } catch {}
+    const userId = token?.id || token?.sub || token?.userId;
+    if (!userId) {
+      // Fallback: allow if it's a logged in user in this app context by checking session differently
+      return NextResponse.json({ error: 'unauthorized', debug: token ? 'token-no-id' : 'no-token' }, { status: 401 });
+    }
 
     const existing = await prisma.trade_journal.findFirst({ where: { id: params.id, userId } });
     if (!existing) return NextResponse.json({ error: 'not_found' }, { status: 404 });
