@@ -1116,8 +1116,8 @@ export function computeDeltaExposure(params: {
     const dte = c.dte != null ? c.dte : 30;
     const T = Math.max(1 / 365, Number(dte) / 365);
     const iv = 0.25;
-    let delta: number | null = bsDelta(spot, Number(c.strike), T, iv, true, r);
-    if (delta == null || !isFinite(delta) || delta < 0.0001) {
+    let delta: number = Number(bsDelta(spot, Number(c.strike), T, iv, true, r));
+    if (!isFinite(delta) || delta < 0.0001) {
       const m = spot / Number(c.strike);
       if (m >= 1.01) delta = 0.6;
       else if (m >= 1.0) delta = 0.5;
