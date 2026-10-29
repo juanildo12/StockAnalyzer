@@ -1117,7 +1117,7 @@ export function computeDeltaExposure(params: {
     const T = Math.max(1 / 365, Number(dte) / 365);
     const iv = 0.25;
     let delta: number | null = bsDelta(spot, Number(c.strike), T, iv, true, r);
-    if (delta == null || !isFinite(delta)) {
+    if (delta == null || !isFinite(delta) || delta < 0.0001) {
       const m = spot / Number(c.strike);
       if (m >= 1.01) delta = 0.6;
       else if (m >= 1.0) delta = 0.5;
@@ -1126,7 +1126,7 @@ export function computeDeltaExposure(params: {
       else if (m >= 0.93) delta = 0.15;
       else delta = 0.08;
     }
-    if (delta < 0) delta = Math.abs(delta);
+    delta = Math.abs(delta);
     if (delta > 1) delta = 1;
     if (delta < 0.01) delta = 0.01;
     const notional = delta * oi * 100 * spot;
