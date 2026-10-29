@@ -1114,15 +1114,22 @@ export function computeDeltaExposure(params: {
     const T = Math.max(1 / 365, Number(dte) / 365);
     const iv = normIv(c.iv);
     let delta: number | null = bsDelta(spot, Number(c.strike), T, iv, true, r);
-    if (delta != null && Math.abs(delta) < 0.01) {
-      // moneyness based fallback
+    if (delta == null || !isFinite(delta) || Math.abs(delta) < 0.001) {
       const m = spot / Number(c.strike);
-      if (m >= 1.02) delta = 0.7; else if (m >= 1.0) delta = 0.55; else if (m >= 0.98) delta = 0.45; else if (m >= 0.95) delta = 0.3; else delta = 0.15;
+      if (m >= 1.05) delta = 0.8;
+      else if (m >= 1.02) delta = 0.7;
+      else if (m >= 1.01) delta = 0.6;
+      else if (m >= 1.0) delta = 0.52;
+      else if (m >= 0.99) delta = 0.48;
+      else if (m >= 0.98) delta = 0.4;
+      else if (m >= 0.95) delta = 0.25;
+      else if (m >= 0.9) delta = 0.12;
+      else delta = 0.05;
     }
     if (delta == null || !isFinite(delta)) continue;
     if (delta < 0) delta = Math.abs(delta);
     if (delta > 1) delta = 1;
-    if (delta < 0.05) delta = 0.05;
+    if (delta < 0.01) delta = 0.01;
     const notional = delta * oi * 100 * spot;
     callDeltaNotional += notional;
     if (notional > topCallDelta) {
@@ -1138,14 +1145,22 @@ export function computeDeltaExposure(params: {
     const T = Math.max(1 / 365, Number(dte) / 365);
     const iv = normIv(p.iv);
     let delta: number | null = bsDelta(spot, Number(p.strike), T, iv, false, r);
-    if (delta != null && Math.abs(delta) < 0.01) {
+    if (delta == null || !isFinite(delta) || Math.abs(delta) < 0.001) {
       const m = Number(p.strike) / spot;
-      if (m >= 1.02) delta = -0.7; else if (m >= 1.0) delta = -0.55; else if (m >= 0.98) delta = -0.45; else if (m >= 0.95) delta = -0.3; else delta = -0.15;
+      if (m >= 1.05) delta = -0.8;
+      else if (m >= 1.02) delta = -0.7;
+      else if (m >= 1.01) delta = -0.6;
+      else if (m >= 1.0) delta = -0.52;
+      else if (m >= 0.99) delta = -0.48;
+      else if (m >= 0.98) delta = -0.4;
+      else if (m >= 0.95) delta = -0.25;
+      else if (m >= 0.9) delta = -0.12;
+      else delta = -0.05;
     }
     if (delta == null || !isFinite(delta)) continue;
     if (delta > 0) delta = -Math.abs(delta);
     if (delta < -1) delta = -1;
-    if (delta > -0.05) delta = -0.05;
+    if (delta > -0.01) delta = -0.01;
     const notional = delta * oi * 100 * spot;
     putDeltaNotional += notional;
     if (Math.abs(notional) > topPutDelta) {
