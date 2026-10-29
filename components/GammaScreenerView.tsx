@@ -653,6 +653,28 @@ function DetailDrawer({ row, onClose }: { row: ScreenerRow; onClose: () => void 
         </div>
 
         {/* GEX by strike */}
+        {(row as any).deltaExposure && (
+          <div style={{ marginBottom: S.md, padding: S.sm, border: `1px solid ${C.border}`, borderRadius: R.lg, background: C.bgCard }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: S.xs }}>
+              <div style={{ fontSize: F.sizeSm, fontWeight: 700, color: C.textPrimary }}>Delta Exposure (inclinación)</div>
+              <span style={{ fontSize: 11, fontWeight: 800, padding: '2px 8px', borderRadius: R.full, background: ((row as any).deltaBias || (row as any).deltaExposure.bias) === 'bullish' ? '#22c55e22' : ((row as any).deltaBias || (row as any).deltaExposure.bias) === 'bearish' ? '#ef444422' : C.border, color: ((row as any).deltaBias || (row as any).deltaExposure.bias) === 'bullish' ? '#22c55e' : ((row as any).deltaBias || (row as any).deltaExposure.bias) === 'bearish' ? '#ef4444' : C.textSecondary }}>
+                {(row as any).deltaBias || (row as any).deltaExposure.bias}
+              </span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 8px', fontSize: F.sizeXs }}>
+              <div style={{ color: C.textMuted }}>Net Delta</div>
+              <div style={{ textAlign: 'right', color: ((row as any).deltaExposure.netDelta >= 0) ? '#22c55e' : '#ef4444', fontWeight: 700 }}>{((row as any).deltaExposure.netDelta >= 0) ? '+' : ''}${Math.abs((row as any).deltaExposure.netDelta / 1000000).toFixed(2)}M</div>
+              <div style={{ color: C.textMuted }}>Call Delta</div>
+              <div style={{ textAlign: 'right', color: C.textSecondary }}>+${((row as any).deltaExposure.callDeltaNotional / 1000000).toFixed(2)}M</div>
+              <div style={{ color: C.textMuted }}>Put Delta</div>
+              <div style={{ textAlign: 'right', color: C.textSecondary }}>${((row as any).deltaExposure.putDeltaNotional / 1000000).toFixed(2)}M</div>
+              <div style={{ color: C.textMuted }}>Delta Call Wall / Put Wall</div>
+              <div style={{ textAlign: 'right', color: C.textSecondary }}>{(row as any).deltaExposure.topCallDeltaStrike?.toFixed(0) || '—'} / {(row as any).deltaExposure.topPutDeltaStrike?.toFixed(0) || '—'}</div>
+            </div>
+            <div style={{ fontSize: 10, color: C.textMuted, marginTop: 6 }}>Gamma = fricción · Delta = inclinación direccional</div>
+          </div>
+        )}
+
         <div style={{ fontSize: F.sizeSm, fontWeight: 700, color: C.textPrimary, marginBottom: S.xs }}>GEX neto por strike {row.gammaFlip != null ? `· flip ≈ ${row.gammaFlip.toFixed(2)}` : '· flip N/A'}</div>
         <div style={{ background: C.bgInput, border: `1px solid ${C.border}`, borderRadius: R.sm, marginBottom: S.sm }}>
           <GexByStrikeChart row={row} />
