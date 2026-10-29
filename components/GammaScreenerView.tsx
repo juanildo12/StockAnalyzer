@@ -670,8 +670,13 @@ function DetailDrawer({ row, onClose }: { row: ScreenerRow; onClose: () => void 
               <div style={{ textAlign: 'right', color: C.textSecondary }}>${((row as any).deltaExposure.putDeltaNotional / 1000000).toFixed(2)}M</div>
               <div style={{ color: C.textMuted }}>Delta Call Wall / Put Wall</div>
               <div style={{ textAlign: 'right', color: C.textSecondary }}>{(row as any).deltaExposure.topCallDeltaStrike?.toFixed(0) || '—'} / {(row as any).deltaExposure.topPutDeltaStrike?.toFixed(0) || '—'}</div>
+              <div style={{ color: C.textMuted }}>Ratio (-1..1)</div>
+              <div style={{ textAlign: 'right', color: C.textSecondary }}>{((row as any).deltaExposure.ratio ?? 0).toFixed(2)}</div>
             </div>
             <div style={{ fontSize: 10, color: C.textMuted, marginTop: 6 }}>Gamma = fricción · Delta = inclinación direccional</div>
+            <div style={{ fontSize: 10, color: C.textMuted, marginTop: 4, lineHeight: 1.4 }}>
+              Net Delta positivo = más delta de calls (sesgo alcista). Cerca de +1 = inclinado a calls, cerca de -1 = inclinado a puts. Úsalo como contexto con Gamma Regime/walls/skew; no es señal por sí solo. Si vas largo y es alcista suele ir a favor; si va en contra, ser más cauteloso.
+            </div>
           </div>
         )}
 
