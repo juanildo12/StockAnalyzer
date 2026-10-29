@@ -106,6 +106,43 @@ function formatDate(iso: string): string {
 }
 
 
+function saveTradeLocal(pick: TradePick) {
+  try {
+    const key = 'trade-journal-local';
+    const existing = JSON.parse(localStorage.getItem(key) || '[]');
+    const trade = {
+      id: 'local-' + Date.now(),
+      source: 'trade-picks',
+      symbol: pick.symbol,
+      direction: pick.direction,
+      status: 'OPEN',
+      entryDate: new Date().toISOString(),
+      entryPrice: pick.contract?.premium ?? null,
+      qty: 1,
+      contractStrike: pick.contract?.strike ?? null,
+      contractExpiry: pick.contract?.expiration ?? null,
+      contractType: pick.direction,
+      premium: pick.contract?.premium ?? null,
+      target: pick.target,
+      stop: pick.stop,
+      riskReward: pick.riskReward,
+      pickSnapshot: {
+        score: pick.score,
+        setupState: pick.setupState,
+        entry: pick.entry,
+        contract: pick.contract,
+      },
+      notes: Array.isArray((pick as any).reasons) ? (pick as any).reasons.join(' · ') : ((pick as any).reason || ''),
+      createdAt: new Date().toISOString(),
+    };
+    existing.unshift(trade);
+    localStorage.setItem(key, JSON.stringify(existing.slice(0, 500)));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function addToJournal(pick: TradePick) {
   try {
     const body: any = {
@@ -138,11 +175,12 @@ async function addToJournal(pick: TradePick) {
     });
     if (res.ok) {
       alert('Añadido al Diario de Trades');
-    } else {
-      const j = await res.json().catch(() => ({}));
-      alert(j.error === 'unauthorized' ? 'Inicia sesión para añadir al diario' : 'Error al añadir al diario');
+      return;
     }
-  } catch {
+  } catch {}
+  if (saveTradeLocal(pick)) {
+    alert('Añadido al Diario de Trades (guardado local)');
+  } else {
     alert('Error al añadir al diario');
   }
 }

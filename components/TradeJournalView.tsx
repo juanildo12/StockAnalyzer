@@ -29,17 +29,47 @@ export default function TradeJournalView() {
   const [form, setForm] = useState<any>({ symbol: '', direction: 'CALL', qty: 1, entryPrice: '', target: '', stop: '', notes: '' });
   const [closeForm, setCloseForm] = useState<any>({ exitPrice: '', outcome: 'WIN', notes: '' });
 
+  const loadLocal = () => {
+    try {
+      const local = JSON.parse(localStorage.getItem('trade-journal-local') || '[]');
+      return local.map((t: any) => ({ ...t, userId: 'local' }));
+    } catch { return []; }
+  };
+
   const load = async () => {
     setLoading(true);
     try {
-      const [tr, st] = await Promise.all([
+      const [trRes, stRes] = await Promise.allSettled([
         fetch(`/api/trade-journal?status=${filter}&limit=300`).then((r) => r.json()),
         fetch('/api/trade-journal/stats').then((r) => r.json()),
       ]);
-      setTrades(tr.trades || []);
-      setStats(st);
+      let serverTrades: any[] = [];
+      let serverStats: any = null;
+      if (trRes.status === 'fulfilled') serverTrades = trRes.value?.trades || [];
+      if (stRes.status === 'fulfilled') serverStats = stRes.value;
+      const localTrades = loadLocal();
+      const all = [...serverTrades, ...localTrades].sort((a,b) => new Date(b.entryDate || b.createdAt).getTime() - new Date(a.entryDate || a.createdAt).getTime());
+      setTrades(all);
+      if (serverStats) {
+        setStats(serverStats);
+      } else {
+        const closed = all.filter((t:any) => t.status === 'CLOSED');
+        let wins=0,losses=0,totalPnl=0;
+        for (const t of closed) {
+          if (t.outcome === 'WIN') wins++;
+          if (t.outcome === 'LOSS') losses++;
+          const qty = Number(t.qty||1);
+          const entry = t.entryPrice != null ? Number(t.entryPrice) : null;
+          const exit = t.exitPrice != null ? Number(t.exitPrice) : null;
+          if (entry != null && exit != null) totalPnl += (exit-entry)*qty*100;
+        }
+        const denom = wins+losses;
+        setStats({ totalTrades: all.length, open: all.filter((t:any)=>t.status==='OPEN').length, closed: closed.length, wins, losses, be:0, winRate: denom>0?(wins/denom)*100:0, totalPnl, avgWin:0, avgLoss:0, expectancy:0, profitFactor:null, byMonth:[], bySymbol:[] });
+      }
     } catch (e) {
       console.error(e);
+      const localTrades = loadLocal();
+      setTrades(localTrades);
     }
     setLoading(false);
   };
