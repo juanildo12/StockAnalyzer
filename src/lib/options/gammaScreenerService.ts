@@ -325,16 +325,14 @@ export async function buildScreenerRow(symbol: string, opts: BuildRowOptions = {
     distFlipPct: gamma.distFlipPct,
     playbook: buildPlaybook(gamma, spot),
     contractPick,
-    deltaExposure: computeDeltaExposure({
-      spot,
-      calls: contracts.filter((c: any) => c.type === 'call'),
-      puts: contracts.filter((c: any) => c.type === 'put'),
-    }),
-    deltaBias: computeDeltaExposure({
-      spot,
-      calls: contracts.filter((c: any) => c.type === 'call'),
-      puts: contracts.filter((c: any) => c.type === 'put'),
-    }).bias,
+    ...(function(){
+      const de = computeDeltaExposure({
+        spot,
+        calls: contracts.filter((c: any) => c.type === 'call'),
+        puts: contracts.filter((c: any) => c.type === 'put'),
+      });
+      return { deltaExposure: de, deltaBias: de.bias };
+    })(),
 
     netGex: gamma.totalNetGex,
     netGexNorm: gamma.netGexNorm,
