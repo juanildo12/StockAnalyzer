@@ -35,6 +35,7 @@ import {
   type MomentumClass,
   type PlaybookLevel,
   type ContractPickResult,
+  computeDeltaExposure,
 } from './gammaScreener';
 
 const yf = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
@@ -70,6 +71,8 @@ export interface ScreenerRow {
 
   /** Suggested listed contract for the SKEW direction (strict liquidity gates). */
   contractPick: ContractPickResult;
+  deltaExposure?: any;
+  deltaBias?: 'bullish' | 'bearish' | 'neutral';
 
   netGex: number;
   netGexNorm: number | null;
@@ -322,6 +325,16 @@ export async function buildScreenerRow(symbol: string, opts: BuildRowOptions = {
     distFlipPct: gamma.distFlipPct,
     playbook: buildPlaybook(gamma, spot),
     contractPick,
+    deltaExposure: computeDeltaExposure({
+      spot,
+      calls: contracts.filter((c: any) => c.type === 'call').map((c: any) => ({ strike: c.strike, openInterest: c.openInterest, delta: c.delta, iv: c.iv, dte: c.dte })),
+      puts: contracts.filter((c: any) => c.type === 'put').map((c: any) => ({ strike: c.strike, openInterest: c.openInterest, delta: c.delta, iv: c.iv, dte: c.dte })),
+    }),
+    deltaBias: (computeDeltaExposure({
+      spot,
+      calls: contracts.filter((c: any) => c.type === 'call').map((c: any) => ({ strike: c.strike, openInterest: c.openInterest, delta: c.delta, iv: c.iv, dte: c.dte })),
+      puts: contracts.filter((c: any) => c.type === 'put').map((c: any) => ({ strike: c.strike, openInterest: c.openInterest, delta: c.delta, iv: c.iv, dte: c.dte })),
+    }) as any).bias,
 
     netGex: gamma.totalNetGex,
     netGexNorm: gamma.netGexNorm,

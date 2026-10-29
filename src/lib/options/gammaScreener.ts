@@ -1067,3 +1067,96 @@ export function pickLiquidContract(
   }
   return { pick: candidates[0].pick, alternates: candidates.slice(1, 3).map((c) => c.pick) };
 }
+
+export type DeltaBias = 'bullish' | 'bearish' | 'neutral';
+
+export type DeltaExposure = {
+  callDeltaNotional: number;
+  putDeltaNotional: number;
+  netDelta: number;
+  totalDeltaNotional: number;
+  ratio: number;
+  bias: DeltaBias;
+  deltaWallUp: number | null;
+  deltaWallDown: number | null;
+  topCallDeltaStrike: number | null;
+  topPutDeltaStrike: number | null;
+};
+
+export function computeDeltaExposure(params: {
+  spot: number;
+  calls: Array<{ strike: number; openInterest?: number | null; delta?: number | null; iv?: number | null; dte?: number | null }>;
+  puts: Array<{ strike: number; openInterest?: number | null; delta?: number | null; iv?: number | null; dte?: number | null }>;
+  r?: number;
+}): DeltaExposure {
+  const spot = params.spot;
+  const r = params.r ?? 0.045;
+  let callDeltaNotional = 0;
+  let putDeltaNotional = 0;
+  let topCallDeltaStrike: number | null = null;
+  let topCallDelta = -Infinity;
+  let topPutDeltaStrike: number | null = null;
+  let topPutDelta = -Infinity;
+
+  for (const c of params.calls || []) {
+    const oi = Number(c.openInterest) || 0;
+    if (oi <= 0) continue;
+    const dte = c.dte != null ? c.dte : 30;
+    const T = Math.max(1 / 365, Number(dte) / 365);
+    const iv = c.iv != null && Number(c.iv) > 0 ? Number(c.iv) : 0.25;
+    let delta: number | null = null;
+    if (c.delta != null && isFinite(Number(c.delta))) {
+      delta = Number(c.delta);
+    } else {
+      delta = bsDelta(spot, Number(c.strike), T, iv, true, r);
+    }
+    if (delta == null || !isFinite(delta)) continue;
+    const notional = delta * oi * 100 * spot;
+    callDeltaNotional += notional;
+    if (notional > topCallDelta) {
+      topCallDelta = notional;
+      topCallDeltaStrike = Number(c.strike);
+    }
+  }
+
+  for (const p of params.puts || []) {
+    const oi = Number(p.openInterest) || 0;
+    if (oi <= 0) continue;
+    const dte = p.dte != null ? p.dte : 30;
+    const T = Math.max(1 / 365, Number(dte) / 365);
+    const iv = p.iv != null && Number(p.iv) > 0 ? Number(p.iv) : 0.25;
+    let delta: number | null = null;
+    if (p.delta != null && isFinite(Number(p.delta))) {
+      delta = Number(p.delta);
+    } else {
+      delta = bsDelta(spot, Number(p.strike), T, iv, false, r);
+    }
+    if (delta == null || !isFinite(delta)) continue;
+    const notional = delta * oi * 100 * spot;
+    putDeltaNotional += notional;
+    if (Math.abs(notional) > topPutDelta) {
+      topPutDelta = Math.abs(notional);
+      topPutDeltaStrike = Number(p.strike);
+    }
+  }
+
+  const netDelta = callDeltaNotional + putDeltaNotional;
+  const totalDeltaNotional = Math.abs(callDeltaNotional) + Math.abs(putDeltaNotional);
+  const ratio = totalDeltaNotional > 0 ? netDelta / totalDeltaNotional : 0;
+  let bias: 'bullish' | 'bearish' | 'neutral' = 'neutral';
+  if (ratio >= 0.15) bias = 'bullish';
+  else if (ratio <= -0.15) bias = 'bearish';
+
+  return {
+    callDeltaNotional: Math.round(callDeltaNotional),
+    putDeltaNotional: Math.round(putDeltaNotional),
+    netDelta: Math.round(netDelta),
+    totalDeltaNotional: Math.round(totalDeltaNotional),
+    ratio,
+    bias,
+    deltaWallUp: topCallDeltaStrike,
+    deltaWallDown: topPutDeltaStrike,
+    topCallDeltaStrike,
+    topPutDeltaStrike,
+  };
+}
