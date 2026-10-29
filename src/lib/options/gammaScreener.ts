@@ -1085,8 +1085,8 @@ export type DeltaExposure = {
 
 export function computeDeltaExposure(params: {
   spot: number;
-  calls: Array<{ strike: number; openInterest?: number | null; delta?: number | null; iv?: number | null; dte?: number | null }>;
-  puts: Array<{ strike: number; openInterest?: number | null; delta?: number | null; iv?: number | null; dte?: number | null }>;
+  calls: Array<{ strike: number; openInterest?: number | null; delta?: number | null; iv?: number | null; dte?: number | null; volume?: number | null }>;
+  puts: Array<{ strike: number; openInterest?: number | null; delta?: number | null; iv?: number | null; dte?: number | null; volume?: number | null }>;
   r?: number;
 }): DeltaExposure {
   const spot = params.spot;
@@ -1114,22 +1114,21 @@ export function computeDeltaExposure(params: {
     const oi = Number(c.openInterest) || 0;
     if (oi <= 0) continue;
     const dte = c.dte != null ? c.dte : 30;
-    const T = Math.max(2 / 365, Number(dte) / 365);
+    const T = Math.max(1 / 365, Number(dte) / 365);
     const iv = normIv(c.iv) || 0.3;
-    let delta: number | null = bsDelta(spot, Number(c.strike), T, iv, true, r);
+    let delta: number | null = bsDelta(spot, Number(c.strike), T, Math.min(iv, 1.5), true, r);
     if (delta == null || !isFinite(delta) || Math.abs(delta) < 0.0001) {
       const m = spot / Number(c.strike);
-      if (m >= 1.03) delta = 0.75;
-      else if (m >= 1.01) delta = 0.6;
-      else if (m >= 1.0) delta = 0.5;
-      else if (m >= 0.99) delta = 0.4;
-      else if (m >= 0.97) delta = 0.25;
-      else if (m >= 0.94) delta = 0.15;
-      else delta = 0.08;
+      if (m >= 1.02) delta = 0.68;
+      else if (m >= 1.0) delta = 0.52;
+      else if (m >= 0.98) delta = 0.4;
+      else if (m >= 0.95) delta = 0.25;
+      else if (m >= 0.9) delta = 0.12;
+      else delta = 0.05;
     }
     if (delta < 0) delta = Math.abs(delta);
     if (delta > 1) delta = 1;
-    if (delta < 0.02) delta = 0.02;
+    if (delta < 0.01) delta = 0.01;
     const notional = delta * oi * 100 * spot;
     callDeltaNotional += notional;
     if (notional > topCallDelta) {
@@ -1142,22 +1141,21 @@ export function computeDeltaExposure(params: {
     const oi = Number(p.openInterest) || 0;
     if (oi <= 0) continue;
     const dte = p.dte != null ? p.dte : 30;
-    const T = Math.max(2 / 365, Number(dte) / 365);
+    const T = Math.max(1 / 365, Number(dte) / 365);
     const iv = normIv(p.iv) || 0.3;
-    let delta: number | null = bsDelta(spot, Number(p.strike), T, iv, false, r);
+    let delta: number | null = bsDelta(spot, Number(p.strike), T, Math.min(iv, 1.5), false, r);
     if (delta == null || !isFinite(delta) || Math.abs(delta) < 0.0001) {
       const m = Number(p.strike) / spot;
-      if (m >= 1.03) delta = -0.75;
-      else if (m >= 1.01) delta = -0.6;
-      else if (m >= 1.0) delta = -0.5;
-      else if (m >= 0.99) delta = -0.4;
-      else if (m >= 0.97) delta = -0.25;
-      else if (m >= 0.94) delta = -0.15;
-      else delta = -0.08;
+      if (m >= 1.02) delta = -0.68;
+      else if (m >= 1.0) delta = -0.52;
+      else if (m >= 0.98) delta = -0.4;
+      else if (m >= 0.95) delta = -0.25;
+      else if (m >= 0.9) delta = -0.12;
+      else delta = -0.05;
     }
     if (delta > 0) delta = -Math.abs(delta);
     if (delta < -1) delta = -1;
-    if (delta > -0.02) delta = -0.02;
+    if (delta > -0.01) delta = -0.01;
     const notional = delta * oi * 100 * spot;
     putDeltaNotional += notional;
     if (Math.abs(notional) > topPutDelta) {
