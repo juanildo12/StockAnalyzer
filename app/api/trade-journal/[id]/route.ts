@@ -31,13 +31,30 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const secret = process.env.NEXTAUTH_SECRET;
     if (!secret) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     let token: any = null;
-    try { token = await getToken({ req, secret, secureCookie: true }); } catch {}
-    try { if (!token) token = await getToken({ req, secret, secureCookie: false }); } catch {}
-    try { if (!token) token = await getToken({ req, secret }); } catch {}
-    const userId = token?.id || token?.sub || token?.userId;
+    const cookie = req.headers.get('cookie') || '';
+    // Try to get token like middleware does
+    for (const secure of [true, false]) {
+      try {
+        token = await getToken({ req, secret, secureCookie: secure } as any);
+        if (token) break;
+      } catch {}
+    }
+    // Also try reading from cookies directly
+    if (!token && cookie) {
+      for (const name of ['__Secure-next-auth.session-token', 'next-auth.session-token']) {
+        const m = cookie.match(new RegExp(name + '=([^;]+)'));
+        if (m) {
+          try {
+            const { decode } = require('next-auth/jwt');
+            token = await decode({ token: decodeURIComponent(m[1]), secret } as any);
+            if (token) break;
+          } catch {}
+        }
+      }
+    }
+    const userId = (token as any)?.id || (token as any)?.sub || (token as any)?.userId;
     if (!userId) {
-      // Fallback: allow if it's a logged in user in this app context by checking session differently
-      return NextResponse.json({ error: 'unauthorized', debug: token ? 'token-no-id' : 'no-token' }, { status: 401 });
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
 
     const existing = await prisma.trade_journal.findFirst({ where: { id: params.id, userId } });
@@ -74,13 +91,30 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     const secret = process.env.NEXTAUTH_SECRET;
     if (!secret) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     let token: any = null;
-    try { token = await getToken({ req, secret, secureCookie: true }); } catch {}
-    try { if (!token) token = await getToken({ req, secret, secureCookie: false }); } catch {}
-    try { if (!token) token = await getToken({ req, secret }); } catch {}
-    const userId = token?.id || token?.sub || token?.userId;
+    const cookie = req.headers.get('cookie') || '';
+    // Try to get token like middleware does
+    for (const secure of [true, false]) {
+      try {
+        token = await getToken({ req, secret, secureCookie: secure } as any);
+        if (token) break;
+      } catch {}
+    }
+    // Also try reading from cookies directly
+    if (!token && cookie) {
+      for (const name of ['__Secure-next-auth.session-token', 'next-auth.session-token']) {
+        const m = cookie.match(new RegExp(name + '=([^;]+)'));
+        if (m) {
+          try {
+            const { decode } = require('next-auth/jwt');
+            token = await decode({ token: decodeURIComponent(m[1]), secret } as any);
+            if (token) break;
+          } catch {}
+        }
+      }
+    }
+    const userId = (token as any)?.id || (token as any)?.sub || (token as any)?.userId;
     if (!userId) {
-      // Fallback: allow if it's a logged in user in this app context by checking session differently
-      return NextResponse.json({ error: 'unauthorized', debug: token ? 'token-no-id' : 'no-token' }, { status: 401 });
+      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
 
     const existing = await prisma.trade_journal.findFirst({ where: { id: params.id, userId } });
