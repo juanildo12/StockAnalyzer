@@ -1102,23 +1102,26 @@ export function computeDeltaExposure(params: {
     let v = Number(iv);
     if (!isFinite(v) || v <= 0) return 0.25;
     if (v > 1 && v < 100) v = v / 100;
+    if (v >= 0.8 && v <= 1.5) return v;
     if (v < 0.005 || v > 5) return 0.25;
-    return v;
+    return Math.min(Math.max(v, 0.1), 1.0);
   };
 
   for (const c of params.calls || []) {
     const oi = Number(c.openInterest) || 0;
     if (oi <= 0) continue;
-    const dte = c.dte != null ? c.dte : 30;
+    const dte = c.dte != null ? c.dte : 7;
     const T = Math.max(1 / 365, Number(dte) / 365);
     const iv = normIv(c.iv);
     let delta: number | null = null;
-    if (c.delta != null && isFinite(Number(c.delta)) && Math.abs(Number(c.delta)) <= 1.2) {
+    if (c.delta != null && isFinite(Number(c.delta)) && Math.abs(Number(c.delta)) >= 0.01 && Math.abs(Number(c.delta)) <= 0.99) {
       delta = Number(c.delta);
     } else {
       delta = bsDelta(spot, Number(c.strike), T, iv, true, r);
     }
     if (delta == null || !isFinite(delta)) continue;
+    if (delta < 0) delta = Math.abs(delta);
+    if (delta > 1) delta = Math.min(delta, 1);
     const notional = delta * oi * 100 * spot;
     callDeltaNotional += notional;
     if (notional > topCallDelta) {
@@ -1130,16 +1133,18 @@ export function computeDeltaExposure(params: {
   for (const p of params.puts || []) {
     const oi = Number(p.openInterest) || 0;
     if (oi <= 0) continue;
-    const dte = p.dte != null ? p.dte : 30;
+    const dte = p.dte != null ? p.dte : 7;
     const T = Math.max(1 / 365, Number(dte) / 365);
     const iv = normIv(p.iv);
     let delta: number | null = null;
-    if (p.delta != null && isFinite(Number(p.delta)) && Math.abs(Number(p.delta)) <= 1.2) {
+    if (p.delta != null && isFinite(Number(p.delta)) && Math.abs(Number(p.delta)) >= 0.01 && Math.abs(Number(p.delta)) <= 0.99) {
       delta = Number(p.delta);
     } else {
       delta = bsDelta(spot, Number(p.strike), T, iv, false, r);
     }
     if (delta == null || !isFinite(delta)) continue;
+    if (delta > 0) delta = -Math.abs(delta);
+    if (delta < -1) delta = Math.max(delta, -1);
     const notional = delta * oi * 100 * spot;
     putDeltaNotional += notional;
     if (Math.abs(notional) > topPutDelta) {
