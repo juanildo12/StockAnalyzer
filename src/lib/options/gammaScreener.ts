@@ -1098,14 +1098,22 @@ export function computeDeltaExposure(params: {
   let topPutDeltaStrike: number | null = null;
   let topPutDelta = -Infinity;
 
+  const normIv = (iv: any) => {
+    let v = Number(iv);
+    if (!isFinite(v) || v <= 0) return 0.25;
+    if (v > 1 && v < 100) v = v / 100;
+    if (v < 0.005 || v > 5) return 0.25;
+    return v;
+  };
+
   for (const c of params.calls || []) {
     const oi = Number(c.openInterest) || 0;
     if (oi <= 0) continue;
     const dte = c.dte != null ? c.dte : 30;
     const T = Math.max(1 / 365, Number(dte) / 365);
-    const iv = c.iv != null && Number(c.iv) > 0 ? Number(c.iv) : 0.25;
+    const iv = normIv(c.iv);
     let delta: number | null = null;
-    if (c.delta != null && isFinite(Number(c.delta))) {
+    if (c.delta != null && isFinite(Number(c.delta)) && Math.abs(Number(c.delta)) <= 1.2) {
       delta = Number(c.delta);
     } else {
       delta = bsDelta(spot, Number(c.strike), T, iv, true, r);
@@ -1124,9 +1132,9 @@ export function computeDeltaExposure(params: {
     if (oi <= 0) continue;
     const dte = p.dte != null ? p.dte : 30;
     const T = Math.max(1 / 365, Number(dte) / 365);
-    const iv = p.iv != null && Number(p.iv) > 0 ? Number(p.iv) : 0.25;
+    const iv = normIv(p.iv);
     let delta: number | null = null;
-    if (p.delta != null && isFinite(Number(p.delta))) {
+    if (p.delta != null && isFinite(Number(p.delta)) && Math.abs(Number(p.delta)) <= 1.2) {
       delta = Number(p.delta);
     } else {
       delta = bsDelta(spot, Number(p.strike), T, iv, false, r);
