@@ -123,10 +123,10 @@ export default function TradeJournalView() {
 
       {stats && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: S.sm, marginBottom: S.lg }}>
-          <Card label="Abiertos" value={stats.open} />
-          <Card label="Cerrados" value={stats.closed} />
-          <Card label="Ganados / Perdidos" value={`${stats.wins} / ${stats.losses}`} />
-          <Card label="Win Rate" value={`${stats.winRate}%`} color={stats.winRate >= 50 ? '#22c55e' : '#f59e0b'} />
+          <Card label="Abiertos" value={stats.open ?? 0} />
+          <Card label="Cerrados" value={stats.closed ?? 0} />
+          <Card label="Ganados / Perdidos" value={`${stats.wins ?? 0} / ${stats.losses ?? 0}`} />
+          <Card label="Win Rate" value={`${(stats.winRate ?? 0).toFixed ? (stats.winRate ?? 0).toFixed(1) : stats.winRate ?? 0}%`} color={(stats.winRate ?? 0) >= 50 ? '#22c55e' : '#f59e0b'} />
           <Card label="PnL Total" value={fmtUsd(stats.totalPnl)} color={(stats.totalPnl || 0) >= 0 ? '#22c55e' : '#ef4444'} />
           <Card label="Expectativa (R$ aprox)" value={fmtUsd(stats.expectancy)} />
           <Card label="Profit Factor" value={stats.profitFactor == null ? '∞' : stats.profitFactor} />
