@@ -173,7 +173,7 @@ export default function TradeJournalView() {
                       <td style={{ ...td, color: t.direction === 'CALL' ? '#22c55e' : '#ef4444', fontWeight: 700 }}>{t.direction}</td>
                       <td style={td}>{t.qty}</td>
                       <td style={td}>{t.entryPrice != null ? `$${Number(t.entryPrice).toFixed(2)}` : '—'}</td>
-                      <td style={td}>{t.target != null ? `T $${Number(t.target)}` : ''} {t.stop != null ? `/ S $${Number(t.stop)}` : ''}</td>
+                      <td style={td}>{t.target != null ? `T $${Number(t.target).toFixed(2)}` : ''} {t.stop != null ? `/ S $${Number(t.stop).toFixed(2)}` : ''}</td>
                       <td style={td}>{t.exitPrice != null ? `$${Number(t.exitPrice).toFixed(2)}` : '—'}</td>
                       <td style={td}>{t.status === 'OPEN' ? <span style={{ color: '#f59e0b' }}>ABIERTO</span> : <span style={{ color: C.textSecondary }}>CERRADO</span>}</td>
                       <td style={td}>{t.outcome || '—'}</td>
