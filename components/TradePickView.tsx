@@ -286,6 +286,57 @@ function riskBenefitFor(pick: TradePick) {
   );
 }
 
+
+function DeltaExposureMini({ symbol, direction }: { symbol: string; direction: 'CALL' | 'PUT' }) {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    fetch(`/api/gamma-screener?symbols=${encodeURIComponent(symbol)}&limit=1`)
+      .then(r => r.json())
+      .then(j => {
+        if (!alive) return;
+        const row = j?.rows?.[0];
+        setData(row?.deltaExposure ? { de: row.deltaExposure, bias: row.deltaBias || row.deltaExposure.bias } : null);
+      })
+      .catch(() => { if (alive) setData(null); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [symbol]);
+
+  if (loading || !data?.de) return null;
+  const de = data.de;
+  const bias = data.bias || 'neutral';
+  const net = Number(de.netDelta || 0);
+  const isCall = direction === 'CALL';
+  const aligned = (isCall && bias === 'bullish') || (!isCall && bias === 'bearish');
+  const opposite = (isCall && bias === 'bearish') || (!isCall && bias === 'bullish');
+  const netM = net / 1000000;
+  const color = aligned ? '#22c55e' : opposite ? '#f59e0b' : '#94a3b8';
+  const bg = aligned ? '#22c55e14' : opposite ? '#f59e0b14' : '#94a3b814';
+  const border = aligned ? '#22c55e40' : opposite ? '#f59e0b40' : '#94a3b840';
+
+  return (
+    <div style={{ marginBottom: '12px', padding: '10px 12px', background: bg, border: `1px solid ${border}`, borderRadius: R.md }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.textPrimary }}>Delta Exposure (inclinación)</div>
+        <span style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', color }}>{bias} {aligned ? '· a favor' : opposite ? '· en contra' : '· neutro'}</span>
+      </div>
+      <div style={{ display: 'flex', gap: 12, fontSize: 11, color: C.textSecondary, flexWrap: 'wrap' }}>
+        <span>Net Delta: <b style={{ color }}>{net >= 0 ? '+' : ''}${netM.toFixed(2)}M</b></span>
+        <span>Calls: +${(Number(de.callDeltaNotional || 0)/1000000).toFixed(1)}M</span>
+        <span>Puts: ${((Number(de.putDeltaNotional || 0)/1000000)).toFixed(1)}M</span>
+        <span>Ratio: {(Number(de.ratio || 0)).toFixed(2)}</span>
+      </div>
+      {aligned && <div style={{ fontSize: 10, color: '#22c55e', marginTop: 4 }}>Más delta-hedging a favor de {isCall ? 'subidas' : 'bajadas'} → da convicción</div>}
+      {opposite && <div style={{ fontSize: 10, color: '#f59e0b', marginTop: 4 }}>Hedging en contra → ser más selectivo / confirmar con gamma walls</div>}
+      {bias === 'neutral' && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>Equilibrado — no suma ni resta convicción</div>}
+    </div>
+  );
+}
+
 export default function TradePickView({ profile = 'swing' }: { profile?: TraderProfile }) {
   const [scanning, setScanning] = useState(false);
   const [currentPick, setCurrentPick] = useState<TradePick | null>(null);
@@ -550,7 +601,7 @@ export default function TradePickView({ profile = 'swing' }: { profile?: TraderP
           <button
             onClick={() => setGammaSymbol(currentPick.symbol)}
             style={{
-              width: '100%', marginBottom: '14px', padding: '10px 14px',
+              width: '100%', marginBottom: '10px', padding: '10px 14px',
               background: '#8B5CF618', border: '1px solid #8B5CF655', color: '#A78BFA',
               borderRadius: R.md, cursor: 'pointer', fontSize: '13px', fontWeight: 700,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
@@ -558,6 +609,9 @@ export default function TradePickView({ profile = 'swing' }: { profile?: TraderP
           >
             🎯 Ver niveles gamma de {currentPick.symbol}
           </button>
+
+          {/* Delta Exposure mini (convicción) */}
+          <DeltaExposureMini symbol={currentPick.symbol} direction={currentPick.direction} />
 
           {/* Price */}
           <div style={styles.priceSection}>
