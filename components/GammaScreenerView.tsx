@@ -1069,9 +1069,10 @@ export default function GammaScreenerView({ profile = 'swing' }: { profile?: Tra
               <HeadCell label="SPOT" k="edge" />
               <HeadCell label="EDGE" k="edge" width={64} />
               <HeadCell label="GAMMA" k="gammaRegime" />
-              <HeadCell label="SKEW" k="skew" />
-              <HeadCell label="MOMENTUM" k="momentum" />
-              <HeadCell label="OPT VOL" k="optVolume" />
+               <HeadCell label="SKEW" k="skew" />
+               <HeadCell label="MOMENTUM" k="momentum" />
+               <th style={{ position: 'sticky', top: 0, zIndex: 2, background: C.bgElevated, color: C.textSecondary, fontSize: F.sizeXs, fontWeight: 600, textAlign: 'center', padding: '7px 8px', whiteSpace: 'nowrap', borderBottom: `1px solid ${C.border}` }}>DELTA</th>
+               <HeadCell label="OPT VOL" k="optVolume" />
               <HeadCell label="OI" k="totalOi" />
               <HeadCell label="NET GEX" k="netGex" />
               <HeadCell label="CALL WALL" k="distCallWall" />
@@ -1080,44 +1081,62 @@ export default function GammaScreenerView({ profile = 'swing' }: { profile?: Tra
               <HeadCell label="DIST" k="distFlip" />
             </tr>
           </thead>
-          <tbody>
-            {loading && rows.length === 0 && (
-              <tr><td colSpan={13} style={{ padding: S.xl, textAlign: 'center', color: C.textMuted, fontSize: F.sizeSm }}>Calculando GEX sobre el universo… (puede tardar unos segundos)</td></tr>
-            )}
-            {!loading && rows.length === 0 && (
-              <tr><td colSpan={13} style={{ padding: S.xl, textAlign: 'center', color: C.textMuted, fontSize: F.sizeSm }}>Sin resultados con los filtros actuales.</td></tr>
-            )}
-            {rows.map((r) => {
-              const g = GAMMA_META[r.gammaRegime];
-              const sk = SKEW_META[r.skewRegime];
-              const mo = MOM_META[r.momentum];
-              const dist = r.distFlipPct ?? r.distCallWallPct ?? r.distPutWallPct;
-              return (
-                <tr key={r.symbol} onClick={() => setSelected(r)} style={{ cursor: 'pointer' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = C.bgCardHover)}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
-                  <td style={{ ...cell, position: 'sticky', left: 0, background: C.bgCard, borderRight: `1px solid ${C.border}` }}>
-                    <div style={{ fontWeight: 700, color: C.textPrimary }}>{r.symbol}</div>
-                    <div style={{ fontSize: 10, color: r.liquidity === 'high' ? C.positive : r.liquidity === 'low' ? C.warning : C.textMuted }}>{r.liquidity}{r.isEtf ? ' · ETF' : ''}</div>
-                  </td>
-                  <td style={{ ...cell, textAlign: 'right', color: C.textPrimary }}>
-                    {r.spot.toFixed(2)}
-                    <span style={{ marginLeft: 6, fontSize: F.sizeXs, color: (r.changePct ?? 0) >= 0 ? C.positive : C.negative }}>{fmtPct(r.changePct, 1)}</span>
-                  </td>
-                  <td style={{ ...cell, textAlign: 'right' }}>
-                    <span style={{ fontWeight: 700, color: edgeColor(r.edge) }}>{r.edge ?? 'N/A'}</span>
-                  </td>
-                  <td style={cell}>
-                    <span style={{ background: g.bg(C), color: g.color(C), padding: '2px 6px', borderRadius: R.sm, fontSize: 10, fontWeight: 600 }}>{g.label}</span>
-                  </td>
-                  <td style={{ ...cell }} title="Click para ver el contrato líquido sugerido para este sesgo">
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ color: sk.color(C), fontSize: F.sizeXs, fontWeight: 600 }}>{sk.label}</span>
-                      <span style={{ fontSize: 9, color: C.textMuted, whiteSpace: 'nowrap' }}>contrato ▸</span>
-                    </span>
-                  </td>
-                  <td style={{ ...cell, color: mo.color(C), fontSize: F.sizeXs, fontWeight: 600 }}>{mo.label}</td>
-                  <td style={{ ...cell, textAlign: 'right', color: C.textSecondary }}>{fmtVol(r.optVolume)}</td>
+            <tbody>
+              {loading && rows.length === 0 && (
+                <tr><td colSpan={14} style={{ padding: S.xl, textAlign: 'center', color: C.textMuted, fontSize: F.sizeSm }}>Calculando GEX sobre el universo… (puede tardar unos segundos)</td></tr>
+              )}
+              {!loading && rows.length === 0 && (
+                <tr><td colSpan={14} style={{ padding: S.xl, textAlign: 'center', color: C.textMuted, fontSize: F.sizeSm }}>Sin resultados con los filtros actuales.</td></tr>
+              )}
+              {rows.map((r) => {
+                const g = GAMMA_META[r.gammaRegime];
+                const sk = SKEW_META[r.skewRegime];
+                const mo = MOM_META[r.momentum];
+                const dist = r.distFlipPct ?? r.distCallWallPct ?? r.distPutWallPct;
+                const de = (r as any).deltaExposure;
+                const dBias = (r as any).deltaBias || de?.bias;
+                const dNet = de?.netDelta;
+                const dFmt = (n: number | undefined | null) => {
+                  if (n == null || !isFinite(n)) return '—';
+                  const absM = Math.abs(n) / 1000000;
+                  const sign = n >= 0 ? '+' : '-';
+                  return `${sign}$${absM.toFixed(1)}M`;
+                };
+                const dCol = dNet == null ? C.textMuted : dNet >= 0 ? '#22c55e' : '#ef4444';
+                const dBg = dBias === 'bullish' ? '#22c55e22' : dBias === 'bearish' ? '#ef444422' : C.border;
+                const dTxt = dBias === 'bullish' ? '#22c55e' : dBias === 'bearish' ? '#ef4444' : C.textMuted;
+                return (
+                  <tr key={r.symbol} onClick={() => setSelected(r)} style={{ cursor: 'pointer' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = C.bgCardHover)}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                    <td style={{ ...cell, position: 'sticky', left: 0, background: C.bgCard, borderRight: `1px solid ${C.border}` }}>
+                      <div style={{ fontWeight: 700, color: C.textPrimary }}>{r.symbol}</div>
+                      <div style={{ fontSize: 10, color: r.liquidity === 'high' ? C.positive : r.liquidity === 'low' ? C.warning : C.textMuted }}>{r.liquidity}{r.isEtf ? ' · ETF' : ''}</div>
+                    </td>
+                    <td style={{ ...cell, textAlign: 'right', color: C.textPrimary }}>
+                      {r.spot.toFixed(2)}
+                      <span style={{ marginLeft: 6, fontSize: F.sizeXs, color: (r.changePct ?? 0) >= 0 ? C.positive : C.negative }}>{fmtPct(r.changePct, 1)}</span>
+                    </td>
+                    <td style={{ ...cell, textAlign: 'right' }}>
+                      <span style={{ fontWeight: 700, color: edgeColor(r.edge) }}>{r.edge ?? 'N/A'}</span>
+                    </td>
+                    <td style={cell}>
+                      <span style={{ background: g.bg(C), color: g.color(C), padding: '2px 6px', borderRadius: R.sm, fontSize: 10, fontWeight: 600 }}>{g.label}</span>
+                    </td>
+                    <td style={{ ...cell }} title="Click para ver el contrato líquido sugerido para este sesgo">
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ color: sk.color(C), fontSize: F.sizeXs, fontWeight: 600 }}>{sk.label}</span>
+                        <span style={{ fontSize: 9, color: C.textMuted, whiteSpace: 'nowrap' }}>contrato ▸</span>
+                      </span>
+                    </td>
+                    <td style={{ ...cell, color: mo.color(C), fontSize: F.sizeXs, fontWeight: 600 }}>{mo.label}</td>
+                    <td style={{ ...cell, textAlign: 'center' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 6px', borderRadius: R.sm, background: dBg, border: `1px solid ${dBias === 'bullish' ? '#22c55e55' : dBias === 'bearish' ? '#ef444455' : C.border}` }}>
+                        <span style={{ fontSize: 10, fontWeight: 800, color: dTxt }}>{dBias === 'bullish' ? 'BULL' : dBias === 'bearish' ? 'BEAR' : 'NEUT'}</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: dCol }}>{dFmt(dNet)}</span>
+                      </span>
+                    </td>
+                    <td style={{ ...cell, textAlign: 'right', color: C.textSecondary }}>{fmtVol(r.optVolume)}</td>
                   <td style={{ ...cell, textAlign: 'right', color: C.textSecondary }}>{fmtVol(r.totalOi)}</td>
                   <td style={{ ...cell, textAlign: 'right', color: r.netGex >= 0 ? C.positive : C.negative, fontWeight: 600 }}>{fmtGex(r.netGex)}</td>
                   <td style={{ ...cell, textAlign: 'right', color: C.textSecondary }}>

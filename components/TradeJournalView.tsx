@@ -51,7 +51,10 @@ export default function TradeJournalView() {
       const all = [...serverTrades, ...localTrades].sort((a,b) => new Date(b.entryDate || b.createdAt).getTime() - new Date(a.entryDate || a.createdAt).getTime());
       setTrades(all);
       if (serverStats) {
-        setStats(serverStats);
+        // Recompute open/closed from actual combined trades
+        const openCount = all.filter((t:any)=>t.status==='OPEN').length;
+        const closedCount = all.filter((t:any)=>t.status==='CLOSED').length;
+        setStats({ ...serverStats, open: openCount, closed: closedCount, totalTrades: all.length });
       } else {
         const closed = all.filter((t:any) => t.status === 'CLOSED');
         let wins=0,losses=0,totalPnl=0;
