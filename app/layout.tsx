@@ -3,6 +3,7 @@ import { ThemeProvider } from '@/src/components/ThemeProvider';
 import ThemeWrapper from '@/src/components/ThemeWrapper';
 import { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 
 export const metadata: Metadata = {
   title: 'Prospector — AI Stock Analysis',
@@ -282,6 +283,7 @@ export default function RootLayout({
             </ThemeWrapper>
           </Providers>
         </ThemeProvider>
+        <Analytics />
         <script
           dangerouslySetInnerHTML={{
             __html: `
