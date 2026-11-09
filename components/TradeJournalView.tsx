@@ -6,6 +6,24 @@ import { useSession } from 'next-auth/react';
 
 type Trade = any;
 
+type ContractQuote = {
+  price: number | null;
+  bid: number | null;
+  ask: number | null;
+  last: number | null;
+  spot: number | null;
+  dte: number;
+  source: 'mid' | 'last' | 'intrinsic' | 'none';
+};
+
+function contractKey(t: any): string {
+  const sym = String(t.symbol || '').toUpperCase();
+  const type = String(t.contractType || t.direction || '').toUpperCase();
+  const strike = Number(t.contractStrike);
+  const expiry = t.contractExpiry ? new Date(t.contractExpiry).toISOString().slice(0, 10) : '';
+  return `${sym}|${type}|${strike}|${expiry}`;
+}
+
 function fmt(n: any, d = 2) {
   if (n == null || isNaN(Number(n))) return '—';
   return Number(n).toFixed(d);
@@ -22,6 +40,8 @@ export default function TradeJournalView() {
   const [tab, setTab] = useState<'trades' | 'stats'>('trades');
   const [trades, setTrades] = useState<Trade[]>([]);
   const [stats, setStats] = useState<any>(null);
+  const [quotes, setQuotes] = useState<Record<string, ContractQuote>>({});
+  const [quotesLoading, setQuotesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'ALL' | 'OPEN' | 'CLOSED'>('ALL');
   const [modal, setModal] = useState(false);
@@ -36,11 +56,35 @@ export default function TradeJournalView() {
     } catch { return []; }
   };
 
+  const fetchQuotes = async (all: Trade[]) => {
+    const open = all.filter((t) => t.status === 'OPEN' && t.contractStrike != null && t.contractExpiry != null);
+    if (open.length === 0) { setQuotes({}); return; }
+    const contracts = open.map((t) => ({
+      symbol: t.symbol,
+      type: String(t.contractType || t.direction || 'CALL').toUpperCase(),
+      strike: Number(t.contractStrike),
+      expiry: t.contractExpiry,
+    }));
+    setQuotesLoading(true);
+    try {
+      const res = await fetch('/api/trade-journal/quotes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contracts }),
+      });
+      const json = await res.json();
+      setQuotes(json?.quotes || {});
+    } catch {
+      setQuotes({});
+    }
+    setQuotesLoading(false);
+  };
+
   const load = async () => {
     setLoading(true);
     try {
       const [trRes, stRes] = await Promise.allSettled([
-        fetch(`/api/trade-journal?status=${filter}&limit=300`).then((r) => r.json()),
+        fetch('/api/trade-journal?status=ALL&limit=300').then((r) => r.json()),
         fetch('/api/trade-journal/stats').then((r) => r.json()),
       ]);
       let serverTrades: any[] = [];
@@ -50,6 +94,7 @@ export default function TradeJournalView() {
       const localTrades = loadLocal();
       const all = [...serverTrades, ...localTrades].sort((a,b) => new Date(b.entryDate || b.createdAt).getTime() - new Date(a.entryDate || a.createdAt).getTime());
       setTrades(all);
+      fetchQuotes(all);
       if (serverStats) {
         // Recompute open/closed from actual combined trades
         const openCount = all.filter((t:any)=>t.status==='OPEN').length;
@@ -73,11 +118,12 @@ export default function TradeJournalView() {
       console.error(e);
       const localTrades = loadLocal();
       setTrades(localTrades);
+      fetchQuotes(localTrades);
     }
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [filter]);
+  useEffect(() => { load(); }, []);
 
   const addTrade = async () => {
     await fetch('/api/trade-journal', {
@@ -108,6 +154,31 @@ export default function TradeJournalView() {
     load();
   };
 
+  const entryOf = (t: any) => (t.entryPrice != null ? Number(t.entryPrice) : t.premium != null ? Number(t.premium) : null);
+
+  const tradePnl = (t: any): { pnl: number | null; mark: number | null; source?: string } => {
+    const qty = Number(t.qty || 1);
+    const entry = entryOf(t);
+    if (t.status === 'CLOSED') {
+      const exit = t.exitPrice != null ? Number(t.exitPrice) : null;
+      if (entry != null && exit != null) return { pnl: (exit - entry) * qty * 100, mark: exit };
+      return { pnl: null, mark: null };
+    }
+    const q = quotes[contractKey(t)];
+    const mark = q?.price ?? null;
+    if (entry != null && mark != null) return { pnl: (mark - entry) * qty * 100, mark, source: q?.source };
+    return { pnl: null, mark };
+  };
+
+  const openPnl = trades.reduce((sum, t) => {
+    if (t.status !== 'OPEN') return sum;
+    const r = tradePnl(t);
+    return r.pnl != null ? sum + r.pnl : sum;
+  }, 0);
+  const openCount = trades.filter((t) => t.status === 'OPEN').length;
+  const openQuoted = trades.filter((t) => t.status === 'OPEN' && tradePnl(t).pnl != null).length;
+  const visibleTrades = filter === 'ALL' ? trades : trades.filter((t) => t.status === filter);
+
   if (!session) {
     return <div style={{ padding: 40, textAlign: 'center', color: C.textSecondary }}>Inicia sesión para llevar tu diario de trades.</div>;
   }
@@ -130,7 +201,8 @@ export default function TradeJournalView() {
           <Card label="Cerrados" value={stats.closed ?? 0} />
           <Card label="Ganados / Perdidos" value={`${stats.wins ?? 0} / ${stats.losses ?? 0}`} />
           <Card label="Win Rate" value={`${(stats.winRate ?? 0).toFixed ? (stats.winRate ?? 0).toFixed(1) : stats.winRate ?? 0}%`} color={(stats.winRate ?? 0) >= 50 ? '#22c55e' : '#f59e0b'} />
-          <Card label="PnL Total" value={fmtUsd(stats.totalPnl)} color={(stats.totalPnl || 0) >= 0 ? '#22c55e' : '#ef4444'} />
+          <Card label="PnL Cerrado" value={fmtUsd(stats.totalPnl)} color={(stats.totalPnl || 0) >= 0 ? '#22c55e' : '#ef4444'} />
+          <Card label={`PnL Abierto${openCount ? ` (${openQuoted}/${openCount})` : ''}`} value={fmtUsd(openPnl)} color={openPnl >= 0 ? '#22c55e' : '#ef4444'} />
           <Card label="Expectativa (R$ aprox)" value={fmtUsd(stats.expectancy)} />
           <Card label="Profit Factor" value={stats.profitFactor == null ? '∞' : stats.profitFactor} />
         </div>
@@ -159,6 +231,7 @@ export default function TradeJournalView() {
                   <th style={th}>Entrada</th>
                   <th style={th}>Target/Stop</th>
                   <th style={th}>Salida</th>
+                  <th style={th} title={quotesLoading ? 'Actualizando precios…' : 'Mark-to-market (mid)'}>Actual</th>
                   <th style={th}>Estado</th>
                   <th style={th}>Resultado</th>
                   <th style={th}>PnL</th>
@@ -166,21 +239,29 @@ export default function TradeJournalView() {
                 </tr>
               </thead>
               <tbody>
-                {trades.map((t) => {
-                  let pnl: number | null = null;
-                  if (t.status === 'CLOSED' && t.entryPrice != null && t.exitPrice != null) pnl = (Number(t.exitPrice) - Number(t.entryPrice)) * Number(t.qty || 1) * 100;
+                {visibleTrades.map((t) => {
+                  const { pnl, mark, source } = tradePnl(t);
+                  const isOpen = t.status === 'OPEN';
                   return (
                     <tr key={t.id} style={{ borderTop: `1px solid ${C.border}` }}>
                       <td style={td}>{new Date(t.entryDate).toLocaleDateString('es-ES')}</td>
                       <td style={{ ...td, fontWeight: 700, color: C.textPrimary }}>{t.symbol}</td>
                       <td style={{ ...td, color: t.direction === 'CALL' ? '#22c55e' : '#ef4444', fontWeight: 700 }}>{t.direction}</td>
                       <td style={td}>{t.qty}</td>
-                      <td style={td}>{t.entryPrice != null ? `$${Number(t.entryPrice).toFixed(2)}` : '—'}</td>
+                      <td style={td}>{t.entryPrice != null ? `$${Number(t.entryPrice).toFixed(2)}` : t.premium != null ? `$${Number(t.premium).toFixed(2)}` : '—'}</td>
                       <td style={td}>{t.target != null ? `T $${Number(t.target).toFixed(2)}` : ''} {t.stop != null ? `/ S $${Number(t.stop).toFixed(2)}` : ''}</td>
                       <td style={td}>{t.exitPrice != null ? `$${Number(t.exitPrice).toFixed(2)}` : '—'}</td>
-                      <td style={td}>{t.status === 'OPEN' ? <span style={{ color: '#f59e0b' }}>ABIERTO</span> : <span style={{ color: C.textSecondary }}>CERRADO</span>}</td>
+                      <td style={td}>
+                        {isOpen && mark != null
+                          ? <span title={source === 'intrinsic' ? 'Valor intrínseco (vencido)' : source === 'last' ? 'Último precio' : 'Mid (bid/ask)'}>${mark.toFixed(2)}{source === 'intrinsic' ? ' (intr.)' : ''}</span>
+                          : isOpen && quotesLoading ? <span style={{ color: C.textMuted }}>…</span> : '—'}
+                      </td>
+                      <td style={td}>{isOpen ? <span style={{ color: '#f59e0b' }}>ABIERTO</span> : <span style={{ color: C.textSecondary }}>CERRADO</span>}</td>
                       <td style={td}>{t.outcome || '—'}</td>
-                      <td style={{ ...td, color: pnl == null ? C.textMuted : pnl >= 0 ? '#22c55e' : '#ef4444', fontWeight: 700 }}>{pnl == null ? '—' : fmtUsd(pnl)}</td>
+                      <td style={{ ...td, color: pnl == null ? C.textMuted : pnl >= 0 ? '#22c55e' : '#ef4444', fontWeight: 700 }}>
+                        {pnl == null ? '—' : fmtUsd(pnl)}
+                        {isOpen && pnl != null && <span style={{ marginLeft: 6, fontSize: F.sizeXs, color: C.textMuted, fontWeight: 500 }}>abierto</span>}
+                      </td>
                       <td style={td}>
                         <div style={{ display: 'flex', gap: 6 }}>
                           {t.status === 'OPEN' && <button onClick={() => { setCloseModal(t); setCloseForm({ exitPrice: '', outcome: 'WIN', notes: '' }); }} style={{ border: `1px solid ${C.border}`, background: 'transparent', color: C.textPrimary, borderRadius: R.sm, padding: '2px 8px', cursor: 'pointer' }}>Cerrar</button>}
@@ -192,7 +273,7 @@ export default function TradeJournalView() {
                 })}
               </tbody>
             </table>
-            {trades.length === 0 && !loading && <div style={{ padding: 20, textAlign: 'center', color: C.textMuted }}>Sin trades todavía. Añade uno manual o desde Trade Picks.</div>}
+            {visibleTrades.length === 0 && !loading && <div style={{ padding: 20, textAlign: 'center', color: C.textMuted }}>Sin trades {filter === 'ALL' ? 'todavía. Añade uno manual o desde Trade Picks.' : `en estado ${filter === 'OPEN' ? 'abierto' : 'cerrado'}.`}</div>}
           </div>
         </>
       )}
