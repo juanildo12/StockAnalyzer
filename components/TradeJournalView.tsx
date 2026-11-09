@@ -24,6 +24,35 @@ function contractKey(t: any): string {
   return `${sym}|${type}|${strike}|${expiry}`;
 }
 
+const LOCAL_KEY = 'trade-journal-local';
+
+function isLocalTrade(t: any): boolean {
+  return String(t?.id || '').startsWith('local-') || t?.userId === 'local';
+}
+
+function updateLocalTrade(id: string, patch: any) {
+  try {
+    const list = JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]');
+    const next = list.map((t: any) => (t.id === id ? { ...t, ...patch } : t));
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(next));
+  } catch {}
+}
+
+function removeLocalTrade(id: string) {
+  try {
+    const list = JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]');
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(list.filter((t: any) => t.id !== id)));
+  } catch {}
+}
+
+function addLocalTrade(trade: any) {
+  try {
+    const list = JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]');
+    list.unshift(trade);
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(list.slice(0, 500)));
+  } catch {}
+}
+
 function fmt(n: any, d = 2) {
   if (n == null || isNaN(Number(n))) return '—';
   return Number(n).toFixed(d);
@@ -51,7 +80,7 @@ export default function TradeJournalView() {
 
   const loadLocal = () => {
     try {
-      const local = JSON.parse(localStorage.getItem('trade-journal-local') || '[]');
+      const local = JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]');
       return local.map((t: any) => ({ ...t, userId: 'local' }));
     } catch { return []; }
   };
@@ -95,25 +124,32 @@ export default function TradeJournalView() {
       const all = [...serverTrades, ...localTrades].sort((a,b) => new Date(b.entryDate || b.createdAt).getTime() - new Date(a.entryDate || a.createdAt).getTime());
       setTrades(all);
       fetchQuotes(all);
-      if (serverStats) {
-        // Recompute open/closed from actual combined trades
-        const openCount = all.filter((t:any)=>t.status==='OPEN').length;
-        const closedCount = all.filter((t:any)=>t.status==='CLOSED').length;
-        setStats({ ...serverStats, open: openCount, closed: closedCount, totalTrades: all.length });
-      } else {
-        const closed = all.filter((t:any) => t.status === 'CLOSED');
-        let wins=0,losses=0,totalPnl=0;
-        for (const t of closed) {
-          if (t.outcome === 'WIN') wins++;
-          if (t.outcome === 'LOSS') losses++;
-          const qty = Number(t.qty||1);
-          const entry = t.entryPrice != null ? Number(t.entryPrice) : null;
-          const exit = t.exitPrice != null ? Number(t.exitPrice) : null;
-          if (entry != null && exit != null) totalPnl += (exit-entry)*qty*100;
-        }
-        const denom = wins+losses;
-        setStats({ totalTrades: all.length, open: all.filter((t:any)=>t.status==='OPEN').length, closed: closed.length, wins, losses, be:0, winRate: denom>0?(wins/denom)*100:0, totalPnl, avgWin:0, avgLoss:0, expectancy:0, profitFactor:null, byMonth:[], bySymbol:[] });
+      // Recomputar siempre desde los trades combinados (servidor + localStorage),
+      // porque el endpoint de stats no ve los trades guardados localmente.
+      const closed = all.filter((t:any) => t.status === 'CLOSED');
+      let wins=0,losses=0,be=0,totalPnl=0;
+      for (const t of closed) {
+        if (t.outcome === 'WIN') wins++;
+        else if (t.outcome === 'LOSS') losses++;
+        else if (t.outcome === 'BE') be++;
+        const qty = Number(t.qty||1);
+        const entry = t.entryPrice != null ? Number(t.entryPrice) : t.premium != null ? Number(t.premium) : null;
+        const exit = t.exitPrice != null ? Number(t.exitPrice) : null;
+        if (entry != null && exit != null) totalPnl += (exit-entry)*qty*100;
       }
+      const denom = wins+losses;
+      const base = serverStats || {};
+      setStats({
+        ...base,
+        totalTrades: all.length,
+        open: all.filter((t:any)=>t.status==='OPEN').length,
+        closed: closed.length,
+        wins, losses, be,
+        winRate: denom>0 ? (wins/denom)*100 : 0,
+        totalPnl,
+        byMonth: base.byMonth || [],
+        bySymbol: base.bySymbol || [],
+      });
     } catch (e) {
       console.error(e);
       const localTrades = loadLocal();
@@ -126,11 +162,35 @@ export default function TradeJournalView() {
   useEffect(() => { load(); }, []);
 
   const addTrade = async () => {
-    await fetch('/api/trade-journal', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, entryPrice: form.entryPrice ? Number(form.entryPrice) : null, target: form.target ? Number(form.target) : null, stop: form.stop ? Number(form.stop) : null, qty: Number(form.qty) || 1, source: 'manual' }),
-    });
+    const payload: any = { ...form, entryPrice: form.entryPrice ? Number(form.entryPrice) : null, target: form.target ? Number(form.target) : null, stop: form.stop ? Number(form.stop) : null, qty: Number(form.qty) || 1, source: 'manual' };
+    let ok = false;
+    try {
+      const res = await fetch('/api/trade-journal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      ok = res.ok;
+    } catch {}
+    if (!ok) {
+      // Sin servidor/DB: guardar localmente para no perder el trade.
+      addLocalTrade({
+        id: 'local-' + Date.now(),
+        source: 'manual',
+        symbol: String(form.symbol || '').toUpperCase(),
+        direction: form.direction,
+        status: 'OPEN',
+        entryDate: new Date().toISOString(),
+        entryPrice: payload.entryPrice,
+        qty: payload.qty,
+        contractType: form.direction,
+        target: payload.target,
+        stop: payload.stop,
+        notes: form.notes || '',
+        createdAt: new Date().toISOString(),
+        userId: 'local',
+      });
+    }
     setModal(false);
     setForm({ symbol: '', direction: 'CALL', qty: 1, entryPrice: '', target: '', stop: '', notes: '' });
     load();
@@ -138,19 +198,41 @@ export default function TradeJournalView() {
 
   const closeTrade = async () => {
     if (!closeModal) return;
-    await fetch(`/api/trade-journal/${closeModal.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'CLOSED', exitPrice: closeForm.exitPrice ? Number(closeForm.exitPrice) : null, outcome: closeForm.outcome, notes: closeForm.notes || closeModal.notes }),
-    });
+    const patch: any = {
+      status: 'CLOSED',
+      exitPrice: closeForm.exitPrice ? Number(closeForm.exitPrice) : null,
+      outcome: closeForm.outcome,
+      exitDate: new Date().toISOString(),
+      notes: closeForm.notes || closeModal.notes,
+    };
+    if (isLocalTrade(closeModal)) {
+      updateLocalTrade(closeModal.id, patch);
+    } else {
+      try {
+        const res = await fetch(`/api/trade-journal/${closeModal.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        });
+        if (!res.ok) alert('No se pudo cerrar el trade en el servidor. Inténtalo de nuevo.');
+      } catch {
+        alert('No se pudo cerrar el trade. Revisa tu conexión e inténtalo de nuevo.');
+      }
+    }
     setCloseModal(null);
     setCloseForm({ exitPrice: '', outcome: 'WIN', notes: '' });
     load();
   };
 
-  const delTrade = async (id: string) => {
+  const delTrade = async (trade: any) => {
     if (!confirm('¿Eliminar este trade del diario?')) return;
-    await fetch(`/api/trade-journal/${id}`, { method: 'DELETE' });
+    if (isLocalTrade(trade)) {
+      removeLocalTrade(trade.id);
+    } else {
+      try {
+        await fetch(`/api/trade-journal/${trade.id}`, { method: 'DELETE' });
+      } catch {}
+    }
     load();
   };
 
@@ -265,7 +347,7 @@ export default function TradeJournalView() {
                       <td style={td}>
                         <div style={{ display: 'flex', gap: 6 }}>
                           {t.status === 'OPEN' && <button onClick={() => { setCloseModal(t); setCloseForm({ exitPrice: '', outcome: 'WIN', notes: '' }); }} style={{ border: `1px solid ${C.border}`, background: 'transparent', color: C.textPrimary, borderRadius: R.sm, padding: '2px 8px', cursor: 'pointer' }}>Cerrar</button>}
-                          <button onClick={() => delTrade(t.id)} style={{ border: `1px solid ${C.border}`, background: 'transparent', color: '#ef4444', borderRadius: R.sm, padding: '2px 8px', cursor: 'pointer' }}>Borrar</button>
+                          <button onClick={() => delTrade(t)} style={{ border: `1px solid ${C.border}`, background: 'transparent', color: '#ef4444', borderRadius: R.sm, padding: '2px 8px', cursor: 'pointer' }}>Borrar</button>
                         </div>
                       </td>
                     </tr>
