@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { colors as C, radius as R, font as F } from '@/src/utils/webTheme';
+import { useMediaQuery } from '@/src/hooks/useMediaQuery';
 
 interface Catalyst {
   type: string;
@@ -72,9 +73,9 @@ const TABS: { key: TabKey; emoji: string; label: string; color: string; sub: str
   {
     key: 'calendar',
     emoji: '🗓️',
-    label: 'Catalyst Calendar',
+    label: 'Calendario',
     color: C.info,
-    sub: 'Every tracked catalyst, on the day it happens',
+    sub: 'Todos los catalizadores del mercado, día por día',
   },
   {
     key: 'movers',
@@ -161,10 +162,11 @@ function sumTypeCounts(days: CalendarDay[]): Record<string, number> {
   return out;
 }
 
-/** Aplica el filtro de tipos a un día (recomputa `total` con `typeCounts` si existe). */
-function filterDay(day: CalendarDay, active: Set<string>): CalendarDay {
-  if (active.size === FILTER_TYPES.length) return day;
-  const events = day.events.filter(e => active.has(e.type));
+/** Aplica los filtros de tipo e importancia a un día (recomputa `total`). */
+function filterDay(day: CalendarDay, active: Set<string>, minImp = 0): CalendarDay {
+  if (active.size === FILTER_TYPES.length && minImp <= 0) return day;
+  const events = day.events.filter(e => active.has(e.type) && e.importance >= minImp);
+  if (minImp > 0) return { ...day, events, total: events.length };
   const counts = day.typeCounts;
   const total = counts
     ? FILTER_TYPES.reduce((s, t) => s + (active.has(t) ? (counts[t] || 0) : 0), 0)
@@ -269,7 +271,7 @@ function TypeFilterBar({
 }) {
   const allOn = active.size === FILTER_TYPES.length;
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginBottom: 12 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
       <span style={{
         fontSize: 10.5, fontWeight: 700, letterSpacing: '0.4px',
         color: C.textMuted, textTransform: 'uppercase', marginRight: 2,
@@ -318,6 +320,49 @@ function TypeFilterBar({
           Todos
         </button>
       )}
+    </div>
+  );
+}
+
+const IMP_OPTIONS = [
+  { value: 0, label: 'Todo', title: 'Mostrar cualquier importancia' },
+  { value: 60, label: 'Notable+', title: 'Solo eventos con importancia ≥ 60' },
+  { value: 85, label: 'Alta', title: 'Solo eventos con importancia ≥ 85' },
+];
+
+/** Filtro por importancia mínima (0 = todo). */
+function ImportanceFilter({
+  value, onChange,
+}: { value: number; onChange: (v: number) => void }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+      <span style={{
+        fontSize: 10.5, fontWeight: 700, letterSpacing: '0.4px',
+        color: C.textMuted, textTransform: 'uppercase', marginRight: 2,
+      }}>
+        Importancia
+      </span>
+      {IMP_OPTIONS.map(o => {
+        const on = value === o.value;
+        const tint = o.value >= 85 ? '#F87171' : o.value >= 60 ? '#FBBF24' : C.accent;
+        return (
+          <button
+            key={o.value}
+            onClick={() => onChange(o.value)}
+            title={o.title}
+            style={{
+              padding: '3px 9px', borderRadius: R.full, cursor: 'pointer',
+              fontSize: 11, fontWeight: 700, fontFamily: F.family,
+              border: `1px solid ${on ? tint + '66' : C.border}`,
+              background: on ? tint + '1e' : 'transparent',
+              color: on ? tint : C.textMuted,
+              transition: 'all 0.15s ease',
+            }}
+          >
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -495,13 +540,15 @@ function MoverColumn({
   );
 }
 
-const CELL_HEIGHT = 96;
-const CELL_MAX_CHIPS = 2;
+const CELL_HEIGHT = 164;
+const CELL_HEIGHT_MOBILE = 132;
+const CELL_MAX_CHIPS = 4;
+const CELL_MAX_CHIPS_MOBILE = 3;
 /** Máximo de filas por día en la lista de próximas 2 semanas (el resto, en el calendario). */
 const WEEKLY_DAY_MAX = 12;
 
 function DayCell({
-  iso, day, todayIso, isOpen, weekend, holiday, onToggle, onOpenSymbol,
+  iso, day, todayIso, isOpen, weekend, holiday, onToggle, onOpenSymbol, height, maxChips,
 }: {
   iso: string;
   day: CalendarDay | undefined;
@@ -511,12 +558,14 @@ function DayCell({
   holiday: boolean;
   onToggle: () => void;
   onOpenSymbol: (symbol: string) => void;
+  height: number;
+  maxChips: number;
 }) {
   const num = Number(iso.slice(-2));
   const isToday = iso === todayIso;
   const events = day?.events ?? [];
   const total = day?.total ?? events.length;
-  const shown = events.slice(0, CELL_MAX_CHIPS);
+  const shown = events.slice(0, maxChips);
   const hidden = Math.max(0, total - shown.length);
 
   const holidayName = holiday
@@ -543,10 +592,11 @@ function DayCell({
       onClick={total > 0 ? onToggle : undefined}
       title={title}
       style={{
-        height: CELL_HEIGHT, padding: '4px 5px', boxSizing: 'border-box',
-        display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden',
+        height, padding: '5px 6px', boxSizing: 'border-box',
+        display: 'flex', flexDirection: 'column', gap: 3, overflow: 'hidden',
         borderRadius: R.sm, cursor: total > 0 ? 'pointer' : 'default',
         background: bg, border: `1px solid ${border}`,
+        boxShadow: isOpen ? `inset 0 0 0 1px ${C.accentBorder}` : undefined,
         transition: 'background 0.15s ease, border-color 0.15s ease',
       }}
       onMouseEnter={e => { if (total > 0 && !isOpen) e.currentTarget.style.background = C.bgCardHover; }}
@@ -555,13 +605,13 @@ function DayCell({
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         flexShrink: 0, marginBottom: 1,
-        fontSize: 10.5, fontWeight: isToday ? 800 : 600, lineHeight: 1.2,
+        fontSize: 12, fontWeight: isToday ? 800 : 600, lineHeight: 1.2,
         color: numColor,
       }}>
         <span>{num}{holiday && holidayName ? ' 🏖️' : ''}</span>
         {total > 0 && (
           <span style={{
-            fontSize: 9, fontWeight: 700, color: C.textMuted,
+            fontSize: 10, fontWeight: 700, color: C.textMuted,
             fontFamily: F.mono, lineHeight: 1.4, padding: '0 4px', borderRadius: R.full,
             background: C.bgElevated,
           }}>
@@ -579,8 +629,8 @@ function DayCell({
             onClick={sym ? (e) => { e.stopPropagation(); onOpenSymbol(sym); } : undefined}
             title={sym ? `${c.title} — ver ${sym}` : c.title}
             style={{
-              fontSize: 9.5, lineHeight: 1.28, padding: '1px 3px',
-              borderRadius: 3, overflow: 'hidden', wordBreak: 'break-word',
+              fontSize: 10, lineHeight: 1.2, padding: '1px 4px',
+              borderRadius: 4, overflow: 'hidden', wordBreak: 'break-word',
               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
               background: tm.color + '16', color: tm.color,
               borderLeft: `2px solid ${tm.color}`,
@@ -594,7 +644,7 @@ function DayCell({
 
       {hidden > 0 && (
         <div style={{
-          fontSize: 9.5, fontWeight: 700, color: C.accent,
+          fontSize: 10.5, fontWeight: 700, color: C.accent,
           marginTop: 'auto', lineHeight: 1.2, flexShrink: 0,
         }}>
           +{hidden} más
@@ -612,24 +662,217 @@ interface MonthCalendarProps {
   dayEvents: Catalyst[] | null;
   dayLoading: boolean;
   activeTypes: Set<string>;
+  minImp: number;
   onToggleType: (t: string) => void;
   onResetTypes: () => void;
+  onMinImp: (v: number) => void;
   onShift: (delta: number) => void;
   onToday: () => void;
   onToggleDay: (iso: string) => void;
   onOpenSymbol: (symbol: string) => void;
 }
 
+/** Fila de evento usada en el panel de detalle del día. */
+function DayEventRow({ c, onOpenSymbol }: { c: Catalyst; onOpenSymbol: (symbol: string) => void }) {
+  const im = impChip(c.importance);
+  const tm = TYPE_META[c.type] || { label: c.type, color: C.textMuted };
+  const sym = c.meta?.symbol as string | undefined;
+  const tl = etTimeLabel(c.meta?.time) || hourLabel(c.meta?.hour);
+
+  return (
+    <div
+      onClick={sym ? () => onOpenSymbol(sym) : undefined}
+      style={{
+        display: 'flex', alignItems: 'flex-start', gap: 8,
+        padding: '8px 9px', borderRadius: R.md,
+        border: `1px solid ${C.border}`, borderLeft: `3px solid ${tm.color}`,
+        background: C.bgCard, cursor: sym ? 'pointer' : 'default',
+        transition: 'background 0.15s ease',
+      }}
+      onMouseEnter={e => { if (sym) e.currentTarget.style.background = C.bgCardHover; }}
+      onMouseLeave={e => { if (sym) e.currentTarget.style.background = C.bgCard; }}
+    >
+      <span style={{ fontSize: 14, lineHeight: '18px', flexShrink: 0 }}>{c.emoji}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', marginBottom: 3 }}>
+          <span style={{
+            fontSize: 9.5, fontWeight: 800, padding: '1px 5px', borderRadius: 3,
+            background: tm.color + '16', color: tm.color,
+          }}>
+            {tm.label}
+          </span>
+          {tl && (
+            <span style={{
+              fontSize: 9.5, fontWeight: 700, padding: '1px 5px', borderRadius: 3,
+              background: C.bgElevated, color: C.textSecondary,
+            }}>
+              {tl}
+            </span>
+          )}
+          <span style={{
+            marginLeft: 'auto', fontSize: 9.5, fontWeight: 800, padding: '1px 6px',
+            borderRadius: R.full, background: im.bg, color: im.color,
+            border: `1px solid ${im.border}`,
+          }}>
+            {im.label}
+          </span>
+        </div>
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: C.textPrimary, lineHeight: 1.35 }}>
+          {c.title}
+        </div>
+        {c.description && (
+          <div style={{
+            fontSize: 11.5, color: C.textSecondary, lineHeight: 1.4, marginTop: 2,
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}>
+            {c.description}
+          </div>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+          <span style={{
+            fontSize: 10, color: C.textMuted, minWidth: 0,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {c.source}{c.status ? ` · ${c.status}` : ''}
+          </span>
+          {sym && (
+            <span style={{ fontSize: 10.5, fontWeight: 800, color: C.accentLight, flexShrink: 0, marginLeft: 'auto' }}>
+              {sym} →
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Panel lateral (sticky en escritorio) con todos los eventos del día elegido. */
+function DayDetailPanel({
+  iso, events, loading, activeTypes, minImp, narrow, onClose, onOpenSymbol,
+}: {
+  iso: string;
+  events: Catalyst[] | null;
+  loading: boolean;
+  activeTypes: Set<string>;
+  minImp: number;
+  narrow: boolean;
+  onClose: () => void;
+  onOpenSymbol: (symbol: string) => void;
+}) {
+  const all = events || [];
+  const visible = all
+    .filter(e => activeTypes.has(e.type) && e.importance >= minImp)
+    .slice()
+    .sort((a, b) => hourOrder(a.meta?.hour) - hourOrder(b.meta?.hour) || b.importance - a.importance);
+  const hidden = all.length - visible.length;
+
+  return (
+    <div style={{
+      position: narrow ? 'static' : 'sticky',
+      top: narrow ? undefined : 16,
+      display: 'flex', flexDirection: 'column',
+      padding: 14, borderRadius: R.xl,
+      background: C.gradientCard, border: `1px solid ${C.border}`,
+      minHeight: 180,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+        <div>
+          <div style={{
+            fontSize: 10, fontWeight: 800, letterSpacing: '0.6px',
+            textTransform: 'uppercase', color: C.textMuted,
+          }}>
+            {countdownLabel(iso)}
+          </div>
+          <div style={{
+            fontSize: 14.5, fontWeight: 800, color: C.textPrimary,
+            textTransform: 'capitalize', marginTop: 2, lineHeight: 1.25,
+          }}>
+            {fmtDate(iso)}
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          aria-label="Cerrar detalle del día"
+          style={{
+            background: 'transparent', border: 'none', color: C.textMuted,
+            cursor: 'pointer', fontSize: 13, fontFamily: F.family, lineHeight: 1,
+            padding: 2,
+          }}
+        >
+          ✕
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '10px 0 8px' }}>
+        <span style={{
+          fontSize: 10.5, fontWeight: 700, padding: '1px 7px', borderRadius: R.full,
+          background: C.accent12, color: C.accent,
+        }}>
+          {loading ? '…' : `${all.length} evento${all.length === 1 ? '' : 's'}`}
+        </span>
+        {!loading && hidden > 0 && (
+          <span style={{
+            fontSize: 10.5, fontWeight: 700, padding: '1px 7px', borderRadius: R.full,
+            background: '#FBBF2415', color: '#FBBF24', border: '1px solid #FBBF2440',
+          }}>
+            {hidden} oculto{hidden === 1 ? '' : 's'} por filtros
+          </span>
+        )}
+      </div>
+
+      {loading && (
+        <div style={{ padding: '24px 0', textAlign: 'center', color: C.textMuted, fontSize: 12 }}>
+          Cargando catalizadores del día...
+        </div>
+      )}
+
+      {!loading && all.length === 0 && (
+        <div style={{
+          padding: '18px 12px', borderRadius: R.md, border: `1px dashed ${C.border}`,
+          color: C.textMuted, fontSize: 12, textAlign: 'center',
+        }}>
+          Sin eventos registrados para este día.
+        </div>
+      )}
+
+      {!loading && all.length > 0 && visible.length === 0 && (
+        <div style={{
+          padding: '14px 12px', borderRadius: R.md, border: `1px dashed ${C.border}`,
+          color: C.textMuted, fontSize: 12,
+        }}>
+          Los {all.length} eventos de este día están ocultos por los filtros.
+        </div>
+      )}
+
+      {!loading && visible.length > 0 && (
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 6,
+          maxHeight: narrow ? undefined : 720, overflowY: narrow ? 'visible' : 'auto',
+          paddingRight: 2,
+        }}>
+          {visible.map((c, i) => (
+            <DayEventRow key={`${c.type}-${i}`} c={c} onOpenSymbol={onOpenSymbol} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MonthCalendar({
-  ym, days, loading, openDay, dayEvents, dayLoading, activeTypes,
-  onToggleType, onResetTypes, onShift, onToday, onToggleDay, onOpenSymbol,
+  ym, days, loading, openDay, dayEvents, dayLoading, activeTypes, minImp,
+  onToggleType, onResetTypes, onMinImp, onShift, onToday, onToggleDay, onOpenSymbol,
 }: MonthCalendarProps) {
   const todayIso = fmtDay(new Date());
+  const narrow = useMediaQuery('(max-width: 980px)');
   const byIso = new Map((days || []).map(d => [d.iso, d]));
-  const filteredByIso = new Map((days || []).map(d => [d.iso, filterDay(d, activeTypes)]));
+  const filteredByIso = new Map((days || []).map(d => [d.iso, filterDay(d, activeTypes, minImp)]));
   const cells = monthCells(ym);
 
   const monthCounts = sumTypeCounts((days || []).filter(d => d.iso.slice(0, 7) === ym));
+  const cellHeight = narrow ? CELL_HEIGHT_MOBILE : CELL_HEIGHT;
+  const maxChips = narrow ? CELL_MAX_CHIPS_MOBILE : CELL_MAX_CHIPS;
 
   const navBtn = {
     padding: '5px 11px', borderRadius: R.sm, border: `1px solid ${C.border}`,
@@ -650,7 +893,7 @@ function MonthCalendar({
           fontSize: 16, fontWeight: 800, color: C.textPrimary,
           margin: 0, letterSpacing: '-0.2px', textTransform: 'capitalize',
         }}>
-          Catalyst Calendar
+          Calendario de catalizadores
         </h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button onClick={() => onShift(-1)} style={navBtn} aria-label="Mes anterior">←</button>
@@ -702,157 +945,77 @@ function MonthCalendar({
         </div>
       )}
 
-      <TypeFilterBar
-        active={activeTypes}
-        counts={monthCounts}
-        onToggle={(t) => onToggleType(t)}
-        onReset={onResetTypes}
-      />
-
-      {/* Weekday headers */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
-        {WEEKDAYS.map(w => (
-          <div
-            key={w}
-            style={{
-              fontSize: 9.5, fontWeight: 700, color: C.textMuted,
-              textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.3px',
-            }}
-          >
-            {w}
-          </div>
-        ))}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 10, flexWrap: 'wrap', marginBottom: 10,
+      }}>
+        <TypeFilterBar
+          active={activeTypes}
+          counts={monthCounts}
+          onToggle={(t) => onToggleType(t)}
+          onReset={onResetTypes}
+        />
+        <ImportanceFilter value={minImp} onChange={onMinImp} />
       </div>
 
-      {/* Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
-        {cells.map((iso, i) =>
-          iso ? (
-            <DayCell
-              key={iso}
-              iso={iso}
-              day={filteredByIso.get(iso)}
-              todayIso={todayIso}
-              isOpen={openDay === iso}
-              weekend={isWeekend(iso)}
-              holiday={isHoliday(byIso.get(iso))}
-              onToggle={() => onToggleDay(iso)}
-              onOpenSymbol={onOpenSymbol}
-            />
-          ) : (
-            <div key={`e${i}`} style={{ height: CELL_HEIGHT, borderRadius: R.sm }} />
-          )
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: narrow ? '1fr' : openDay ? 'minmax(0, 1fr) 320px' : '1fr',
+        gap: 16, alignItems: 'start',
+      }}>
+        <div>
+          {/* Weekday headers */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5, marginBottom: 5 }}>
+            {WEEKDAYS.map(w => (
+              <div
+                key={w}
+                style={{
+                  fontSize: 10.5, fontWeight: 700, color: C.textMuted,
+                  textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.3px',
+                }}
+              >
+                {w}
+              </div>
+            ))}
+          </div>
+
+          {/* Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5 }}>
+            {cells.map((iso, i) =>
+              iso ? (
+                <DayCell
+                  key={iso}
+                  iso={iso}
+                  day={filteredByIso.get(iso)}
+                  todayIso={todayIso}
+                  isOpen={openDay === iso}
+                  weekend={isWeekend(iso)}
+                  holiday={isHoliday(byIso.get(iso))}
+                  onToggle={() => onToggleDay(iso)}
+                  onOpenSymbol={onOpenSymbol}
+                  height={cellHeight}
+                  maxChips={maxChips}
+                />
+              ) : (
+                <div key={`e${i}`} style={{ height: cellHeight, borderRadius: R.sm }} />
+              )
+            )}
+          </div>
+        </div>
+
+        {openDay && (
+          <DayDetailPanel
+            iso={openDay}
+            events={dayEvents}
+            loading={dayLoading}
+            activeTypes={activeTypes}
+            minImp={minImp}
+            narrow={narrow}
+            onClose={() => onToggleDay(openDay)}
+            onOpenSymbol={onOpenSymbol}
+          />
         )}
       </div>
-
-      {/* Expanded day */}
-      {openDay && (
-        <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
-          <div style={{
-            display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-            gap: 8, marginBottom: 8, flexWrap: 'wrap',
-          }}>
-            <div style={{ fontSize: 12.5, fontWeight: 800, color: C.accent, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              {fmtDate(openDay)}
-            </div>
-            <button
-              onClick={() => onToggleDay(openDay)}
-              style={{ background: 'transparent', border: 'none', color: C.textMuted, cursor: 'pointer', fontSize: 12, fontFamily: F.family }}
-            >
-              cerrar ✕
-            </button>
-          </div>
-
-          {dayLoading && (
-            <div style={{ padding: '20px 0', textAlign: 'center', color: C.textMuted, fontSize: 12 }}>
-              Cargando catalizadores del día...
-            </div>
-          )}
-
-          {!dayLoading && dayEvents && dayEvents.length === 0 && (
-            <div style={{ color: C.textMuted, fontSize: 12.5 }}>Sin eventos.</div>
-          )}
-
-          {!dayLoading && dayEvents && dayEvents.length > 0 && (() => {
-            const visible = dayEvents
-              .filter(e => activeTypes.has(e.type))
-              .slice()
-              .sort((a, b) =>
-                hourOrder(a.meta?.hour) - hourOrder(b.meta?.hour) || b.importance - a.importance
-              );
-            if (visible.length === 0) {
-              return (
-                <div style={{
-                  padding: '14px 12px', borderRadius: R.md, border: `1px dashed ${C.border}`,
-                  color: C.textMuted, fontSize: 12.5,
-                }}>
-                  Los {dayEvents.length} eventos de este día están ocultos por el filtro de tipos.
-                </div>
-              );
-            }
-            return (
-              <>
-                <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 8 }}>
-                  {visible.length} evento{visible.length === 1 ? '' : 's'}
-                  {visible.length < dayEvents.length && ` · ${dayEvents.length - visible.length} ocultos`}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 380, overflowY: 'auto' }}>
-                  {visible.map((c, i) => {
-                    const im = impChip(c.importance);
-                    const tm = TYPE_META[c.type] || { label: c.type, color: C.textMuted };
-                    const sym = c.meta?.symbol;
-                    const hl = etTimeLabel(c.meta?.time) || hourLabel(c.meta?.hour);
-                    return (
-                      <div
-                        key={i}
-                        onClick={() => sym && onOpenSymbol(sym)}
-                        style={{
-                          display: 'flex', alignItems: 'flex-start', gap: 9,
-                          padding: '7px 9px', borderRadius: R.sm,
-                          border: `1px solid ${C.border}`, background: C.bgCard,
-                          borderLeft: `3px solid ${im.color}`,
-                          cursor: sym ? 'pointer' : 'default',
-                        }}
-                        onMouseEnter={e => { if (sym) e.currentTarget.style.background = C.bgCardHover; }}
-                        onMouseLeave={e => { if (sym) e.currentTarget.style.background = C.bgCard; }}
-                      >
-                        <span style={{ fontSize: 12 }}>{c.emoji}</span>
-                        <span style={{
-                          fontSize: 9.5, fontWeight: 800, padding: '1px 5px', borderRadius: 3,
-                          background: tm.color + '16', color: tm.color, flexShrink: 0, marginTop: 1,
-                        }}>
-                          {tm.label}
-                        </span>
-                        <span style={{
-                          flex: 1, minWidth: 0, fontSize: 12, fontWeight: 500,
-                          color: C.textPrimary, lineHeight: 1.4,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {c.title}
-                        </span>
-                        {hl && (
-                          <span style={{
-                            fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3,
-                            background: C.bgElevated, color: C.textMuted, flexShrink: 0, marginTop: 1,
-                            whiteSpace: 'nowrap',
-                          }}>
-                            {hl}
-                          </span>
-                        )}
-                        {sym && (
-                          <span style={{ fontSize: 9.5, fontWeight: 800, color: C.accentLight, flexShrink: 0 }}>
-                            {sym} →
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            );
-          })()}
-        </div>
-      )}
     </div>
   );
 }
@@ -875,9 +1038,11 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
   const [dayEvents, setDayEvents] = useState<Catalyst[] | null>(null);
   const [dayLoading, setDayLoading] = useState(false);
   const [activeTypes, setActiveTypes] = useState<Set<string>>(() => allTypes());
+  const [minImp, setMinImp] = useState(0);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const moversRequested = useRef(false);
+  const autoSelMonths = useRef<Set<string>>(new Set());
 
   const toggleType = useCallback((t: string) => {
     setActiveTypes(prev => {
@@ -951,7 +1116,19 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
   }, [tab, calYm]);
 
   const shiftMonth = useCallback((delta: number) => {
-    setCalYm(prev => shiftYm(prev, delta));
+    setCalYm(prev => {
+      const next = shiftYm(prev, delta);
+      autoSelMonths.current.delete(next);
+      return next;
+    });
+    setOpenDay(null);
+    setDayEvents(null);
+  }, []);
+
+  const goToday = useCallback(() => {
+    const ym = ymOf(new Date());
+    autoSelMonths.current.delete(ym);
+    setCalYm(ym);
     setOpenDay(null);
     setDayEvents(null);
   }, []);
@@ -981,6 +1158,29 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
     fetchDay(iso);
   }, [fetchDay]);
 
+  // Al abrir un mes por primera vez, deja seleccionado el día de hoy (o el
+  // primer día con eventos) para que el panel lateral nunca arranque vacío.
+  useEffect(() => {
+    if (tab !== 'calendar' || !calDays) return;
+    if (openDay && openDay.slice(0, 7) === calYm) {
+      autoSelMonths.current.add(calYm);
+      return;
+    }
+    const inMonth = calDays.filter(d => d.iso.slice(0, 7) === calYm);
+    if (inMonth.length === 0) return;
+    if (autoSelMonths.current.has(calYm)) return;
+    autoSelMonths.current.add(calYm);
+
+    const todayIso = fmtDay(new Date());
+    const pick = inMonth.some(d => d.iso === todayIso)
+      ? todayIso
+      : (inMonth.find(d => (d.total ?? d.events.length) > 0)?.iso ?? null);
+
+    setOpenDay(pick);
+    setDayEvents(null);
+    if (pick) fetchDay(pick);
+  }, [tab, calYm, calDays, openDay, fetchDay]);
+
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setShowSug(false);
@@ -1007,7 +1207,7 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
   const activeTab = TABS.find(t => t.key === tab)!;
 
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 16px' }}>
+    <div style={{ maxWidth: tab === 'calendar' ? 1440 : 1000, margin: '0 auto', padding: '0 16px' }}>
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: C.textPrimary, margin: 0, letterSpacing: '-0.3px' }}>
@@ -1278,12 +1478,18 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
         <div>
           <NextCatalystCard days={days} active={activeTypes} onOpenSymbol={loadSymbol} />
 
-          <TypeFilterBar
-            active={activeTypes}
-            counts={sumTypeCounts(days || [])}
-            onToggle={toggleType}
-            onReset={resetTypes}
-          />
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: 10, flexWrap: 'wrap', marginBottom: 12,
+          }}>
+            <TypeFilterBar
+              active={activeTypes}
+              counts={sumTypeCounts(days || [])}
+              onToggle={toggleType}
+              onReset={resetTypes}
+            />
+            <ImportanceFilter value={minImp} onChange={setMinImp} />
+          </div>
 
           {/* Legend */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', fontSize: 11 }}>
@@ -1307,7 +1513,7 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
             </div>
           )}
 
-          {days && days.length > 0 && days.every(d => (filterDay(d, activeTypes).total ?? 0) === 0) && (
+          {days && days.length > 0 && days.every(d => (filterDay(d, activeTypes, minImp).total ?? 0) === 0) && (
             <div style={{
               padding: '20px 16px', borderRadius: R.md, border: `1px dashed ${C.border}`,
               background: '#0d1117', color: C.textMuted, fontSize: 12.5, textAlign: 'center',
@@ -1317,7 +1523,7 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
           )}
 
           {days && visibleDays.map(d => {
-            const fday = filterDay(d, activeTypes);
+            const fday = filterDay(d, activeTypes, minImp);
             if ((fday.total ?? 0) === 0) return null;
             const evs = fday.events;
             const shown = evs.slice(0, WEEKLY_DAY_MAX);
@@ -1423,10 +1629,12 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
           dayEvents={dayEvents}
           dayLoading={dayLoading}
           activeTypes={activeTypes}
+          minImp={minImp}
           onToggleType={toggleType}
           onResetTypes={resetTypes}
+          onMinImp={setMinImp}
           onShift={shiftMonth}
-          onToday={() => { setCalYm(ymOf(new Date())); setOpenDay(null); setDayEvents(null); }}
+          onToday={goToday}
           onToggleDay={toggleDay}
           onOpenSymbol={loadSymbol}
         />
