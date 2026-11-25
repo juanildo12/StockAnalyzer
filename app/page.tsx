@@ -2064,7 +2064,7 @@ export default function Home() {
       )}
 
       {view === 'catalysts' && (
-        <div style={{ padding: '24px', maxWidth: 1000, margin: '0 auto', width: '100%', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
+        <div style={{ padding: isMobile ? '12px' : '16px 24px', boxSizing: 'border-box', width: '100%', animation: 'slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards' }}>
           <CatalystPanel onSelectStock={(sym) => { setSymbol(sym); setView('analyzer'); }} />
         </div>
       )}

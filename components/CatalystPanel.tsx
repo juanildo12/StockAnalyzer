@@ -865,7 +865,7 @@ function MonthCalendar({
   onToggleType, onResetTypes, onMinImp, onShift, onToday, onToggleDay, onOpenSymbol,
 }: MonthCalendarProps) {
   const todayIso = fmtDay(new Date());
-  const narrow = useMediaQuery('(max-width: 980px)');
+  const narrow = useMediaQuery('(max-width: 1360px)');
   const byIso = new Map((days || []).map(d => [d.iso, d]));
   const filteredByIso = new Map((days || []).map(d => [d.iso, filterDay(d, activeTypes, minImp)]));
   const cells = monthCells(ym);
@@ -1207,7 +1207,7 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
   const activeTab = TABS.find(t => t.key === tab)!;
 
   return (
-    <div style={{ maxWidth: tab === 'calendar' ? 1440 : 1000, margin: '0 auto', padding: '0 16px' }}>
+    <div style={{ maxWidth: tab === 'calendar' ? 1800 : 1000, margin: '0 auto', padding: '0 16px', boxSizing: 'border-box' }}>
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: C.textPrimary, margin: 0, letterSpacing: '-0.3px' }}>
