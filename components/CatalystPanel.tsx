@@ -786,11 +786,36 @@ function DayDetailModal({
   }, [onClose]);
 
   const all = events || [];
-  const visible = all
+  const sorted = all
     .filter(e => activeTypes.has(e.type) && e.importance >= minImp)
     .slice()
-    .sort((a, b) => hourOrder(a.meta?.hour) - hourOrder(b.meta?.hour) || b.importance - a.importance);
-  const hidden = all.length - visible.length;
+    .sort((a, b) =>
+      (a.type === 'economic' ? 0 : 1) - (b.type === 'economic' ? 0 : 1) ||
+      hourOrder(a.meta?.hour) - hourOrder(b.meta?.hour) ||
+      b.importance - a.importance
+    );
+  const macro = sorted.filter(e => e.type === 'economic');
+  const others = sorted.filter(e => e.type !== 'economic');
+  const hidden = all.length - sorted.length;
+
+  const renderGroup = (label: string, items: Catalyst[], tint: string) =>
+    items.length === 0 ? null : (
+      <div style={{ marginTop: 12 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6,
+          fontSize: 10, fontWeight: 800, letterSpacing: '0.6px',
+          textTransform: 'uppercase', color: tint,
+        }}>
+          {label}
+          <span style={{ fontSize: 9.5, color: '#6B7280', fontFamily: F.mono }}>{items.length}</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {items.map((c, i) => (
+            <DayEventRow key={`${c.type}-${i}`} c={c} onOpenSymbol={onOpenSymbol} />
+          ))}
+        </div>
+      </div>
+    );
 
   if (typeof document === 'undefined') return null;
 
@@ -875,7 +900,7 @@ function DayDetailModal({
         </div>
       )}
 
-      {!loading && all.length > 0 && visible.length === 0 && (
+      {!loading && all.length > 0 && sorted.length === 0 && (
         <div style={{
           padding: '14px 12px', borderRadius: R.md, border: '1px dashed #D1D5DB',
           color: '#6B7280', fontSize: 12,
@@ -884,11 +909,10 @@ function DayDetailModal({
         </div>
       )}
 
-      {!loading && visible.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingRight: 2 }}>
-          {visible.map((c, i) => (
-            <DayEventRow key={`${c.type}-${i}`} c={c} onOpenSymbol={onOpenSymbol} />
-          ))}
+      {!loading && sorted.length > 0 && (
+        <div style={{ paddingRight: 2 }}>
+          {renderGroup('Macro', macro, '#047857')}
+          {renderGroup(iso === fmtDay(new Date()) ? 'Hoy' : 'Otros catalizadores', others, '#0D9488')}
         </div>
       )}
       </div>
