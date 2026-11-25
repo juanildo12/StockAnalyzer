@@ -797,6 +797,7 @@ function DayDetailModal({
     );
   const macro = sorted.filter(e => e.type === 'economic');
   const others = sorted.filter(e => e.type !== 'economic');
+  const highImpact = all.filter(e => e.importance >= 85).length;
   const hidden = all.length - sorted.length;
 
   const renderGroup = (label: string, items: Catalyst[], tint: string) =>
@@ -841,49 +842,63 @@ function DayDetailModal({
           boxShadow: '0 24px 64px rgba(0,0,0,0.55)',
         }}
       >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
-        <div>
-          <div style={{
-            fontSize: 10, fontWeight: 800, letterSpacing: '0.6px',
-            textTransform: 'uppercase', color: '#6B7280',
-          }}>
-            {countdownLabel(iso)}
+      <div style={{
+        position: 'sticky', top: -18, zIndex: 2, background: '#FFFFFF',
+        margin: '-18px -18px 0', padding: '18px 18px 10px',
+        borderBottom: '1px solid #E5E7EB',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <div>
+            <div style={{
+              fontSize: 10, fontWeight: 800, letterSpacing: '0.6px',
+              textTransform: 'uppercase', color: '#6B7280',
+            }}>
+              {countdownLabel(iso)}
+            </div>
+            <div style={{
+              fontSize: 16, fontWeight: 800, color: '#1A1C22',
+              textTransform: 'capitalize', marginTop: 2, lineHeight: 1.25,
+            }}>
+              {fmtDate(iso)}
+            </div>
           </div>
-          <div style={{
-            fontSize: 16, fontWeight: 800, color: '#1A1C22',
-            textTransform: 'capitalize', marginTop: 2, lineHeight: 1.25,
-          }}>
-            {fmtDate(iso)}
-          </div>
+          <button
+            onClick={onClose}
+            aria-label="Cerrar detalle del día"
+            style={{
+              background: 'transparent', border: 'none', color: '#6B7280',
+              cursor: 'pointer', fontSize: 15, fontFamily: F.family, lineHeight: 1,
+              padding: 2,
+            }}
+          >
+            ✕
+          </button>
         </div>
-        <button
-          onClick={onClose}
-          aria-label="Cerrar detalle del día"
-          style={{
-            background: 'transparent', border: 'none', color: '#6B7280',
-            cursor: 'pointer', fontSize: 15, fontFamily: F.family, lineHeight: 1,
-            padding: 2,
-          }}
-        >
-          ✕
-        </button>
-      </div>
 
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '10px 0 8px' }}>
-        <span style={{
-          fontSize: 10.5, fontWeight: 700, padding: '1px 7px', borderRadius: R.full,
-          background: '#0D948815', color: '#0D9488',
-        }}>
-          {loading ? '…' : `${all.length} evento${all.length === 1 ? '' : 's'}`}
-        </span>
-        {!loading && hidden > 0 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '10px 0 0' }}>
           <span style={{
             fontSize: 10.5, fontWeight: 700, padding: '1px 7px', borderRadius: R.full,
-            background: '#FBBF2420', color: '#B45309', border: '1px solid #B4530940',
+            background: '#0D948815', color: '#0D9488',
           }}>
-            {hidden} oculto{hidden === 1 ? '' : 's'} por filtros
+            {loading ? '…' : `${all.length} catalizador${all.length === 1 ? '' : 'es'}`}
           </span>
-        )}
+          {!loading && (
+            <span style={{
+              fontSize: 10.5, fontWeight: 700, padding: '1px 7px', borderRadius: R.full,
+              background: '#DC262615', color: '#DC2626', border: '1px solid #DC262640',
+            }}>
+              {highImpact} high impact
+            </span>
+          )}
+          {!loading && hidden > 0 && (
+            <span style={{
+              fontSize: 10.5, fontWeight: 700, padding: '1px 7px', borderRadius: R.full,
+              background: '#FBBF2420', color: '#B45309', border: '1px solid #B4530940',
+            }}>
+              {hidden} oculto{hidden === 1 ? '' : 's'} por filtros
+            </span>
+          )}
+        </div>
       </div>
 
       {loading && (
