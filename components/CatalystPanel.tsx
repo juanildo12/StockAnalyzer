@@ -597,9 +597,10 @@ function DayCell({
     : weekend ? '#0f1319'
     : C.bgCard;
   const border = isOpen ? C.accentBorder
-    : isToday ? C.borderHover
+    : isToday ? C.accent
     : holiday ? '#FBBF2440'
     : C.border;
+  const borderWidth = isToday ? 2 : 1;
   const numColor = isToday ? C.accent : holiday ? '#FBBF24' : weekend ? C.textMuted : C.textSecondary;
 
   const title = holidayName
@@ -614,8 +615,8 @@ function DayCell({
         height, padding: '5px 6px', boxSizing: 'border-box',
         display: 'flex', flexDirection: 'column', gap: 3, overflow: 'hidden',
         borderRadius: R.sm, cursor: total > 0 ? 'pointer' : 'default',
-        background: bg, border: `1px solid ${border}`,
-        boxShadow: isOpen ? `inset 0 0 0 1px ${C.accentBorder}` : undefined,
+        background: bg, border: `${borderWidth}px solid ${border}`,
+        boxShadow: isToday ? `0 0 0 2px ${C.accent}30` : isOpen ? `inset 0 0 0 1px ${C.accentBorder}` : undefined,
         transition: 'background 0.15s ease, border-color 0.15s ease',
       }}
       onMouseEnter={e => { if (total > 0 && !isOpen) e.currentTarget.style.background = C.bgCardHover; }}
