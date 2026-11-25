@@ -153,6 +153,17 @@ function modalImpChip(n: number) {
   return { label: `${n}`, color: '#6B7280', bg: '#6B728015', border: '#6B728040' };
 }
 
+const META_LABEL: Record<string, string> = {
+  indicator: 'Indicador', forecast: 'Previsto', previous: 'Anterior', actual: 'Real',
+  period: 'Periodo', time: 'Hora', hour: 'Sesión', holiday: 'Festivo', closed: 'Cerrado',
+};
+
+function metaValue(v: unknown): string {
+  if (v == null || v === '') return '—';
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
 /** Orden en el que se muestran los filtros por tipo (desc por relevancia). */
 const FILTER_TYPES: string[] = ['earnings', 'ipo', 'economic', 'holiday', 'dividend', 'split', 'analyst', 'news'];
 
@@ -692,26 +703,30 @@ interface MonthCalendarProps {
   onOpenSymbol: (symbol: string) => void;
 }
 
-/** Fila de evento usada en el panel de detalle del día. */
+/** Fila de evento usada en el modal de detalle del día. */
 function DayEventRow({ c, onOpenSymbol }: { c: Catalyst; onOpenSymbol: (symbol: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
   const im = modalImpChip(c.importance);
   const color = MODAL_TYPE_COLOR[c.type] || '#4B5563';
   const tm = { label: TYPE_META[c.type]?.label || c.type, color };
   const sym = c.meta?.symbol as string | undefined;
   const tl = etTimeLabel(c.meta?.time) || hourLabel(c.meta?.hour);
+  const details = Object.entries(c.meta || {})
+    .filter(([k, v]) => k !== 'symbol' && v != null && v !== '')
+    .slice(0, 6);
 
   return (
     <div
-      onClick={sym ? () => onOpenSymbol(sym) : undefined}
+      onClick={() => setExpanded(v => !v)}
       style={{
         display: 'flex', alignItems: 'flex-start', gap: 8,
         padding: '8px 9px', borderRadius: R.md,
         border: '1px solid #E5E7EB', borderLeft: `3px solid ${tm.color}`,
-        background: '#FFFFFF', cursor: sym ? 'pointer' : 'default',
+        background: '#FFFFFF', cursor: 'pointer',
         transition: 'background 0.15s ease',
       }}
-      onMouseEnter={e => { if (sym) e.currentTarget.style.background = '#F3F4F6'; }}
-      onMouseLeave={e => { if (sym) e.currentTarget.style.background = '#FFFFFF'; }}
+      onMouseEnter={e => { e.currentTarget.style.background = '#F9FAFB'; }}
+      onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; }}
     >
       <span style={{ fontSize: 14, lineHeight: '18px', flexShrink: 0 }}>{c.emoji}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -744,25 +759,52 @@ function DayEventRow({ c, onOpenSymbol }: { c: Catalyst; onOpenSymbol: (symbol: 
         {c.description && (
           <div style={{
             fontSize: 11.5, color: '#555A70', lineHeight: 1.4, marginTop: 2,
-            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
+            ...(expanded ? {} : {
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }),
           }}>
             {c.description}
           </div>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
           <span style={{
-            fontSize: 10, color: '#6B7280', minWidth: 0,
+            fontSize: 10, color: '#6B7280', minWidth: 0, flex: 1,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
             {c.source}{c.status ? ` · ${c.status}` : ''}
           </span>
           {sym && (
-            <span style={{ fontSize: 10.5, fontWeight: 800, color: '#0D9488', flexShrink: 0, marginLeft: 'auto' }}>
+            <button
+              onClick={e => { e.stopPropagation(); onOpenSymbol(sym); }}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 10.5, fontWeight: 800, color: '#0D9488', flexShrink: 0 }}
+            >
               {sym} →
-            </span>
+            </button>
           )}
+          {c.link && (
+            <button
+              onClick={e => { e.stopPropagation(); window.open(c.link, '_blank', 'noopener,noreferrer'); }}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 10.5, fontWeight: 800, color: '#0D9488', flexShrink: 0 }}
+            >
+              Fuente ↗
+            </button>
+          )}
+          <span style={{ fontSize: 10, color: '#9CA3AF', flexShrink: 0 }}>{expanded ? '▴' : '▾'}</span>
         </div>
+        {expanded && (
+          <div style={{ marginTop: 7, paddingTop: 7, borderTop: '1px solid #E5E7EB', fontSize: 11, color: '#374151', lineHeight: 1.5 }}>
+            {details.map(([k, v]) => (
+              <div key={k}>
+                <span style={{ color: '#6B7280' }}>{META_LABEL[k] || k}: </span>
+                <span style={{ fontWeight: 600 }}>{metaValue(v)}</span>
+              </div>
+            ))}
+            {!c.description && details.length === 0 && (
+              <div style={{ color: '#6B7280' }}>Sin detalles adicionales.</div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
