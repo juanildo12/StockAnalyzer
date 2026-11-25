@@ -135,6 +135,24 @@ const TYPE_META: Record<string, { label: string; color: string }> = {
   holiday: { label: 'Festivo', color: '#FBBF24' },
 };
 
+/** Variantes oscuras para el modal blanco (las del tema claro no contrastan). */
+const MODAL_TYPE_COLOR: Record<string, string> = {
+  earnings: '#047857',
+  dividend: '#7C3AED',
+  ipo: '#0369A1',
+  economic: '#047857',
+  analyst: '#BE185D',
+  news: '#4B5563',
+  split: '#7C3AED',
+  holiday: '#B45309',
+};
+
+function modalImpChip(n: number) {
+  if (n >= 85) return { label: `Alta ${n}`, color: '#DC2626', bg: '#DC262615', border: '#DC262640' };
+  if (n >= 60) return { label: `Notable ${n}`, color: '#B45309', bg: '#FBBF2420', border: '#B4530940' };
+  return { label: `${n}`, color: '#6B7280', bg: '#6B728015', border: '#6B728040' };
+}
+
 /** Orden en el que se muestran los filtros por tipo (desc por relevancia). */
 const FILTER_TYPES: string[] = ['earnings', 'ipo', 'economic', 'holiday', 'dividend', 'split', 'analyst', 'news'];
 
@@ -675,8 +693,9 @@ interface MonthCalendarProps {
 
 /** Fila de evento usada en el panel de detalle del día. */
 function DayEventRow({ c, onOpenSymbol }: { c: Catalyst; onOpenSymbol: (symbol: string) => void }) {
-  const im = impChip(c.importance);
-  const tm = TYPE_META[c.type] || { label: c.type, color: C.textMuted };
+  const im = modalImpChip(c.importance);
+  const color = MODAL_TYPE_COLOR[c.type] || '#4B5563';
+  const tm = { label: TYPE_META[c.type]?.label || c.type, color };
   const sym = c.meta?.symbol as string | undefined;
   const tl = etTimeLabel(c.meta?.time) || hourLabel(c.meta?.hour);
 
@@ -686,12 +705,12 @@ function DayEventRow({ c, onOpenSymbol }: { c: Catalyst; onOpenSymbol: (symbol: 
       style={{
         display: 'flex', alignItems: 'flex-start', gap: 8,
         padding: '8px 9px', borderRadius: R.md,
-        border: `1px solid ${C.border}`, borderLeft: `3px solid ${tm.color}`,
-        background: C.bgCard, cursor: sym ? 'pointer' : 'default',
+        border: '1px solid #E5E7EB', borderLeft: `3px solid ${tm.color}`,
+        background: '#FFFFFF', cursor: sym ? 'pointer' : 'default',
         transition: 'background 0.15s ease',
       }}
-      onMouseEnter={e => { if (sym) e.currentTarget.style.background = C.bgCardHover; }}
-      onMouseLeave={e => { if (sym) e.currentTarget.style.background = C.bgCard; }}
+      onMouseEnter={e => { if (sym) e.currentTarget.style.background = '#F3F4F6'; }}
+      onMouseLeave={e => { if (sym) e.currentTarget.style.background = '#FFFFFF'; }}
     >
       <span style={{ fontSize: 14, lineHeight: '18px', flexShrink: 0 }}>{c.emoji}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -705,7 +724,7 @@ function DayEventRow({ c, onOpenSymbol }: { c: Catalyst; onOpenSymbol: (symbol: 
           {tl && (
             <span style={{
               fontSize: 9.5, fontWeight: 700, padding: '1px 5px', borderRadius: 3,
-              background: C.bgElevated, color: C.textSecondary,
+              background: '#F3F4F6', color: '#555A70',
             }}>
               {tl}
             </span>
@@ -718,12 +737,12 @@ function DayEventRow({ c, onOpenSymbol }: { c: Catalyst; onOpenSymbol: (symbol: 
             {im.label}
           </span>
         </div>
-        <div style={{ fontSize: 12.5, fontWeight: 600, color: C.textPrimary, lineHeight: 1.35 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: '#1A1C22', lineHeight: 1.35 }}>
           {c.title}
         </div>
         {c.description && (
           <div style={{
-            fontSize: 11.5, color: C.textSecondary, lineHeight: 1.4, marginTop: 2,
+            fontSize: 11.5, color: '#555A70', lineHeight: 1.4, marginTop: 2,
             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
           }}>
@@ -732,13 +751,13 @@ function DayEventRow({ c, onOpenSymbol }: { c: Catalyst; onOpenSymbol: (symbol: 
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
           <span style={{
-            fontSize: 10, color: C.textMuted, minWidth: 0,
+            fontSize: 10, color: '#6B7280', minWidth: 0,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
             {c.source}{c.status ? ` · ${c.status}` : ''}
           </span>
           {sym && (
-            <span style={{ fontSize: 10.5, fontWeight: 800, color: C.accentLight, flexShrink: 0, marginLeft: 'auto' }}>
+            <span style={{ fontSize: 10.5, fontWeight: 800, color: '#0D9488', flexShrink: 0, marginLeft: 'auto' }}>
               {sym} →
             </span>
           )}
@@ -792,7 +811,7 @@ function DayDetailModal({
         style={{
           width: 'min(680px, 100%)', maxHeight: 'min(780px, 92vh)', overflowY: 'auto',
           boxSizing: 'border-box', padding: 18, borderRadius: R.xl,
-          background: C.gradientCard, border: `1px solid ${C.border}`,
+          background: '#FFFFFF', border: '1px solid #E5E7EB',
           boxShadow: '0 24px 64px rgba(0,0,0,0.55)',
         }}
       >
@@ -800,12 +819,12 @@ function DayDetailModal({
         <div>
           <div style={{
             fontSize: 10, fontWeight: 800, letterSpacing: '0.6px',
-            textTransform: 'uppercase', color: C.textMuted,
+            textTransform: 'uppercase', color: '#6B7280',
           }}>
             {countdownLabel(iso)}
           </div>
           <div style={{
-            fontSize: 14.5, fontWeight: 800, color: C.textPrimary,
+            fontSize: 16, fontWeight: 800, color: '#1A1C22',
             textTransform: 'capitalize', marginTop: 2, lineHeight: 1.25,
           }}>
             {fmtDate(iso)}
@@ -815,8 +834,8 @@ function DayDetailModal({
           onClick={onClose}
           aria-label="Cerrar detalle del día"
           style={{
-            background: 'transparent', border: 'none', color: C.textMuted,
-            cursor: 'pointer', fontSize: 13, fontFamily: F.family, lineHeight: 1,
+            background: 'transparent', border: 'none', color: '#6B7280',
+            cursor: 'pointer', fontSize: 15, fontFamily: F.family, lineHeight: 1,
             padding: 2,
           }}
         >
@@ -827,14 +846,14 @@ function DayDetailModal({
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '10px 0 8px' }}>
         <span style={{
           fontSize: 10.5, fontWeight: 700, padding: '1px 7px', borderRadius: R.full,
-          background: C.accent12, color: C.accent,
+          background: '#0D948815', color: '#0D9488',
         }}>
           {loading ? '…' : `${all.length} evento${all.length === 1 ? '' : 's'}`}
         </span>
         {!loading && hidden > 0 && (
           <span style={{
             fontSize: 10.5, fontWeight: 700, padding: '1px 7px', borderRadius: R.full,
-            background: '#FBBF2415', color: '#FBBF24', border: '1px solid #FBBF2440',
+            background: '#FBBF2420', color: '#B45309', border: '1px solid #B4530940',
           }}>
             {hidden} oculto{hidden === 1 ? '' : 's'} por filtros
           </span>
@@ -842,15 +861,15 @@ function DayDetailModal({
       </div>
 
       {loading && (
-        <div style={{ padding: '24px 0', textAlign: 'center', color: C.textMuted, fontSize: 12 }}>
+        <div style={{ padding: '24px 0', textAlign: 'center', color: '#6B7280', fontSize: 12 }}>
           Cargando catalizadores del día...
         </div>
       )}
 
       {!loading && all.length === 0 && (
         <div style={{
-          padding: '18px 12px', borderRadius: R.md, border: `1px dashed ${C.border}`,
-          color: C.textMuted, fontSize: 12, textAlign: 'center',
+          padding: '18px 12px', borderRadius: R.md, border: '1px dashed #D1D5DB',
+          color: '#6B7280', fontSize: 12, textAlign: 'center',
         }}>
           Sin eventos registrados para este día.
         </div>
@@ -858,8 +877,8 @@ function DayDetailModal({
 
       {!loading && all.length > 0 && visible.length === 0 && (
         <div style={{
-          padding: '14px 12px', borderRadius: R.md, border: `1px dashed ${C.border}`,
-          color: C.textMuted, fontSize: 12,
+          padding: '14px 12px', borderRadius: R.md, border: '1px dashed #D1D5DB',
+          color: '#6B7280', fontSize: 12,
         }}>
           Los {all.length} eventos de este día están ocultos por los filtros.
         </div>
