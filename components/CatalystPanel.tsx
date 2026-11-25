@@ -559,8 +559,8 @@ function MoverColumn({
   );
 }
 
-const CELL_HEIGHT = 164;
-const CELL_HEIGHT_MOBILE = 132;
+const CELL_HEIGHT = 186;
+const CELL_HEIGHT_MOBILE = 150;
 const CELL_MAX_CHIPS = 4;
 const CELL_MAX_CHIPS_MOBILE = 3;
 /** Máximo de filas por día en la lista de próximas 2 semanas (el resto, en el calendario). */
@@ -624,13 +624,13 @@ function DayCell({
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         flexShrink: 0, marginBottom: 1,
-        fontSize: 12, fontWeight: isToday ? 800 : 600, lineHeight: 1.2,
+        fontSize: 13, fontWeight: isToday ? 800 : 600, lineHeight: 1.2,
         color: numColor,
       }}>
         <span>{num}{holiday && holidayName ? ' 🏖️' : ''}</span>
         {total > 0 && (
           <span style={{
-            fontSize: 10, fontWeight: 700, color: C.textMuted,
+            fontSize: 10.5, fontWeight: 700, color: C.textMuted,
             fontFamily: F.mono, lineHeight: 1.4, padding: '0 4px', borderRadius: R.full,
             background: C.bgElevated,
           }}>
@@ -648,8 +648,8 @@ function DayCell({
             onClick={sym ? (e) => { e.stopPropagation(); onOpenSymbol(sym); } : undefined}
             title={sym ? `${c.title} — ver ${sym}` : c.title}
             style={{
-              fontSize: 10, lineHeight: 1.2, padding: '1px 4px',
-              borderRadius: 4, overflow: 'hidden', wordBreak: 'break-word',
+              fontSize: 11.5, lineHeight: 1.25, padding: '2px 5px',
+              borderRadius: 5, overflow: 'hidden', wordBreak: 'break-word',
               display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
               background: tm.color + '16', color: tm.color,
               borderLeft: `2px solid ${tm.color}`,
@@ -663,7 +663,7 @@ function DayCell({
 
       {hidden > 0 && (
         <div style={{
-          fontSize: 10.5, fontWeight: 700, color: C.accent,
+          fontSize: 11, fontWeight: 700, color: C.accent,
           marginTop: 'auto', lineHeight: 1.2, flexShrink: 0,
         }}>
           +{hidden} más
