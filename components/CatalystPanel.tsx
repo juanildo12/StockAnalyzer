@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { colors as C, radius as R, font as F } from '@/src/utils/webTheme';
 import { useMediaQuery } from '@/src/hooks/useMediaQuery';
 
@@ -747,19 +748,24 @@ function DayEventRow({ c, onOpenSymbol }: { c: Catalyst; onOpenSymbol: (symbol: 
   );
 }
 
-/** Panel lateral (sticky en escritorio) con todos los eventos del día elegido. */
-function DayDetailPanel({
-  iso, events, loading, activeTypes, minImp, narrow, onClose, onOpenSymbol,
+/** Modal con todos los catalizadores del día elegido (clic fuera o Esc cierra). */
+function DayDetailModal({
+  iso, events, loading, activeTypes, minImp, onClose, onOpenSymbol,
 }: {
   iso: string;
   events: Catalyst[] | null;
   loading: boolean;
   activeTypes: Set<string>;
   minImp: number;
-  narrow: boolean;
   onClose: () => void;
   onOpenSymbol: (symbol: string) => void;
 }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   const all = events || [];
   const visible = all
     .filter(e => activeTypes.has(e.type) && e.importance >= minImp)
@@ -767,15 +773,29 @@ function DayDetailPanel({
     .sort((a, b) => hourOrder(a.meta?.hour) - hourOrder(b.meta?.hour) || b.importance - a.importance);
   const hidden = all.length - visible.length;
 
-  return (
-    <div style={{
-      position: narrow ? 'static' : 'sticky',
-      top: narrow ? undefined : 16,
-      display: 'flex', flexDirection: 'column',
-      padding: 14, borderRadius: R.xl,
-      background: C.gradientCard, border: `1px solid ${C.border}`,
-      minHeight: 180,
-    }}>
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 16, boxSizing: 'border-box', background: 'rgba(0,0,0,0.68)',
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Catalizadores del ${fmtDate(iso)}`}
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: 'min(680px, 100%)', maxHeight: 'min(780px, 92vh)', overflowY: 'auto',
+          boxSizing: 'border-box', padding: 18, borderRadius: R.xl,
+          background: C.gradientCard, border: `1px solid ${C.border}`,
+          boxShadow: '0 24px 64px rgba(0,0,0,0.55)',
+        }}
+      >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
         <div>
           <div style={{
@@ -846,17 +866,15 @@ function DayDetailPanel({
       )}
 
       {!loading && visible.length > 0 && (
-        <div style={{
-          display: 'flex', flexDirection: 'column', gap: 6,
-          maxHeight: narrow ? undefined : 720, overflowY: narrow ? 'visible' : 'auto',
-          paddingRight: 2,
-        }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingRight: 2 }}>
           {visible.map((c, i) => (
             <DayEventRow key={`${c.type}-${i}`} c={c} onOpenSymbol={onOpenSymbol} />
           ))}
         </div>
       )}
-    </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -865,7 +883,7 @@ function MonthCalendar({
   onToggleType, onResetTypes, onMinImp, onShift, onToday, onToggleDay, onOpenSymbol,
 }: MonthCalendarProps) {
   const todayIso = fmtDay(new Date());
-  const narrow = useMediaQuery('(max-width: 1360px)');
+  const narrow = useMediaQuery('(max-width: 900px)');
   const byIso = new Map((days || []).map(d => [d.iso, d]));
   const filteredByIso = new Map((days || []).map(d => [d.iso, filterDay(d, activeTypes, minImp)]));
   const cells = monthCells(ym);
@@ -958,64 +976,55 @@ function MonthCalendar({
         <ImportanceFilter value={minImp} onChange={onMinImp} />
       </div>
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: narrow ? '1fr' : openDay ? 'minmax(0, 1fr) 320px' : '1fr',
-        gap: 16, alignItems: 'start',
-      }}>
-        <div>
-          {/* Weekday headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5, marginBottom: 5 }}>
-            {WEEKDAYS.map(w => (
-              <div
-                key={w}
-                style={{
-                  fontSize: 10.5, fontWeight: 700, color: C.textMuted,
-                  textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.3px',
-                }}
-              >
-                {w}
-              </div>
-            ))}
+      {/* Weekday headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5, marginBottom: 5 }}>
+        {WEEKDAYS.map(w => (
+          <div
+            key={w}
+            style={{
+              fontSize: 10.5, fontWeight: 700, color: C.textMuted,
+              textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.3px',
+            }}
+          >
+            {w}
           </div>
+        ))}
+      </div>
 
-          {/* Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5 }}>
-            {cells.map((iso, i) =>
-              iso ? (
-                <DayCell
-                  key={iso}
-                  iso={iso}
-                  day={filteredByIso.get(iso)}
-                  todayIso={todayIso}
-                  isOpen={openDay === iso}
-                  weekend={isWeekend(iso)}
-                  holiday={isHoliday(byIso.get(iso))}
-                  onToggle={() => onToggleDay(iso)}
-                  onOpenSymbol={onOpenSymbol}
-                  height={cellHeight}
-                  maxChips={maxChips}
-                />
-              ) : (
-                <div key={`e${i}`} style={{ height: cellHeight, borderRadius: R.sm }} />
-              )
-            )}
-          </div>
-        </div>
-
-        {openDay && (
-          <DayDetailPanel
-            iso={openDay}
-            events={dayEvents}
-            loading={dayLoading}
-            activeTypes={activeTypes}
-            minImp={minImp}
-            narrow={narrow}
-            onClose={() => onToggleDay(openDay)}
-            onOpenSymbol={onOpenSymbol}
-          />
+      {/* Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5 }}>
+        {cells.map((iso, i) =>
+          iso ? (
+            <DayCell
+              key={iso}
+              iso={iso}
+              day={filteredByIso.get(iso)}
+              todayIso={todayIso}
+              isOpen={openDay === iso}
+              weekend={isWeekend(iso)}
+              holiday={isHoliday(byIso.get(iso))}
+              onToggle={() => onToggleDay(iso)}
+              onOpenSymbol={onOpenSymbol}
+              height={cellHeight}
+              maxChips={maxChips}
+            />
+          ) : (
+            <div key={`e${i}`} style={{ height: cellHeight, borderRadius: R.sm }} />
+          )
         )}
       </div>
+
+      {openDay && (
+        <DayDetailModal
+          iso={openDay}
+          events={dayEvents}
+          loading={dayLoading}
+          activeTypes={activeTypes}
+          minImp={minImp}
+          onClose={() => onToggleDay(openDay)}
+          onOpenSymbol={onOpenSymbol}
+        />
+      )}
     </div>
   );
 }
@@ -1042,7 +1051,6 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const moversRequested = useRef(false);
-  const autoSelMonths = useRef<Set<string>>(new Set());
 
   const toggleType = useCallback((t: string) => {
     setActiveTypes(prev => {
@@ -1115,23 +1123,20 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
     return () => { alive = false; };
   }, [tab, calYm]);
 
-  const shiftMonth = useCallback((delta: number) => {
-    setCalYm(prev => {
-      const next = shiftYm(prev, delta);
-      autoSelMonths.current.delete(next);
-      return next;
-    });
+  const closeDay = useCallback(() => {
     setOpenDay(null);
     setDayEvents(null);
   }, []);
 
+  const shiftMonth = useCallback((delta: number) => {
+    setCalYm(prev => shiftYm(prev, delta));
+    closeDay();
+  }, [closeDay]);
+
   const goToday = useCallback(() => {
-    const ym = ymOf(new Date());
-    autoSelMonths.current.delete(ym);
-    setCalYm(ym);
-    setOpenDay(null);
-    setDayEvents(null);
-  }, []);
+    setCalYm(ymOf(new Date()));
+    closeDay();
+  }, [closeDay]);
 
   // La celda solo trae 6 eventos recortados; el resto se pide al desplegar.
   const fetchDay = useCallback((iso: string) => {
@@ -1158,28 +1163,12 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
     fetchDay(iso);
   }, [fetchDay]);
 
-  // Al abrir un mes por primera vez, deja seleccionado el día de hoy (o el
-  // primer día con eventos) para que el panel lateral nunca arranque vacío.
-  useEffect(() => {
-    if (tab !== 'calendar' || !calDays) return;
-    if (openDay && openDay.slice(0, 7) === calYm) {
-      autoSelMonths.current.add(calYm);
-      return;
-    }
-    const inMonth = calDays.filter(d => d.iso.slice(0, 7) === calYm);
-    if (inMonth.length === 0) return;
-    if (autoSelMonths.current.has(calYm)) return;
-    autoSelMonths.current.add(calYm);
-
-    const todayIso = fmtDay(new Date());
-    const pick = inMonth.some(d => d.iso === todayIso)
-      ? todayIso
-      : (inMonth.find(d => (d.total ?? d.events.length) > 0)?.iso ?? null);
-
-    setOpenDay(pick);
-    setDayEvents(null);
-    if (pick) fetchDay(pick);
-  }, [tab, calYm, calDays, openDay, fetchDay]);
+  // Desde el calendario, el detalle del ticker vive en la pestaña de Catalizadores.
+  const openSymbolFromCalendar = useCallback((sym: string) => {
+    closeDay();
+    setTab('catalysts');
+    loadSymbol(sym);
+  }, [closeDay, loadSymbol]);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -1636,7 +1625,7 @@ export default function CatalystPanel({ onSelectStock }: { onSelectStock?: (symb
           onShift={shiftMonth}
           onToday={goToday}
           onToggleDay={toggleDay}
-          onOpenSymbol={loadSymbol}
+          onOpenSymbol={openSymbolFromCalendar}
         />
       )}
 
