@@ -1005,8 +1005,6 @@ function MonthCalendar({
       padding: '16px 18px', borderRadius: R.xl,
       background: C.gradientCard, border: `1px solid ${C.border}`,
     }}>
-      <WeeklySummaryPanel onOpenSymbol={onOpenSymbol} />
-
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         gap: 10, marginBottom: 14, flexWrap: 'wrap',
@@ -1117,6 +1115,8 @@ function MonthCalendar({
           )
         )}
       </div>
+
+      <WeeklySummaryPanel onOpenSymbol={onOpenSymbol} />
 
       {openDay && (
         <DayDetailModal
