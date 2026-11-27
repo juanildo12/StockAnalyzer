@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { colors as C, radius as R, font as F } from '@/src/utils/webTheme';
 import { useMediaQuery } from '@/src/hooks/useMediaQuery';
+import WeeklySummaryPanel from '@/components/WeeklySummaryPanel';
 
 interface Catalyst {
   type: string;
@@ -1004,6 +1005,8 @@ function MonthCalendar({
       padding: '16px 18px', borderRadius: R.xl,
       background: C.gradientCard, border: `1px solid ${C.border}`,
     }}>
+      <WeeklySummaryPanel onOpenSymbol={onOpenSymbol} />
+
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         gap: 10, marginBottom: 14, flexWrap: 'wrap',
